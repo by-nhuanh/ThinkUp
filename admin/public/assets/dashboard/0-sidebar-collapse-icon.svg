@@ -1,0 +1,11 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Sidebar collapse icon" clip-path="url(#clip0_0_35)">
+<path id="Vector" d="M11.7996 0.799932H4.19959C2.32182 0.799932 0.799592 2.32216 0.799592 4.19993V11.7999C0.799592 13.6777 2.32182 15.1999 4.19959 15.1999H11.7996C13.6774 15.1999 15.1996 13.6777 15.1996 11.7999V4.19993C15.1996 2.32216 13.6774 0.799932 11.7996 0.799932Z" stroke="#D7E7FF" stroke-width="1.5"/>
+<path id="Vector_2" d="M5.19837 1.40031V14.6003M10.6984 5.60031L8.29837 8.00031L10.6984 10.4003" stroke="#D7E7FF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<defs>
+<clipPath id="clip0_0_35">
+<rect width="16" height="16" fill="white"/>
+</clipPath>
+</defs>
+</svg>

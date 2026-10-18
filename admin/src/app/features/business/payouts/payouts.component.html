@@ -1,0 +1,285 @@
+<main class="business-page payouts-page">
+  <header class="page-heading">
+    <div>
+      <p class="breadcrumb">Quản lý kinh doanh <span>/</span> Rút tiền giảng viên</p>
+      <h1>Rút tiền giảng viên</h1>
+      <p class="subtitle">Xem xét và duyệt các yêu cầu rút tiền của giảng viên. Sau khi duyệt, yêu cầu chuyển sang Chờ giải ngân.</p>
+    </div>
+  </header>
+
+  <!-- TODO(pre-deploy): Nhớ thay số liệu và quyền demo bằng API rút tiền cùng RBAC thật; backend xử lý duyệt, từ chối, hoàn ví, email và giải ngân. -->
+  <section class="kpi-grid" aria-label="Tổng quan rút tiền">
+    <button class="kpi" type="button" [class.selected]="status() === 'pending'" (click)="filterFromKpi('pending')">
+      <span class="kpi-icon pending"><img src="/assets/business/orders/hourglass.svg" alt=""></span>
+      <span class="kpi-content">
+        <span class="kpi-label">Yêu cầu chờ duyệt</span>
+        <strong class="kpi-value">{{ pending() }}</strong>
+        <span class="kpi-foot">{{ largePending() }} yêu cầu từ 20 triệu trở lên</span>
+      </span>
+      <img class="kpi-chevron" src="/assets/business/orders/chevron-right.svg" alt="">
+    </button>
+    <button class="kpi" type="button" [class.selected]="status() === 'approved'" (click)="filterFromKpi('approved')">
+      <span class="kpi-icon awaiting"><img src="/assets/dashboard/0-money-coin-outline.svg" alt=""></span>
+      <span class="kpi-content">
+        <span class="kpi-label">Tiền chờ giải ngân</span>
+        <strong class="kpi-value">{{ money(awaitingAmount()) }}</strong>
+        <span class="kpi-foot">Chờ kế toán chuyển khoản</span>
+      </span>
+      <img class="kpi-chevron" src="/assets/business/orders/chevron-right.svg" alt="">
+    </button>
+    <button class="kpi" type="button" [class.selected]="status() === 'paid' && paidMonthOnly() && !taxOnly()" (click)="filterPaid()">
+      <span class="kpi-icon paid"><img src="/assets/dashboard/3-analytics-icon.svg" alt=""></span>
+      <span class="kpi-content">
+        <span class="kpi-label">Đã chi trả tháng này</span>
+        <strong class="kpi-value">{{ money(paidAmount()) }}</strong>
+        <span class="kpi-foot">{{ paidCount() }} lượt thành công</span>
+      </span>
+      <img class="kpi-chevron" src="/assets/business/orders/chevron-right.svg" alt="">
+    </button>
+    <button class="kpi" type="button" [class.selected]="taxOnly()" (click)="filterTax()">
+      <span class="kpi-icon tax"><img src="/assets/business/orders/file-check.svg" alt=""></span>
+      <span class="kpi-content">
+        <span class="kpi-label">Thuế TNCN đã khấu trừ</span>
+        <strong class="kpi-value">{{ money(taxAmount()) }}</strong>
+        <span class="kpi-foot">Trong tháng này</span>
+      </span>
+      <img class="kpi-chevron" src="/assets/business/orders/chevron-right.svg" alt="">
+    </button>
+  </section>
+
+  <section class="filters-toolbar" aria-label="Tìm kiếm và lọc yêu cầu rút tiền">
+    <label class="search-field">
+      <span class="sr-only">Tìm theo mã yêu cầu, tên, email hoặc số tài khoản</span>
+      <img src="/assets/business/orders/search.svg" alt="">
+      <input type="search" placeholder="Tìm theo mã yêu cầu, tên giảng viên, email, số tài khoản..." [ngModel]="search()" (ngModelChange)="search.set($event)">
+    </label>
+    <label class="filter-select">
+      <span class="sr-only">Trạng thái</span>
+      <select [ngModel]="status()" (ngModelChange)="setStatus($event)">
+        <option value="">Tất cả trạng thái</option>
+        <option value="pending">Chờ duyệt</option>
+        <option value="approved">Chờ giải ngân</option>
+        <option value="paid">Đã giải ngân</option>
+        <option value="rejected">Bị từ chối</option>
+      </select>
+    </label>
+    <label class="filter-select">
+      <span class="sr-only">Hạn mức</span>
+      <select [ngModel]="limit()" (ngModelChange)="limit.set($event)">
+        <option value="">Hạn mức</option>
+        <option value="small">Dưới 20 triệu</option>
+        <option value="large">Từ 20 triệu trở lên</option>
+      </select>
+    </label>
+    <div class="date-range" role="group" aria-label="Khoảng thời gian">
+      <img src="/assets/business/orders/calendar-days.svg" alt="">
+      <label><span class="sr-only">Từ ngày</span><input type="date" [ngModel]="from()" (ngModelChange)="setFrom($event)"></label>
+      <span aria-hidden="true">–</span>
+      <label><span class="sr-only">Đến ngày</span><input type="date" [ngModel]="to()" (ngModelChange)="setTo($event)"></label>
+    </div>
+    <label class="filter-select quick-date">
+      <span class="sr-only">Chọn thời gian nhanh</span>
+      <select [ngModel]="quickRange()" (ngModelChange)="quickDate($event)">
+        <option value="custom" hidden>Khoảng tùy chọn</option>
+        <option value="all">Toàn bộ thời gian</option>
+        <option value="today">Hôm nay</option>
+        <option value="month">Tháng này</option>
+        <option value="last">Tháng trước</option>
+      </select>
+    </label>
+    <button class="export-button" type="button" (click)="export()"><img src="/assets/business/orders/download.svg" alt="">Xuất CSV</button>
+  </section>
+
+  <section class="panel requests-panel" aria-labelledby="requests-title">
+    <div class="requests-heading">
+      <div class="requests-title">
+        <h2 id="requests-title">Danh sách yêu cầu rút tiền</h2>
+        <span>({{ filtered().length }} yêu cầu)</span>
+      </div>
+      <span class="sort-label">Mới nhất trước</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th scope="col">Mã yêu cầu</th>
+          <th scope="col">Giảng viên</th>
+          <th scope="col" class="number">Số tiền yêu cầu</th>
+          <th scope="col" class="number">Thuế TNCN</th>
+          <th scope="col" class="number">Thực chi</th>
+          <th scope="col">Thông tin ngân hàng</th>
+          <th scope="col">Ngày gửi</th>
+          <th scope="col">Trạng thái</th>
+          <th scope="col" class="actions-heading">Thao tác</th>
+        </tr></thead>
+        <tbody>
+          @for (item of visible(); track item.id) {
+            <tr>
+              <td class="request-id">{{ item.id }}</td>
+              <td><div class="stack"><strong>{{ item.instructor }}</strong><span class="muted email" [title]="item.email">{{ item.email }}</span></div></td>
+              <td class="number amount" [class.high-value]="item.amount >= 20000000">{{ money(item.amount) }}</td>
+              <td class="number">{{ money(item.taxAmount) }}</td>
+              <td class="number net-amount">{{ money(item.amount - item.taxAmount) }}</td>
+              <td><div class="stack bank"><span>{{ item.bank }}</span><span class="muted">{{ item.accountNumber }}</span></div></td>
+              <td><div class="stack date"><span>{{ datePart(item.submittedAt) }}</span><span class="muted">{{ timePart(item.submittedAt) }}</span></div></td>
+              <td><span [class]="'status ' + item.status">{{ statusLabel(item.status) }}</span></td>
+              <td>
+                <div class="icon-actions">
+                  <button class="icon-button view" type="button" [attr.aria-label]="'Xem chi tiết ' + item.id" [title]="'Xem chi tiết ' + item.id" (click)="open(item, 'details')"><img src="/assets/dashboard/4-icon-eye-outlined.svg" alt=""></button>
+                  @if (item.status === 'pending') {
+                    <button class="icon-button approve" type="button" [disabled]="!canApprove(item)" [attr.aria-label]="'Duyệt ' + item.id" [title]="canApprove(item) ? 'Duyệt yêu cầu' : 'Hồ sơ hoặc số dư chưa đủ điều kiện duyệt'" (click)="open(item, 'review')"><img src="/assets/business/orders/circle-check.svg" alt=""></button>
+                    <button class="icon-button reject" type="button" [attr.aria-label]="'Từ chối ' + item.id" [title]="'Từ chối ' + item.id" (click)="open(item, 'reject')"><img src="/assets/business/orders/circle-x.svg" alt=""></button>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+          @if (!filtered().length) { <tr><td colspan="9" class="empty">Không có yêu cầu rút tiền phù hợp.</td></tr> }
+        </tbody>
+      </table>
+    </div>
+    <div class="table-footer">
+      <span>Hiển thị {{ filtered().length ? (currentPage() - 1) * pageSize + 1 : 0 }}–{{ Math.min(currentPage() * pageSize, filtered().length) }} trên {{ filtered().length }} yêu cầu</span>
+      <div class="pager" aria-label="Phân trang">
+        <button type="button" [disabled]="currentPage() <= 1" aria-label="Trang trước" (click)="page.set(currentPage() - 1)"><img src="/assets/business/orders/chevron-left.svg" alt=""></button>
+        <span>{{ currentPage() }} / {{ totalPages() }}</span>
+        <button type="button" [disabled]="currentPage() >= totalPages()" aria-label="Trang sau" (click)="page.set(currentPage() + 1)"><img src="/assets/business/orders/chevron-right.svg" alt=""></button>
+      </div>
+    </div>
+  </section>
+</main>
+
+@if (selected(); as item) {
+  <div class="dialog-backdrop" (click)="close()">
+    <section class="dialog payout-dialog" role="dialog" aria-modal="true" aria-labelledby="payout-dialog-title" [attr.inert]="dialog() === 'reject' ? '' : null" [attr.aria-hidden]="dialog() === 'reject' ? 'true' : null" (click)="$event.stopPropagation()">
+      <div class="dialog-head">
+        <h2 id="payout-dialog-title">Chi tiết yêu cầu rút tiền</h2>
+        <button class="dialog-close" type="button" aria-label="Đóng chi tiết yêu cầu" (click)="close()">×</button>
+      </div>
+      <div class="dialog-body">
+        <div class="request-summary">
+          <div class="request-identity">
+            <span class="request-code">{{ item.id }}</span>
+            <button class="copy-id" type="button" [attr.aria-label]="'Sao chép mã yêu cầu ' + item.id" [title]="copiedId() ? 'Đã sao chép' : 'Sao chép mã yêu cầu'" (click)="copyRequestId(item.id)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
+            </button>
+          </div>
+          <span [class]="'status request-status ' + item.status">{{ statusLabel(item.status) }}</span>
+        </div>
+
+        <section class="payout-progress" aria-label="Tiến trình xử lý yêu cầu rút tiền">
+          <svg class="progress-lines" viewBox="0 0 1000 210" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <marker id="payout-arrow-muted" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M 1 1 L 8 4.5 L 1 8" fill="none" stroke="#9aaac1" stroke-width="1.5" /></marker>
+              <marker id="payout-arrow-blue" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M 1 1 L 8 4.5 L 1 8" fill="none" stroke="#0965e4" stroke-width="1.5" /></marker>
+              <marker id="payout-arrow-red" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M 1 1 L 8 4.5 L 1 8" fill="none" stroke="#cf344b" stroke-width="1.5" /></marker>
+            </defs>
+            <path class="progress-line" [class.traversed]="item.status === 'approved' || item.status === 'paid'" d="M 205 57 H 485" />
+            <path class="progress-line" [class.traversed]="item.status === 'paid'" d="M 555 57 H 835" />
+            <path class="progress-line rejection-line" [class.traversed]="item.status === 'rejected'" d="M 205 57 C 290 57 260 155 365 155 H 485" />
+          </svg>
+          <div class="progress-step pending-step" [class.current]="item.status === 'pending'" [class.complete]="item.status === 'approved' || item.status === 'paid'" [class.resolved]="item.status === 'rejected'">
+            <span class="step-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/></svg></span>
+            <span>Chờ duyệt</span>
+          </div>
+          <div class="progress-step approved-step" [class.current]="item.status === 'approved'" [class.complete]="item.status === 'paid'">
+            <span class="step-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5h18M5 10.5V19m5-8.5V19m4-8.5V19m5-8.5V19M3 19h18M12 3l9 5H3l9-5Z"/></svg></span>
+            <span>Chờ giải ngân</span>
+          </div>
+          <div class="progress-step paid-step" [class.current]="item.status === 'paid'">
+            <span class="step-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18m-5 5h2"/></svg></span>
+            <span>Đã giải ngân</span>
+          </div>
+          <div class="progress-step rejected-step" [class.current]="item.status === 'rejected'">
+            <span class="step-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="m9 9 6 6m0-6-6 6"/></svg></span>
+            <span>Bị từ chối</span>
+          </div>
+        </section>
+
+        <div class="payout-info-grid">
+          <section class="payout-info-card" aria-labelledby="instructor-details-title">
+            <h3 id="instructor-details-title">Thông tin giảng viên</h3>
+            <dl><div><dt>Họ và tên</dt><dd>{{ item.instructor }}</dd></div><div><dt>Email</dt><dd>{{ item.email }}</dd></div><div><dt>Hồ sơ định danh</dt><dd [class.invalid]="!item.verified">{{ item.verified ? 'Đã xác minh' : 'Chưa xác minh' }}</dd></div><div><dt>Hợp đồng đối tác</dt><dd [class.invalid]="!item.contractValid">{{ item.contractValid ? 'Hợp lệ' : 'Cần kiểm tra' }}</dd></div><div><dt>Tranh chấp</dt><dd [class.invalid]="item.disputed">{{ item.disputed ? 'Có' : 'Không' }}</dd></div></dl>
+          </section>
+          <section class="payout-info-card" aria-labelledby="reconciliation-title">
+            <h3 id="reconciliation-title">Đối soát khoản rút</h3>
+            <dl><div><dt>Số dư khả dụng</dt><dd>{{ money(item.availableBalance) }}</dd></div><div><dt>Số tiền yêu cầu</dt><dd>{{ money(item.amount) }}</dd></div><div><dt>Thuế TNCN dự kiến</dt><dd>{{ money(item.taxAmount) }}</dd></div><div class="net-row"><dt>Thực nhận dự kiến</dt><dd>{{ money(item.amount - item.taxAmount) }}</dd></div></dl>
+          </section>
+          <section class="payout-info-card" aria-labelledby="bank-details-title">
+            <h3 id="bank-details-title">Tài khoản nhận tiền</h3>
+            <dl><div><dt>Ngân hàng</dt><dd>{{ item.bank }}</dd></div><div><dt>Số tài khoản</dt><dd>{{ item.accountNumber }}</dd></div><div><dt>Chủ tài khoản</dt><dd>{{ item.accountName }}</dd></div></dl>
+          </section>
+        </div>
+        @if (item.bankReference || item.rejectionReason) {
+          <div class="payout-history">
+            @if (item.bankReference) { <p><strong>Mã đối soát ngân hàng:</strong> {{ item.bankReference }}</p> }
+            @if (item.rejectionReason) { <p><strong>Lý do từ chối:</strong> {{ item.rejectionReason }}</p> }
+          </div>
+        }
+        @if (dialog() === 'review') {
+          <div class="payout-action-form field"><h3>Duyệt yêu cầu rút tiền</h3><label for="approval-note">Ghi chú duyệt (tùy chọn)</label><textarea id="approval-note" [ngModel]="approvalNote()" (ngModelChange)="approvalNote.set($event)"></textarea><p>Duyệt yêu cầu sẽ chuyển trạng thái sang Chờ giải ngân; kế toán thực hiện chuyển khoản sau.</p></div>
+        }
+        <!-- TODO(pre-deploy): Nhớ xác thực thuế suất, điều kiện thanh toán và trạng thái giải ngân trên backend; duyệt không thực hiện chuyển khoản. -->
+        @if (error() && dialog() !== 'reject') { <p class="error" role="alert">{{ error() }}</p> }
+      </div>
+      <div class="dialog-footer">
+        <button class="button" type="button" (click)="close()">{{ dialog() === 'details' || item.status !== 'pending' ? 'Đóng' : 'Hủy' }}</button>
+        @if (item.status === 'pending' && (dialog() === 'details' || dialog() === 'reject')) {
+          <button class="button danger" type="button" (click)="openReject()">Từ chối yêu cầu</button>
+          <button class="button primary" type="button" [disabled]="!canApprove(item)" [title]="canApprove(item) ? '' : 'Hồ sơ, hợp đồng, số dư hoặc quyền duyệt chưa hợp lệ'" (click)="dialog.set('review')">Duyệt yêu cầu</button>
+        }
+        @if (item.status === 'pending' && dialog() === 'review') {
+          <button class="button danger" type="button" (click)="openReject()">Từ chối yêu cầu</button>
+          <button class="button primary" type="button" [disabled]="!canApprove(item)" (click)="approve()">Xác nhận duyệt</button>
+        }
+      </div>
+    </section>
+  </div>
+  @if (dialog() === 'reject') {
+    <div class="reject-backdrop" (click)="cancelReject()">
+      <section class="reject-dialog" role="dialog" aria-modal="true" aria-labelledby="reject-dialog-title" (click)="$event.stopPropagation()">
+        <div class="reject-head">
+          <h2 id="reject-dialog-title">Từ chối yêu cầu rút tiền</h2>
+          <button class="dialog-close" type="button" aria-label="Đóng popup từ chối" (click)="cancelReject()">×</button>
+        </div>
+        <div class="reject-body">
+          <div class="reject-summary">
+            <div><span>Giảng viên</span><strong>{{ item.instructor }}</strong></div>
+            <div><span>Mã yêu cầu</span><strong>{{ item.id }}</strong></div>
+            <div><span>Số tiền yêu cầu</span><strong>{{ money(item.amount) }}</strong></div>
+          </div>
+          <div class="reject-field">
+            <label for="reject-reason">Lý do từ chối <span aria-hidden="true">*</span></label>
+            <select id="reject-reason" required [ngModel]="rejectionReason()" (ngModelChange)="rejectionReason.set($event)">
+              <option value="">Chọn lý do từ chối</option>
+              <option>Sai số tài khoản</option>
+              <option>Tên tài khoản không khớp</option>
+              <option>Doanh thu không khả dụng</option>
+              <option>Khác</option>
+            </select>
+          </div>
+          <div class="reject-field">
+            <label for="reject-details">Giải thích chi tiết <span aria-hidden="true">*</span></label>
+            <textarea id="reject-details" required [ngModel]="rejectionDetails()" (ngModelChange)="rejectionDetails.set($event)" placeholder="Mô tả rõ lý do để giảng viên có thể khắc phục"></textarea>
+          </div>
+          <div class="reject-field">
+            <span class="reject-label">Minh chứng (nếu có)</span>
+            <div class="evidence-actions">
+              <input #evidenceInput class="sr-only" type="file" accept="image/*,.pdf" tabindex="-1" aria-label="Tải minh chứng từ máy" (change)="chooseEvidence($event)">
+              <button class="evidence-button" type="button" (click)="evidenceInput.click()"><span aria-hidden="true">↥</span> Tải tệp từ máy</button>
+              <button class="evidence-button" type="button" disabled title="Chưa có kết nối Drive"><span aria-hidden="true">◇</span> Chọn từ Drive</button>
+            </div>
+            @if (evidence()) { <span class="evidence-name">Đã chọn: {{ evidence() }}</span> }
+          </div>
+          <p class="refund-note"><span aria-hidden="true">ⓘ</span> Số tiền đang tạm giữ sẽ được hoàn về ví khả dụng sau khi từ chối.</p>
+          @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+        </div>
+        <div class="reject-footer">
+          <button class="button" type="button" (click)="cancelReject()">Hủy</button>
+          <button class="button danger" type="button" (click)="reject()">Xác nhận từ chối</button>
+        </div>
+      </section>
+    </div>
+  }
+}
+@if (toast()) { <div class="toast" role="status" (click)="toast.set('')">{{ toast() }}</div> }
+@if (copiedId()) { <div class="copy-toast" role="status">Đã sao chép mã yêu cầu</div> }

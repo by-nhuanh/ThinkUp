@@ -1,0 +1,27 @@
+<div class="admin-shell" [class.is-collapsed]="collapsed()">
+  <aside class="sidebar" aria-label="Điều hướng quản trị">
+    <div class="brand">
+      <img src="/assets/dashboard/0-logo-icon-dark.svg" alt="" width="27" height="28">
+      @if (!collapsed()) { <div class="brand-copy"><strong>THINK<span>UP</span></strong><small>Admin | Control Center</small></div> }
+      <button class="collapse-button" type="button" (click)="collapsed.set(!collapsed())" [attr.aria-label]="collapsed() ? 'Mở thanh điều hướng' : 'Thu gọn thanh điều hướng'"><img src="/assets/dashboard/0-sidebar-collapse-icon.svg" alt="" width="16" height="16"></button>
+    </div>
+    <nav class="nav-list">
+      <a class="nav-item" routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" [title]="collapsed() ? 'Dashboard' : ''"><img src="/assets/dashboard/0-svg.svg" alt="" width="16" height="16">@if (!collapsed()) { <span>Dashboard</span> }</a>
+      <div class="nav-item nav-label" [title]="collapsed() ? nav[0].label : ''"><img [src]="'/assets/dashboard/' + nav[0].icon" alt="" width="16" height="16">@if (!collapsed()) { <span>{{ nav[0].label }}</span><svg class="chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg> }</div>
+      <button class="nav-item business-toggle" type="button" [attr.aria-expanded]="businessOpen()" aria-controls="business-subnav" [title]="collapsed() ? 'Quản lý kinh doanh' : ''" (click)="toggleBusiness()"><img src="/assets/dashboard/0-money-coin-outline.svg" alt="" width="16" height="16">@if (!collapsed()) { <span>Quản lý kinh doanh</span><svg class="chevron" [class.rotated]="businessOpen()" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg> }</button>
+      @if (businessOpen() && !collapsed()) { <div id="business-subnav" class="subnav">@for (page of businessPages; track page.path) { <a class="subnav-link" [routerLink]="page.path" routerLinkActive="active">{{ page.label }}</a> }</div> }
+      @for (item of nav.slice(1); track item.label) {
+        <div class="nav-item nav-label" [title]="collapsed() ? item.label : ''"><img [src]="'/assets/dashboard/' + item.icon" alt="" width="16" height="16">@if (!collapsed()) { <span>{{ item.label }}</span><svg class="chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg> }</div>
+      }
+    </nav>
+  </aside>
+  <div class="page-shell">
+    <header class="topbar"><div class="top-actions">
+      <button class="top-icon" type="button" aria-label="Cài đặt" title="Cài đặt"><img src="/assets/dashboard/header-0.svg" alt=""></button>
+      <div class="popover-anchor"><button class="top-icon notifications" type="button" aria-label="Thông báo" [attr.aria-expanded]="notificationsOpen()" (click)="notificationsOpen.set(!notificationsOpen())"><img src="/assets/dashboard/header-1.svg" alt=""><span class="badge">2</span></button>@if (notificationsOpen()) { <div class="top-popover">Bạn có 2 thông báo mới.</div> }</div>
+      <span class="avatar">A</span>
+      <div class="popover-anchor"><button class="account-button" type="button" [attr.aria-expanded]="accountOpen()" (click)="accountOpen.set(!accountOpen())">Admin <svg class="account-chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg></button>@if (accountOpen()) { <div class="top-popover">Tài khoản quản trị</div> }</div>
+    </div></header>
+    <router-outlet />
+  </div>
+</div>

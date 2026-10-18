@@ -1,0 +1,108 @@
+<main class="orders-page">
+  <header class="orders-heading">
+    <p class="breadcrumb">Quản lý kinh doanh <span>/</span> Đơn hàng</p>
+    <h1>Quản lý đơn hàng</h1>
+  </header>
+
+  <section class="orders-metrics" aria-label="Tổng quan đơn hàng">
+    <button class="metric" type="button" [class.is-selected]="status() === ''" (click)="setStatus('')" aria-label="Xem tất cả đơn hàng"><span class="metric-icon icon-blue"><img src="/assets/business/orders/shopping-cart.svg" alt=""></span><span class="metric-copy"><span class="metric-label">Tổng đơn hàng</span><strong>{{ total() }}</strong><small>Trong dữ liệu hiện có</small></span></button>
+    <button class="metric" type="button" [class.is-selected]="status() === 'success'" (click)="setStatus('success')" aria-label="Lọc đơn thành công"><span class="metric-icon icon-green"><img src="/assets/business/orders/file-check.svg" alt=""></span><span class="metric-copy"><span class="metric-label">Thành công</span><strong>{{ success() }}</strong><small>{{ total() ? (success() / total() * 100).toFixed(1) : '0' }}% tổng đơn hàng</small></span></button>
+    <button class="metric" type="button" [class.is-selected]="status() === 'pending'" (click)="setStatus('pending')" aria-label="Lọc đơn chờ thanh toán"><span class="metric-icon icon-amber"><img src="/assets/business/orders/hourglass.svg" alt=""></span><span class="metric-copy"><span class="metric-label">Chờ thanh toán</span><strong>{{ pending() }}</strong><small>{{ total() ? (pending() / total() * 100).toFixed(1) : '0' }}% tổng đơn hàng</small></span></button>
+    <button class="metric" type="button" [class.is-selected]="status() === 'cancelled'" (click)="setStatus('cancelled')" aria-label="Lọc đơn đã hủy"><span class="metric-icon icon-red"><img src="/assets/business/orders/file-x.svg" alt=""></span><span class="metric-copy"><span class="metric-label">Đã hủy</span><strong>{{ cancelled() }}</strong><small>{{ total() ? (cancelled() / total() * 100).toFixed(1) : '0' }}% tổng đơn hàng</small></span></button>
+  </section>
+
+  <section class="orders-toolbar" aria-label="Tìm kiếm và lọc đơn hàng">
+    <div class="search-control"><img src="/assets/business/orders/search.svg" alt=""><input type="search" aria-label="Tìm đơn hàng" placeholder="Tìm mã giao dịch, mã đơn, học viên..." [ngModel]="search()" (ngModelChange)="setSearch($event)"></div>
+    <div class="filter-control"><label for="order-status">Trạng thái</label><span class="select-wrap"><select id="order-status" [ngModel]="status()" (ngModelChange)="setStatus($event)"><option value="">Tất cả trạng thái</option><option value="success">Thành công</option><option value="pending">Chờ thanh toán</option><option value="cancelled">Đã hủy</option></select><img src="/assets/business/orders/chevron-down.svg" alt=""></span></div>
+    <div class="filter-control"><label for="order-method">Phương thức thanh toán</label><span class="select-wrap"><select id="order-method" [ngModel]="method()" (ngModelChange)="setMethod($event)"><option value="">Tất cả phương thức</option>@for (item of methods; track item) { <option [value]="item">{{ item }}</option> }</select><img src="/assets/business/orders/chevron-down.svg" alt=""></span></div>
+    <div class="toolbar-end">
+      <div class="filter-control date-filter"><span class="filter-label">Khoảng thời gian</span><button class="date-trigger" type="button" [attr.aria-expanded]="dateOpen()" aria-controls="order-date-options" (click)="toggleDatePopover()"><img src="/assets/business/orders/calendar-days.svg" alt=""><span>{{ dateLabel() }}</span></button>
+        @if (dateOpen()) { <div class="date-popover" id="order-date-options" [style.left.px]="datePopoverPosition()?.left" [style.top.px]="datePopoverPosition()?.top" [style.max-height.px]="datePopoverPosition()?.maxHeight" [style.visibility]="datePopoverPosition() ? 'visible' : 'hidden'"><p>Chọn nhanh</p><div class="quick-dates"><button type="button" (click)="setPeriod('today')">Hôm nay</button><button type="button" (click)="setPeriod('week')">7 ngày</button><button type="button" (click)="setPeriod('month')">Tháng này</button><button type="button" (click)="setPeriod('quarter')">Quý này</button><button type="button" (click)="setPeriod('year')">Năm này</button><button type="button" (click)="setPeriod('all')">Tất cả</button></div><div class="date-fields"><label for="order-from">Từ ngày<input id="order-from" type="date" [ngModel]="from()" (ngModelChange)="setFrom($event)"></label><label for="order-to">Đến ngày<input id="order-to" type="date" [ngModel]="to()" (ngModelChange)="setTo($event)"></label></div><button class="date-done" type="button" (click)="closeDatePopover()">Áp dụng</button></div> }
+      </div>
+      <div class="filter-control sort-filter"><span class="filter-label">Sắp xếp</span><button class="sort-trigger" type="button" [attr.aria-label]="'Thứ tự ngày tạo: ' + (sort() === 'newest' ? 'Mới nhất' : 'Cũ nhất') + '. Nhấn để đổi thứ tự'" (click)="toggleSort()"><img src="/assets/business/orders/arrow-down.svg" alt="" [class.oldest-first]="sort() === 'oldest'"><span>{{ sort() === 'newest' ? 'Mới nhất' : 'Cũ nhất' }}</span></button></div>
+      <button class="toolbar-button reset-button" type="button" (click)="clear()"><img src="/assets/dashboard/3-lucide-react-trash2.svg" alt="">Xóa bộ lọc</button>
+      <button class="toolbar-button export-button" type="button" (click)="export()"><img src="/assets/business/orders/download.svg" alt="">Xuất CSV</button>
+    </div>
+  </section>
+
+  <section class="orders-list" aria-label="Danh sách đơn hàng">
+    <div class="orders-table-scroll"><table><thead><tr><th scope="col">Mã giao dịch / Mã đơn</th><th scope="col">Học viên</th><th scope="col" class="amount-column">Thực thu</th><th scope="col">Phương thức</th><th scope="col">Trạng thái</th><th scope="col" [attr.aria-sort]="sort() === 'newest' ? 'descending' : 'ascending'"><img class="sort-icon" src="/assets/business/orders/arrow-down.svg" alt="" [class.oldest-first]="sort() === 'oldest'"> Ngày tạo</th><th scope="col" class="detail-column">Chi tiết</th></tr></thead><tbody>
+      @for (order of visible(); track order.id) { <tr><td><strong>{{ displayId(order) }}</strong><span class="secondary">{{ order.id }}</span></td><td><strong>{{ order.learner }}</strong><span class="secondary">{{ order.email }}</span></td><td class="amount-column"><strong>{{ money(order.originalAmount - order.discount) }}</strong></td><td>{{ order.method }}</td><td><span [class]="'order-status status-' + order.status"><img [src]="'/assets/business/orders/' + statusIcon(order.status)" alt="">{{ statusLabel(order.status) }}</span></td><td><strong>{{ dateOf(order.createdAt) }}</strong><span class="secondary">{{ timeOf(order.createdAt) }}</span></td><td class="detail-column"><button class="eye-button" type="button" [attr.aria-label]="'Xem chi tiết đơn hàng ' + order.id" [title]="'Xem chi tiết ' + order.id" (click)="openDetail(order, $event)"><img src="/assets/dashboard/4-icon-eye-outlined.svg" alt=""></button></td></tr> }
+      @if (!visible().length) { <tr><td colspan="7" class="empty-state">Không có đơn hàng phù hợp. Hãy thử điều chỉnh bộ lọc.</td></tr> }
+    </tbody></table></div>
+    <div class="orders-footer"><span>Hiển thị {{ filtered().length ? (page() - 1) * pageSize + 1 : 0 }} - {{ (page() - 1) * pageSize + visible().length }} của {{ filtered().length }} đơn hàng</span><div class="pagination"><button type="button" [disabled]="page() === 1" aria-label="Trang trước" (click)="page.update(value => value - 1)"><img src="/assets/business/orders/chevron-left.svg" alt=""></button>@for (number of pageNumbers(); track number) { <button type="button" [class.current]="page() === number" [attr.aria-current]="page() === number ? 'page' : null" (click)="page.set(number)">{{ number }}</button> }<button type="button" [disabled]="page() >= pages()" aria-label="Trang sau" (click)="page.update(value => value + 1)"><img src="/assets/business/orders/chevron-right.svg" alt=""></button></div></div>
+  </section>
+</main>
+
+@if (selected(); as order) {
+  <div class="dialog-backdrop order-detail-backdrop" (click)="closeDetail()" (window:keydown.escape)="closeDetail()">
+    <section class="order-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="order-dialog-title" aria-describedby="order-dialog-subtitle" (click)="$event.stopPropagation()">
+      <header class="order-detail-header">
+        <span class="order-detail-header-icon" aria-hidden="true"><img src="/assets/business/orders/file-check.svg" alt=""></span>
+        <div class="order-detail-heading">
+          <h2 id="order-dialog-title">Chi tiết giao dịch</h2>
+          <p id="order-dialog-subtitle">Đơn hàng {{ order.id }} · {{ dateTimeWithSeconds(order.createdAt) }}</p>
+        </div>
+        <span [class]="'order-detail-status status-' + order.status">{{ statusLabel(order.status) }}</span>
+        <button class="order-detail-close" id="order-detail-close" type="button" aria-label="Đóng chi tiết giao dịch" (click)="closeDetail()">×</button>
+      </header>
+
+      <div class="order-detail-content" tabindex="0" aria-label="Nội dung chi tiết giao dịch">
+        <section class="order-detail-card" aria-labelledby="transaction-info-title">
+          <h3 id="transaction-info-title">Thông tin giao dịch</h3>
+          <div class="order-detail-metadata">
+            <div><span>Mã giao dịch</span><strong>{{ order.transactionId || 'Chưa có' }}</strong></div>
+            <div><span>Học viên</span><strong>{{ order.learner }}</strong><small>{{ order.email }}</small></div>
+            <div><span>Phương thức</span><strong>{{ order.method }}</strong></div>
+          </div>
+        </section>
+
+        <section class="order-detail-card order-courses-card" aria-labelledby="order-courses-title">
+          <h3 id="order-courses-title">Khóa học trong đơn ({{ order.courses.length }})</h3>
+          <ol class="order-detail-courses">
+            @for (course of order.courses; track $index) {
+              <li><span class="course-number" aria-hidden="true">{{ $index + 1 < 10 ? '0' + ($index + 1) : $index + 1 }}</span><strong>{{ course }}</strong></li>
+            }
+          </ol>
+        </section>
+
+        <div class="order-detail-columns">
+          <section class="order-detail-card order-revenue-card" aria-labelledby="order-revenue-title">
+            <h3 id="order-revenue-title">Phân bổ doanh thu</h3>
+            <div class="order-ledger-row"><span>Giá bán gốc</span><strong>{{ money(order.originalAmount) }}</strong></div>
+            @if (order.discount > 0) {
+              <div class="order-ledger-row voucher-row"><span>Voucher {{ order.voucherCode || 'Đã áp dụng' }}</span><span class="ledger-amount"><strong>−{{ money(order.discount) }}</strong><small>{{ order.sponsor === 'instructor' ? 'Giảng viên tài trợ' : 'ThinkUp tài trợ' }}</small></span></div>
+            }
+            <div class="order-ledger-row paid-row"><span>{{ order.status === 'success' ? 'Học viên thực trả' : 'Số tiền cần thanh toán' }}</span><strong>{{ money(order.originalAmount - order.discount) }}</strong></div>
+            @if (order.status === 'success') {
+              <div class="order-ledger-row"><span>Cơ sở tính cho giảng viên</span><strong>{{ money(instructorBase(order)) }}</strong></div>
+              <div class="order-ledger-row instructor-row"><span>Giảng viên nhận (40%)</span><strong>{{ money(instructorShare(order)) }}</strong></div>
+              <div class="order-ledger-row thinkup-row"><span>ThinkUp thực thu</span><strong>{{ money(platformShare(order)) }}</strong></div>
+              @if (order.discount > 0) {
+                <p class="order-revenue-note">{{ order.sponsor === 'instructor' ? 'Giảng viên tài trợ voucher; doanh thu chia trên giá sau giảm.' : 'ThinkUp bù phần giảm giá; tỷ lệ giảng viên tính trên giá gốc.' }}</p>
+              }
+            } @else {
+              <p class="order-revenue-note">Đơn chưa thanh toán thành công; doanh thu chưa được ghi nhận.</p>
+            }
+          </section>
+
+          <section class="order-detail-card order-reconciliation-card" aria-labelledby="order-reconciliation-title">
+            <h3 id="order-reconciliation-title">Đối soát &amp; chứng từ</h3>
+            <div class="reconciliation-item"><span>Mã hóa đơn điện tử</span><strong>{{ order.invoiceId || 'Chưa phát hành' }}</strong></div>
+            <div class="reconciliation-item"><span>Mã tham chiếu ngân hàng</span><strong>{{ order.bankReference || 'Chưa có' }}</strong></div>
+            <div class="reconciliation-item"><span>Mã giao dịch cổng thanh toán</span><strong>{{ order.transactionId || 'Chưa có' }}</strong></div>
+            <div class="invoice-state"><img src="/assets/business/orders/circle-check.svg" alt=""><span><strong>{{ order.invoiceId ? 'Hóa đơn đã phát hành' : 'Hóa đơn chưa phát hành' }}</strong><small>{{ order.invoiceId ? 'Chứng từ đã được ghi nhận.' : 'Chưa có chứng từ.' }}</small></span></div>
+          </section>
+        </div>
+      </div>
+
+      <footer class="order-detail-footer">
+        <div class="order-detail-actions">
+          <button class="detail-secondary-button" type="button" (click)="closeDetail()">Đóng</button>
+          <!-- TODO(pre-deploy): Nhớ bật tải PDF khi service hóa đơn kết nối endpoint backend chính thức. -->
+          <button class="detail-primary-button" type="button" disabled><img src="/assets/business/orders/download.svg" alt="">Tải hóa đơn PDF</button>
+        </div>
+      </footer>
+    </section>
+  </div>
+}

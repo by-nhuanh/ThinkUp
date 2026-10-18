@@ -1,20 +1,33 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-admin-layout',
   standalone: true,
-  template: `
-    <div class="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center justify-center p-6 text-center">
-      <div class="max-w-md p-8 bg-slate-800 rounded-xl shadow-lg border border-slate-700">
-        <h1 class="text-2xl font-bold text-amber-400 mb-2">ThinkUp Admin Portal</h1>
-        <p class="text-slate-400 text-sm mb-4">
-          Cấu trúc khung độc lập của ứng dụng Quản trị viên (Angular 21 Skeleton).
-        </p>
-        <span class="inline-block px-3 py-1 bg-amber-500/10 text-amber-300 border border-amber-500/30 rounded-full text-xs font-semibold">
-          Ready for future admin migration
-        </span>
-      </div>
-    </div>
-  `
+  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  templateUrl: './admin-layout.component.html',
+  styleUrl: './admin-layout.component.css'
 })
-export class AdminLayoutComponent {}
+export class AdminLayoutComponent {
+  readonly collapsed = signal(false);
+  readonly accountOpen = signal(false);
+  readonly notificationsOpen = signal(false);
+  readonly businessOpen = signal(typeof window !== 'undefined' && window.location.pathname.startsWith('/business/'));
+  readonly nav = [
+    { label: 'Quản lý người dùng', icon: '0-svg1.svg' },
+    { label: 'Quản lý khóa học', icon: '0-svg2.svg' },
+    { label: 'Quản lý nội dung', icon: '0-svg3.svg' },
+    { label: 'Quản lý hỗ trợ', icon: '0-svg4.svg' },
+    { label: 'Quản trị hệ thống', icon: '0-svg5.svg' }
+  ];
+  readonly businessPages = [
+    { label: 'Đơn hàng', path: '/business/orders' },
+    { label: 'Voucher', path: '/business/vouchers' },
+    { label: 'Rút tiền giảng viên', path: '/business/payouts' }
+  ];
+
+  toggleBusiness(): void {
+    if (this.collapsed()) this.collapsed.set(false);
+    this.businessOpen.update(value => !value);
+  }
+}

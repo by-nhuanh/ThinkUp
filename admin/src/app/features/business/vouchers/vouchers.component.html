@@ -1,0 +1,94 @@
+<main class="business-page voucher-page">
+  <!-- SVG icon paths: Lucide v0.378.0 (ISC); license at /assets/vouchers/LUCIDE-LICENSE.txt. -->
+  <!-- TODO(pre-deploy): Nhớ thay adapter voucher mẫu bằng API chính thức trước khi triển khai; xác thực checkout và ngân sách trên backend. -->
+  <div class="voucher-heading">
+    <p class="breadcrumb">Quản lý kinh doanh / Voucher</p>
+    <h1>Quản lý voucher</h1>
+  </div>
+
+  <section class="voucher-kpis" aria-label="Tổng quan voucher">
+    <button class="voucher-kpi" type="button" [class.selected]="!status()" (click)="setStatus('')">
+      <span class="kpi-icon total" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg></span><span class="kpi-label">Tổng voucher</span>
+      <strong class="kpi-value">{{ vouchers().length }}</strong><span class="kpi-meta">Tất cả mã đã tạo</span>
+    </button>
+    <button class="voucher-kpi" type="button" [class.selected]="status() === 'active'" (click)="setStatus('active')">
+      <span class="kpi-icon active" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></span><span class="kpi-label">Đang phát hành</span>
+      <strong class="kpi-value">{{ active() }}</strong><span class="kpi-breakdown"><span>ThinkUp <b>{{ activeThinkup() }}</b></span><span>Giảng viên <b>{{ activeInstructor() }}</b></span></span>
+    </button>
+    <button class="voucher-kpi" type="button" [class.selected]="status() === 'hidden'" (click)="setStatus('hidden')">
+      <span class="kpi-icon hidden" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/></svg></span><span class="kpi-label">Đã tạm ẩn</span>
+      <strong class="kpi-value">{{ hidden() }}</strong><span class="kpi-meta">Tạm khóa và chưa bắt đầu</span>
+    </button>
+    <button class="voucher-kpi" type="button" [class.selected]="status() === 'expired'" (click)="setStatus('expired')">
+      <span class="kpi-icon expired" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16.5 12"/></svg></span><span class="kpi-label">Đã hết hạn</span>
+      <strong class="kpi-value">{{ expired() }}</strong><span class="kpi-meta">Hết hạn hoặc hết lượt</span>
+    </button>
+    <div class="voucher-kpi budget">
+      <span class="kpi-icon budget-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></svg></span><span class="kpi-label">Ngân sách chiết khấu</span>
+      <strong class="kpi-value">{{ money(funded()) }}</strong><span class="kpi-breakdown"><span>ThinkUp <b>{{ money(thinkupFunded()) }}</b></span><span>Giảng viên <b>{{ money(instructorFunded()) }}</b></span></span>
+    </div>
+  </section>
+
+  <section class="voucher-panel" aria-label="Danh sách voucher">
+    <div class="voucher-panel-heading"><h2>Danh sách voucher</h2><div class="voucher-heading-actions"><button class="button export-button" type="button" (click)="export()">Xuất CSV</button><button class="button primary create-button" type="button" (click)="openNew()">+ Tạo voucher mới</button></div></div>
+    <div class="voucher-toolbar">
+      <div class="search-box"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input id="voucher-search" type="search" aria-label="Tìm mã voucher" placeholder="Tìm mã voucher..." [ngModel]="search()" (ngModelChange)="setSearch($event)"></div>
+      <div class="field"><label for="voucher-sponsor">Nguồn tài trợ</label><select id="voucher-sponsor" [ngModel]="sponsor()" (ngModelChange)="setSponsor($event)"><option value="">Tất cả</option><option value="thinkup">ThinkUp</option><option value="instructor">Giảng viên</option></select></div>
+      <div class="field"><label for="voucher-status">Trạng thái</label><select id="voucher-status" [ngModel]="status()" (ngModelChange)="setStatus($event)"><option value="">Tất cả</option><option value="active">Đang phát hành</option><option value="hidden">Đã tạm ẩn</option><option value="scheduled">Chưa bắt đầu</option><option value="locked">Tạm khóa</option><option value="expired">Đã hết hạn</option></select></div>
+    </div>
+    <div class="voucher-table-wrap"><table><thead><tr><th class="select-cell"><input type="checkbox" aria-label="Chọn tất cả voucher đang hiển thị" [checked]="filtered().length > 0 && filtered().every(item => selectedCodes().includes(item.code))" (change)="toggleAll($any($event.target).checked)"></th><th>Mã voucher</th><th>Nguồn tài trợ</th><th>Giá trị giảm</th><th>Điều kiện đơn</th><th>Lượt sử dụng</th><th>Thời hạn</th><th>Trạng thái</th></tr></thead><tbody>
+      @for (item of filtered(); track item.code) {
+        <tr [class.row-selected]="selectedCodes().includes(item.code)">
+          <td class="select-cell"><input type="checkbox" [attr.aria-label]="'Chọn ' + item.code" [checked]="selectedCodes().includes(item.code)" (change)="toggle(item.code, $any($event.target).checked)"></td>
+          <td><div class="code-cell"><strong>{{ item.code }}</strong><button class="inline-icon" type="button" [attr.aria-label]="'Sao chép mã ' + item.code" title="Sao chép mã" (click)="copyCode(item.code)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></button><button class="inline-icon" type="button" [attr.aria-label]="'Xem chi tiết ' + item.code" title="Xem chi tiết" (click)="detail.set(item)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button><button class="inline-icon code-lock" type="button" [class.locked]="item.locked" [attr.aria-label]="(item.locked ? 'Mở khóa ' : 'Tạm khóa ') + item.code" [attr.title]="statusOf(item) === 'expired' ? 'Voucher đã hết hạn hoặc hết lượt' : (item.locked ? 'Mở khóa voucher' : 'Tạm khóa voucher')" [disabled]="statusOf(item) === 'expired'" (click)="requestLock([item.code], !item.locked)">@if (item.locked) {<svg viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>} @else {<svg viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>}</button></div></td>
+          <td><span class="sponsor-tag" [class.instructor]="item.sponsor === 'instructor'">{{ item.sponsor === 'thinkup' ? 'ThinkUp' : 'Giảng viên' }}</span></td>
+          <td class="discount-value">{{ discount(item) }}</td><td>Đơn từ {{ money(item.minOrder) }}</td>
+          <td><div class="usage"><span>{{ item.used }} / {{ item.limit }}</span><strong [class]="'remaining ' + remainingTone(item)">Còn lại: {{ remaining(item) }} lượt</strong></div></td>
+          <td><div class="date-range"><span><small>Từ</small><b>{{ date(item.startsAt) }}</b></span><span><small>Đến</small><b>{{ date(item.endsAt) }}</b></span></div></td>
+          <td><span [class]="'voucher-status ' + statusOf(item)">{{ statusLabel(statusOf(item)) }}</span></td>
+        </tr>
+      }
+      @if (!filtered().length) { <tr><td colspan="8" class="empty">Không có voucher phù hợp với bộ lọc.</td></tr> }
+    </tbody></table></div>
+    <div class="voucher-footer"><span>Hiển thị {{ filtered().length }} voucher</span></div>
+  </section>
+</main>
+@if (form(); as item) { <div class="dialog-backdrop" (click)="form.set(null)"><section class="dialog wide" role="dialog" aria-modal="true" aria-labelledby="voucher-dialog-title" (click)="$event.stopPropagation()"><div class="dialog-head"><div><h2 id="voucher-dialog-title">{{ editing() ? 'Chỉnh sửa voucher' : 'Tạo mới / Cấu hình voucher' }}</h2><p class="subtitle">{{ editing() ? 'Các điều kiện đã công bố được giữ nguyên.' : 'Thiết lập điều kiện áp dụng và giới hạn chiến dịch.' }}</p></div><button class="button small" type="button" aria-label="Đóng" (click)="form.set(null)">✕</button></div><div class="dialog-body"><div class="form-grid"><div class="field"><label for="voucher-code">Mã voucher *</label><input id="voucher-code" [ngModel]="item.code" (ngModelChange)="patch('code', $event.toUpperCase())" [readOnly]="editing()" placeholder="THINKUP100"></div><div class="field"><label for="voucher-name">Tên chương trình *</label><input id="voucher-name" [ngModel]="item.name" (ngModelChange)="patch('name', $event)" [readOnly]="editing()"></div><div class="field"><label for="voucher-source">Nguồn tài trợ *</label><select id="voucher-source" [ngModel]="item.sponsor" (ngModelChange)="changeSponsor($event)" [disabled]="editing()"><option value="thinkup">ThinkUp tài trợ</option><option value="instructor">Giảng viên tài trợ</option></select></div><div class="field"><label for="voucher-scope">Phạm vi áp dụng *</label><select id="voucher-scope" [ngModel]="item.scope" (ngModelChange)="patch('scope', $event)" [disabled]="editing()"><option value="all" [disabled]="item.sponsor === 'instructor'">Toàn sàn</option><option value="rating" [disabled]="item.sponsor === 'instructor'">Khóa học từ số sao</option><option value="instructor">Theo giảng viên</option><option value="courses">Theo khóa học</option></select></div>@if (item.sponsor === 'instructor') { <div class="field"><label for="voucher-instructor">Giảng viên tài trợ *</label><input id="voucher-instructor" [ngModel]="item.instructor" (ngModelChange)="patch('instructor', $event)" [readOnly]="editing()" placeholder="Tên / mã giảng viên"></div> }@if (item.scope !== 'all') { <div class="field"><label for="voucher-target">{{ item.scope === 'rating' ? 'Số sao tối thiểu' : 'Đối tượng áp dụng' }} *</label><input id="voucher-target" [ngModel]="item.scopeTarget" (ngModelChange)="patch('scopeTarget', $event)" [readOnly]="editing()" [placeholder]="item.scope === 'courses' ? 'Tên hoặc mã khóa học' : 'Giảng viên / số sao'"></div> }<div class="field"><label for="voucher-type">Hình thức giảm *</label><select id="voucher-type" [ngModel]="item.discountType" (ngModelChange)="patch('discountType', $event)" [disabled]="editing()"><option value="fixed">Số tiền cố định</option><option value="percent">Tỷ lệ phần trăm</option></select></div><div class="field"><label for="voucher-value">Mức giảm {{ item.discountType === 'percent' ? '(%)' : '(VNĐ)' }} *</label><input id="voucher-value" type="number" min="1" [ngModel]="item.discountValue" (ngModelChange)="patch('discountValue', +$event)" [readOnly]="editing()"></div>@if (item.discountType === 'percent') { <div class="field"><label for="voucher-max">Trần giảm tối đa (VNĐ) *</label><input id="voucher-max" type="number" min="1" [ngModel]="item.maxDiscount" (ngModelChange)="patch('maxDiscount', +$event)"></div> }<div class="field"><label for="voucher-min">Đơn tối thiểu (VNĐ) *</label><input id="voucher-min" type="number" min="1" [ngModel]="item.minOrder" (ngModelChange)="patch('minOrder', +$event)"></div><div class="field"><label for="voucher-limit">Tổng lượt phát hành *</label><input id="voucher-limit" type="number" min="1" [ngModel]="item.limit" (ngModelChange)="patch('limit', +$event)"></div><div class="field"><label for="voucher-per-account">Giới hạn mỗi tài khoản *</label><input id="voucher-per-account" type="number" min="1" [ngModel]="item.perAccount" (ngModelChange)="patch('perAccount', +$event)"></div><div class="field"><label for="voucher-start">Bắt đầu *</label><input id="voucher-start" type="datetime-local" [ngModel]="item.startsAt" (ngModelChange)="patch('startsAt', $event)" [readOnly]="editing() && item.startsAt <= localNow()"></div><div class="field"><label for="voucher-end">Kết thúc *</label><input id="voucher-end" type="datetime-local" [ngModel]="item.endsAt" (ngModelChange)="patch('endsAt', $event)"></div></div>@if (error()) { <p class="error" role="alert">{{ error() }}</p> }<!-- TODO(pre-deploy): Nhớ lấy danh mục khóa học và giảng viên từ API được bàn giao. --></div><div class="dialog-footer"><button class="button" type="button" (click)="form.set(null)">Hủy</button><button class="button primary" type="button" (click)="save()">{{ editing() ? 'Lưu thay đổi' : 'Lưu & Kích hoạt' }}</button></div></section></div> }
+@if (detail(); as item) {
+  <div class="dialog-backdrop" (click)="detail.set(null)">
+    <section class="dialog voucher-detail" role="dialog" aria-modal="true" aria-labelledby="voucher-detail-title" (click)="$event.stopPropagation()">
+      <header class="voucher-detail-head">
+        <h2 id="voucher-detail-title">Chi tiết voucher</h2>
+        <button class="voucher-detail-close" type="button" aria-label="Đóng chi tiết voucher" (click)="detail.set(null)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </header>
+      <div class="voucher-detail-body">
+        <div class="voucher-detail-identity">
+          <h3>{{ item.code }}</h3>
+          <button class="inline-icon" type="button" [attr.aria-label]="'Sao chép mã ' + item.code" title="Sao chép mã" (click)="copyCode(item.code)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></button>
+          <span [class]="'voucher-detail-status ' + statusOf(item)">{{ statusLabel(statusOf(item)) }}</span>
+        </div>
+        <div class="voucher-detail-summary">
+          <div><span>Giảm</span><strong class="discount">{{ item.discountType === 'percent' ? item.discountValue + '%' : money(item.discountValue) }}</strong></div>
+          <div><span>{{ item.discountType === 'percent' ? 'Tối đa' : 'Hình thức' }}</span><strong>{{ item.discountType === 'percent' ? money(item.maxDiscount ?? 0) : 'Số tiền cố định' }}</strong></div>
+          <div><span>Đơn từ</span><strong>{{ money(item.minOrder) }}</strong></div>
+        </div>
+        <section class="voucher-detail-section" aria-labelledby="voucher-detail-source">
+          <div class="voucher-detail-section-head"><span class="voucher-detail-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><h4 id="voucher-detail-source">Nguồn tài trợ & phạm vi</h4></div>
+          <dl><div><dt>Nguồn tài trợ</dt><dd>{{ item.sponsor === 'thinkup' ? 'ThinkUp tài trợ' : 'Giảng viên tài trợ' }}</dd></div>@if (item.sponsor === 'instructor') { <div><dt>Giảng viên</dt><dd>{{ item.instructor }}</dd></div> }<div><dt>Phạm vi áp dụng</dt><dd>{{ scopeLabel(item) }}</dd></div>@if (item.scopeTarget) { <div><dt>{{ item.scope === 'rating' ? 'Số sao tối thiểu' : 'Đối tượng áp dụng' }}</dt><dd>{{ item.scopeTarget }}</dd></div> }</dl>
+        </section>
+        <section class="voucher-detail-section" aria-labelledby="voucher-detail-usage">
+          <div class="voucher-detail-section-head"><span class="voucher-detail-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h8"/></svg></span><h4 id="voucher-detail-usage">Giới hạn sử dụng</h4></div>
+          <dl><div><dt>Tổng lượt sử dụng</dt><dd>{{ item.used }} / {{ item.limit }} lượt đã dùng</dd></div><div><dt>Còn lại</dt><dd>{{ remaining(item) }} lượt</dd></div><div><dt>Mỗi tài khoản</dt><dd>{{ item.perAccount }} lượt</dd></div></dl>
+        </section>
+        <section class="voucher-detail-section" aria-labelledby="voucher-detail-time">
+          <div class="voucher-detail-section-head"><span class="voucher-detail-section-icon time" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></span><h4 id="voucher-detail-time">Thời gian áp dụng</h4></div>
+          <dl><div><dt>Bắt đầu</dt><dd>{{ dateTime(item.startsAt) }}</dd></div><div><dt>Kết thúc</dt><dd>{{ dateTime(item.endsAt) }}</dd></div></dl>
+        </section>
+      </div>
+      <footer class="voucher-detail-footer"><button class="button" type="button" (click)="detail.set(null)">Đóng</button><button class="button primary voucher-detail-edit" type="button" (click)="openEdit(item)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>Sửa voucher</button></footer>
+    </section>
+  </div>
+}
+@if (confirm(); as action) { <div class="dialog-backdrop" (click)="confirm.set(null)"><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="voucher-confirm-title" (click)="$event.stopPropagation()"><div class="dialog-head"><h2 id="voucher-confirm-title">{{ action.locked ? 'Xác nhận tạm khóa' : 'Xác nhận mở khóa' }}</h2></div><div class="dialog-body"><p>Áp dụng cho {{ action.codes.length }} voucher: <strong>{{ action.codes.join(', ') }}</strong>.</p><p class="notice">{{ action.locked ? 'Voucher bị khóa sẽ không dùng được cho giao dịch mới.' : 'Voucher chỉ phát hành khi còn hạn, còn lượt và đã tới ngày bắt đầu.' }}</p></div><div class="dialog-footer"><button class="button" type="button" (click)="confirm.set(null)">Hủy</button><button class="button primary" type="button" (click)="applyLock()">Xác nhận</button></div></section></div> }
+@if (toast()) { <div class="toast" role="status" (click)="toast.set('')">{{ toast() }}</div> }
+

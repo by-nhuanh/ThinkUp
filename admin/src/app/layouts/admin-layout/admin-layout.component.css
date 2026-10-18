@@ -1,0 +1,43 @@
+:host { display: block; }
+.admin-shell { --sidebar-width: 256px; display: grid; grid-template-columns: var(--sidebar-width) minmax(0,1fr); min-height: 100vh; background: #f4f8ff; }
+.admin-shell.is-collapsed { --sidebar-width: 72px; }
+.sidebar { position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto; background: #051638; color: #eef6ff; padding: 12px 9px; }
+.brand { display: flex; align-items: flex-start; gap: 8px; height: 58px; padding: 0 7px; position: relative; }
+.brand > img { flex: none; margin-top: 5px; }
+.brand-copy { display: grid; gap: 1px; white-space: nowrap; }
+.brand-copy strong { font-size: 25px; line-height: 27px; letter-spacing: -.6px; font-weight: 800; }
+.brand-copy strong span { color: #1570d1; }
+.brand-copy small { font-size: 12px; color: #dceafe; }
+.collapse-button { margin-left: auto; padding: 3px; border: 0; color: inherit; background: transparent; cursor: pointer; }
+.nav-list { display: grid; gap: 3px; }
+.nav-item { width: 100%; height: 39px; padding: 0 10px; display: flex; align-items: center; gap: 10px; border: 0; border-radius: 6px; background: transparent; color: #eef6ff; font: 500 15px Inter, Arial, sans-serif; text-align: left; cursor: pointer; white-space: nowrap; }
+.nav-item:hover { background: #17315b; }
+.nav-item.active { background: #1570d1; box-shadow: 0 4px 8px #1570d14d; }
+.nav-item img { flex: none; }
+.nav-item[href] { text-decoration: none; }
+.chevron { width: 16px; height: 16px; margin-left: auto; flex: none; }.nav-label { cursor: default; }
+.business-toggle .chevron { transition: transform .18s ease; }
+.business-toggle .chevron.rotated { transform: rotate(180deg); }
+.subnav { display: grid; gap: 2px; padding: 2px 0 6px 33px; }
+.subnav-link { display: flex; align-items: center; min-height: 36px; border-radius: 6px; padding: 6px 10px; color: #c9d9ed; text-decoration: none; font-size: 13px; font-weight: 500; }
+.subnav-link:hover { background: #17315b; color: #fff; }
+.subnav-link.active { background: #173f75; color: #fff; font-weight: 700; }
+.nav-item:focus-visible, .subnav-link:focus-visible { outline: 2px solid #8ec8ff; outline-offset: 2px; }
+.is-collapsed .brand { justify-content: center; padding: 0; }
+.is-collapsed .collapse-button { position: absolute; left: 50%; top: 5px; transform: translateX(-50%); width: 27px; height: 28px; display: grid; place-items: center; padding: 0; opacity: 0; pointer-events: none; }
+.is-collapsed .collapse-button img { transform: rotate(180deg); }
+.is-collapsed .brand:hover > img, .is-collapsed .brand:focus-within > img { opacity: 0; }
+.is-collapsed .brand:hover .collapse-button, .is-collapsed .brand:focus-within .collapse-button { opacity: 1; pointer-events: auto; }
+.is-collapsed .nav-item { justify-content: center; }
+.page-shell { min-width: 0; }
+.topbar { position: sticky; top: 0; z-index: 20; height: 69px; background: #eff7ff; border-bottom: 1px solid #d8e8f7; display: flex; justify-content: flex-end; align-items: center; padding: 0 23px; }
+.top-actions { display: flex; align-items: center; gap: 14px; color: #1570d1; }
+.top-icon { width: 47px; height: 47px; border: 0; background: transparent; color: #1570d1; font-size: 28px; cursor: pointer; position: relative; }
+.top-icon img { width: 26px; height: 26px; }
+.badge { position: absolute; right: 0; top: -2px; background: #ff778b; color: #fff; border-radius: 50%; font: 700 14px Inter, Arial, sans-serif; width: 19px; height: 19px; line-height: 19px; }
+.avatar { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; border: 4px solid #e1efff; background: #fff; font-size: 27px; font-weight: 700; }
+.account-button { color: #1570d1; background: transparent; border: 0; font: 500 18px Inter, Arial, sans-serif; cursor: pointer; }.account-button span { margin-left: 6px; }
+.account-chevron { width: 16px; height: 16px; margin-left: 6px; vertical-align: middle; }
+.popover-anchor { position: relative; }.top-popover { position: absolute; right: 0; top: 50px; z-index: 10; width: 230px; background: #fff; color: #123260; border: 1px solid #dbe7f6; border-radius: 8px; padding: 14px; box-shadow: 0 8px 24px #12326020; font-size: 14px; }
+@media (max-width: 1440px) { .admin-shell { --sidebar-width: 230px; } .nav-item { font-size: 14px; } .brand-copy strong { font-size: 22px; } }
+

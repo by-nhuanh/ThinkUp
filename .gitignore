@@ -1,5 +1,8 @@
 # dependencies
 /node_modules
+/admin/node_modules/
+/admin/.angular/
+/admin/dist/
 /.pnp
 .pnp.js
 .yarn/install-state.gz
