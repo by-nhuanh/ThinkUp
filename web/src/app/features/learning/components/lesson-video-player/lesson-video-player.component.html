@@ -1,0 +1,39 @@
+<section #player class="video-player" [class.is-buffering]="buffering()">
+  <div class="video-stage">
+    <video #video [src]="lesson().videoUrl" preload="metadata" playsinline
+      (click)="togglePlayback()" (loadedmetadata)="onLoadedMetadata()" (timeupdate)="onTimeUpdate()"
+      (progress)="onProgress()" (play)="playing.set(true);buffering.set(false)" (pause)="playing.set(false)"
+      (waiting)="buffering.set(true)" (playing)="buffering.set(false)" (ended)="onEnded()">
+      Trình duyệt của bạn không hỗ trợ video.
+    </video>
+
+    @if (buffering()) { <div class="buffering" role="status"><span></span><p>Đang tải video...</p></div> }
+    @if (offline()) { <div class="offline-warning" role="alert">Mất kết nối Internet. Mốc xem hiện tại đã được lưu trên thiết bị.</div> }
+    @if (resumePosition() > 0) { <button class="resume" type="button" (click)="resumePosition.set(0)">Tiếp tục xem từ {{formatTime(resumePosition())}}</button> }
+    @if (countdown() !== null) {
+      <div class="next-overlay">
+        <strong>Bài học đã kết thúc</strong>
+        <p>Tự động chuyển sang bài tiếp theo sau {{countdown()}} giây</p>
+        <div><button type="button" (click)="replay()">Xem lại</button><button class="primary" type="button" (click)="moveNext()">Chuyển ngay</button></div>
+      </div>
+    }
+  </div>
+
+  <div class="seek-wrap" (mousemove)="updateSeekPreview($event)" (mouseleave)="seekPreview.set(null)">
+    <i class="buffer-bar" [style.width.%]="bufferedPercent()"></i>
+    <i class="played-bar" [style.width.%]="progressPercent()"></i>
+    <input aria-label="Tua video" type="range" min="0" [max]="duration()" step="0.1" [value]="currentTime()" (input)="seek($any($event.target).value)">
+    @if (seekPreview(); as preview) { <span class="seek-preview" [style.left.px]="preview.x">{{formatTime(preview.time)}}</span> }
+  </div>
+
+  <div class="video-controls">
+    <button type="button" class="icon" (click)="togglePlayback()" [attr.aria-label]="playing()?'Tạm dừng':'Phát video'">{{playing()?'❚❚':'▶'}}</button>
+    <span class="time">{{formatTime(currentTime())}} / {{formatTime(duration())}}</span>
+    <div class="volume-control"><button type="button" class="icon" (click)="toggleMute()" [attr.aria-label]="muted()?'Bật tiếng':'Tắt tiếng'">{{muted()||volume()===0?'🔇':'🔊'}}</button><input aria-label="Âm lượng" type="range" min="0" max="1" step="0.05" [value]="muted()?0:volume()" (input)="setVolume($any($event.target).value)"></div>
+    <label>Tốc độ<select aria-label="Tốc độ phát" [ngModel]="playbackRate()" (ngModelChange)="setPlaybackRate($event)"><option [ngValue]="0.75">0.75x</option><option [ngValue]="1">1.0x</option><option [ngValue]="1.25">1.25x</option><option [ngValue]="1.5">1.5x</option><option [ngValue]="1.75">1.75x</option><option [ngValue]="2">2.0x</option></select></label>
+    <label>Chất lượng<select aria-label="Chất lượng video" disabled><option>Tự động</option></select></label>
+    <button type="button" class="icon" (click)="togglePictureInPicture()" aria-label="Thu nhỏ Picture-in-Picture">▣</button>
+    <button type="button" class="icon" (click)="toggleFullscreen()" aria-label="Toàn màn hình">⛶</button>
+  </div>
+  <div class="video-caption"><span>▶</span><div><strong>{{lesson().title}}</strong><small>Thời lượng {{lesson().duration}} · Tiến độ được lưu tự động</small></div></div>
+</section>

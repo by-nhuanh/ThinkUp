@@ -1,0 +1,19 @@
+<section class="notes-panel">
+  <header><h2>Ghi chú bài học</h2><span>{{ notes().length }} ghi chú</span></header>
+  <form class="note-composer" (ngSubmit)="addNote()">
+    <textarea name="note" [(ngModel)]="draft" rows="3" maxlength="500" placeholder="Ghi lại ý chính của bài học..."></textarea>
+    <div><small>{{ draft.length }}/500</small><button type="submit" [disabled]="!draft.trim()">Thêm ghi chú</button></div>
+  </form>
+  <div class="note-list">
+    @for (note of notes(); track note.id) {
+      <article>
+        @if (editingId() === note.id) {
+          <textarea [(ngModel)]="editDraft" [ngModelOptions]="{standalone: true}" rows="3" maxlength="500"></textarea>
+          <div class="note-actions"><button type="button" (click)="editingId.set(null)">Hủy</button><button class="primary" type="button" [disabled]="!editDraft.trim()" (click)="saveEdit(note.id)">Lưu</button></div>
+        } @else {
+          <p>{{ note.body }}</p><footer><time>{{ note.updatedAt }}</time><span><button type="button" (click)="beginEdit(note)">Sửa</button><button class="delete" type="button" (click)="deleteNote(note.id)">Xóa</button></span></footer>
+        }
+      </article>
+    } @empty { <p class="empty">Chưa có ghi chú cho bài học này.</p> }
+  </div>
+</section>

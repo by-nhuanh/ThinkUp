@@ -3,13 +3,9 @@ import { onboardingRequiredGuard, onboardingCompletedGuard } from './core/guards
 import { guestGuard } from './core/guards/guest.guard';
 import { BlogService } from './features/blog/services/blog.service';
 import { BLOG_PROVIDERS } from './features/blog/services/blog.providers';
+import { quizProgressGuard } from './features/learning/guards/quiz-progress.guard';
 
 export const routes: Routes = [
-  // Email links may point to the client origin when the backend public URL is not configured.
-  {
-    path: 'api/auth/verify',
-    loadComponent: () => import('./features/auth/verify-email/verify-email.component').then(m => m.VerifyEmailComponent)
-  },
   // Khảo sát Onboarding chính thức (CanActivate: chặn học viên đã hoàn thành)
   {
     path: 'onboarding',
@@ -31,7 +27,6 @@ export const routes: Routes = [
         loadComponent: () => import('./features/auth/sign-up/sign-up.component').then(m => m.SignUpComponent)
       },
       { path: 'sign-up', redirectTo: 'sign_up', pathMatch: 'full' },
-      { path: 'verify', loadComponent: () => import('./features/auth/verify-email/verify-email.component').then(m => m.VerifyEmailComponent) },
       { path: 'forgot-password', loadComponent: () => import('./features/auth/forgot-password/forgot-password.component').then(m => m.ForgotPasswordComponent) },
       { path: 'verify-otp', loadComponent: () => import('./features/auth/verify-otp/verify-otp.component').then(m => m.VerifyOtpComponent) },
       { path: 'reset-password', loadComponent: () => import('./features/auth/reset-password/reset-password.component').then(m => m.ResetPasswordComponent) },
@@ -80,7 +75,7 @@ export const routes: Routes = [
     path: 'learning',
     canActivateChild: [onboardingRequiredGuard],
     children: [
-      { path: 'learn/:courseId', data: { hideFooter: true }, loadComponent: () => import('./features/learning/lesson-player/lesson-player.component').then(m => m.LessonPlayerComponent) },
+      { path: 'learn/:courseId', canDeactivate: [quizProgressGuard], data: { hideFooter: true }, loadComponent: () => import('./features/learning/lesson-player/lesson-player.component').then(m => m.LessonPlayerComponent) },
       { path: 'study-room', loadComponent: () => import('./features/study-room/study-room-lobby/study-room-lobby.component').then(m => m.StudyRoomLobbyComponent) },
       { path: 'study-room/:roomId', data: { hideShell: true }, loadComponent: () => import('./features/study-room/study-room-view/study-room-view.component').then(m => m.StudyRoomViewComponent) },
       { path: 'roadmap', loadComponent: () => import('./features/roadmap/roadmap-list/roadmap-list.component').then(m => m.RoadmapListComponent) },

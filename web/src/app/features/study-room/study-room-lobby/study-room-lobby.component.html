@@ -119,106 +119,54 @@
                 placeholder="Tìm theo tên phòng, chủ đề hoặc kỹ năng..."
             /></label>
           </div>
-          <div class="filter-row">
-            <div class="tabs">
-              @for (tab of tabs; track tab.key) {
+          <div class="tabs">
+            @for (tab of tabs; track tab.key) {
+              <button
+                type="button"
+                [class.selected]="selectedTab() === tab.key"
+                (click)="selectedTab.set(tab.key)"
+              >
+                {{ tab.label }}
+              </button>
+            }
+          </div>
+          <div class="topics">
+            <div>
+              @for (topic of topics; track topic) {
                 <button
                   type="button"
-                  [class.selected]="selectedTab() === tab.key"
-                  (click)="selectedTab.set(tab.key)"
+                  [class.selected]="selectedTopic() === topic"
+                  (click)="selectedTopic.set(topic)"
                 >
-                  {{ tab.label }}
+                  {{ topic }}
                 </button>
               }
             </div>
-            <span class="filter-divider" aria-hidden="true"></span>
-            <div class="topic-picker">
-              <button
-                type="button"
-                class="topic-trigger"
-                (click)="toggleTopicMenu()"
-                aria-haspopup="dialog"
-                [attr.aria-expanded]="isTopicMenuOpen()"
-              >
-                <svg lucideTag></svg><span>{{ topicTriggerLabel() }}</span
-                ><svg
-                  class="topic-chevron"
-                  [class.open]="isTopicMenuOpen()"
-                  lucideChevronRight
-                ></svg>
-              </button>
-              @if (isTopicMenuOpen()) {
-                <div class="topic-menu" role="dialog" aria-label="Chọn chủ đề">
-                  <label class="topic-search"
-                    ><svg lucideSearch></svg
-                    ><input
-                      type="search"
-                      [ngModel]="topicSearch()"
-                      (ngModelChange)="topicSearch.set($event)"
-                      placeholder="Tìm chủ đề..."
-                  /></label>
-                  <div class="topic-options">
-                    <label class="topic-option all"
-                      ><input
-                        type="checkbox"
-                        [checked]="pendingTopics().length === 0"
-                        (change)="clearPendingTopics()"
-                      /><span>Tất cả chủ đề</span></label
-                    >
-                    @for (topic of visibleTopics(); track topic) {
-                      <label class="topic-option"
-                        ><input
-                          type="checkbox"
-                          [checked]="pendingTopics().includes(topic)"
-                          (change)="togglePendingTopic(topic)"
-                        /><span>{{
-                          topic === "Focus Session" ? "Focus" : topic
-                        }}</span></label
-                      >
-                    }
-                    @if (visibleTopics().length === 0) {
-                      <p class="topic-empty">Không tìm thấy chủ đề phù hợp.</p>
-                    }
-                  </div>
-                  <div class="topic-menu-actions">
-                    <button type="button" (click)="closeTopicMenu()">Hủy</button
-                    ><button
-                      type="button"
-                      class="apply"
-                      (click)="applyTopicFilter()"
-                    >
-                      Áp dụng
-                    </button>
-                  </div>
-                </div>
-              }
-            </div>
-            <button type="button" class="refresh" (click)="resetFilters()">
+            <button
+              type="button"
+              class="refresh"
+              (click)="
+                search.set('');
+                selectedTopic.set('Tất cả');
+                selectedTab.set('trending')
+              "
+            >
               <svg lucideRotateCcw></svg>Làm mới
             </button>
           </div>
         </div>
-        @if (loading()) {
-          <p class="empty-rooms" role="status">Đang tải phòng học...</p>
-        } @else if (loadError()) {
-          <div class="empty-rooms" role="alert">
-            {{ loadError() }}
-            <button type="button" (click)="loadRooms()">Thử lại</button>
-          </div>
-        } @else {
-          <div class="rooms-grid">
-            @for (card of roomCards(); track card.room.roomId) {
-              <app-study-room-card
-                [item]="card"
-                (join)="joinRoom($event)"
-                (copyCode)="copyRoom($event)"
-                (copyInvite)="copyRoom($event, true)"
-              />
-            } @empty {
-              <div class="empty-rooms">Không tìm thấy phòng học phù hợp.</div>
-            }
-          </div>
-        }
+        <div class="rooms-grid">
+          @for (card of roomCards(); track card.room.roomId) {
+            <app-study-room-card
+              [item]="card"
+              (join)="joinRoom($event)"
+              (copyCode)="copyRoom($event)"
+              (copyInvite)="copyRoom($event, true)"
+            />
+          } @empty {
+            <div class="empty-rooms">Không tìm thấy phòng học phù hợp.</div>
+          }
+        </div>
       </section>
       <aside class="lobby-sidebar">
         <section class="match-panel">

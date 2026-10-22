@@ -1,0 +1,35 @@
+@if (stage() === 'intro') {
+  <section class="quiz-intro">
+    <span class="quiz-symbol">?</span><p class="eyebrow">BÀI KIỂM TRA KIẾN THỨC</p><h2>{{lesson().title}}</h2>
+    <p>Hoàn thành bài quiz để kiểm tra mức độ hiểu bài. Kết quả không ảnh hưởng quyền truy cập bài học tiếp theo.</p>
+    <div class="quiz-facts"><div><strong>{{quiz.questions.length}}</strong><span>Tổng số câu hỏi</span></div><div><strong>{{quiz.timeLimit}} phút</strong><span>Thời gian làm bài</span></div><div><strong>{{quiz.passingScore}}%</strong><span>Điểm tối thiểu để đạt</span></div></div>
+    @if (attemptNumber() > 0) { <p class="attempt-summary">Đã làm {{attemptNumber()}} lần · Điểm cao nhất {{highestScore()}}%</p> }
+    <button type="button" (click)="startQuiz()">Bắt đầu làm bài →</button>
+  </section>
+} @else if (stage() === 'taking') {
+  <section class="quiz-taking">
+    <header class="quiz-header"><div><span>Lần làm {{attemptNumber()}}</span><strong>{{answeredCount}}/{{quiz.questions.length}} câu đã trả lời</strong></div><time [class.warning]="remainingSeconds()<=60">{{formatTimer(remainingSeconds())}}</time><button type="button" (click)="requestSubmit()">Nộp bài</button></header>
+    <div class="quiz-layout">
+      <article class="question-card">
+        <div class="question-head"><span>Câu {{currentIndex()+1}} / {{quiz.questions.length}}</span><button type="button" [class.marked]="markedIds().has(currentQuestion.id)" (click)="toggleMarked(currentQuestion.id)">⚑ {{markedIds().has(currentQuestion.id)?'Đã đánh dấu':'Đánh dấu xem lại'}}</button></div>
+        <h2>{{currentQuestion.text}}</h2>
+        <div class="options">@for (option of currentQuestion.options; track option.id) {<label [class.selected]="answers()[currentQuestion.id]===option.id"><input type="radio" [name]="currentQuestion.id" [value]="option.id" [checked]="answers()[currentQuestion.id]===option.id" (change)="selectAnswer(currentQuestion.id,option.id)"><span>{{option.id.toUpperCase()}}</span><b>{{option.text}}</b></label>}</div>
+        <footer><button type="button" [disabled]="currentIndex()===0" (click)="goToQuestion(currentIndex()-1)">← Câu trước</button><button class="primary" type="button" [disabled]="currentIndex()===quiz.questions.length-1" (click)="goToQuestion(currentIndex()+1)">Câu tiếp theo →</button></footer>
+      </article>
+      <aside class="quiz-navigator"><div class="progress-ring" [style.--progress]="completionPercent+'%'"><strong>{{completionPercent}}%</strong><span>Hoàn thành</span></div><div class="legend"><span><i class="answered"></i>Đã trả lời {{answeredCount}}</span><span><i></i>Chưa trả lời {{unansweredCount}}</span></div><div class="question-grid">@for (question of quiz.questions; track question.id; let index=$index) {<button type="button" [class.current]="currentIndex()===index" [class.answered]="answers()[question.id]" [class.marked]="markedIds().has(question.id)" (click)="goToQuestion(index)">{{index+1}}@if(markedIds().has(question.id)){<sup>★</sup>}@if(answers()[question.id]){<small>✓</small>}</button>}</div></aside>
+    </div>
+  </section>
+} @else if (stage() === 'grading') {
+  <section class="quiz-grading" aria-live="polite"><span></span><h2>{{autoSubmitNotice()?'Đã hết thời gian làm bài':'Đang chấm điểm'}}</h2><p>{{autoSubmitNotice()?'Hệ thống đã tự động nộp các câu trả lời hiện tại.':'Vui lòng chờ trong giây lát...'}}</p></section>
+} @else if (result(); as result) {
+  <section class="quiz-result" [class.failed]="!result.passed">
+    <span class="result-icon">{{result.passed?'✓':'×'}}</span><p class="eyebrow">KẾT QUẢ BÀI QUIZ</p><h2>{{result.passed?'Chúc mừng, bạn đã đạt!':'Bạn chưa đạt lần này'}}</h2>
+    <div class="result-stats"><div><strong>{{result.score}}%</strong><span>Điểm số</span></div><div><strong>{{result.correctCount}}</strong><span>Câu đúng</span></div><div><strong>{{result.incorrectCount}}</strong><span>Câu sai</span></div><div><strong>{{attemptNumber()}}</strong><span>Lần làm</span></div></div>
+    <p>{{result.passed?'Kết quả đã được ghi nhận vào tiến độ khóa học.':'Bạn có thể làm lại không giới hạn hoặc tiếp tục học bài tiếp theo.'}}</p>
+    <div class="result-actions"><button type="button" class="secondary" (click)="retake()">↻ Làm lại bài</button><button type="button" (click)="nextRequested.emit()">Bài học tiếp theo →</button></div>
+  </section>
+}
+
+@if (confirmSubmit()) {
+  <div class="submit-backdrop" (click)="confirmSubmit.set(false)"><section class="submit-modal" role="dialog" aria-modal="true" aria-labelledby="submit-title" (click)="$event.stopPropagation()"><h2 id="submit-title">Xác nhận nộp bài</h2><p>Bạn đã trả lời <strong>{{answeredCount}}/{{quiz.questions.length}}</strong> câu.@if(unansweredCount>0){ Còn <strong>{{unansweredCount}}</strong> câu chưa hoàn thành.}</p><p>Sau khi nộp, bạn không thể thay đổi đáp án của lần làm này.</p><div><button type="button" (click)="confirmSubmit.set(false)">Làm tiếp</button><button class="primary" type="button" (click)="submitQuiz()">Xác nhận nộp</button></div></section></div>
+}

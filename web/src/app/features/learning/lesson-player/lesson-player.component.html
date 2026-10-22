@@ -21,7 +21,7 @@
       </div>
     </header>
     <div class="content-grid">
-      <app-lesson-content [lesson]="lesson()!" (completed)="markComplete()" />
+      <app-lesson-content [lesson]="lesson()!" (completed)="markComplete()" (quizActiveChange)="quizActive.set($event)" />
       <aside class="info-card">
         <nav class="tabs"><button type="button" [class.active]="activeTab()==='overview'" (click)="activeTab.set('overview')">Tổng quan</button><button type="button" [class.active]="activeTab()==='resources'" (click)="activeTab.set('resources')">Tài liệu</button><button type="button" [class.active]="activeTab()==='qa'" (click)="activeTab.set('qa')">Hỏi đáp</button><button type="button" [class.active]="activeTab()==='discussion'" (click)="activeTab.set('discussion')">Thảo luận <i>{{discussionPosts.length}}</i></button></nav>
         <div class="tab-body">
@@ -34,8 +34,8 @@
               <div class="learning-goals"><h3>Trong khóa học này, bạn sẽ học được:</h3><p>✓ Hiểu và giải thích kiến thức trọng tâm</p><p>✓ Áp dụng kiến thức vào dự án thực tế</p><p>✓ Nhận biết và xử lý các lỗi phổ biến</p></div>
             }
             @case('resources'){<h2>Tài liệu bài học</h2><p class="description">Tải xuống tài liệu để luyện tập sau bài học.</p><a class="resource" href="data:text/plain;charset=utf-8,ThinkUp%20Responsive%20Checklist" download="responsive-checklist.txt"><span>↓</span><div><strong>Responsive checklist</strong><small>TXT · 2 KB</small></div><b>Tải xuống</b></a><a class="resource" href="data:text/plain;charset=utf-8,Viewport%20and%20CSS%20units" download="viewport-notes.txt"><span>↓</span><div><strong>Ghi chú Viewport & CSS units</strong><small>TXT · 1 KB</small></div><b>Tải xuống</b></a>}
-            @case('qa'){<app-community-panel mode="qa" [initialPosts]="qaPosts" />}
-            @case('discussion'){<app-community-panel mode="discussion" [initialPosts]="discussionPosts" />}
+            @case('qa'){<app-community-panel mode="qa" [lessonId]="lesson()!.id" [initialPosts]="qaPosts" />}
+            @case('discussion'){<app-community-panel mode="discussion" [lessonId]="lesson()!.id" [initialPosts]="discussionPosts" />}
           }
         </div>
       </aside>

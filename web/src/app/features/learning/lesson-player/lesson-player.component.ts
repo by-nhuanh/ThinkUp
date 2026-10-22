@@ -13,6 +13,7 @@ type InfoTab='overview'|'resources'|'qa'|'discussion';
 export class LessonPlayerComponent {
   private readonly route=inject(ActivatedRoute); private readonly router=inject(Router); private readonly service=inject(LearningService);
   readonly course=signal<LearningCourse|null>(null); readonly selectedId=signal(''); readonly sidebarOpen=signal(true); readonly openChapters=signal<Set<string>>(new Set()); readonly activeTab=signal<InfoTab>('overview'); readonly bookmarked=signal(false); readonly completedIds=signal<Set<string>>(new Set()); readonly status=signal<'loading'|'success'|'error'>('loading');
+  readonly quizActive=signal(false);
   readonly qaPosts=MOCK_QA_POSTS; readonly discussionPosts=MOCK_DISCUSSION_POSTS;
   readonly lessons=computed(()=>this.course()?.chapters.flatMap(chapter=>chapter.lessons)??[]);
   readonly lesson=computed(()=>this.lessons().find(item=>item.id===this.selectedId())??this.lessons()[0]??null);
@@ -25,5 +26,6 @@ export class LessonPlayerComponent {
   markComplete():void{const id=this.lesson()?.id;if(id)this.completedIds.update(current=>new Set(current).add(id));}
   goTo(target:LearningLesson|null):void{if(target)this.chooseLesson(target);}
   typeLabel(type:string):string{return ({video:'Video',reading:'Bài đọc',quiz:'Quiz'}[type]??type);}
+  canDeactivate():boolean{return !this.quizActive()||window.confirm('Bài quiz đang làm chưa được nộp. Bạn có chắc muốn rời trang?');}
 }
 

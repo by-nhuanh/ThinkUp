@@ -1,37 +1,38 @@
 <section class="community">
-  <div class="community-heading">
-    <div><h2>{{ mode() === 'qa' ? 'Hỏi đáp với giảng viên' : 'Thảo luận khóa học' }}</h2><p>{{ mode() === 'qa' ? 'Đặt câu hỏi và nhận giải đáp từ giảng viên, cộng đồng.' : 'Chia sẻ góc nhìn và cùng trao đổi về nội dung bài học.' }}</p></div>
-    <span>{{ posts().length }} {{ mode() === 'qa' ? 'câu hỏi' : 'chủ đề' }}</span>
-  </div>
+  <div class="community-heading"><div><h2>{{mode()==='qa'?'Hỏi đáp với giảng viên':'Thảo luận khóa học'}}</h2><p>{{mode()==='qa'?'Đặt câu hỏi và nhận giải đáp từ giảng viên, cộng đồng.':'Tất cả học viên trong khóa học đều có thể tham gia thảo luận.'}}</p></div><span>{{posts().length}} {{mode()==='qa'?'câu hỏi':'bình luận'}}</span></div>
+
   <form class="composer" (ngSubmit)="addPost()">
-    <input name="draft" [(ngModel)]="draft" [placeholder]="mode() === 'qa' ? 'Viết câu hỏi của bạn...' : 'Viết bình luận của bạn...'">
-    <button type="submit" [disabled]="!draft.trim()" aria-label="Gửi">➤</button>
+    <div class="avatar mine">{{initialsForUser}}</div>
+    <div class="composer-body">
+      <textarea name="draft" [(ngModel)]="draft" rows="1" maxlength="1000" (input)="autoResize($event)" [placeholder]="mode()==='qa'?'Viết câu hỏi của bạn...':'Viết bình luận của bạn...'"></textarea>
+      @if(attachmentPreview()){<div class="attachment-preview"><img [src]="attachmentPreview()" alt="Ảnh đính kèm"><button type="button" aria-label="Xóa ảnh đính kèm" (click)="attachmentPreview.set(null)">×</button></div>}
+      <div class="composer-tools"><span><label class="tool" title="Đính kèm ảnh">▧<input type="file" accept="image/*" (change)="selectImage($event)"></label><button class="tool" type="button" title="Chèn biểu tượng cảm xúc" (click)="emojiOpen.set(!emojiOpen())">☺</button></span><small>{{draft.length}}/1000</small></div>
+      @if(emojiOpen()){<div class="emoji-picker">@for(emoji of emojis;track emoji){<button type="button" (click)="insertEmoji(emoji)">{{emoji}}</button>}</div>}
+      @if(validationMessage()){<p class="validation" role="alert">{{validationMessage()}}</p>}
+    </div>
+    <button class="send" type="submit" [disabled]="!canSubmit" [attr.aria-label]="mode()==='qa'?'Gửi câu hỏi':'Gửi bình luận'">➤</button>
   </form>
+  @if(cooldownRemaining()>0){<p class="cooldown">Bạn có thể đăng tiếp sau {{cooldownRemaining()}} giây.</p>}
+
   <div class="feed">
-    @for(post of posts(); track post.id){
-      <article class="post">
-        <div class="avatar"><img [src]="avatarFor(post.author)" alt=""></div>
-        <div class="post-body">
-          <div class="post-meta"><strong>{{post.author}}</strong>@if(post.resolved){<span class="resolved">Giảng viên</span>}<time>• {{post.createdAt}}</time><button class="report" type="button" (click)="openReport(post.id,post.author)">Báo cáo</button></div>
-          <p>{{post.body}}</p>
-          <div class="post-actions"><button type="button" [class.liked]="post.liked" (click)="toggleLike(post.id)">♡ {{post.likes}} Thích</button><button type="button" (click)="replyTarget.set(replyTarget()===post.id?null:post.id)">↩ Trả lời</button></div>
-          @for(reply of post.replies; track reply.id){<div class="reply"><div class="avatar small"><img [src]="avatarFor(reply.author)" alt=""></div><div><div class="post-meta"><strong>{{reply.author}}</strong><time>{{reply.createdAt}}</time><button class="report" type="button" (click)="openReport(reply.id,reply.author)">Báo cáo</button></div><p>{{reply.body}}</p><button class="mini-like" [class.liked]="reply.liked" type="button" (click)="toggleLike(reply.id)">Thích ({{reply.likes}})</button></div></div>}
-          @if(replyTarget()===post.id){<form class="reply-form" (ngSubmit)="addReply(post.id)"><input name="reply" [(ngModel)]="replyDraft" placeholder="Viết câu trả lời..."><button type="submit">Gửi</button></form>}
-        </div>
-      </article>
-    } @empty { <div class="empty">Chưa có nội dung. Hãy là người bắt đầu cuộc trò chuyện.</div> }
+    @for(post of posts();track post.id){
+      <article class="post"><div class="avatar"><img [src]="avatarFor(post.author)" alt=""></div><div class="post-body">
+        <div class="post-meta"><strong>{{post.author}}</strong>@if(post.role==='instructor'){<span class="role">Giảng viên</span>}@else if(post.role==='assistant'){<span class="role">Trợ giảng</span>}<time>{{post.createdAt}}</time><button class="report" type="button" (click)="openReport(post.id,post.author)">Báo cáo</button></div>
+        <p>{{post.body}}</p>@if(post.attachmentDataUrl){<img class="post-attachment" [src]="post.attachmentDataUrl" alt="Ảnh đính kèm bình luận">}
+        <div class="post-actions"><button type="button" [class.liked]="post.liked" (click)="toggleLike(post.id)">👍 {{post.likes}}</button><span>💬 {{post.replies.length}}</span><button type="button" (click)="replyTarget.set(replyTarget()===post.id?null:post.id)">Trả lời</button></div>
+        @if(post.replies.length>1){<button class="toggle-replies" type="button" (click)="toggleReplies(post.id)">{{expandedReplies().has(post.id)?'Thu gọn phản hồi':'Xem thêm '+(post.replies.length-1)+' câu trả lời'}}</button>}
+        <div class="replies">@for(reply of visibleReplies(post);track reply.id){<div class="reply"><div class="avatar small"><img [src]="avatarFor(reply.author)" alt=""></div><div><div class="post-meta"><strong>{{reply.author}}</strong>@if(reply.role==='instructor'){<span class="role">Giảng viên</span>}@else if(reply.role==='assistant'){<span class="role">Trợ giảng</span>}<time>{{reply.createdAt}}</time><button class="report" type="button" (click)="openReport(reply.id,reply.author)">Báo cáo</button></div><p>{{reply.body}}</p><button class="mini-like" [class.liked]="reply.liked" type="button" (click)="toggleLike(reply.id)">👍 {{reply.likes}}</button></div></div>}</div>
+        @if(replyTarget()===post.id){<form class="reply-form" (ngSubmit)="addReply(post.id)"><textarea name="reply" [(ngModel)]="replyDraft" maxlength="1000" rows="2" autofocus placeholder="Viết câu trả lời..."></textarea><div><small>{{replyDraft.length}}/1000</small><button type="button" (click)="replyTarget.set(null)">Hủy</button><button class="primary" type="submit" [disabled]="!canReply">Gửi trả lời</button></div></form>}
+      </div></article>
+    } @empty {<div class="empty">Chưa có nội dung. Hãy là người bắt đầu cuộc trò chuyện.</div>}
   </div>
 </section>
 
 @if(reportTarget()){
-  <div class="modal-backdrop" (click)="closeReport()">
-    <section class="report-modal" role="dialog" aria-modal="true" aria-labelledby="report-title" (click)="$event.stopPropagation()">
-      <button class="close" type="button" aria-label="Đóng" (click)="closeReport()">×</button>
-      @if(!reportSent()){
-        <span class="warning">!</span><h2 id="report-title">Báo cáo vi phạm</h2><p class="modal-note">Hãy cho chúng tôi biết nội dung này có vấn đề gì. Báo cáo của bạn được giữ kín.</p>
-        <form (ngSubmit)="submitReport()"><label for="report-reason">Lý do báo cáo <b>*</b></label><textarea id="report-reason" name="reason" [(ngModel)]="reportReason" rows="5" placeholder="Mô tả lý do bạn cho rằng nội dung này vi phạm..."></textarea><small>{{reportReason.length}}/500 ký tự</small><div class="modal-actions"><button type="button" class="cancel" (click)="closeReport()">Hủy</button><button type="submit" class="danger" [disabled]="!reportReason.trim()">Gửi báo cáo</button></div></form>
-      } @else { <div class="report-success"><span>✓</span><h2>Đã gửi báo cáo</h2><p>Cảm ơn bạn đã giúp cộng đồng ThinkUp an toàn hơn. Chúng tôi sẽ xem xét nội dung này.</p><button type="button" (click)="closeReport()">Đóng</button></div> }
-    </section>
-  </div>
+  <div class="modal-backdrop" (click)="closeReport()"><section class="report-modal" role="dialog" aria-modal="true" aria-labelledby="report-title" (click)="$event.stopPropagation()"><button class="close" type="button" aria-label="Đóng" (click)="closeReport()">×</button>
+    @if(!reportSent()){
+      <span class="warning">!</span><h2 id="report-title">Báo cáo vi phạm</h2><p class="modal-note">Chọn lý do phù hợp. Báo cáo của bạn được giữ kín và gửi đến quản trị viên.</p>
+      <form (ngSubmit)="submitReport()"><fieldset><legend>Lý do báo cáo <b>*</b></legend><label><input type="radio" name="category" value="spam" [(ngModel)]="reportCategory"> Spam hoặc quảng cáo</label><label><input type="radio" name="category" value="abusive" [(ngModel)]="reportCategory"> Ngôn từ thô tục hoặc quấy rối</label><label><input type="radio" name="category" value="copyright" [(ngModel)]="reportCategory"> Vi phạm bản quyền</label></fieldset><label for="report-details">Thông tin bổ sung</label><textarea id="report-details" name="details" [(ngModel)]="reportDetails" maxlength="500" rows="4" placeholder="Mô tả thêm nếu cần..."></textarea><small>{{reportDetails.length}}/500 ký tự</small><div class="modal-actions"><button type="button" class="cancel" (click)="closeReport()">Hủy</button><button type="submit" class="danger" [disabled]="!reportCategory">Gửi báo cáo</button></div></form>
+    } @else {<div class="report-success"><span>✓</span><h2>Đã gửi báo cáo</h2><p>Cảm ơn bạn đã giúp cộng đồng ThinkUp an toàn hơn. Quản trị viên sẽ xem xét nội dung này.</p><button type="button" (click)="closeReport()">Đóng</button></div>}
+  </section></div>
 }
-

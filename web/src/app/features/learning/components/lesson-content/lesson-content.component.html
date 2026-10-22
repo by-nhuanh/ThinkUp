@@ -1,9 +1,6 @@
 @switch(lesson().type){
   @case('video'){
-    <section class="video-card">
-      <video controls [src]="lesson().videoUrl" preload="metadata" (ended)="completed.emit()">Trình duyệt của bạn không hỗ trợ video.</video>
-      <div class="video-caption"><span>▶</span><div><strong>{{lesson().title}}</strong><small>Thời lượng {{lesson().duration}} · Tiến độ được lưu tự động</small></div></div>
-    </section>
+    <app-lesson-video-player [lesson]="lesson()" (completed)="completed.emit()" (nextRequested)="nextRequested.emit()" />
   }
   @case('reading'){
     <article class="reading-card">
@@ -21,16 +18,6 @@
     </article>
   }
   @case('quiz'){
-    @if(!quizStarted()){
-      <section class="quiz-intro"><span class="quiz-symbol">?</span><p class="eyebrow">BÀI KIỂM TRA KIẾN THỨC</p><h2>{{lesson().title}}</h2><p>Hoàn thành bài quiz để kiểm tra mức độ hiểu bài của bạn.</p><div class="quiz-facts"><div><strong>{{lesson().quiz?.questions?.length}}</strong><span>Tổng số câu hỏi</span></div><div><strong>{{lesson().quiz?.timeLimit}} phút</strong><span>Thời gian làm bài</span></div><div><strong>{{lesson().quiz?.passingScore}}%</strong><span>Điểm tối thiểu để đạt</span></div></div><button type="button" (click)="quizStarted.set(true)">Bắt đầu làm bài →</button></section>
-    } @else if(!quizSubmitted()){
-      <section class="quiz-active"><div class="quiz-top"><div><span>Quiz đang diễn ra</span><strong>{{answeredCount()}}/{{lesson().quiz?.questions?.length}} câu đã trả lời</strong></div><div class="answer-progress"><i [style.width.%]="answeredCount()/(lesson().quiz?.questions?.length||1)*100"></i></div></div>
-        @for(question of lesson().quiz?.questions;track question.id;let index=$index){<article class="question"><div class="question-head"><span>Câu {{index+1}}</span><button type="button" [class.marked]="marked().has(question.id)" (click)="toggleMark(question.id)">⚑ {{marked().has(question.id)?'Đã đánh dấu':'Xem lại'}}</button></div><h3>{{question.text}}</h3><div class="options">@for(option of question.options;track option.id){<label [class.selected]="answers()[question.id]===option.id"><input type="radio" [name]="question.id" [value]="option.id" [checked]="answers()[question.id]===option.id" (change)="setAnswer(question.id,option.id)"><span>{{option.id.toUpperCase()}}</span>{{option.text}}</label>}</div></article>}
-        <div class="quiz-submit"><span>{{answeredCount() < (lesson().quiz?.questions?.length||0) ? 'Bạn vẫn còn câu chưa trả lời.' : 'Bạn đã trả lời tất cả câu hỏi.'}}</span><button type="button" (click)="submitQuiz()">Nộp bài</button></div>
-      </section>
-    } @else {
-      <section class="quiz-result" [class.failed]="!passed()"><span class="result-icon">{{passed()?'✓':'!'}}</span><p class="eyebrow">KẾT QUẢ BÀI QUIZ</p><h2>{{passed()?'Chúc mừng, bạn đã đạt!':'Bạn chưa đạt lần này'}}</h2><div class="score">{{score()}}<small>%</small></div><p>{{passed()?'Bạn đã nắm vững kiến thức của bài học.':'Hãy xem lại nội dung và thử lại để đạt ít nhất '+lesson().quiz?.passingScore+'%.'}}</p><div class="result-actions"><button type="button" class="secondary" (click)="resetQuiz()">↻ Làm lại</button><button type="button" (click)="quizStarted.set(false);quizSubmitted.set(false)">Xem tổng quan</button></div></section>
-    }
+    <app-lesson-quiz-player [lesson]="lesson()" (completed)="completed.emit()" (nextRequested)="nextRequested.emit()" (activeChange)="quizActiveChange.emit($event)" />
   }
 }
-
