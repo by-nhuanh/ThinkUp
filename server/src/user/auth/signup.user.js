@@ -175,6 +175,9 @@ export async function registerUser(
   // 9. Băm mật khẩu (bcrypt) và tạo bản ghi Học viên (Vai trò STUDENT, onboarding_completed = false)
   const passwordHash = await bcrypt.hash(pwCheck.value, 12);
   const studentId = await generateStudentId(db); // BR-REG-09: Sinh mã học viên HVyyXXXXX
+  const initialChar = encodeURIComponent((nameCheck.value || emailCheck.value || 'U').trim().charAt(0).toUpperCase());
+  const defaultGoogleStyleAvatar = `https://ui-avatars.com/api/?name=${initialChar}&background=0D8ABC&color=fff&size=200&bold=true`;
+
   const newUser = {
     student_id: studentId,              // BR-REG-09: Mã học viên duy nhất (HV2600001...)
     full_name: nameCheck.value,
@@ -183,7 +186,8 @@ export async function registerUser(
     password_hash: passwordHash,
     provider: 'local',
     provider_id: null,
-    avatar_url: null,
+    avatar_url: defaultGoogleStyleAvatar,
+    is_custom_avatar: false,
     role: 'student',                    // Vai trò STUDENT
     status: 'pending',                  // Chờ kích hoạt
     is_active: false,
@@ -372,6 +376,9 @@ export async function registerWithGoogle({ email, name, avatar, providerId }, op
 
   if (!user) {
     const studentId = await generateStudentId(db); // BR-REG-09
+    const initialChar = encodeURIComponent((name || email || 'G').trim().charAt(0).toUpperCase());
+    const defaultGoogleAvatar = avatar || `https://ui-avatars.com/api/?name=${initialChar}&background=EA4335&color=fff&size=200&bold=true`;
+
     const newUser = {
       student_id: studentId,
       full_name: name || 'Học viên Google',
@@ -381,7 +388,8 @@ export async function registerWithGoogle({ email, name, avatar, providerId }, op
       provider: 'google',
       provider_id: providerId,
       google_id: providerId,
-      avatar_url: avatar || null,
+      avatar_url: defaultGoogleAvatar,
+      is_custom_avatar: false,
       role: 'student',
       status: 'active',
       is_active: true,
@@ -447,6 +455,9 @@ export async function registerWithFacebook({ providerId, email, name, avatar }, 
 
   if (!user) {
     const studentId = await generateStudentId(db); // BR-REG-09
+    const initialChar = encodeURIComponent((name || email || 'F').trim().charAt(0).toUpperCase());
+    const defaultFbAvatar = avatar || `https://ui-avatars.com/api/?name=${initialChar}&background=1877F2&color=fff&size=200&bold=true`;
+
     const newUser = {
       student_id: studentId,
       full_name: name || 'Học viên Facebook',
@@ -456,7 +467,8 @@ export async function registerWithFacebook({ providerId, email, name, avatar }, 
       provider: 'facebook',
       provider_id: providerId,
       facebook_id: providerId,
-      avatar_url: avatar || null,
+      avatar_url: defaultFbAvatar,
+      is_custom_avatar: false,
       role: 'student',
       status: 'active',
       is_active: true,

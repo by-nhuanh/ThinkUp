@@ -212,8 +212,25 @@ export async function getTransactionBillingDetail(userId, id) {
     throw err;
   }
 
-  // Kiểm tra quyền sở hữu giao dịch (so khớp user_id linh hoạt)
-  const isOwner = String(txDoc.user_id) === String(userId);
+  // Kiểm tra quyền sở hữu giao dịch (so khớp user_id linh hoạt cả id số và ObjectId)
+  let isOwner = String(txDoc.user_id) === String(userId);
+  if (!isOwner) {
+    try {
+      const requesterUser = await usersCol.findOne({
+        $or: [
+          { id: String(userId) },
+          ...(ObjectId.isValid(String(userId)) ? [{ _id: new ObjectId(String(userId)) }] : []),
+        ],
+      });
+      if (requesterUser) {
+        const validIds = [String(requesterUser._id), String(requesterUser.id || '')].filter(Boolean);
+        isOwner = validIds.includes(String(txDoc.user_id));
+      }
+    } catch {
+      // Bỏ qua nếu lỗi
+    }
+  }
+
   if (!isOwner) {
     const err = new Error('Bạn không có quyền truy cập thông tin giao dịch này.');
     err.status = 403;

@@ -1,0 +1,14 @@
+<div class="modal-layer" (mousedown)="onBackdrop($event)">
+  <div
+    #card
+    class="modal-card"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-label]="ariaLabel()"
+    [style]="cardStyle()"
+    tabindex="-1"
+    (keydown)="onKeydown($event)"
+  >
+    <ng-content />
+  </div>
+</div>

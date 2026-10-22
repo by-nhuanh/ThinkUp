@@ -1,0 +1,39 @@
+<app-auth-shell>
+  <section class="backup-card" aria-labelledby="backup-title">
+    <h1 id="backup-title" class="backup-title">Sử dụng mã dự phòng</h1>
+    <p class="backup-subtitle">Nhập mã dự phòng để xác thực tài khoản.</p>
+
+    <form class="backup-form" (submit)="submit($event)" novalidate>
+      <label class="backup-label" for="backup-code">Mã dự phòng</label>
+      <input
+        id="backup-code"
+        class="backup-input"
+        type="text"
+        inputmode="text"
+        autocomplete="one-time-code"
+        spellcheck="false"
+        autocapitalize="characters"
+        placeholder="XXXX - XXXX - XXXX - XXXX"
+        [class.is-invalid]="!!errorMessage()"
+        [value]="display()"
+        [attr.aria-invalid]="!!errorMessage()"
+        [attr.aria-describedby]="errorMessage() ? 'backup-error' : 'backup-note'"
+        (input)="onInput($event)"
+      >
+
+      @if (errorMessage()) {
+        <p id="backup-error" class="backup-error" role="alert">{{ errorMessage() }}</p>
+      } @else {
+        <p id="backup-note" class="backup-note">Lưu ý: Mỗi mã dự phòng chỉ có thể sử dụng một lần.</p>
+      }
+
+      <button class="backup-link" type="button" (click)="backToTwoFactor()">
+        Quay lại xác thực bằng mã 2FA
+      </button>
+
+      <button class="backup-submit" type="submit" [disabled]="loading() || !canSubmit()">
+        {{ loading() ? 'Đang xác thực…' : 'Xác nhận' }}
+      </button>
+    </form>
+  </section>
+</app-auth-shell>

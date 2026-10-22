@@ -1,0 +1,8 @@
+/* Ô tìm kiếm chuẩn của module Quản lý kinh doanh. Khung, biểu tượng kính lúp
+   và trạng thái focus lấy từ ô "Tìm mã voucher" (trang Voucher) làm chuẩn. */
+:host { display: block; flex: 1 1 200px; min-width: 170px; }
+.search-field { position: relative; width: 100%; }
+.search-field svg { position: absolute; left: 13px; top: 12px; width: 17px; height: 17px; fill: none; stroke: #7186a5; stroke-width: 2; stroke-linecap: round; pointer-events: none; }
+.search-field input { display: block; box-sizing: border-box; width: 100%; height: 40px; padding: 0 14px 0 41px; border: 1px solid #c8ced6; border-radius: 8px; background: #fff; color: #071b48; outline: none; font: var(--admin-text-control-input); }
+.search-field input:hover { border-color: #8fa8c5; }
+.search-field input:focus { border-color: #0965e4; box-shadow: 0 0 0 3px #0965e426; }

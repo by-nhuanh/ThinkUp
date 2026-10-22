@@ -110,6 +110,8 @@ export function renderBaseEmailLayout({
           <tr>
             <td style="padding: 28px 36px 36px 36px;" class="content-padding">
 
+
+
               ${title ? `
               <!-- Main Email Title -->
               <h1 style="color: #0F172A; font-size: 22px; font-weight: 700; line-height: 1.35; margin-top: 0; margin-bottom: 18px; letter-spacing: -0.3px;">
@@ -125,6 +127,7 @@ export function renderBaseEmailLayout({
           <!-- Footer Section -->
           <tr>
             <td style="background-color: #F8FAFC; border-top: 1px solid #F1F5F9; padding: 24px 32px 28px 32px; text-align: center;" class="content-padding">
+
               <p style="margin: 0 0 6px 0; font-size: 12px; color: #64748B; line-height: 1.5;">
                 Bạn nhận được email này vì địa chỉ của bạn đã được đăng ký trên hệ thống ThinkUp Education.
               </p>
@@ -133,6 +136,7 @@ export function renderBaseEmailLayout({
               </p>
             </td>
           </tr>
+
 
         </table>
         <!-- End Main Card -->
@@ -252,7 +256,6 @@ export function renderResendVerificationEmail({ name, verificationLink, expireHo
 
   return renderBaseEmailLayout({
     previewText: `Liên kết kích hoạt tài khoản ThinkUp mới của bạn (hiệu lực ${expireHours} giờ).`,
-    badge: 'GỬI LẠI XÁC THỰC',
     title: 'Liên kết kích hoạt tài khoản ThinkUp',
     contentHtml,
     clientUrl,
@@ -281,7 +284,7 @@ export function renderForgotPasswordOtpEmail({ otpCode, expireMinutes = 5, clien
         ${otpCode}
       </div>
       <div style="margin-top: 10px; font-size: 13px; color: #475569; font-weight: 500;">
-         Mã có hiệu lực trong vòng <strong>${expireMinutes} phút</strong>
+        ⏱️ Mã có hiệu lực trong vòng <strong>${expireMinutes} phút</strong>
       </div>
     </div>
 
@@ -298,7 +301,6 @@ export function renderForgotPasswordOtpEmail({ otpCode, expireMinutes = 5, clien
 
   return renderBaseEmailLayout({
     previewText: `Mã xác thực OTP ThinkUp của bạn là: ${otpCode} (hiệu lực ${expireMinutes} phút).`,
-    badge: 'BẢO MẬT TÀI KHOẢN',
     title: 'Mã xác thực đặt lại mật khẩu',
     contentHtml,
     clientUrl,
@@ -363,7 +365,6 @@ export function renderNewsletterWelcomeEmail({ email = '', clientUrl = '' }) {
 
   return renderBaseEmailLayout({
     previewText: 'Chào mừng bạn đến với Bản tin ThinkUp! Cập nhật kiến thức lập trình & công nghệ mới nhất.',
-    badge: 'THINKUP NEWSLETTER',
     title: 'Chào mừng bạn đến với ThinkUp Blog!',
     contentHtml,
     clientUrl,
@@ -417,7 +418,6 @@ export function renderNewBlogPostEmail({
 
   return renderBaseEmailLayout({
     previewText: `Bài viết mới: ${title} | ${category} (${readTime})`,
-    badge: 'BÀI VIẾT MỚI',
     title: title,
     contentHtml,
     clientUrl,

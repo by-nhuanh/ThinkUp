@@ -169,7 +169,7 @@ export async function generateUniqueSlug(db, baseSlug, currentId = null) {
  * @param {string} [params.slug=''] - Slug bài viết
  * @returns {object} Cấu trúc SEO và thẻ meta
  */
-export function generateSeoMetadata(params = {}) {
+export function generateSeoMetadata(params = {}, options = {}) {
   const rawTitle = (params.title || '').trim();
   const rawSummary = (params.summary || params.description || '').trim();
   const rawContent = (params.content || '').replace(/<[^>]*>/g, ' ').trim();
@@ -246,7 +246,7 @@ export function generateSeoMetadata(params = {}) {
     },
     mainEntityOfPage: {
       '@type': 'WebPage',
-      '@id': `https://thinkup.vn/blog/${params.slug || ''}`,
+      '@id': `${(options.clientUrl || process.env.CLIENT_URL || 'https://think-up-edu.vercel.app').split(',')[0].trim().replace(/\/+$/, '')}/blog/${params.slug || ''}`,
     },
   };
 
@@ -448,6 +448,9 @@ export async function supplementExistingPostsSeo(db) {
     }
     keywords = keywords.slice(0, 5);
 
+    // Chuẩn hóa trường views sang số nguyên (Number) để tránh lỗi MongoServerError $inc
+    const numViews = typeof post.views === 'number' ? post.views : (Number.parseInt(post.views, 10) || 0);
+
     await collection.updateOne(
       { _id: post._id },
       {
@@ -457,10 +460,23 @@ export async function supplementExistingPostsSeo(db) {
           keywords,
           seo_title: seoTitle,
           seo_description: seoDescription,
+          views: numViews,
         },
       }
     );
     updatedCount += 1;
+  }
+
+  // Quét thêm bất kỳ bài viết nào trong DB mà views vẫn còn là chuỗi (string)
+  try {
+    const stringViewPosts = await collection.find({ views: { $type: 'string' } }).toArray();
+    for (const p of stringViewPosts) {
+      const numViews = Number.parseInt(p.views, 10) || 0;
+      await collection.updateOne({ _id: p._id }, { $set: { views: numViews } });
+      updatedCount += 1;
+    }
+  } catch {
+    // Không làm gián đoạn nếu collection chưa sẵn sàng
   }
 
   return { updatedCount };
@@ -589,15 +605,13 @@ export async function getManageBlogList(query = {}, options = {}) {
   const limit = Math.max(1, Math.min(50, Number.parseInt(query.limit, 10) || 10));
   const skip = (page - 1) * limit;
 
-  // Lọc theo chủ sở hữu bài viết (nếu có)
+  // Lọc chính xác theo chủ sở hữu bài viết (chỉ bài do chính người dùng tạo)
   const baseOwnerFilter = {};
   const ownerEmail = (query.ownerEmail || options.ownerEmail || '').trim().toLowerCase();
   if (ownerEmail) {
     baseOwnerFilter.$or = [
       { owner_email: ownerEmail },
       { ownerEmail: ownerEmail },
-      { owner_email: '' }, // Hỗ trợ hiển thị các bài mẫu chưa gán email cho tài khoản demo
-      { ownerEmail: '' },
     ];
   }
 
@@ -1280,11 +1294,19 @@ export async function getBlogDetail(idOrSlug, options = {}) {
 
   // Tăng lượt xem tự động nếu không phải xem bản nháp và được bật
   if (!isDraft && options.incrementView !== false) {
-    await collection.updateOne(
-      { _id: rawPost._id },
-      { $inc: { views: 1 }, $set: { last_viewed_at: new Date() } }
-    );
-    rawPost.views = (rawPost.views || 0) + 1;
+    const currentViews = typeof rawPost.views === 'number' ? rawPost.views : (Number.parseInt(rawPost.views, 10) || 0);
+    if (typeof rawPost.views !== 'number') {
+      await collection.updateOne(
+        { _id: rawPost._id },
+        { $set: { views: currentViews + 1, last_viewed_at: new Date() } }
+      );
+    } else {
+      await collection.updateOne(
+        { _id: rawPost._id },
+        { $inc: { views: 1 }, $set: { last_viewed_at: new Date() } }
+      );
+    }
+    rawPost.views = currentViews + 1;
   }
 
   let authorUser = null;
@@ -1439,34 +1461,39 @@ export async function getPopularTopics(options = {}) {
   const collection = getBlogCollection(db);
   const limit = Math.max(1, Number.parseInt(options.limit, 10) || 10);
 
-  const pipeline = [
-    {
-      $match: {
-        status: { $in: ['published', 'updated'] },
-        category: { $exists: true, $ne: '' },
-      },
-    },
-    {
-      $group: {
-        _id: '$category',
-        count: { $sum: 1 },
-      },
-    },
-    {
-      $sort: { count: -1, _id: 1 },
-    },
-    {
-      $limit: limit,
-    },
-  ];
+  const docs = await collection
+    .find({
+      status: { $in: ['published', 'updated'] },
+      category: { $exists: true, $ne: '' },
+    })
+    .project({ category: 1 })
+    .toArray();
 
-  const results = await collection.aggregate(pipeline).toArray();
+  const categoryMap = new Map();
+  for (const doc of docs) {
+    const rawCategory = String(doc.category || '').trim();
+    if (!rawCategory) continue;
+    const slug = generateSlug(rawCategory);
+    if (!categoryMap.has(slug)) {
+      categoryMap.set(slug, {
+        id: slug,
+        label: rawCategory,
+        count: 0,
+      });
+    }
+    const entry = categoryMap.get(slug);
+    entry.count += 1;
+    // Ưu tiên nhãn viết hoa nếu có
+    if (rawCategory === rawCategory.toUpperCase() && rawCategory !== entry.label) {
+      entry.label = rawCategory;
+    }
+  }
 
-  return results.map(item => ({
-    id: generateSlug(item._id),
-    label: item._id,
-    count: item.count,
-  }));
+  const sorted = Array.from(categoryMap.values())
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+    .slice(0, limit);
+
+  return sorted;
 }
 
 // ─── 8. Hàm Xuất Những Bài Viết Được Xem Nhiều ──────────────────────────────
@@ -1760,6 +1787,11 @@ export function createBlogRouter(expressModule) {
   }
 
   const router = express.Router();
+
+  // Tự động kiểm tra và chuẩn hóa SEO & trường views trong DB ở chế độ chạy nền
+  getMongoDb()
+    .then(db => supplementExistingPostsSeo(db))
+    .catch(() => {});
 
   // 1. Quản lý bài viết cá nhân (/account/posts): Lọc theo 4 tab trạng thái, tìm kiếm
   router.get('/manage/posts', async (req, res, next) => {

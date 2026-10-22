@@ -1,0 +1,60 @@
+<main class="dashboard">
+  <header class="dashboard-page-heading">
+    <div>
+      <p class="dashboard-breadcrumb"><span>Dashboard</span><span aria-hidden="true">/</span><strong>Tổng quan</strong></p>
+      <h1>Tổng quan hoạt động ThinkUp</h1>
+    </div>
+  </header>
+
+  <section class="metrics-grid" aria-label="Chỉ số tổng quan">
+    @for (metric of metrics; track metric.title) {
+      <article class="metric-card" [class]="'metric-card ' + metric.theme">
+        <header class="metric-header">
+          <div class="metric-title"><span class="metric-icon" aria-hidden="true">@switch (metric.theme) { @case ('users') { <svg lucideUsersRound></svg> } @case ('courses') { <svg lucideGraduationCap></svg> } @case ('revenue') { <svg lucideCircleDollarSign></svg> } @case ('rooms') { <svg lucideMonitorUp></svg> } }</span><h2>{{ metric.title }}</h2></div>
+          <div class="metric-actions">
+            @if (metric.trend) { <span class="metric-trend"><svg lucideTrendingUp aria-hidden="true"></svg>{{ metric.trend }}</span> }
+            <button type="button" class="metric-arrow" [attr.aria-label]="'Xem chi tiết ' + metric.title" title="Xem chi tiết" (click)="showPendingFeature()"><svg lucideArrowRight aria-hidden="true"></svg></button>
+          </div>
+        </header>
+        <div class="metric-copy">
+          <p class="metric-value"><strong>{{ metric.value }}</strong><small>{{ metric.unit }}</small></p>
+          @if (metric.detail) { <div class="metric-detail">@for (line of metric.detail; track line) { <span>{{ line }}</span> }</div> }
+          @if (metric.theme === 'rooms') { <div class="infrastructure"><div><span>Tải hạ tầng</span><b>32%</b><strong>Bình thường</strong></div><div class="progress" aria-label="Tải hạ tầng 32%"><i></i></div></div> }
+        </div>
+      </article>
+    }
+  </section>
+
+  <section class="actions-section" aria-labelledby="action-title">
+    <div class="actions-heading"><h2 id="action-title"><img src="/assets/dashboard/2-group.svg" alt="">Action Center</h2><button type="button" class="actions-view-all" (click)="showPendingFeature()">Xem tất cả ›</button></div>
+    <div class="actions-grid">
+      @for (action of actions; track action.title) {
+        <article class="action-card" [class]="'action-card ' + action.theme">
+          <h3><img [src]="'/assets/dashboard/' + action.icon" alt="">{{ action.title }}</h3>
+          <p>{{ action.description }}</p>
+          <div class="action-count"><strong>{{ action.count }}</strong><span>{{ action.suffix }}</span></div>
+          <div class="action-footer"><span>{{ action.status }}</span><button type="button" (click)="showPendingFeature()">{{ action.action }} <b>›</b></button></div>
+        </article>
+      }
+    </div>
+  </section>
+
+  <div class="analytics-grid">
+    <section class="panel revenue-panel" aria-labelledby="revenue-title">
+      <div class="panel-heading revenue-heading"><h2 id="revenue-title"><img src="/assets/dashboard/3-analytics-icon.svg" alt="">Phân tích doanh thu và dòng tiền</h2>
+        <div class="revenue-controls"><div class="date-control"><button type="button" class="date-button" [attr.aria-expanded]="datePickerOpen()" (click)="datePickerOpen.set(!datePickerOpen())"><img src="/assets/dashboard/3-lucide-calendar-days.svg" alt="">{{ rangeLabel() }}<svg class="dropdown-chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg></button>
+          @if (datePickerOpen()) { <div class="date-popover"><label>Từ ngày<app-date-time-picker [value]="startDate()" label="Chọn ngày bắt đầu" (valueChange)="startDate.set($event)"></app-date-time-picker></label><label>Đến ngày<app-date-time-picker [value]="endDate()" label="Chọn ngày kết thúc" (valueChange)="endDate.set($event)"></app-date-time-picker></label><div class="calendar-footer"><button type="button" (click)="chooseToday()">Hôm nay</button><button type="button" (click)="datePickerOpen.set(false)">Áp dụng</button></div></div> }
+        </div><div class="period-tabs" aria-label="Khoảng thời gian">@for (item of periods; track item) { <button type="button" [class.active]="period() === item" (click)="period.set(item)">{{ item }}</button> }</div></div>
+      </div>
+      <div class="revenue-summary"><div class="revenue-total"><h3>Tổng doanh thu</h3><strong>2.480.000.000 đ</strong><p><span>↗ &nbsp;+12,9%</span> so với tháng trước</p></div><div class="summary-item"><span class="dot original"></span>ThinkUp Original<strong>1.980.000.000 đ</strong><small>79,8% tổng doanh thu</small></div><div class="summary-item"><span class="dot payout"></span>Payout giảng viên<strong>1.236.000.000 đ</strong><small>49,8% doanh thu thuần</small></div></div>
+      <div class="chart-area"><span class="axis-label">Triệu VND</span><div class="chart-y"><span>300</span><span>250</span><span>200</span><span>150</span><span>100</span><span>50</span><span>0</span></div><div class="chart-plot"><div class="grid-lines">@for (line of [1,2,3,4,5,6]; track line) { <span></span> }</div><div class="bar-series">@for (bar of bars; track bar.month) { <div class="bar-slot"><div class="bar-stack"><i class="marketplace" [style.height.%]="bar.marketplace / 3"></i><i class="original" [style.height.%]="bar.original / 3"></i></div><span>{{ bar.month }}</span></div> }</div><svg class="payout-line" viewBox="0 0 730 310" preserveAspectRatio="none" aria-hidden="true"><path [attr.d]="payoutPath" fill="none" stroke="#f15a60" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" /></svg></div></div>
+      <div class="chart-legend"><span><i class="original"></i>ThinkUp Original</span><span><i class="marketplace"></i>Marketplace</span><span><i class="payout"></i>Payout giảng viên</span></div>
+    </section>
+    <div class="analytics-side"><section class="panel progress-panel" aria-labelledby="progress-title"><h2 id="progress-title"><img src="/assets/dashboard/3-svg.svg" alt="">Cơ cấu tiến độ các khóa học</h2><div class="progress-body"><div class="donut"><img src="/assets/dashboard/3-donut-chart-circular.svg" alt=""><div><strong>12.480</strong><span>Lượt ghi danh</span></div></div><ul><li><i class="complete"></i>Đã hoàn thành <strong>27%</strong></li><li><i class="learning"></i>Đang học <strong>58%</strong></li><li><i class="not-started"></i>Chưa bắt đầu <strong>15%</strong></li></ul></div></section>
+      <section class="panel courses-panel" aria-labelledby="courses-title"><div class="panel-heading"><h2 id="courses-title"><img src="/assets/dashboard/3-svg1.svg" alt="">Top 5 khóa học bán chạy</h2><button type="button" (click)="showPendingFeature()">Xem tất cả ›</button></div><table><thead><tr><th>#</th><th>Tên khóa học</th><th>Lượt mua</th><th>Đánh giá</th></tr></thead><tbody>@for (course of courses; track course.name; let index = $index) { <tr><td>{{ index + 1 }}</td><td>{{ course.name }}</td><td>{{ course.purchases }}</td><td>{{ course.rating }} <span class="star">★</span></td></tr> }</tbody></table></section></div>
+  </div>
+
+  <section class="panel logs-panel" aria-labelledby="logs-title"><div class="panel-heading logs-heading"><h2 id="logs-title"><img src="/assets/dashboard/4-svg.svg" alt="">Nhật Ký Giám Sát Quản Trị</h2><div class="logs-heading-actions"><div class="log-filter"><span class="sr-only" id="dashboard-log-filter-label">Lọc nhật ký theo vai trò</span><app-custom-select controlId="dashboard-log-filter" labelId="dashboard-log-filter-label" [value]="filter()" [options]="filterOptions" [menuWidth]="188" (valueChange)="chooseFilter($event)"></app-custom-select></div><app-export-menu label="Tải xuống" [showText]="true" (formatChange)="exportLogs($event)"></app-export-menu><button type="button" class="logs-view-all" (click)="showPendingFeature()">Xem tất cả ›</button></div></div><div class="table-scroll"><table><thead><tr><th>Thời gian</th><th>Tài khoản</th><th>Role</th><th>Hành động</th><th>IP</th><th>Chi tiết</th></tr></thead><tbody>@for (log of visibleLogs(); track log.time) { <tr><td>{{ log.time }}</td><td>{{ log.account }}</td><td><span class="role" [class]="'role ' + log.role.split(' ')[0].toLowerCase()">{{ log.role }}</span></td><td>{{ log.action }}</td><td>{{ log.ip }}</td><td><button type="button" class="view-log" [attr.aria-label]="'Xem chi tiết nhật ký của ' + log.account + ' lúc ' + log.time" title="Xem chi tiết nhật ký" (click)="selectedLog.set(log)"><img src="/assets/dashboard/4-icon-eye-outlined.svg" alt=""></button></td></tr> }</tbody></table></div></section>
+</main>
+@if (selectedLog(); as log) { <div class="drawer-backdrop" (click)="selectedLog.set(null)"></div><aside class="log-drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title"><header><h2 id="drawer-title"><span class="drawer-icon">⌁</span>Chi tiết Log @if (log.id) { #ID-{{ log.id }} }</h2><button type="button" aria-label="Đóng" (click)="selectedLog.set(null)">×</button></header><section class="drawer-info"><h3>▦ &nbsp;Thông tin chung</h3><dl><dt>Người thực hiện:</dt><dd>{{ log.actor || log.account }}</dd><dt>Thời gian:</dt><dd>{{ log.time }}</dd><dt>Hành động (Action):</dt><dd>{{ log.actionCode || log.action }}</dd><dt>IP Address:</dt><dd>{{ log.ip }}</dd><dt>Thiết bị (User Agent):</dt><dd>{{ log.device || 'Chưa có dữ liệu' }}</dd></dl></section>@if (log.previous && log.current) { <section class="drawer-changes"><h3>▦ &nbsp;Chi tiết thay đổi</h3><div class="drawer-entity">{{ log.entity }}</div><div class="change-grid"><div><h4>Giá trị Cũ</h4><pre>{{ log.previous }}</pre></div><div><h4>Giá trị Mới</h4><pre>{{ log.current }}</pre></div></div></section> }</aside> }
+@if (toast()) { <div class="toast" role="status">{{ toast() }}</div> }

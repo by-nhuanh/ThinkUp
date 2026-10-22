@@ -1,0 +1,13 @@
+<div class="export-menu" (click)="$event.stopPropagation()" (window:click)="close()" (window:keydown.escape)="close()">
+  <button class="export-trigger" type="button" [attr.aria-label]="label" aria-haspopup="menu" [attr.aria-expanded]="open()" (click)="toggle()">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11"/><path d="m7.5 11 4.5 4.5 4.5-4.5"/><path d="M5 20h14"/></svg>
+    @if (showText) { <span>{{ label }}</span> }
+  </button>
+  @if (open()) {
+    <div class="export-options" role="menu" [attr.aria-label]="label">
+      @for (option of options; track option.format) {
+        <button type="button" role="menuitem" (click)="choose(option.format)">{{ option.label }}</button>
+      }
+    </div>
+  }
+</div>

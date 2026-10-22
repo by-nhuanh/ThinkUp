@@ -168,9 +168,28 @@ async function fetchUserTransactions(userId) {
   const db = await getMongoDb();
   const col = db.collection(COLLECTION_TRANSACTIONS);
 
+  // Lấy các định danh khả dĩ của user (hỗ trợ cả ObjectId và integer id dạng chuỗi)
+  const userIds = [String(userId)];
+  try {
+    const { ObjectId } = await import('mongodb');
+    const userConditions = [{ id: String(userId) }];
+    if (ObjectId.isValid(String(userId))) {
+      userConditions.push({ _id: new ObjectId(String(userId)) });
+    }
+    const userDoc = await db.collection('users').findOne({ $or: userConditions });
+    if (userDoc) {
+      if (userDoc._id) userIds.push(userDoc._id.toString());
+      if (userDoc.id) userIds.push(String(userDoc.id));
+    }
+  } catch {
+    // Dự phòng nếu lỗi tra cứu user
+  }
+
+  const uniqueUserIds = [...new Set(userIds)];
+
   // Chỉ lấy giao dịch thuộc về user này, sắp xếp mới nhất trước
   const docs = await col
-    .find({ user_id: String(userId) })
+    .find({ user_id: { $in: uniqueUserIds } })
     .sort({ created_at: -1 })
     .toArray();
 

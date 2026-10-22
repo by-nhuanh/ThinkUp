@@ -1,0 +1,170 @@
+<main class="orders-page">
+  <header class="page-heading">
+    <div>
+      <nav class="breadcrumb" aria-label="Đường dẫn trang"><span class="breadcrumb-parent">Quản lý kinh doanh</span><span class="breadcrumb-separator" aria-hidden="true">/</span><span class="breadcrumb-current" aria-current="page">Đơn hàng</span></nav>
+      <h1>Quản lý đơn hàng</h1>
+    </div>
+  </header>
+
+  <section class="orders-metrics" aria-label="Tổng quan đơn hàng">
+    <button class="metric" type="button" [class.is-selected]="status() === ''" (click)="setStatus('')" [attr.aria-label]="'Xem tất cả ' + orderSummary.total + ' đơn hàng'"><span class="metric-icon icon-blue"><img src="/assets/business/orders/shopping-cart.svg" alt=""></span><span class="metric-copy"><span class="metric-label">Tổng đơn hàng</span><strong>{{ orderSummary.total.toLocaleString('vi-VN') }} <span>đơn</span></strong><small class="metric-trend trend-up">+{{ orderSummary.previousPeriodChange.toLocaleString('vi-VN') }}% <span>so với kỳ trước</span></small></span></button>
+    <button class="metric" type="button" [class.is-selected]="status() === 'success'" (click)="setStatus('success')" [attr.aria-label]="'Lọc ' + orderSummary.success + ' đơn thành công'"><span class="metric-icon icon-green"><img src="/assets/business/orders/file-check.svg" alt=""></span><span class="metric-copy"><span class="metric-label">Đơn thành công</span><strong>{{ orderSummary.success.toLocaleString('vi-VN') }} <span>đơn</span></strong><small><b>{{ orderSummary.successRate.toLocaleString('vi-VN') }}%</b> tổng đơn</small></span></button>
+    <button class="metric" type="button" [class.is-selected]="status() === 'pending'" (click)="setStatus('pending')" [attr.aria-label]="'Lọc ' + orderSummary.pending + ' đơn chờ thanh toán'"><span class="metric-icon icon-amber"><img src="/assets/business/orders/hourglass.svg" alt=""></span><span class="metric-copy"><span class="metric-label">Chờ thanh toán</span><strong>{{ orderSummary.pending.toLocaleString('vi-VN') }} <span>đơn</span></strong></span></button>
+    <button class="metric" type="button" [class.is-selected]="status() === 'cancelled'" (click)="setStatus('cancelled')" [attr.aria-label]="'Lọc ' + orderSummary.cancelled + ' đơn thất bại'"><span class="metric-icon icon-red"><img src="/assets/business/orders/file-x.svg" alt=""></span><span class="metric-copy"><span class="metric-label">Thất bại</span><strong>{{ orderSummary.cancelled.toLocaleString('vi-VN') }} <span>đơn</span></strong><small><b>{{ orderSummary.cancelledRate.toLocaleString('vi-VN') }}%</b> tổng đơn</small></span></button>
+  </section>
+
+  <section class="orders-toolbar" aria-label="Tìm kiếm và lọc đơn hàng">
+    <app-search-field label="Tìm đơn hàng" placeholder="Tìm mã giao dịch, mã đơn, học viên..." [value]="search()" (valueChange)="setSearch($event)"></app-search-field>
+    <div class="filter-control custom-select-control">
+      <label id="order-status-label">Trạng thái</label>
+      <app-custom-select controlId="order-status" labelId="order-status-label" [value]="status()" [options]="statusOptions" (valueChange)="setStatus($any($event))"></app-custom-select>
+    </div>
+    <div class="filter-control custom-select-control method-select-control">
+      <label id="order-method-label">Phương thức thanh toán</label>
+      <app-custom-select controlId="order-method" labelId="order-method-label" [value]="method()" [options]="methodOptions" [menuWidth]="320" [menuMaxHeight]="330" (valueChange)="setMethod($any($event))"></app-custom-select>
+    </div>
+    <div class="filter-control date-filter"><span class="filter-label">Khoảng thời gian</span><button class="date-trigger" type="button" [attr.aria-expanded]="dateOpen()" aria-controls="order-date-options" (click)="toggleDatePopover()"><img src="/assets/business/orders/calendar-days.svg" alt=""><span>{{ dateLabel() }}</span></button>
+        @if (dateOpen()) { <div class="date-popover" id="order-date-options" [style.left.px]="datePopoverPosition()?.left" [style.top.px]="datePopoverPosition()?.top" [style.max-height.px]="datePopoverPosition()?.maxHeight" [style.visibility]="datePopoverPosition() ? 'visible' : 'hidden'"><p>Chọn nhanh</p><div class="quick-dates"><button type="button" [class.active]="periodDraft() === 'all'" (click)="selectPeriod('all')">Tất cả</button><button type="button" [class.active]="periodDraft() === 'today'" (click)="selectPeriod('today')">Hôm nay</button><button type="button" [class.active]="periodDraft() === 'week'" (click)="selectPeriod('week')">7 ngày</button><button type="button" [class.active]="periodDraft() === 'month'" (click)="selectPeriod('month')">Tháng này</button><button type="button" [class.active]="periodDraft() === 'quarter'" (click)="selectPeriod('quarter')">Quý này</button><button type="button" [class.active]="periodDraft() === 'year'" (click)="selectPeriod('year')">Năm này</button></div><div class="date-fields"><div><span>Từ ngày</span><app-date-time-picker [value]="fromDraft()" label="Chọn ngày bắt đầu" (valueChange)="selectFrom($event)"></app-date-time-picker></div><div><span>Đến ngày</span><app-date-time-picker [value]="toDraft()" label="Chọn ngày kết thúc" (valueChange)="selectTo($event)"></app-date-time-picker></div></div><div class="date-popover-actions"><button class="date-clear-button" type="button" aria-label="Xoá khoảng thời gian" title="Xoá khoảng thời gian" [disabled]="!canClearDateRange()" (click)="clearDateRange()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button><button class="date-apply-button" type="button" (click)="applyDateRange()">Áp dụng</button></div></div> }
+      </div>
+      <div class="filter-control sort-filter"><span class="filter-label">Sắp xếp</span><button class="sort-trigger" type="button" [attr.aria-label]="'Thứ tự ngày tạo: ' + (sort() === 'newest' ? 'Mới nhất' : 'Cũ nhất') + '. Nhấn để đổi thứ tự'" (click)="toggleSort()"><img src="/assets/business/orders/arrow-down.svg" alt="" [class.oldest-first]="sort() === 'oldest'"><span>{{ sort() === 'newest' ? 'Mới nhất' : 'Cũ nhất' }}</span></button></div>
+    <div class="toolbar-end">
+      <button class="toolbar-button reset-button" type="button" aria-label="Đặt lại bộ lọc" title="Đặt lại bộ lọc" (click)="clear()">
+        <svg lucideRotateCcw aria-hidden="true"></svg>
+      </button>
+      <app-export-menu label="Xuất danh sách đơn hàng" (formatChange)="export($event)"></app-export-menu>
+    </div>
+  </section>
+
+  <section class="orders-list" aria-label="Danh sách đơn hàng">
+    <div class="orders-table-scroll"><table><thead><tr><th scope="col">Mã đơn hàng / Mã giao dịch</th><th scope="col">Học viên</th><th scope="col" class="amount-column">Thực thu</th><th scope="col">Phương thức</th><th scope="col">Trạng thái</th><th scope="col" [attr.aria-sort]="sort() === 'newest' ? 'descending' : 'ascending'"><img class="sort-icon" src="/assets/business/orders/arrow-down.svg" alt="" [class.oldest-first]="sort() === 'oldest'"> Ngày tạo</th></tr></thead><tbody>
+      @for (order of visible(); track order.id) { <tr><td class="order-code-cell"><div class="order-code-main"><strong>{{ order.id }}</strong><button class="eye-button order-view-button" type="button" [attr.aria-label]="'Xem chi tiết đơn hàng ' + order.id" [attr.title]="'Xem chi tiết đơn hàng ' + order.id" (click)="openDetail(order, $event)"><img src="/assets/dashboard/4-icon-eye-outlined.svg" alt=""></button></div><span class="secondary">{{ order.transactionId || 'Chưa có mã giao dịch' }}</span></td><td><strong>{{ order.learner }}</strong><span class="secondary">{{ order.email }}</span></td><td class="amount-column"><strong>{{ money(order.originalAmount - order.discount) }}</strong></td><td>{{ methodLabel(order.method) }}</td><td><span [class]="'order-status status-' + order.status">{{ statusLabel(order.status) }}</span></td><td><strong>{{ dateOf(order.createdAt) }}</strong><span class="secondary">{{ timeOf(order.createdAt) }}</span></td></tr> }
+      @if (!visible().length) { <tr><td colspan="6" class="empty-state">Không có đơn hàng phù hợp. Hãy thử điều chỉnh bộ lọc.</td></tr> }
+    </tbody></table></div>
+    <div class="orders-footer"><span>Hiển thị {{ filtered().length ? (page() - 1) * pageSize + 1 : 0 }} - {{ (page() - 1) * pageSize + visible().length }} của {{ filtered().length }} đơn hàng</span><div class="pagination" aria-label="Phân trang"><button type="button" [disabled]="page() === 1" aria-label="Trang trước" (click)="page.update(value => value - 1)"><img src="/assets/business/orders/chevron-left.svg" alt=""></button>@for (item of pagination(); track $index) { @if (item.kind === 'page') { <button type="button" [class.current]="item.value === page()" [attr.aria-current]="item.value === page() ? 'page' : null" [attr.aria-label]="'Trang ' + item.value" (click)="page.set(item.value)">{{ item.value }}</button> } @else { <span class="pagination-ellipsis" aria-hidden="true">…</span> } }<button type="button" [disabled]="page() >= pages()" aria-label="Trang sau" (click)="page.update(value => value + 1)"><img src="/assets/business/orders/chevron-right.svg" alt=""></button></div></div>
+  </section>
+</main>
+
+@if (selected(); as order) {
+  <div class="dialog-backdrop order-detail-backdrop" (click)="closeDetail()" (window:keydown.escape)="closeDetail()">
+    <section class="order-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="order-dialog-title" aria-describedby="order-dialog-subtitle" (click)="$event.stopPropagation()">
+      <header class="order-detail-header">
+        <div class="order-detail-heading">
+          <div class="order-detail-title-row">
+            <h2 id="order-dialog-title">Chi tiết đơn hàng</h2>
+            <span [class]="'order-detail-status status-' + order.status">{{ statusLabel(order.status) }}</span>
+          </div>
+          <p id="order-dialog-subtitle">{{ order.id }}</p>
+        </div>
+        <button class="order-detail-close" id="order-detail-close" type="button" aria-label="Đóng chi tiết giao dịch" (click)="closeDetail()">×</button>
+      </header>
+
+      <div class="order-detail-content" tabindex="0" aria-label="Nội dung chi tiết giao dịch">
+        @if (order.status === 'success') {
+          <section class="status-notice success-notice">
+            <span class="notice-mark" aria-hidden="true"><img src="/assets/business/orders/file-check.svg" alt=""></span>
+            <div><h3>Thanh toán thành công</h3><p>Đơn hàng đã được thanh toán đầy đủ và ghi nhận doanh thu.</p></div>
+          </section>
+        } @else if (order.status === 'pending') {
+          <section class="status-notice pending-notice" aria-live="polite">
+            <span class="notice-mark" aria-hidden="true"><img src="/assets/business/orders/hourglass.svg" alt=""></span>
+            <div><h3>Đang chờ học viên thanh toán</h3><p>Đơn hàng sẽ tự động hủy nếu không thanh toán đúng thời hạn.</p></div>
+          </section>
+        } @else {
+          <section class="status-notice cancelled-notice">
+            <span class="notice-mark" aria-hidden="true"><img src="/assets/business/orders/circle-x.svg" alt=""></span>
+            <div><h3>{{ order.cancellation?.cancelledBy === 'system' ? 'Tự động hủy do quá hạn thanh toán' : 'Học viên đã hủy đơn hàng' }}</h3><p>Đơn hàng đã bị hủy vì không thanh toán trong thời hạn quy định.</p>@if (voucherRefundNote(order)) { <small class="notice-hint">{{ voucherRefundNote(order) }}</small> }</div>
+          </section>
+        }
+
+        <div class="exception-order-layout">
+          <div class="exception-order-main">
+            <section class="exception-student">
+              <span class="exception-line-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c.6-4.1 3.2-6.2 7.5-6.2s6.9 2.1 7.5 6.2z"/></svg></span>
+              <div class="customer-information">
+                <h3>Thông tin khách hàng</h3>
+                <dl class="customer-information-list">
+                  <div><dt>Tên khách hàng</dt><dd>{{ order.learner }}</dd></div>
+                  <div><dt>Email</dt><dd>{{ order.email }}</dd></div>
+                  <div><dt>Số điện thoại</dt><dd class="tabular-nums">{{ order.phone }}</dd></div>
+                </dl>
+              </div>
+            </section>
+            <section class="order-detail-card exception-card">
+              <div class="exception-card-heading"><span class="exception-line-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3.5 5.5h6l2.5 2h8.5v11h-17z"/><path d="M3.5 8h17"/></svg></span><h3>Thông tin đơn hàng ({{ order.courses.length }} khóa học)</h3></div>
+              <ol class="order-detail-courses">
+                @for (course of orderCourses(order); track $index) {
+                  <li><strong>{{ course.courseName }}</strong><span class="course-sale-price">{{ money(course.salePrice) }}</span></li>
+                }
+              </ol>
+            </section>
+            <section class="exception-payment">
+              <span class="exception-line-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg></span>
+              <div><h3>Phương thức thanh toán</h3><strong>{{ methodLabel(order.method) }}</strong>@if (order.method === 'QR Code') { <small>Mở ứng dụng ngân hàng và quét mã QR do ThinkUp cung cấp.</small> }</div>
+            </section>
+            <section class="order-detail-card exception-card exception-ledger-card">
+              <div class="exception-card-heading"><span class="exception-line-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l3-4 3 2 4-6"/></svg></span><h3>Phân bổ doanh thu</h3></div>
+              <div class="order-ledger-row"><span>Giá bán gốc</span><strong>{{ money(order.originalAmount) }}</strong></div>
+              @if (order.discount > 0) {
+                <div class="order-ledger-row voucher-row"><span>Voucher {{ order.voucherCode || 'Đã áp dụng' }}</span><span class="ledger-amount"><strong>−{{ money(order.discount) }}</strong><small>{{ order.sponsor === 'instructor' ? 'Giảng viên tài trợ' : 'ThinkUp tài trợ' }}</small></span></div>
+              }
+              <div class="order-ledger-row paid-row"><span>{{ learnerPaidLabel(order) }}</span><strong>{{ money(allocatedAmount(order, 'learner')) }}</strong></div>
+              <div class="order-ledger-row instructor-row"><span>Giảng viên nhận (40%)</span><strong>{{ money(allocatedAmount(order, 'instructor')) }}</strong></div>
+              <div class="order-ledger-row thinkup-row"><span>ThinkUp thực thu</span><strong>{{ money(allocatedAmount(order, 'platform')) }}</strong></div>
+              @if (revenueNote(order)) { <p class="order-revenue-note">{{ revenueNote(order) }}</p> }
+            </section>
+            <section class="exception-timeline">
+              <h3><span class="exception-line-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span>Lịch sử đơn hàng</h3>
+              <div class="timeline-event timeline-created"><span class="timeline-dot"></span><div><strong>Tạo đơn hàng</strong><span>{{ dateTimeSecond(order.createdAt) }}</span></div></div>
+              @if (order.status === 'success') {
+                <div class="timeline-event timeline-success"><span class="timeline-dot"></span><div><strong>Thanh toán thành công</strong><span>{{ order.paidAt ? dateTimeSecond(order.paidAt) : 'Chưa có thông tin thời gian thanh toán' }}</span><small>{{ order.transactionId ? 'Mã giao dịch: ' + order.transactionId : 'Đã ghi nhận thanh toán' }}@if (order.invoiceId) { <br>Mã hóa đơn: {{ order.invoiceId }} }</small></div></div>
+              } @else if (order.status === 'pending') {
+                <div class="timeline-event timeline-upcoming"><span class="timeline-dot"></span><div><strong>Hết hạn thanh toán</strong><span>{{ dateTimeSecond(paymentDeadline(order).toISOString()) }}</span><small>Hết hạn sau 15 phút kể từ lúc tạo đơn.</small></div></div>
+              } @else {
+                <div class="timeline-event timeline-cancelled"><span class="timeline-dot"></span><div><strong>{{ order.cancellation?.cancelledBy === 'system' ? 'Tự động hủy do quá hạn thanh toán' : 'Học viên đã hủy đơn hàng' }}</strong><span>{{ order.cancellation ? dateTimeSecond(order.cancellation.cancelledAt) : 'Chưa có thông tin thời gian hủy' }}</span><small>{{ order.cancellation?.reason || 'Đơn hàng đã bị hủy.' }}<br>Người thực hiện: {{ order.cancellation?.cancelledBy === 'system' ? 'Hệ thống' : order.cancellation?.cancelledBy === 'admin' ? 'Quản trị viên' : 'Học viên' }}</small></div></div>
+              }
+            </section>
+          </div>
+          <aside class="exception-summary">
+            <div class="exception-total"><span>{{ order.status === 'pending' ? 'Số tiền cần thanh toán' : 'Số tiền đơn hàng' }}</span><strong>{{ money(order.originalAmount - order.discount) }}</strong></div>
+            <div class="summary-datetime"><span class="exception-line-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg></span><div><span>Thời gian tạo đơn</span><strong>{{ dateTimeSecond(order.createdAt) }}</strong></div></div>
+            @if (order.status === 'success') {
+              <div class="summary-datetime"><span class="exception-line-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span><div><span>Thanh toán thành công</span><strong>{{ order.paidAt ? dateTimeSecond(order.paidAt) : 'Chưa có thông tin' }}</strong></div></div>
+              <div class="summary-status"><span class="exception-line-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span><div><span>Trạng thái đơn hàng</span><strong class="status-outline status-success">Thành công</strong></div></div>
+            } @else if (order.status === 'pending') {
+              <div class="summary-datetime"><span class="exception-line-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span><div><span>Hạn thanh toán</span><strong>{{ dateTimeSecond(paymentDeadline(order).toISOString()) }}</strong><small>Hết hạn sau 15 phút kể từ lúc tạo đơn.</small></div></div>
+              <div class="summary-status"><span class="exception-line-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span><div><span>Trạng thái đơn hàng</span><strong class="status-outline status-pending">Chờ thanh toán</strong></div></div>
+            } @else {
+              <div class="summary-datetime"><span class="exception-line-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span><div><span>Thời gian hủy</span><strong>{{ order.cancellation ? dateTimeSecond(order.cancellation.cancelledAt) : 'Chưa có thông tin' }}</strong></div></div>
+              <div class="summary-status"><span class="exception-line-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span><div><span>Trạng thái đơn hàng</span><strong class="status-outline status-cancelled">Đã hủy</strong></div></div>
+              <div class="summary-result"><span aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></span><div><strong>Kết quả thanh toán</strong><small>{{ paymentStateLabel(order) }}. {{ order.cancellation?.paymentState === 'unpaid' ? 'Không phát sinh hoàn tiền.' : '' }}</small></div></div>
+            }
+            <div class="summary-section">
+              <h4 class="summary-section-title"><span class="exception-line-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg></span>Đối soát &amp; chứng từ</h4>
+              <div class="reconciliation-item"><span>Mã hóa đơn điện tử</span><strong>{{ order.invoiceId || 'Chưa phát hành' }}</strong></div>
+              <div class="reconciliation-item"><span>Mã giao dịch cổng thanh toán</span><strong>{{ order.transactionId || 'Chưa có' }}</strong></div>
+              <div class="invoice-state" [class.pending]="order.status === 'pending'" [class.cancelled]="order.status === 'cancelled'">
+                <img [src]="order.status === 'success' ? '/assets/business/orders/circle-check.svg' : order.status === 'pending' ? '/assets/business/orders/hourglass.svg' : '/assets/business/orders/circle-x.svg'" alt="">
+                <span>
+                  <strong>{{ order.invoiceId ? 'Hóa đơn đã phát hành' : order.status === 'pending' ? 'Chưa phát sinh hóa đơn' : 'Không phát hành hóa đơn' }}</strong>
+                  <small>{{ order.invoiceId ? 'Chứng từ đã được ghi nhận.' : order.status === 'pending' ? 'Hóa đơn được phát hành sau khi thanh toán thành công.' : 'Đơn hàng đã hủy nên không phát hành chứng từ thanh toán.' }}</small>
+                </span>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <footer class="order-detail-footer">
+        @if (invoiceError()) { <p class="invoice-error" role="alert">{{ invoiceError() }}</p> }
+        <div class="order-detail-actions">
+          @if (order.status === 'success') {
+            <button class="detail-secondary-button copy-order-button" type="button" (click)="copyOrderId(order)"><svg class="copy-order-icon" aria-hidden="true" viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>{{ copiedOrderId() === order.id ? 'Đã sao chép mã đơn' : 'Sao chép mã đơn' }}</button>
+            <button class="detail-primary-button" type="button" [disabled]="downloadingInvoiceId() === order.id || !order.invoiceId" (click)="downloadInvoice(order)"><img src="/assets/business/orders/download.svg" alt="">{{ downloadingInvoiceId() === order.id ? 'Đang tạo PDF...' : order.invoiceId ? 'Tải hóa đơn PDF' : 'Chưa có hóa đơn' }}</button>
+          } @else {
+            <button class="detail-primary-button copy-order-button" type="button" (click)="copyOrderId(order)"><svg class="copy-order-icon" aria-hidden="true" viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>{{ copiedOrderId() === order.id ? 'Đã sao chép mã đơn' : 'Sao chép mã đơn' }}</button>
+          }
+        </div>
+      </footer>
+    </section>
+  </div>
+}

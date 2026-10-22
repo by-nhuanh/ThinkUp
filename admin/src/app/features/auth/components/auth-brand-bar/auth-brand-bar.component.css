@@ -1,0 +1,73 @@
+:host {
+  display: block;
+}
+
+.auth-brand-bar {
+  display: flex;
+  align-items: center;
+  height: var(--admin-auth-topbar-height);
+  padding: 0 24px;
+  background: #f9f9ff;
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.auth-brand-mark {
+  display: block;
+  width: 32px;
+  height: 32px;
+  flex: none;
+}
+
+.auth-brand-word {
+  font: var(--admin-font-weight-semibold) 28.8px / 1.2 var(--admin-font-family);
+  color: #000000;
+  white-space: nowrap;
+}
+
+.auth-brand-word strong {
+  font-weight: inherit;
+  color: #0088e8;
+}
+
+@media (max-width: 1599px) {
+  :host {
+    --admin-auth-topbar-height: 76px;
+  }
+
+  .auth-brand-word {
+    font-size: 26px;
+  }
+}
+
+@media (max-width: 1439px) {
+  :host {
+    --admin-auth-topbar-height: 72px;
+  }
+
+  .auth-brand-word {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 1279px) {
+  :host {
+    --admin-auth-topbar-height: 68px;
+  }
+
+  .auth-brand-word {
+    font-size: 22px;
+  }
+
+  .auth-brand-mark {
+    width: 28px;
+    height: 28px;
+  }
+}

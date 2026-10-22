@@ -1,0 +1,47 @@
+:host { display: block; min-width: 0; }
+.date-time-picker { position: relative; min-width: 0; }
+.picker-trigger { display: flex; align-items: center; gap: 9px; width: 100%; min-width: 0; height: var(--picker-trigger-height, 40px); padding: 0 11px; border: 1px solid var(--picker-trigger-border, #d5e1ef); border-radius: var(--picker-trigger-radius, 7px); background: #fff; color: #263b5a; text-align: left; font: var(--admin-text-control-input); cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease, background .15s ease; }
+.picker-trigger:hover:not(:disabled) { border-color: #8eadd2; background: #fbfdff; }
+.picker-trigger:focus-visible { outline: 0; border-color: #3975d7; box-shadow: 0 0 0 3px #3975d71c; }
+.picker-trigger > svg:first-child { width: 17px; height: 17px; flex: none; fill: none; stroke: #6280a6; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.picker-trigger span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picker-trigger .placeholder { color: #7588a3; }
+.picker-chevron { width: 15px; height: 15px; flex: none; margin-left: auto; fill: none; stroke: #7186a5; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.picker-trigger:disabled { border-color: #cbd5e1; background: #f1f5f9; color: #64748b; cursor: not-allowed; opacity: 1; }
+.picker-trigger:disabled > svg:first-child { stroke: #8b9ab0; }
+.picker-popover { position: fixed; z-index: 1000; width: min(292px, calc(100vw - 28px)); overflow-y: auto; padding: 14px; border: 1px solid #dbe5f1; border-radius: 10px; background: #fff; box-shadow: 0 14px 36px #10294a24; color: #1b3154; }
+.picker-header { display: grid; grid-template-columns: 34px minmax(0,1fr) 34px; align-items: center; gap: 6px; margin-bottom: 10px; }
+.picker-header strong { text-align: center; color: #17345e; font: var(--admin-text-control-label); text-transform: capitalize; }
+.picker-header .year-range { text-transform: none; font-variant-numeric: tabular-nums; }
+.month-label { display: block; width: 100%; min-width: 0; padding: 5px 6px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: #17345e; text-align: center; text-transform: capitalize; font: var(--admin-text-control-label); cursor: pointer; }
+.month-label:hover { border-color: #cfe0f4; background: #f1f7ff; color: #175dbb; }
+.month-label:focus-visible { outline: 0; border-color: #3975d7; box-shadow: 0 0 0 3px #3975d71c; }
+.month-nav { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid #e2eaf4; border-radius: 7px; background: #f8fbff; color: #426894; cursor: pointer; }
+.month-nav:hover { background: #edf5ff; border-color: #c8d9ed; }
+.month-nav svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 3px; }
+.weekday { display: grid; place-items: center; height: 28px; color: #71839d; font: var(--admin-text-caption); font-weight: var(--admin-font-weight-semibold); }
+.calendar-grid button { display: grid; place-items: center; min-width: 0; height: 31px; padding: 0; border: 1px solid transparent; border-radius: 7px; background: transparent; color: #314c70; font: var(--admin-text-control-input); font-variant-numeric: tabular-nums; cursor: pointer; }
+.calendar-grid button:hover:not(:disabled):not(.selected) { border-color: #cfe0f4; background: #f1f7ff; color: #175dbb; }
+.calendar-grid button.selected { border-color: #245bdd; background: #245bdd; color: #fff; font-weight: var(--admin-font-weight-semibold); box-shadow: 0 2px 5px #245bdd30; }
+.calendar-grid button:disabled { cursor: default; }
+.month-grid, .year-grid { display: grid; gap: 4px; }
+.month-grid { grid-template-columns: repeat(3, minmax(0,1fr)); }
+.year-grid { grid-template-columns: repeat(4, minmax(0,1fr)); }
+.month-grid button, .year-grid button { display: grid; place-items: center; min-width: 0; height: 34px; padding: 0; border: 1px solid transparent; border-radius: 7px; background: transparent; color: #314c70; font: var(--admin-text-control-input); font-variant-numeric: tabular-nums; cursor: pointer; }
+.month-grid button:hover, .year-grid button:hover { border-color: #cfe0f4; background: #f1f7ff; color: #175dbb; }
+.month-grid button.selected, .year-grid button.selected { border-color: #245bdd; background: #245bdd; color: #fff; font-weight: var(--admin-font-weight-semibold); box-shadow: 0 2px 5px #245bdd30; }
+.year-grid button.current-year:not(.selected) { border-color: #b7d2f5; color: #175dbb; font-weight: var(--admin-font-weight-semibold); }
+.time-picker { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #edf1f6; }
+.time-label { color: #536a89; font: var(--admin-text-caption); }
+.time-selects { display: flex; align-items: center; gap: 4px; color: #8291a6; }
+.time-selects select { width: 48px; height: 33px; padding: 0 5px; border: 1px solid #d6e1ee; border-radius: 6px; background: #f9fbfe; color: #263b5a; font: var(--admin-text-control-input); font-variant-numeric: tabular-nums; }
+.picker-footer { display: flex; justify-content: space-between; gap: 8px; margin-top: 12px; padding-top: 11px; border-top: 1px solid #edf1f6; }
+/* Khi không có nút "Hôm nay" thì nút "Áp dụng" neo về mép phải. */
+.picker-footer.only-apply { justify-content: flex-end; }
+.picker-footer button { min-height: 34px; padding: 0 12px; border-radius: 6px; font: var(--admin-text-control-label); cursor: pointer; }
+.today-button { border: 1px solid #d5e2f1; background: #fff; color: #315f99; }
+.today-button:hover { background: #f2f7fd; }
+.apply-button { border: 1px solid #245bdd; background: #245bdd; color: #fff; }
+.apply-button:hover { background: #174cc8; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }

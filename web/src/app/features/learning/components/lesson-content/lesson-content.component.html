@@ -1,0 +1,36 @@
+@switch(lesson().type){
+  @case('video'){
+    <section class="video-card">
+      <video controls [src]="lesson().videoUrl" preload="metadata" (ended)="completed.emit()">Trình duyệt của bạn không hỗ trợ video.</video>
+      <div class="video-caption"><span>▶</span><div><strong>{{lesson().title}}</strong><small>Thời lượng {{lesson().duration}} · Tiến độ được lưu tự động</small></div></div>
+    </section>
+  }
+  @case('reading'){
+    <article class="reading-card">
+      <header><h2>{{lesson().title.replace(/^\d+\.\d+\s*/, '')}}</h2></header>
+      <p class="reading-lead">{{lesson().reading?.lead}}</p>
+      @for(section of lesson().reading?.sections;track section.title;let index=$index){
+        <section class="reading-section" [class.with-illustration]="index===0">
+          <div><h3>{{index+1}}. {{section.title}}</h3>@for(paragraph of section.paragraphs;track paragraph){<p>{{paragraph}}</p>}</div>
+          @if(index===0){<img class="research-illustration" src="/assets/learning/reading-illustration-2.png" alt="Minh họa nghiên cứu người dùng">}
+          @if(section.bullets && index>0){<ul>@for(bullet of section.bullets;track bullet){<li>{{bullet}}</li>}</ul>}
+        </section>
+        @if(index===0){<aside class="reading-callout"><span><svg lucideLightbulb aria-hidden="true"></svg></span><div><strong>Tại sao nội dung này quan trọng?</strong><p>{{section.bullets?.join(' ')}}</p></div></aside>}
+      }
+      <div class="reading-complete"><div><strong>{{readingDone()?'Bạn đã hoàn thành bài đọc':'Bạn đã đọc xong nội dung?'}}</strong><p>{{readingDone()?'Tiến độ bài học đã được cập nhật.':'Đánh dấu hoàn thành để tiếp tục bài học kế tiếp.'}}</p></div><button type="button" [class.done]="readingDone()" (click)="finishReading()"><svg lucideCircleCheck aria-hidden="true"></svg>{{readingDone()?'Đã hoàn thành':'Đánh dấu đã đọc'}}</button></div>
+    </article>
+  }
+  @case('quiz'){
+    @if(!quizStarted()){
+      <section class="quiz-intro"><span class="quiz-symbol">?</span><p class="eyebrow">BÀI KIỂM TRA KIẾN THỨC</p><h2>{{lesson().title}}</h2><p>Hoàn thành bài quiz để kiểm tra mức độ hiểu bài của bạn.</p><div class="quiz-facts"><div><strong>{{lesson().quiz?.questions?.length}}</strong><span>Tổng số câu hỏi</span></div><div><strong>{{lesson().quiz?.timeLimit}} phút</strong><span>Thời gian làm bài</span></div><div><strong>{{lesson().quiz?.passingScore}}%</strong><span>Điểm tối thiểu để đạt</span></div></div><button type="button" (click)="quizStarted.set(true)">Bắt đầu làm bài →</button></section>
+    } @else if(!quizSubmitted()){
+      <section class="quiz-active"><div class="quiz-top"><div><span>Quiz đang diễn ra</span><strong>{{answeredCount()}}/{{lesson().quiz?.questions?.length}} câu đã trả lời</strong></div><div class="answer-progress"><i [style.width.%]="answeredCount()/(lesson().quiz?.questions?.length||1)*100"></i></div></div>
+        @for(question of lesson().quiz?.questions;track question.id;let index=$index){<article class="question"><div class="question-head"><span>Câu {{index+1}}</span><button type="button" [class.marked]="marked().has(question.id)" (click)="toggleMark(question.id)">⚑ {{marked().has(question.id)?'Đã đánh dấu':'Xem lại'}}</button></div><h3>{{question.text}}</h3><div class="options">@for(option of question.options;track option.id){<label [class.selected]="answers()[question.id]===option.id"><input type="radio" [name]="question.id" [value]="option.id" [checked]="answers()[question.id]===option.id" (change)="setAnswer(question.id,option.id)"><span>{{option.id.toUpperCase()}}</span>{{option.text}}</label>}</div></article>}
+        <div class="quiz-submit"><span>{{answeredCount() < (lesson().quiz?.questions?.length||0) ? 'Bạn vẫn còn câu chưa trả lời.' : 'Bạn đã trả lời tất cả câu hỏi.'}}</span><button type="button" (click)="submitQuiz()">Nộp bài</button></div>
+      </section>
+    } @else {
+      <section class="quiz-result" [class.failed]="!passed()"><span class="result-icon">{{passed()?'✓':'!'}}</span><p class="eyebrow">KẾT QUẢ BÀI QUIZ</p><h2>{{passed()?'Chúc mừng, bạn đã đạt!':'Bạn chưa đạt lần này'}}</h2><div class="score">{{score()}}<small>%</small></div><p>{{passed()?'Bạn đã nắm vững kiến thức của bài học.':'Hãy xem lại nội dung và thử lại để đạt ít nhất '+lesson().quiz?.passingScore+'%.'}}</p><div class="result-actions"><button type="button" class="secondary" (click)="resetQuiz()">↻ Làm lại</button><button type="button" (click)="quizStarted.set(false);quizSubmitted.set(false)">Xem tổng quan</button></div></section>
+    }
+  }
+}
+

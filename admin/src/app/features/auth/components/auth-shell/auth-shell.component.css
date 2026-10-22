@@ -1,0 +1,25 @@
+:host {
+  display: block;
+}
+
+.auth-shell {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 100dvh;
+  background: #ffffff;
+}
+
+.auth-shell-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+  padding: clamp(20px, 2.4vw, 40px) clamp(20px, 2.4vw, 40px);
+  overflow-y: auto;
+  background: #ffffff;
+}
+
+.auth-shell-body.is-tinted {
+  background: var(--admin-auth-page);
+}

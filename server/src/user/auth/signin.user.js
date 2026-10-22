@@ -163,12 +163,16 @@ export async function loginWithGoogle({ email, name, avatar, providerId }, optio
     }
 
     // BR-AUTH-07: Đồng bộ định danh (Identity Linking) - gộp tài khoản gốc
+    // Nếu người dùng đã tự upload ảnh đại diện (is_custom_avatar = true), giữ nguyên avatar đó.
+    // Nếu chưa từng upload ảnh đại diện riêng, cập nhật avatar từ Google OAuth.
+    const resolvedAvatar = user.is_custom_avatar ? user.avatar_url : (avatar || user.avatar_url);
+
     await db.collection('users').updateOne(
       { _id: user._id },
       {
         $set: {
           google_id: providerId,
-          avatar_url: avatar || user.avatar_url,
+          avatar_url: resolvedAvatar,
           email_verified: true,
           status: 'active',
           is_active: true,
@@ -179,6 +183,9 @@ export async function loginWithGoogle({ email, name, avatar, providerId }, optio
     );
   } else {
     // BR-AUTH-06: Tự động cấp tài khoản học viên mới (Just-In-Time Provisioning)
+    const initialChar = encodeURIComponent((name || email || 'G').trim().charAt(0).toUpperCase());
+    const defaultGoogleAvatar = avatar || `https://ui-avatars.com/api/?name=${initialChar}&background=EA4335&color=fff&size=200&bold=true`;
+
     const newUser = {
       full_name: name || 'Học viên Google',
       phone: null,
@@ -187,7 +194,8 @@ export async function loginWithGoogle({ email, name, avatar, providerId }, optio
       provider: 'google',
       provider_id: providerId,
       google_id: providerId,
-      avatar_url: avatar || null,
+      avatar_url: defaultGoogleAvatar,
+      is_custom_avatar: false,
       role: 'student',
       status: 'active',
       is_active: true,
@@ -260,12 +268,14 @@ export async function loginWithFacebook({ providerId, email, name, avatar }, opt
     }
 
     // BR-AUTH-07: Identity Linking
+    const resolvedAvatar = user.is_custom_avatar ? user.avatar_url : (avatar || user.avatar_url);
+
     await db.collection('users').updateOne(
       { _id: user._id },
       {
         $set: {
           facebook_id: providerId,
-          avatar_url: avatar || user.avatar_url,
+          avatar_url: resolvedAvatar,
           email_verified: true,
           status: 'active',
           is_active: true,
@@ -275,6 +285,9 @@ export async function loginWithFacebook({ providerId, email, name, avatar }, opt
       }
     );
   } else {
+    const initialChar = encodeURIComponent((name || email || 'F').trim().charAt(0).toUpperCase());
+    const defaultFbAvatar = avatar || `https://ui-avatars.com/api/?name=${initialChar}&background=1877F2&color=fff&size=200&bold=true`;
+
     const newUser = {
       full_name: name || 'Học viên Facebook',
       phone: null,
@@ -283,7 +296,8 @@ export async function loginWithFacebook({ providerId, email, name, avatar }, opt
       provider: 'facebook',
       provider_id: providerId,
       facebook_id: providerId,
-      avatar_url: avatar || null,
+      avatar_url: defaultFbAvatar,
+      is_custom_avatar: false,
       role: 'student',
       status: 'active',
       is_active: true,

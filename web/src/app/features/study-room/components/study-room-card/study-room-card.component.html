@@ -1,0 +1,80 @@
+@let card = item();
+@let room = card.room;
+
+<article class="room-card">
+  <div class="room-image" [style.background]="card.themeBackground">
+    @if (card.mediaType === "video") {
+      <video
+        [src]="card.mediaSrc"
+        autoplay
+        muted
+        loop
+        playsinline
+        preload="metadata"
+      ></video>
+    } @else if (card.mediaType === "image") {
+      <img [src]="card.mediaSrc" alt="" loading="lazy" decoding="async" />
+    }
+    <span class="visibility" [class.private]="room.type === 'private'"
+      >● {{ room.type === "private" ? "Riêng tư" : "Công khai" }}</span
+    >
+    <span class="room-status"
+      >●
+      {{
+        room.status === "focus"
+          ? "Đang focus"
+          : room.status === "break"
+            ? "Nghỉ ngắn"
+            : "Sẵn sàng"
+      }}</span
+    >
+    <span class="theme-label">{{ card.themeName }}</span>
+  </div>
+  <div class="room-details">
+    <h3>{{ room.name }}</h3>
+    <p class="creator">
+      Tạo bởi: <strong>{{ room.creator }}</strong>
+    </p>
+    <div class="room-id">
+      ID phòng: <strong>#{{ room.roomId.toUpperCase() }}</strong
+      ><button
+        type="button"
+        (click)="copyCode.emit(room)"
+        aria-label="Sao chép ID phòng"
+      >
+        <svg lucideCopy></svg>
+      </button>
+    </div>
+    <div class="room-meta">
+      <span><svg lucideTag></svg>{{ room.tags[0] || room.category }}</span
+      ><span
+        ><svg lucideUsers></svg>{{ room.currentUsers }}/{{
+          room.maxUsers
+        }}
+        người</span
+      >
+    </div>
+    <p class="room-description">
+      {{
+        room.description || "Không gian học tập và cộng tác cho nhóm của bạn."
+      }}
+    </p>
+    <div class="card-actions">
+      <button type="button" (click)="join.emit(room)">
+        {{
+          room.currentUsers >= room.maxUsers
+            ? "Phòng đã đầy"
+            : room.type === "private"
+              ? "Nhập mật khẩu"
+              : "Vào phòng"
+        }}<svg lucideArrowRight></svg></button
+      ><button
+        type="button"
+        (click)="copyInvite.emit(room)"
+        aria-label="Mời thành viên"
+      >
+        <svg lucideUserPlus></svg>
+      </button>
+    </div>
+  </div>
+</article>

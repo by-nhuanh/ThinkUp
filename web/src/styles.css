@@ -36,6 +36,10 @@
     font-family: var(--font-sans);
   }
 
+  html {
+    scrollbar-gutter: stable;
+  }
+
   /* Đảm bảo toàn bộ chữ (inputs, buttons, headings, paragraphs) đều thừa kế Inter */
   input, button, textarea, select, h1, h2, h3, h4, h5, h6, p, span, a, label {
     font-family: inherit;

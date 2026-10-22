@@ -1,0 +1,45 @@
+@if(status()==='loading'){<div class="state">Đang tải không gian học tập...</div>} @else if(status()==='error'||!course()||!lesson()){<div class="state error">Không thể tải khóa học. Vui lòng thử lại.</div>} @else {
+<main class="learning-shell" [class.sidebar-collapsed]="!sidebarOpen()">
+  <aside class="rail"><button type="button" (click)="sidebarOpen.set(!sidebarOpen())" [attr.aria-label]="sidebarOpen()?'Ẩn nội dung':'Hiện nội dung'">@if(sidebarOpen()){<svg lucidePanelLeftClose aria-hidden="true"></svg>}@else{<svg lucidePanelLeftOpen aria-hidden="true"></svg>}</button></aside>
+  @if(sidebarOpen()){
+    <aside class="course-sidebar">
+      <div class="course-summary"><span class="book"><svg lucideBookOpen aria-hidden="true"></svg></span><div><h2>{{course()!.title}}</h2><p>Bởi {{course()!.instructor}}</p></div><div class="course-progress"><span>Tiến độ khóa học</span><strong>{{progress()}}%</strong><i><b [style.width.%]="progress()"></b></i></div></div>
+      <p class="sidebar-label">NỘI DUNG KHÓA HỌC</p>
+      <nav>@for(chapter of course()!.chapters;track chapter.id){<section><button class="chapter" type="button" (click)="toggleChapter(chapter.id)"><span>{{chapter.title}}</span><svg lucideChevronDown aria-hidden="true" [class.open]="openChapters().has(chapter.id)"></svg></button>@if(openChapters().has(chapter.id)){<div class="chapter-lessons">@for(item of chapter.lessons;track item.id){<button class="lesson-link" type="button" [class.active]="item.id===lesson()!.id" (click)="chooseLesson(item)">@if(completedIds().has(item.id)){<svg class="status-icon done" lucideCircleCheck aria-hidden="true"></svg>}@else{<svg class="status-icon" lucideCircle aria-hidden="true"></svg>}@switch(item.type){@case('video'){<svg class="type-icon" lucideCirclePlay aria-hidden="true"></svg>}@case('reading'){<svg class="type-icon" lucideBookOpenText aria-hidden="true"></svg>}@case('quiz'){<svg class="type-icon" lucideCircleQuestionMark aria-hidden="true"></svg>}}<strong>{{item.title}}</strong><time>{{item.type==='quiz' ? (item.quiz?.questions?.length+' câu') : item.duration}}</time></button>}</div>}</section>}</nav>
+    </aside>
+  }
+  <section class="workspace">
+    <header class="lesson-toolbar">
+      <div class="lesson-heading"><div class="breadcrumb"><span>{{course()!.title}}</span><b>›</b><span>{{lesson()!.type==='reading'?'Phần 2: Hiểu người dùng':'Phần 1: Giới thiệu'}}</span><b>›</b><span>Bài học {{currentIndex()+1}}</span></div><h1>{{lesson()!.title}}</h1></div>
+      <div class="toolbar-actions">
+        <button type="button" [disabled]="!previous()" (click)="goTo(previous())"><svg lucideChevronLeft aria-hidden="true"></svg>Bài trước</button>
+        <button class="next" type="button" [disabled]="!next()" (click)="goTo(next())">Bài tiếp theo<svg lucideChevronRight aria-hidden="true"></svg></button>
+        <span class="secondary-actions">
+          <button class="bookmark" type="button" [class.active]="bookmarked()" (click)="bookmarked.set(!bookmarked())" [attr.aria-label]="bookmarked()?'Bỏ đánh dấu bài học':'Đánh dấu bài học'"><svg lucideBookmark aria-hidden="true"></svg></button>
+          <button class="complete" type="button" [class.done]="completedIds().has(lesson()!.id)" (click)="markComplete()"><svg lucideCircleCheck aria-hidden="true"></svg>{{completedIds().has(lesson()!.id)?'Đã hoàn thành':'Đánh dấu hoàn thành'}}</button>
+        </span>
+      </div>
+    </header>
+    <div class="content-grid">
+      <app-lesson-content [lesson]="lesson()!" (completed)="markComplete()" />
+      <aside class="info-card">
+        <nav class="tabs"><button type="button" [class.active]="activeTab()==='overview'" (click)="activeTab.set('overview')">Tổng quan</button><button type="button" [class.active]="activeTab()==='resources'" (click)="activeTab.set('resources')">Tài liệu</button><button type="button" [class.active]="activeTab()==='qa'" (click)="activeTab.set('qa')">Hỏi đáp</button><button type="button" [class.active]="activeTab()==='discussion'" (click)="activeTab.set('discussion')">Thảo luận <i>{{discussionPosts.length}}</i></button></nav>
+        <div class="tab-body">
+          @switch(activeTab()){
+            @case('overview'){
+              <div class="overview-copy">
+                <p>Trong bài học này, chúng ta sẽ khám phá kiến thức trọng tâm và cách áp dụng vào một giao diện thực tế.</p>
+                <p>Bạn sẽ tìm hiểu từng bước, nhận biết những vấn đề thường gặp và cách giải quyết rõ ràng, hiệu quả.</p>
+              </div>
+              <div class="learning-goals"><h3>Trong khóa học này, bạn sẽ học được:</h3><p>✓ Hiểu và giải thích kiến thức trọng tâm</p><p>✓ Áp dụng kiến thức vào dự án thực tế</p><p>✓ Nhận biết và xử lý các lỗi phổ biến</p></div>
+            }
+            @case('resources'){<h2>Tài liệu bài học</h2><p class="description">Tải xuống tài liệu để luyện tập sau bài học.</p><a class="resource" href="data:text/plain;charset=utf-8,ThinkUp%20Responsive%20Checklist" download="responsive-checklist.txt"><span>↓</span><div><strong>Responsive checklist</strong><small>TXT · 2 KB</small></div><b>Tải xuống</b></a><a class="resource" href="data:text/plain;charset=utf-8,Viewport%20and%20CSS%20units" download="viewport-notes.txt"><span>↓</span><div><strong>Ghi chú Viewport & CSS units</strong><small>TXT · 1 KB</small></div><b>Tải xuống</b></a>}
+            @case('qa'){<app-community-panel mode="qa" [initialPosts]="qaPosts" />}
+            @case('discussion'){<app-community-panel mode="discussion" [initialPosts]="discussionPosts" />}
+          }
+        </div>
+      </aside>
+    </div>
+  </section>
+</main>}
+

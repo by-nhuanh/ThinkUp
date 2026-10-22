@@ -1,0 +1,23 @@
+/* Figma node 3173:14559 */
+.community { min-height: 540px; }
+.community-heading { display: block; }
+.community-heading h2 { color: #0e1624; font-size: 20px; line-height: 28px; }
+.community-heading p { max-width: 310px; margin-top: 1px; color: #6b727e; font-size: 15px; line-height: 18px; }
+.community-heading > span { display: none; }
+.composer { position: relative; display: block; margin: -3px 39px 24px; padding: 0; border: 0; background: transparent; }
+.composer input { width: 100%; height: 40px; border: 1px solid #cfd8e5; border-radius: 12px; padding: 0 52px 0 13px; color: #334155; outline: none; font-size: 14px; }
+.composer input:focus { border-color: #2076ff; box-shadow: 0 0 0 3px #2076ff18; }
+.composer button { position: absolute; top: 4px; right: 4px; width: 32px; height: 32px; border-radius: 10px; padding: 0; background: #2076ff; font-size: 15px; }
+.post { gap: 12px; padding: 12px 0; border: 0; }
+.avatar { width: 36px; height: 36px; overflow: hidden; background: #eef4ff; }
+.avatar.small { width: 34px; height: 34px; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+.post-meta { flex-wrap: wrap; gap: 6px; color: #6b727e; font-size: 12px; }
+.post-meta strong { color: #172033; font-size: 14px; }
+.post-meta time { margin-left: 0; }
+.post-meta .report { margin-left: auto; border: 1px solid #ff9a9a; border-radius: 7px; padding: 6px 11px; color: #e22d2d; font-size: 12px; }
+.post p, .reply p { margin: 8px 0 4px; color: #475569; font-size: 14px; line-height: 21px; }
+.post-actions { gap: 14px; }
+.post-actions button, .mini-like { color: #2076ff; font-size: 12px; }
+.reply { margin-top: 12px; margin-left: 24px; padding: 8px 0; background: transparent; }
+.reply-form { margin-left: 24px; }

@@ -1,4 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { injectSpeedInsights } from '@vercel/speed-insights';
+import { inject as injectAnalytics } from '@vercel/analytics';
 import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { filter } from 'rxjs/operators';
@@ -28,6 +30,8 @@ export class AppComponent {
   readonly isStudyLobby = signal(false);
 
   constructor() {
+    injectSpeedInsights();
+    injectAnalytics();
     this.updateShell(this.router.url);
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)

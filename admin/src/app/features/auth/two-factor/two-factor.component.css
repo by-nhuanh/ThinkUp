@@ -1,0 +1,146 @@
+:host {
+  display: block;
+}
+
+.otp-card {
+  display: flex;
+  flex-direction: column;
+  width: min(620px, 100%);
+  min-height: 520px;
+  padding: 80px 96px 60px;
+  border: 1px solid #e3ebf5;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px #1429471a;
+}
+
+.otp-title {
+  margin: 0;
+  font: var(--admin-font-weight-extrabold) 34px / 46px var(--admin-font-family);
+  letter-spacing: -0.01em;
+  color: var(--admin-auth-ink);
+  text-align: center;
+}
+
+.otp-subtitle {
+  margin: 32px 0 0;
+  font: var(--admin-font-weight-regular) 16px / 28px var(--admin-font-family);
+  color: var(--admin-auth-muted-soft);
+  text-align: center;
+}
+
+.otp-form {
+  display: flex;
+  flex-direction: column;
+  margin-top: 36px;
+}
+
+.otp-error {
+  margin: 18px 0 0;
+  font: var(--admin-font-weight-regular) 13px / 24px var(--admin-font-family);
+  color: var(--admin-auth-danger);
+  text-align: center;
+}
+
+.otp-link {
+  align-self: center;
+  margin-top: 66px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  font: var(--admin-font-weight-semibold) 15px / 28px var(--admin-font-family);
+  color: #0078f2;
+  cursor: pointer;
+}
+
+.otp-error + .otp-link {
+  margin-top: 24px;
+}
+
+.otp-link:hover {
+  text-decoration: underline;
+}
+
+.otp-submit {
+  height: 48px;
+  margin-top: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: #0078f2;
+  color: #ffffff;
+  font: var(--admin-font-weight-semibold) 16px / 19px var(--admin-font-family);
+  cursor: pointer;
+  transition: background-color 0.16s ease;
+}
+
+.otp-submit:hover:not(:disabled) {
+  background: #0068d8;
+}
+
+.otp-submit:disabled {
+  background: #d6e0f0;
+  color: #ffffff;
+  cursor: not-allowed;
+}
+
+.otp-submit:focus-visible,
+.otp-link:focus-visible {
+  outline: 2px solid #0078f2;
+  outline-offset: 2px;
+}
+
+@media (max-width: 1439px) {
+  .otp-card {
+    min-height: 500px;
+    padding: 64px 88px 52px;
+  }
+
+  .otp-subtitle {
+    margin-top: 24px;
+  }
+
+  .otp-form {
+    margin-top: 32px;
+  }
+}
+
+@media (max-height: 800px) {
+  .otp-card {
+    min-height: 0;
+    padding: 52px 88px 44px;
+  }
+
+  .otp-title {
+    font-size: 30px;
+    line-height: 40px;
+  }
+
+  .otp-subtitle {
+    margin-top: 18px;
+  }
+
+  .otp-form {
+    margin-top: 26px;
+  }
+
+  .otp-link {
+    margin-top: 48px;
+  }
+
+  .otp-submit {
+    margin-top: 26px;
+  }
+}
+
+@media (max-width: 767px) {
+  .otp-card {
+    padding: 48px 24px 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .otp-submit {
+    transition: none;
+  }
+}

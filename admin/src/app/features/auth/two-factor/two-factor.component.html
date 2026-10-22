@@ -1,0 +1,28 @@
+<app-auth-shell>
+  <section class="otp-card" aria-labelledby="two-factor-title">
+    <h1 id="two-factor-title" class="otp-title">Xác thực 2 bước</h1>
+    <p class="otp-subtitle">Nhập mã xác thực gồm 6 chữ số để tiếp tục.</p>
+
+    <form class="otp-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <app-otp-input
+        formControlName="code"
+        size="lg"
+        [invalid]="!!errorMessage()"
+        [autofocus]="true"
+        ariaLabel="Mã xác thực 2 lớp"
+      />
+
+      @if (errorMessage()) {
+        <p class="otp-error" role="alert">{{ errorMessage() }}</p>
+      }
+
+      <button class="otp-link" type="button" (click)="goToBackupCode()">
+        Sử dụng mã dự phòng (Backup code)
+      </button>
+
+      <button class="otp-submit" type="submit" [disabled]="loading() || !canSubmit()">
+        {{ loading() ? 'Đang xác thực…' : 'Xác nhận' }}
+      </button>
+    </form>
+  </section>
+</app-auth-shell>

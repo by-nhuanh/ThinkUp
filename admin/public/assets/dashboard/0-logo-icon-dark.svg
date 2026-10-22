@@ -1,0 +1,13 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="27" height="28" viewBox="0 0 27 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="LogoIcon dark" clip-path="url(#clip0_0_40)">
+<path id="Vector" d="M6.63692 12.4538C9.98071 12.4538 12.6914 9.6849 12.6914 6.26926C12.6914 2.85365 9.98071 0.0847486 6.63692 0.0847486C3.29308 0.0847486 0.582371 2.85365 0.582371 6.26926C0.582371 9.6849 3.29308 12.4538 6.63692 12.4538Z" fill="#3898EC"/>
+<path id="Vector_2" d="M26.2546 0.0847486H14.1456V12.4538H26.2546V0.0847486Z" fill="white"/>
+<path id="Vector_3" d="M0.582371 13.6904H12.6914V27.9148L0.582371 13.6904Z" fill="#9BD1FF"/>
+<path id="Vector_4" d="M26.2546 20.0124V13.6904H20.2001H14.1456V27.9148H19.8814C23.4011 27.9148 26.2546 24.3767 26.2546 20.0124Z" fill="#257FE6"/>
+</g>
+<defs>
+<clipPath id="clip0_0_40">
+<rect width="27" height="28" fill="white"/>
+</clipPath>
+</defs>
+</svg>

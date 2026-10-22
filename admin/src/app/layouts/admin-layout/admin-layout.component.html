@@ -1,0 +1,42 @@
+<div class="admin-shell" [class.is-collapsed]="collapsed()">
+  <aside class="sidebar" aria-label="Điều hướng quản trị">
+    <div class="brand">
+      <img src="/assets/dashboard/0-logo-icon-dark.svg" alt="" width="27" height="28">
+      @if (!collapsed()) { <div class="brand-copy"><strong>THINK<span>UP</span></strong><small>Admin | Control Center</small></div> }
+      <button class="collapse-button" type="button" (click)="collapsed.set(!collapsed())" [attr.aria-label]="collapsed() ? 'Mở thanh điều hướng' : 'Thu gọn thanh điều hướng'"><img src="/assets/dashboard/0-sidebar-collapse-icon.svg" alt="" width="16" height="16"></button>
+    </div>
+    <nav class="nav-list">
+      <a class="nav-item" routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" [title]="collapsed() ? 'Dashboard' : ''"><img src="/assets/dashboard/0-svg.svg" alt="" width="16" height="16">@if (!collapsed()) { <span>Dashboard</span> }</a>
+      <div class="nav-item nav-label" [title]="collapsed() ? nav[0].label : ''"><img [src]="'/assets/dashboard/' + nav[0].icon" alt="" width="16" height="16">@if (!collapsed()) { <span>{{ nav[0].label }}</span><svg class="chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg> }</div>
+      <button class="nav-item business-toggle" type="button" [attr.aria-expanded]="businessOpen()" aria-controls="business-subnav" [title]="collapsed() ? 'Quản lý kinh doanh' : ''" (click)="toggleBusiness()"><img src="/assets/dashboard/0-money-coin-outline.svg" alt="" width="16" height="16">@if (!collapsed()) { <span>Quản lý kinh doanh</span><svg class="chevron" [class.rotated]="businessOpen()" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg> }</button>
+      @if (businessOpen() && !collapsed()) { <div id="business-subnav" class="subnav">@for (page of businessPages; track page.path) { <a class="subnav-link" [routerLink]="page.path" routerLinkActive="active">{{ page.label }}</a> }</div> }
+      @for (item of nav.slice(1); track item.label) {
+        <div class="nav-item nav-label" [title]="collapsed() ? item.label : ''"><img [src]="'/assets/dashboard/' + item.icon" alt="" width="16" height="16">@if (!collapsed()) { <span>{{ item.label }}</span><svg class="chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg> }</div>
+      }
+    </nav>
+  </aside>
+  <div class="page-shell">
+    <header class="top-utility-bar" aria-label="Tiện ích quản trị">
+      <div class="liquid-tools">
+        <button class="top-tool icon-only" type="button" aria-label="Cài đặt" title="Cài đặt"><img src="/assets/dashboard/header-0.svg" alt=""></button>
+        <div class="top-popover-anchor">
+          <button class="top-tool icon-only" type="button" aria-label="Thông báo" [attr.aria-expanded]="notificationsOpen()" title="Thông báo" (click)="notificationsOpen.set(!notificationsOpen())"><span class="top-icon-wrap"><img src="/assets/dashboard/header-1.svg" alt=""><span class="badge">2</span></span></button>
+          @if (notificationsOpen()) { <div class="top-popover">Bạn có 2 thông báo mới.</div> }
+        </div>
+        <div class="top-popover-anchor">
+          <button class="top-tool account-tool" type="button" [attr.aria-expanded]="accountOpen()" aria-label="Tài khoản Admin" (click)="accountOpen.set(!accountOpen())"><span class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/></svg></span><span class="account-name">{{ user()?.fullName || 'Admin' }}</span><svg class="account-chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg></button>
+          @if (accountOpen()) {
+            <div class="top-popover account-popover">
+              <div class="account-meta">
+                <strong>{{ user()?.fullName || 'Quản trị viên' }}</strong>
+                <span>{{ user()?.email || 'admin@thinkup.edu.vn' }}</span>
+              </div>
+              <button class="account-logout" type="button" (click)="logout()">Đăng xuất</button>
+            </div>
+          }
+        </div>
+      </div>
+    </header>
+    <router-outlet />
+  </div>
+</div>

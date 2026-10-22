@@ -1,0 +1,30 @@
+/* Figma nodes 3173:15208 and 3173:13000 */
+.video-card { border-color: #e0e5eb; border-radius: 20px; box-shadow: 0 14px 28px #0b17331a; }
+.video-card video { aspect-ratio: 16 / 9; background: #020b36; }
+.video-caption { display: none; }
+
+.reading-card { padding: 41px; border-color: #e0e5eb; border-radius: 20px; box-shadow: none; }
+.reading-card header { display: block; padding: 0; border: 0; }
+.reading-card header h2 { display: inline-block; margin: 0; padding-bottom: 14px; border-bottom: 2px solid #2076ff; color: #0e1624; font-size: 30px; font-weight: 700; line-height: 36px; letter-spacing: 0; }
+.reading-card .reading-lead { margin: 15px 0 17px; padding: 8px 0 18px; border: 0; border-radius: 0; background: transparent; color: #6b727e; font-size: 15px; font-weight: 400; line-height: 24.38px; letter-spacing: 0; }
+.reading-section { max-width: none; margin: 0; padding-top: 25px; border-top: 1px solid #e0e5eb; }
+.reading-section.with-illustration { display: grid; grid-template-columns: minmax(0, 1fr) 233px; align-items: center; gap: 32px; padding: 17px 54px 0; }
+.reading-section h3 { margin: 0 0 15px; color: #0e1624; font-size: 20px; font-weight: 700; line-height: 28px; letter-spacing: 0; }
+.reading-section p, .reading-section li { margin: 0; color: #6b727e; font-size: 15px; font-weight: 400; line-height: 24.38px; letter-spacing: 0; }
+.research-illustration { width: 233px; height: 154px; object-fit: cover; }
+.reading-callout { display: flex; gap: 16px; margin: 15px 0 0; padding: 30px 21px 21px; border: 1px solid #2076ff26; border-radius: 16px; background: #e3f4ff; }
+.reading-callout > span { display: grid; width: 40px; height: 40px; flex: none; place-items: center; border-radius: 50%; background: #2076ff; color: white; font-size: 20px; }
+.reading-callout > span svg { width: 20px; height: 20px; stroke-width: 2; }
+.reading-callout strong { color: #2076ff; font-size: 16px; font-weight: 600; line-height: 24px; }
+.reading-callout p { margin: 3px 0 0; color: #0e1624cc; font-size: 14px; font-weight: 400; line-height: 22.75px; }
+.reading-complete { margin-top: 28px; }
+.reading-complete button { display: inline-flex; align-items: center; gap: 8px; }
+.reading-complete button svg { width: 16px; height: 16px; }
+
+@media (max-width: 1366px) {
+  .reading-card { padding: 32px; }
+  .reading-section.with-illustration { padding-right: 24px; padding-left: 24px; }
+}
+@media (max-width: 900px) {
+  .reading-section.with-illustration { grid-template-columns: 1fr; padding-right: 0; padding-left: 0; }
+}

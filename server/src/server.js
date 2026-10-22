@@ -29,6 +29,8 @@ import { createBlogRouter } from './user/blog/blog.user.js';
 import { createPurchaseRouter } from './user/purchase/purchase.user.js';
 import { createBillingRouter } from './user/purchase/billing.user.js';
 import { createStudyRoomRouter } from './user/studyroom/studyroom.user.js';
+import { createRoadmapRouter } from './user/roadmap/roadmap.user.js';
+import { createFlashcardRouter } from './user/flashcard/flashcard.user.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -65,8 +67,8 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
 }));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ─── 2. Middleware Trích Xuất Token Xác Thực ─────────────────────────────────
 function extractBearerUserId(req) {
@@ -218,6 +220,45 @@ authRouter.get('/me', requireAuth, async (req, res, next) => {
   }
 });
 
+// 4.9b. Cập nhật hồ sơ & ảnh đại diện học viên (Update Profile & Avatar)
+authRouter.put('/profile', requireAuth, async (req, res, next) => {
+  try {
+    const db = await (await import('./user/db.js')).getMongoDb();
+    const { ObjectId } = await import('mongodb');
+    const { avatarUrl, avatar, full_name, name, firstName, lastName, headline, location, bio, phone } = req.body;
+    const newAvatar = avatarUrl || avatar;
+    const nextName = [firstName, lastName].filter(Boolean).join(' ').trim() || full_name || name;
+
+    const updateFields = {
+      updated_at: new Date(),
+    };
+    if (nextName) updateFields.full_name = nextName;
+    if (phone) updateFields.phone = phone;
+    if (headline !== undefined) updateFields.headline = headline;
+    if (location !== undefined) updateFields.location = location;
+    if (bio !== undefined) updateFields.bio = bio;
+
+    if (newAvatar) {
+      updateFields.avatar_url = newAvatar;
+      updateFields.is_custom_avatar = true; // Đánh dấu người dùng đã tự upload ảnh mới
+    }
+
+    await db.collection('users').updateOne(
+      { _id: new ObjectId(req.userId) },
+      { $set: updateFields }
+    );
+
+    const updatedUser = await getCurrentUser(req.userId);
+    res.json({
+      success: true,
+      message: 'Cập nhật hồ sơ thành công!',
+      data: updatedUser.user,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // 4.10. Kiểm tra phiên đăng nhập cho Header (Session Check)
 authRouter.get('/session', async (req, res, next) => {
   try {
@@ -323,6 +364,48 @@ app.use('/api/user/onboarding', onboardingRouter);
 // Alias này đảm bảo FE không cần thay đổi code, BE tự route về cùng handler.
 app.use('/api/v1/onboarding', onboardingRouter);
 
+// ─── 5b2. Router Profile Học viên: /api/user/profile ─────────────────────────
+const profileRouter = express.Router();
+profileRouter.put('/', requireAuth, async (req, res, next) => {
+  try {
+    const db = await (await import('./user/db.js')).getMongoDb();
+    const { ObjectId } = await import('mongodb');
+    const { avatarUrl, avatar, full_name, name, firstName, lastName, headline, location, bio, phone } = req.body;
+    const newAvatar = avatarUrl || avatar;
+    const nextName = [firstName, lastName].filter(Boolean).join(' ').trim() || full_name || name;
+
+    const updateFields = {
+      updated_at: new Date(),
+    };
+    if (nextName) updateFields.full_name = nextName;
+    if (phone) updateFields.phone = phone;
+    if (headline !== undefined) updateFields.headline = headline;
+    if (location !== undefined) updateFields.location = location;
+    if (bio !== undefined) updateFields.bio = bio;
+
+    if (newAvatar) {
+      updateFields.avatar_url = newAvatar;
+      updateFields.is_custom_avatar = true;
+    }
+
+    await db.collection('users').updateOne(
+      { _id: new ObjectId(req.userId) },
+      { $set: updateFields }
+    );
+
+    const updatedUser = await getCurrentUser(req.userId);
+    res.json({
+      success: true,
+      message: 'Cập nhật hồ sơ thành công!',
+      data: updatedUser.user,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+app.use('/api/user/profile', profileRouter);
+app.use('/api/v1/user/profile', profileRouter);
+
 // ─── 5c. Router Blog & Bản Tin (Newsletter): /api/blog & /api/newsletter ──────
 const blogRouter = createBlogRouter(express);
 app.use('/api/blog', blogRouter);
@@ -344,6 +427,17 @@ app.use('/api/v1/billing', billingRouter); // Hỗ trợ tiền tố v1
 const studyRoomRouter = createStudyRoomRouter(express, requireAuth);
 app.use('/api/study-room', studyRoomRouter);
 app.use('/api/v1/study-room', studyRoomRouter); // Hỗ trợ tiền tố v1
+
+// ─── 5f. Router Lộ Trình Học Nghề Nghiệp (Career Roadmap): /api/user/roadmap ──
+const roadmapRouter = createRoadmapRouter(express, requireAuth);
+app.use('/api/user/roadmap', roadmapRouter);
+app.use('/api/v1/roadmap', roadmapRouter); // Hỗ trợ tiền tố v1
+
+// ─── 5g. Router Thẻ Ghi Nhớ (Flashcard): /api/user/flashcards ───────────────
+const flashcardRouter = createFlashcardRouter(express, requireAuth);
+app.use('/api/user/flashcards', flashcardRouter);
+app.use('/api/v1/user/flashcards', flashcardRouter); // Hỗ trợ tiền tố v1
+app.use('/api/flashcards', flashcardRouter); // Alias thuận tiện cho client
 
 // ─── 6. Bộ Xử Lý Lỗi Tập Trung (Tương thích quy tắc bảo mật writing-block) ──
 app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
