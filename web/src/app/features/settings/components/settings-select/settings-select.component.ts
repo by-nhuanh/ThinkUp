@@ -20,7 +20,8 @@ interface PanelPosition {
   top: number;
   left: number;
   width: number;
-  maxHeight: number;
+  maxHeight: number | null;
+  scrollable: boolean;
 }
 
 /**
@@ -55,7 +56,13 @@ export class SettingsSelectComponent {
   readonly placeholder = input<string>('Chọn...');
 
   readonly open = model<boolean>(false);
-  readonly position = signal<PanelPosition>({ top: 0, left: 0, width: 0, maxHeight: 320 });
+  readonly position = signal<PanelPosition>({
+    top: 0,
+    left: 0,
+    width: 0,
+    maxHeight: null,
+    scrollable: false,
+  });
 
   /** Nhãn hiển thị của giá trị đang chọn (value lưu mã, label lưu chữ hiển thị). */
   readonly selectedLabel = computed(() => {
@@ -102,16 +109,20 @@ export class SettingsSelectComponent {
     if (!element) return;
 
     const rect = element.getBoundingClientRect();
-    // 40px mỗi option + 8px padding dọc + 2px border + 2px dư (tránh scrollbar do làm tròn).
-    const desiredHeight = Math.min(320, this.options().length * 40 + 12);
+    // Chiều cao tự nhiên: 40px mỗi option + 8px padding dọc + 2px border.
+    const naturalHeight = this.options().length * 40 + 10;
     const spaceBelow = window.innerHeight - rect.bottom - 8;
     const spaceAbove = rect.top - 8;
-    const openUpwards = spaceBelow < desiredHeight && spaceAbove > spaceBelow;
-    const available = openUpwards ? spaceAbove : spaceBelow;
-    const maxHeight = Math.max(120, Math.min(desiredHeight, available));
-    const top = openUpwards ? rect.top - 4 - maxHeight : rect.bottom + 4;
+    const openUpwards = spaceBelow < naturalHeight && spaceAbove > spaceBelow;
+    const available = Math.max(0, openUpwards ? spaceAbove : spaceBelow);
+    // Chỉ đặt max-height khi thật sự thiếu chỗ; nếu vừa đủ thì để panel cao tự nhiên,
+    // nhờ vậy không bao giờ sinh thanh cuộn cho danh sách 4-6 lựa chọn.
+    const fits = available >= naturalHeight;
+    const maxHeight = fits ? null : Math.max(120, available);
+    const desiredTop = openUpwards ? rect.top - 4 - (maxHeight ?? naturalHeight) : rect.bottom + 4;
+    const top = Math.max(8, desiredTop);
     const left = Math.max(8, Math.min(rect.left, window.innerWidth - rect.width - 8));
 
-    this.position.set({ top, left, width: rect.width, maxHeight });
+    this.position.set({ top, left, width: rect.width, maxHeight, scrollable: !fits });
   }
 }
