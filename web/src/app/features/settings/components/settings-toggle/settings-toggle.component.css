@@ -1,0 +1,4 @@
+/* Toggle switch dùng chung. Kích thước/màu theo từng trang, xem input size/onColor/offColor. */
+:host {
+  display: contents;
+}

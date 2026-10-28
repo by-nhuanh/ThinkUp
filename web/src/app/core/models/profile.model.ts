@@ -17,7 +17,11 @@ export interface UserProfile {
   tiktok?: string;
   x?: string;
   youtube?: string;
+  github?: string;
+  portfolio?: string;
+  phone?: string;
   maskedEmail?: string;
+  maskedPhone?: string;
   provider?: string;
   emailLocked?: boolean;
 }
@@ -54,6 +58,12 @@ export interface RecentActivity {
   tone: 'blue' | 'amber' | 'green' | 'sky' | string;
 }
 
+export interface Certificate {
+  id: string;
+  title: string;
+  issuedAt: string;
+}
+
 export interface ProfileOverviewData {
   profile: UserProfile;
   learningStats: LearningStat[];
@@ -62,4 +72,6 @@ export interface ProfileOverviewData {
   achievements: Achievement[];
   totalAwards: number;
   recentActivities: RecentActivity[];
+  certificates?: Certificate[];
+  completedCourses?: CurrentCourse[];
 }

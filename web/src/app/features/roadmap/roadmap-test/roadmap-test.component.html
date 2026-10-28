@@ -1,0 +1,195 @@
+<section class="rm-page test-page">
+  <div class="rm-container rm-container--full">
+    @if (test(); as t) {
+      <div class="test-layout">
+        <app-roadmap-survey-steps
+          title="Khảo sát kiến thức"
+          [activeStep]="2"
+          [showTip]="true"
+          [tipLabel]="t.title"
+        />
+
+        <div class="rm-card test-section">
+          <header class="test-head">
+            <div class="test-head__title-group">
+              <span class="test-head__icon" aria-hidden="true">
+                <svg lucideCodeXml [size]="24" [strokeWidth]="1.8"></svg>
+              </span>
+              <div>
+                <h1 class="test-head__title">Bài test: {{ t.title }}</h1>
+                <p class="test-head__sub">{{ t.subtitle }}</p>
+              </div>
+            </div>
+
+            <div class="test-head__actions">
+              <span class="test-timer">
+                <svg lucideClock3 aria-hidden="true" [size]="18" [strokeWidth]="1.8"></svg>
+                <span class="test-timer__text">
+                  <small>Thời gian còn lại</small>
+                  <strong>{{ timeLabel() }}</strong>
+                </span>
+              </span>
+
+              <button type="button" class="test-mark-btn" (click)="toggleMark()" [disabled]="!question()">
+                <svg lucideFlag aria-hidden="true" [size]="17" [strokeWidth]="1.8"></svg>
+                Đánh dấu
+                @if (markedCount() > 0) {
+                  <span class="test-mark-btn__badge">{{ markedCount() }}</span>
+                }
+              </button>
+
+              <button
+                type="button"
+                class="rm-btn rm-btn--outline rm-btn--sm test-panel-toggle"
+                [attr.aria-expanded]="panelOpen()"
+                (click)="panelOpen.set(!panelOpen())"
+              >
+                <svg lucideListChecks aria-hidden="true" [size]="17" [strokeWidth]="1.8"></svg>
+                Danh sách câu hỏi
+              </button>
+            </div>
+          </header>
+
+          <div class="test-body" [class.test-body--panel-closed]="!panelOpen()">
+            <div class="question-card">
+              @if (question(); as q) {
+                <span class="question-index">Câu {{ currentIndex() + 1 }} / {{ totalQuestions() }}</span>
+                <h2 class="question-prompt">{{ q.prompt }}</h2>
+
+                @if (q.code) {
+                  <div class="code-block">
+                    <div class="code-block__body">
+                      @for (line of codeLines(); track $index) {
+                        <span class="code-block__line">
+                          <span class="code-block__number">{{ $index + 1 }}</span>
+                          <code>{{ line }}</code>
+                        </span>
+                      }
+                    </div>
+                  </div>
+                }
+
+                <div class="question-options" role="radiogroup" [attr.aria-label]="q.prompt">
+                  @for (option of q.options; track option.id; let i = $index) {
+                    <button
+                      type="button"
+                      class="question-option"
+                      [class.is-selected]="isSelected(q, option.id)"
+                      role="radio"
+                      [attr.aria-checked]="isSelected(q, option.id)"
+                      (click)="selectOption(q, option.id)"
+                    >
+                      <span class="question-option__letter">
+                        @if (isSelected(q, option.id)) {
+                          <svg lucideCheck [size]="14" [strokeWidth]="2.6"></svg>
+                        } @else {
+                          {{ optionLetter(i) }}
+                        }
+                      </span>
+                      <span class="question-option__label">{{ option.label }}</span>
+                    </button>
+                  }
+                </div>
+
+                <footer class="question-footer">
+                  <button type="button" class="rm-btn rm-btn--soft rm-btn--sm question-footer__mark" (click)="toggleMark()">
+                    <svg lucideFlag aria-hidden="true" [size]="16" [strokeWidth]="1.8"></svg>
+                    {{ isMarked(q) ? 'Bỏ đánh dấu câu hỏi này' : 'Đánh dấu câu hỏi này' }}
+                  </button>
+
+                  <div class="question-footer__nav">
+                    <button type="button" class="rm-btn rm-btn--ghost rm-btn--sm" [disabled]="currentIndex() === 0" (click)="previous()">
+                      <svg lucideChevronLeft aria-hidden="true" [size]="16" [strokeWidth]="2"></svg>
+                      Câu trước
+                    </button>
+
+                    @if (currentIndex() < totalQuestions() - 1) {
+                      <button type="button" class="rm-btn rm-btn--primary rm-btn--sm" (click)="next()">
+                        Câu sau
+                        <svg lucideChevronRight aria-hidden="true" [size]="16" [strokeWidth]="2"></svg>
+                      </button>
+                    }
+
+                    <button
+                      type="button"
+                      class="rm-btn rm-btn--soft rm-btn--sm test-submit"
+                      [class.test-submit--ready]="canSubmit()"
+                      [attr.aria-disabled]="!canSubmit()"
+                      (click)="submit()"
+                    >
+                      Nộp bài test
+                    </button>
+                  </div>
+                </footer>
+
+                @if (showIncomplete() && !canSubmit()) {
+                  <p class="test-warning">
+                    Bạn còn {{ totalQuestions() - answeredCount() }} câu chưa trả lời. Hãy hoàn thành tất cả câu hỏi
+                    trước khi nộp bài.
+                  </p>
+                }
+              }
+            </div>
+
+            @if (panelOpen()) {
+              <aside class="question-panel">
+                <div class="question-panel__head">
+                  <h2>Câu hỏi</h2>
+                  <button
+                    type="button"
+                    class="question-panel__close"
+                    aria-label="Đóng danh sách câu hỏi"
+                    (click)="panelOpen.set(false)"
+                  >
+                    <svg lucideX [size]="17" [strokeWidth]="1.8"></svg>
+                  </button>
+                </div>
+
+                <ol class="question-panel__list">
+                  @for (q of t.questions; track q.id; let i = $index) {
+                    <li>
+                      <button
+                        type="button"
+                        class="question-jump"
+                        [class.is-current]="i === currentIndex()"
+                        [class.is-answered]="isAnswered(q)"
+                        [class.is-marked]="isMarked(q)"
+                        (click)="goTo(i)"
+                      >
+                        <span class="question-jump__number">{{ (i + 1).toString().padStart(2, '0') }}</span>
+                        <span class="question-jump__label">
+                          @if (i === currentIndex()) {
+                            Đang làm
+                          } @else if (isAnswered(q)) {
+                            Đã trả lời
+                          } @else {
+                            Chưa làm
+                          }
+                        </span>
+                        @if (isMarked(q)) {
+                          <svg lucideFlag aria-hidden="true" [size]="12" [strokeWidth]="2"></svg>
+                        }
+                      </button>
+                    </li>
+                  }
+                </ol>
+
+                <div class="question-panel__marked">Đã đánh dấu: {{ markedCount() }} câu</div>
+              </aside>
+            }
+          </div>
+        </div>
+      </div>
+    } @else {
+      <div class="rm-card test-empty">
+        <svg lucideCodeXml aria-hidden="true" [size]="32" [strokeWidth]="1.5"></svg>
+        <h1 class="rm-card-title">Không tìm thấy bài test</h1>
+        <p class="rm-base">Giai đoạn bạn chọn không tồn tại hoặc chưa có đề thi.</p>
+        <a class="rm-btn rm-btn--primary rm-btn--sm" [routerLink]="['/learning/roadmap', roadmapId]">
+          <svg lucideArrowLeft aria-hidden="true" [size]="16" [strokeWidth]="2"></svg>
+          Về lộ trình học
+        </a>
+      </div>
+    }
+  </div>
+</section>

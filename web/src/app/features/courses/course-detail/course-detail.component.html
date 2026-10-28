@@ -10,12 +10,12 @@
         </div>
       }
 
-      <div class="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8">
+      <div class="mx-auto max-w-[1600px] px-5 sm:px-6 lg:px-8">
         <!-- Breadcrumb -->
         <nav class="flex items-center gap-2 text-xs sm:text-sm text-[#62748E] mb-6" aria-label="Breadcrumb">
-          <a routerLink="/main/home" class="hover:text-[#0058BE] transition-colors">Trang chủ</a>
+          <a routerLink="/main/home" class="hover:text-[#155DFC] transition-colors">Trang chủ</a>
           <span>/</span>
-          <a routerLink="/main/courses" class="hover:text-[#0058BE] transition-colors">Khóa học</a>
+          <a routerLink="/main/courses" class="hover:text-[#155DFC] transition-colors">Khóa học</a>
           <span>/</span>
           <span class="text-[#0D1C2D] font-medium truncate max-w-[300px] sm:max-w-md">
             {{ course()?.title || 'Chi tiết khóa học' }}
@@ -46,7 +46,7 @@
             </div>
             <h2 class="text-xl font-bold text-[#0D1C2D] mb-2">{{ error() }}</h2>
             <p class="text-sm text-[#62748E] mb-6">Khóa học bạn tìm kiếm hiện không tồn tại hoặc đã bị gỡ.</p>
-            <a routerLink="/main/courses" class="inline-flex items-center px-5 py-2.5 bg-[#0058BE] text-white rounded-xl font-semibold text-sm hover:bg-[#004da6] transition-all">
+            <a routerLink="/main/courses" class="inline-flex items-center px-5 py-2.5 bg-[#155DFC] text-white rounded-xl font-semibold text-sm hover:bg-[#0F4CD1] transition-all">
               Quay lại danh mục khóa học
             </a>
           </div>
@@ -54,13 +54,25 @@
 
         <!-- Loaded Course Content -->
         @else if (course(); as c) {
-          <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] gap-8 items-start">
+          <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6 items-start">
             <!-- Left Main Column -->
             <div class="space-y-8 min-w-0">
               <!-- Hero Banner -->
               <div class="bg-[#071737] rounded-2xl p-6 sm:p-8 text-white relative overflow-hidden shadow-sm">
                 <!-- Background Glow -->
-                <div class="absolute -top-24 -right-24 w-96 h-96 bg-[#0058BE]/30 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="absolute -top-24 -right-24 w-96 h-96 bg-[#155DFC]/30 rounded-full blur-3xl pointer-events-none"></div>
+
+                <button
+                  type="button"
+                  (click)="toastMessage.set('Video giới thiệu khóa học sẽ sớm được cập nhật.')"
+                  class="absolute right-8 top-1/2 hidden h-20 w-20 -translate-y-1/2 place-items-center rounded-full border border-[#155DFC]/40 bg-[#155DFC]/10 text-[#60A5FA] transition hover:scale-105 hover:bg-[#155DFC]/20 lg:grid"
+                  aria-label="Xem video giới thiệu khóa học"
+                >
+                  <svg class="ml-1 h-8 w-8 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M8 5v14l11-7z"></path>
+                  </svg>
+                  <span class="absolute -inset-3 rounded-full border border-[#155DFC]/20"></span>
+                </button>
 
                 <div class="relative z-10">
                   @if (c.badge) {
@@ -122,6 +134,28 @@
                 </div>
               </div>
 
+              <!-- Course tags & level -->
+              <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:px-6">
+                <div class="flex flex-col gap-3 text-xs sm:text-sm">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="w-[104px] shrink-0 text-[#62748E]">Loại khóa học:</span>
+                    @if (c.category) {
+                      <span class="rounded-md bg-[#EBF3FF] px-2.5 py-1 text-[11px] font-medium text-[#155DFC]">{{ c.category }}</span>
+                    }
+                    @for (tag of c.tags || []; track tag) {
+                      <span class="rounded-md bg-[#EBF3FF] px-2.5 py-1 text-[11px] font-medium text-[#155DFC]">{{ tag }}</span>
+                    }
+                  </div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="w-[104px] shrink-0 text-[#62748E]">Trình độ:</span>
+                    <span class="rounded-md bg-[#F1F5F9] px-2.5 py-1 text-[11px] font-medium text-[#45556C]">{{ c.level || 'Tất cả cấp độ' }}</span>
+                    @if (c.language) {
+                      <span class="rounded-md bg-[#F1F5F9] px-2.5 py-1 text-[11px] font-medium text-[#45556C]">{{ c.language }}</span>
+                    }
+                  </div>
+                </div>
+              </div>
+
               <!-- Mobile Purchase Card (Hidden on Desktop) -->
               <div class="lg:hidden">
                 <ng-container *ngTemplateOutlet="purchaseCardTpl; context: { course: c }"></ng-container>
@@ -130,11 +164,15 @@
               <!-- What You Will Learn (Outcomes) -->
               @if (c.outcomes && c.outcomes.length > 0) {
                 <div class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm">
-                  <h2 class="text-lg sm:text-xl font-bold mb-4 text-[#0D1C2D]">Bạn sẽ học được gì trong khóa học này?</h2>
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  <h2 class="text-lg sm:text-xl font-bold mb-3 text-[#0D1C2D]">Mô tả khóa học</h2>
+                  <p class="text-sm text-[#424754] leading-relaxed mb-6">
+                    {{ c.description || c.shortDescription }}
+                  </p>
+                  <h3 class="text-base font-bold mb-4 text-[#0D1C2D]">Mục tiêu khóa học</h3>
+                  <div class="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-3.5">
                     @for (outcome of c.outcomes; track $index) {
                       <div class="flex items-start gap-3">
-                        <div class="w-5 h-5 rounded-full bg-blue-50 text-[#0058BE] flex items-center justify-center shrink-0 mt-0.5">
+                        <div class="w-5 h-5 rounded-full bg-blue-50 text-[#155DFC] flex items-center justify-center shrink-0 mt-0.5">
                           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
                           </svg>
@@ -159,7 +197,7 @@
                     <button
                       type="button"
                       (click)="handleToggleAll()"
-                      class="text-xs sm:text-sm font-semibold text-[#0058BE] hover:underline"
+                      class="text-xs sm:text-sm font-semibold text-[#155DFC] hover:underline"
                     >
                       {{ openChapters().length === c.curriculum.length ? 'Thu gọn tất cả' : 'Mở rộng tất cả' }}
                     </button>
@@ -202,7 +240,7 @@
                                 </div>
                                 <div class="flex items-center gap-3 shrink-0 ml-2">
                                   @if (lesson.isPreview) {
-                                    <span class="text-[11px] font-semibold text-[#0058BE] bg-blue-50 px-2 py-0.5 rounded cursor-pointer hover:underline">
+                                    <span class="text-[11px] font-semibold text-[#155DFC] bg-blue-50 px-2 py-0.5 rounded cursor-pointer hover:underline">
                                       Học thử
                                     </span>
                                   }
@@ -214,32 +252,6 @@
                         }
                       </div>
                     }
-                  </div>
-                </div>
-              }
-
-              <!-- Instructor Profile -->
-              @if (c.instructorProfile; as ins) {
-                <div class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm">
-                  <h2 class="text-lg sm:text-xl font-bold mb-6 text-[#0D1C2D]">Thông tin giảng viên</h2>
-                  <div class="flex items-start gap-4 sm:gap-6">
-                    <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-2xl flex items-center justify-center shrink-0 shadow-md">
-                      {{ c.instructorInitial || ins.name.charAt(0) }}
-                    </div>
-                    <div class="space-y-1.5 min-w-0">
-                      <h3 class="text-base sm:text-lg font-bold text-[#0D1C2D]">{{ ins.name }}</h3>
-                      <p class="text-xs sm:text-sm text-[#0058BE] font-medium">{{ ins.title }}</p>
-                      <div class="flex items-center gap-4 text-xs text-[#62748E] pt-1">
-                        <span>★ {{ ins.rating }} Đánh giá</span>
-                        <span>•</span>
-                        <span>{{ ins.studentsCount }}</span>
-                        <span>•</span>
-                        <span>{{ ins.coursesCount }} Khóa học</span>
-                      </div>
-                      <p class="text-xs sm:text-sm text-[#424754] leading-relaxed pt-2">
-                        {{ ins.bio }}
-                      </p>
-                    </div>
                   </div>
                 </div>
               }
@@ -256,7 +268,26 @@
                     </div>
                   </div>
 
-                  <div class="space-y-4">
+                  <div class="grid gap-6 rounded-xl border border-slate-100 bg-slate-50/60 p-4 sm:grid-cols-[140px_minmax(0,1fr)] sm:p-5">
+                    <div class="text-center sm:text-left">
+                      <p class="text-4xl font-black leading-none text-[#0D1C2D]">{{ c.rating }}<span class="text-base font-semibold text-[#90A1B9]">/5</span></p>
+                      <div class="mt-2 text-amber-400">★★★★★</div>
+                      <p class="mt-1 text-[11px] text-[#62748E]">({{ c.ratingCount }} đánh giá)</p>
+                    </div>
+                    <div class="space-y-1.5">
+                      @for (row of reviewBreakdown; track row.stars) {
+                        <div class="flex items-center gap-2 text-[11px] text-[#62748E]">
+                          <span class="w-8 shrink-0">{{ row.stars }} sao</span>
+                          <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-[#E2E8F0]">
+                            <div class="h-full rounded-full bg-[#16A34A]" [style.width.%]="row.percent"></div>
+                          </div>
+                          <span class="w-10 shrink-0 text-right">{{ row.count }}</span>
+                        </div>
+                      }
+                    </div>
+                  </div>
+
+                  <div class="mt-5 space-y-4">
                     @for (review of c.reviews; track review.id) {
                       <div class="p-4 rounded-xl bg-slate-50 border border-slate-100">
                         <div class="flex items-center justify-between mb-2">
@@ -286,6 +317,56 @@
             <!-- Right Sidebar Column (Sticky on Desktop) -->
             <aside class="hidden lg:block sticky top-24 space-y-6">
               <ng-container *ngTemplateOutlet="purchaseCardTpl; context: { course: c }"></ng-container>
+
+              <!-- Instructor Card -->
+              @if (c.instructorProfile; as ins) {
+                <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <h3 class="text-sm font-bold text-[#0D1C2D]">Giảng viên</h3>
+                  <div class="mt-3 flex items-center gap-3">
+                    <div class="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-gradient-to-tr from-[#155DFC] to-indigo-600 text-lg font-bold text-white">
+                      {{ c.instructorInitial || ins.name.charAt(0) }}
+                    </div>
+                    <div class="min-w-0">
+                      <p class="truncate text-sm font-bold text-[#0D1C2D]">{{ ins.name }}</p>
+                      <p class="truncate text-[11px] text-[#62748E]">{{ ins.title }}</p>
+                      <p class="mt-0.5 text-[11px] font-semibold text-amber-500">★ {{ ins.rating }}</p>
+                    </div>
+                  </div>
+                  <p class="mt-3 line-clamp-3 text-[11px] leading-5 text-[#62748E]">{{ ins.bio }}</p>
+                  <div class="mt-3 grid grid-cols-3 divide-x divide-slate-100 rounded-lg bg-slate-50 py-2 text-center">
+                    <div>
+                      <p class="truncate text-[10px] font-bold text-[#0D1C2D]" [title]="ins.studentsCount">{{ ins.studentsCount }}</p>
+                      <p class="text-[9px] text-[#90A1B9]">Học viên</p>
+                    </div>
+                    <div>
+                      <p class="text-[10px] font-bold text-[#0D1C2D]">{{ ins.coursesCount }}</p>
+                      <p class="text-[9px] text-[#90A1B9]">Khóa học</p>
+                    </div>
+                    <div>
+                      <p class="text-[10px] font-bold text-[#0D1C2D]">98%</p>
+                      <p class="text-[9px] text-[#90A1B9]">Hài lòng</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    (click)="toastMessage.set('Hồ sơ giảng viên sẽ sớm được cập nhật.')"
+                    class="mt-3 h-9 w-full rounded-lg border border-[#155DFC] text-[11px] font-semibold text-[#155DFC] transition hover:bg-[#EBF3FF]"
+                  >
+                    Xem hồ sơ giảng viên
+                  </button>
+                </div>
+              }
+
+              <!-- Sample certificate -->
+              <div class="rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-sm">
+                <div class="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-[#FFFBEB] text-[#D97706]">
+                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
+                  </svg>
+                </div>
+                <p class="mt-2 text-[11px] font-bold text-[#0D1C2D]">Chứng chỉ mẫu</p>
+                <p class="mt-0.5 text-[10px] text-[#90A1B9]">thinkup.vn/verify</p>
+              </div>
 
               <!-- Guarantee Badge Card -->
               <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm text-center">
@@ -339,7 +420,7 @@
           <button
             type="button"
             (click)="handleBuyNow()"
-            class="w-full h-12 bg-[#0058BE] hover:bg-[#004da6] active:scale-[0.99] text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-[#0058BE]/20 flex items-center justify-center gap-2"
+            class="w-full h-12 bg-[#155DFC] hover:bg-[#0F4CD1] active:scale-[0.99] text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-[#155DFC]/20 flex items-center justify-center gap-2"
           >
             Mua ngay
           </button>
@@ -347,7 +428,7 @@
           <button
             type="button"
             (click)="handleAddToCart()"
-            class="w-full h-12 bg-[#EBF3FF] hover:bg-[#D8E8FF] active:scale-[0.99] text-[#0058BE] font-bold text-sm rounded-xl transition-all border border-[#D0E2FF] flex items-center justify-center gap-2"
+            class="w-full h-12 bg-[#EBF3FF] hover:bg-[#D8E8FF] active:scale-[0.99] text-[#155DFC] font-bold text-sm rounded-xl transition-all border border-[#D0E2FF] flex items-center justify-center gap-2"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>

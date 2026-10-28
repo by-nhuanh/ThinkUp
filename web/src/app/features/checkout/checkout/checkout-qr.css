@@ -1,0 +1,318 @@
+/* ─── Panel QR VNPAY (Figma node 3180:10931) ─────────────────────────────── */
+
+.pay-qr-panel {
+  position: relative;
+  box-sizing: border-box;
+  width: min(1068px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  border: 1px solid #2563EB;
+  border-radius: 14px;
+  background: #F5F8FF;
+  box-shadow:
+    0 0 0 3px rgba(37, 99, 235, 0.08),
+    0 0 0 1px rgba(37, 99, 235, 0.4),
+    0 24px 64px rgba(15, 23, 42, 0.24);
+  animation: pay-modal-in 180ms ease-out;
+}
+
+.pay-qr-panel *,
+.pay-qr-panel *::before,
+.pay-qr-panel *::after {
+  box-sizing: border-box;
+}
+
+.pay-qr-panel__head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+}
+
+.pay-qr-panel__radio {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #2563EB;
+  border-radius: 50%;
+}
+
+.pay-qr-panel__radio::after {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #2563EB;
+}
+
+.pay-qr-panel__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #EFF6FF;
+  color: #2563EB;
+}
+
+.pay-qr-panel__icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.pay-qr-panel__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pay-qr-panel__heading strong {
+  color: #111827;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22.5px;
+}
+
+.pay-qr-panel__heading span {
+  color: #6B7280;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.pay-qr-panel__brand {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 1px;
+  margin-left: auto;
+  color: #EF4444;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 19.5px;
+  letter-spacing: 0;
+}
+
+.pay-qr-panel__brand > span {
+  font-size: 9px;
+  line-height: 19.5px;
+  transform: translateY(-3px);
+}
+
+.pay-qr-panel__close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin-left: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #6B7280;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.pay-qr-panel__close:hover {
+  background: #E4EDFF;
+  color: #1D4ED8;
+}
+
+.pay-qr-panel__close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.pay-qr-panel__body {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  min-height: 408px;
+  padding: 0 20px 20px;
+}
+
+.pay-qr-card {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 12px;
+  width: 300px;
+  padding: 16px;
+  border: 1px solid #5175BF;
+  border-radius: 14px;
+  background: #D6EAFF;
+}
+
+.pay-qr-card h4 {
+  margin: 0;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  text-align: center;
+}
+
+.pay-qr-card__code {
+  display: grid;
+  place-items: center;
+  width: 224px;
+  height: 224px;
+  margin: 0 auto;
+  padding: 12px;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow:
+    0 1px 2px -1px rgba(0, 0, 0, 0.1),
+    0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.pay-qr-card__code img {
+  display: block;
+  width: 200px;
+  height: 200px;
+  object-fit: contain;
+}
+
+.pay-qr-card__placeholder {
+  display: grid;
+  place-items: center;
+  width: 200px;
+  height: 200px;
+  color: #94A3B8;
+}
+
+.pay-qr-card__placeholder svg {
+  width: 96px;
+  height: 96px;
+}
+
+.pay-qr-card__timer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 16px 16px 12px;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.pay-qr-card__timer-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #6B7280;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.pay-qr-card__timer-label svg {
+  width: 16px;
+  height: 16px;
+}
+
+.pay-qr-card__timer strong {
+  color: #2563EB;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 32px;
+}
+
+.pay-qr-guide {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 12px;
+  width: 496px;
+  min-width: 0;
+}
+
+.pay-qr-guide h4 {
+  margin: 0;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22.5px;
+}
+
+.pay-qr-guide__steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+  list-style: decimal;
+  color: #374151;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.pay-qr-guide__note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 16px 16px 12px;
+  border: 1px solid #BFDBFE;
+  border-radius: 10px;
+  background: #EFF6FF;
+  color: #1E3A8A;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.pay-qr-guide__note svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+}
+
+.pay-qr-panel__foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 20px 20px;
+  padding: 12px 16px;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  background: #F9FAFB;
+  color: #6B7280;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.pay-qr-panel__foot svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 900px) {
+  .pay-qr-panel__body {
+    flex-direction: column;
+    align-items: stretch;
+    min-height: 0;
+  }
+
+  .pay-qr-card,
+  .pay-qr-guide {
+    width: 100%;
+  }
+
+  .pay-qr-panel__head {
+    flex-wrap: wrap;
+  }
+
+  .pay-qr-panel__brand {
+    margin-left: 0;
+  }
+
+  .pay-qr-panel__close {
+    margin-left: auto;
+  }
+}

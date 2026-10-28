@@ -1,0 +1,393 @@
+/*
+ * Khung dùng chung cho hai trang Giỏ hàng & Thanh toán.
+ * Chỉ chứa layout, control và các mảnh UI lặp lại giữa hai trang;
+ * phần đặc thù nằm trong cart.component.css / checkout.component.css.
+ */
+
+.pay-page {
+  min-height: calc(100vh - 82px);
+  background: var(--pay-page-bg);
+  color: var(--pay-text);
+  padding-bottom: 72px;
+}
+
+.pay-container {
+  width: 100%;
+  max-width: var(--pay-page-max);
+  margin-inline: auto;
+  padding-inline: var(--pay-page-x);
+}
+
+/* ─── Breadcrumb & tiêu đề ──────────────────────────────────────────────── */
+
+.pay-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 20px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--pay-text-muted);
+}
+
+.pay-breadcrumb__link {
+  color: inherit;
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+
+.pay-breadcrumb__link:hover {
+  color: var(--pay-primary);
+}
+
+.pay-breadcrumb__sep {
+  color: var(--pay-text-subtle);
+}
+
+.pay-breadcrumb__current {
+  color: var(--pay-text-muted);
+}
+
+.pay-heading {
+  display: flex;
+  align-items: flex-start;
+  margin-top: 10px;
+  margin-bottom: 20px;
+}
+
+.pay-page-title {
+  display: inline;
+  color: var(--pay-text-strong);
+  font-size: var(--pay-font-page-title);
+  font-weight: 700;
+  line-height: 1.42;
+  letter-spacing: -0.02em;
+}
+
+.pay-page-title__count {
+  display: inline-block;
+  max-width: 112px;
+  margin-left: 3px;
+  vertical-align: bottom;
+  color: var(--pay-text-muted);
+  font-size: 16.8px;
+  font-weight: 400;
+  line-height: 24px;
+}
+
+/* ─── Bố cục hai cột ─────────────────────────────────────────────────────── */
+
+.pay-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--pay-aside);
+  align-items: start;
+  gap: var(--pay-gap);
+}
+
+.pay-card {
+  background: var(--pay-surface);
+  border: 1px solid var(--pay-border);
+  border-radius: var(--pay-radius-card);
+}
+
+.pay-aside {
+  position: sticky;
+  top: 98px;
+  min-width: 0;
+}
+
+/* ─── Checkbox tròn vuông ────────────────────────────────────────────────── */
+
+.pay-check {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1.5px solid #D5DCE6;
+  border-radius: 6px;
+  background: #fff;
+  color: #fff;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.pay-check:hover:not(:disabled) {
+  border-color: #93B4F5;
+}
+
+.pay-check.is-checked {
+  border-color: var(--pay-primary);
+  background: var(--pay-primary);
+}
+
+.pay-check:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+
+.pay-check:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.pay-check svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ─── Nút CTA ────────────────────────────────────────────────────────────── */
+
+.pay-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 52px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--pay-primary);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+  cursor: pointer;
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.pay-cta:hover:not(:disabled) {
+  background: var(--pay-primary-hover);
+}
+
+.pay-cta:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.pay-cta:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.24);
+}
+
+.pay-cta svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.pay-cta:disabled,
+.pay-cta.is-disabled {
+  background: #DBE6FF;
+  color: #fff;
+  cursor: not-allowed;
+}
+
+/* ─── Voucher ────────────────────────────────────────────────────────────── */
+
+.voucher-label {
+  display: block;
+  color: var(--pay-text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.voucher-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.voucher-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--pay-border-strong);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--pay-text);
+  font-size: 13px;
+  line-height: 20px;
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.voucher-input::placeholder {
+  color: var(--pay-text-subtle);
+}
+
+.voucher-input:focus {
+  border-color: #93B4F5;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.voucher-input:disabled {
+  background: #F8FAFC;
+  cursor: wait;
+}
+
+.voucher-apply {
+  flex: none;
+  height: 40px;
+  min-width: 86px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--pay-primary);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+
+.voucher-apply:hover:not(:disabled) {
+  background: var(--pay-primary-hover);
+}
+
+.voucher-apply:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.voucher-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 16px 12px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 19.5px;
+}
+
+.voucher-card__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+}
+
+.voucher-card__icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.voucher-card__body {
+  min-width: 0;
+}
+
+.voucher-card__body strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.voucher-card__body span {
+  display: block;
+  margin-top: 1px;
+  opacity: 0.92;
+}
+
+.voucher-card--success {
+  border-color: #D0FAE5;
+  background: #ECFDF5;
+  color: #007A55;
+}
+
+.voucher-card--success .voucher-card__body span {
+  color: #009966;
+}
+
+.voucher-card--error {
+  border-color: #FFE4E6;
+  background: #FFF1F2;
+  color: #EC003F;
+}
+
+/* ─── Ghi chú bảo mật ────────────────────────────────────────────────────── */
+
+.pay-secure-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 11px 12px;
+  border: 1px solid #D0FAE5;
+  border-radius: 8px;
+  background: #ECFDF5;
+  color: #008A5B;
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.pay-secure-note__icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 0;
+}
+
+.pay-secure-note__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ─── Nhãn ảnh khóa học ──────────────────────────────────────────────────── */
+
+.art-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  padding: 3px 7px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0F172A;
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 12px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.art-badge--sale {
+  background: #FF2056;
+  color: #FFD230;
+}
+
+.art-badge--new {
+  background: #00A63E;
+  color: #fff;
+}
+
+.art-badge--best {
+  background: #7F22FE;
+  color: #fff;
+}
+
+.art-badge--hot {
+  background: #E7000B;
+  color: #fff;
+}
+
+/* ─── Responsive an toàn cho màn hình hẹp ────────────────────────────────── */
+
+@media (max-width: 1180px) {
+  .pay-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pay-aside {
+    position: static;
+    width: auto;
+  }
+}

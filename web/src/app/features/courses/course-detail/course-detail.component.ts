@@ -28,6 +28,14 @@ export class CourseDetailComponent implements OnInit {
   openChapters = signal<number[]>([0]);
   toastMessage = signal<string>('');
 
+  readonly reviewBreakdown = [
+    { stars: 5, percent: 80, count: 960 },
+    { stars: 4, percent: 12, count: 144 },
+    { stars: 3, percent: 5, count: 60 },
+    { stars: 2, percent: 2, count: 24 },
+    { stars: 1, percent: 1, count: 12 },
+  ];
+
   isWishlisted = computed(() => {
     const id = this.courseId();
     return id ? this.favoritesService.isFavorite(id) : false;

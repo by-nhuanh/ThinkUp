@@ -1,0 +1,51 @@
+<main class="min-h-screen bg-[#f5faff] text-[#0b1723]">
+  <section class="border-b border-[#e4edf7] bg-[radial-gradient(circle_at_center,#e5f5ff_0%,#f8fcff_68%)] px-8 py-20 text-center">
+    <h1 class="text-[clamp(34px,3vw,44px)] font-bold tracking-[-.03em]">Trung tâm trợ giúp</h1>
+    <p class="mt-4 text-sm text-[#6a778a]">Tìm kiếm câu trả lời và hướng dẫn chi tiết để sử dụng ThinkUp hiệu quả nhất.</p>
+    <form class="mx-auto mt-8 flex h-[62px] max-w-[674px] items-center gap-3 rounded-2xl border border-[#d6e0ed] bg-white p-2 pl-6 shadow-sm" (submit)="$event.preventDefault(); search(searchInput.value)">
+      <span class="text-xl text-[#61738f]">⌕</span>
+      <input #searchInput [value]="query()" class="min-w-0 flex-1 bg-transparent text-sm outline-none" placeholder="Tìm kiếm câu hỏi, chủ đề..." maxlength="100" aria-label="Tìm kiếm câu hỏi" />
+      <button class="h-[44px] rounded-xl bg-[#075ee8] px-7 text-sm font-semibold text-white">⌕ &nbsp; Tìm kiếm</button>
+    </form>
+    @if (searched() && !visibleItems.length) { <p class="mx-auto mt-3 max-w-[674px] text-left text-sm text-red-600">Không tìm thấy kết quả phù hợp với từ khóa của bạn.</p> }
+  </section>
+
+  <section class="mx-auto grid max-w-[1564px] grid-cols-[302px_minmax(0,1fr)] gap-6 px-8 py-10 max-[900px]:grid-cols-1">
+    <aside class="space-y-5">
+      <nav class="rounded-2xl border border-[#d6e0ed] bg-white p-5" aria-label="Danh mục câu hỏi">
+        <h2 class="mb-4 font-bold">Danh mục câu hỏi</h2>
+        @for (category of categories; track category.id) {
+          <button type="button" (click)="selectCategory(category.id)" class="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition" [class.bg-[#e2f0ff]]="activeCategoryId() === category.id" [class.font-semibold]="activeCategoryId() === category.id" [class.text-[#0767ef]]="activeCategoryId() === category.id">
+            <span class="w-5 text-center">{{ category.icon }}</span>{{ category.label }}
+          </button>
+        }
+      </nav>
+      <div class="rounded-2xl border border-[#d6e0ed] bg-white p-5">
+        <h2 class="font-bold">Không tìm thấy câu trả lời?</h2><p class="mt-2 text-sm leading-5 text-[#6a778a]">Đội ngũ hỗ trợ của chúng tôi luôn sẵn sàng giúp bạn.</p>
+        <a [routerLink]="['/main/contact']" [queryParams]="{ category: activeCategoryId() }" class="mt-5 flex h-11 items-center justify-center rounded-xl border border-[#76adff] bg-[#e2f0ff] text-sm font-semibold text-[#0767ef]">➤ &nbsp; Gửi yêu cầu hỗ trợ</a>
+      </div>
+    </aside>
+
+    <section class="rounded-2xl border border-[#d6e0ed] bg-white p-7">
+      <header class="flex items-center gap-4 border-b border-[#dce5ef] pb-5">
+        <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-[#e2f0ff] text-[#0767ef]">{{ activeCategory.icon }}</span>
+        <div><h2 class="text-xl font-bold">{{ searched() ? 'Kết quả tìm kiếm' : activeCategory.label }}</h2><p class="mt-1 text-sm text-[#6a778a]">{{ searched() ? visibleItems.length + ' kết quả phù hợp' : activeCategory.description }}</p></div>
+      </header>
+      <div class="mt-5 space-y-3">
+        @for (item of visibleItems; track item.question; let i = $index) {
+          <article class="overflow-hidden rounded-2xl border transition" [class.border-[#76adff]]="openQuestion() === i" [class.bg-[#f3f9ff]]="openQuestion() === i" [class.border-[#d6e0ed]]="openQuestion() !== i">
+            <button class="flex w-full items-center justify-between gap-4 px-5 py-5 text-left text-sm font-semibold" (click)="toggleQuestion(i)" [attr.aria-expanded]="openQuestion() === i"><span>{{ i + 1 }}. {{ item.question }}</span><span>{{ openQuestion() === i ? '⌃' : '⌄' }}</span></button>
+            @if (openQuestion() === i) { <p class="px-5 pb-5 text-sm leading-6 text-[#65758b]">{{ item.answer }}</p> }
+          </article>
+        } @empty {
+          <div class="py-16 text-center"><p class="font-semibold">Không tìm thấy kết quả phù hợp với từ khóa của bạn</p><a routerLink="/main/contact" class="mt-4 inline-flex rounded-xl bg-[#075ee8] px-5 py-3 text-sm font-semibold text-white">Gửi yêu cầu hỗ trợ</a></div>
+        }
+      </div>
+    </section>
+  </section>
+
+  <section class="mx-auto mb-24 flex max-w-[1564px] items-center justify-between gap-4 rounded-2xl border border-[#d6e0ed] bg-white px-6 py-6 max-[900px]:mx-8">
+    <div class="flex items-center gap-4"><span class="flex h-12 w-12 items-center justify-center rounded-xl bg-[#e2f0ff] text-xl text-[#0767ef]">♧</span><div><h2 class="font-bold">Vẫn cần hỗ trợ?</h2><p class="text-sm text-[#6a778a]">Đội ngũ hỗ trợ của ThinkUp luôn sẵn sàng giúp bạn giải quyết mọi vấn đề.</p></div></div>
+    <a [routerLink]="['/main/contact']" [queryParams]="{ category: activeCategoryId() }" class="shrink-0 rounded-xl border border-[#0767ef] px-5 py-3 text-sm font-semibold text-[#0767ef]">→ &nbsp; Gửi yêu cầu hỗ trợ</a>
+  </section>
+</main>

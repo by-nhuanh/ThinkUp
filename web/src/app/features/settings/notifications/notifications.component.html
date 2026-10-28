@@ -1,0 +1,146 @@
+<div class="min-h-full bg-[#F9F9FF] text-[#071123]">
+  <main class="mx-auto flex w-full min-w-0 max-w-[1920px] flex-1 flex-col gap-6 overflow-x-hidden px-[clamp(16px,3.33vw,64px)] py-6">
+    <!-- Header trang -->
+    <header class="flex flex-col gap-1">
+      <div class="flex items-center justify-between gap-4">
+        <h1 class="text-[24px] font-bold leading-8 text-[#0F172B]">Thông báo</h1>
+        <app-settings-back-button (back)="back()" />
+      </div>
+      <p class="text-[14px] leading-5 text-[#677284]">
+        Quản lý tùy chọn nhận thông báo và kênh thông báo của bạn.
+      </p>
+    </header>
+
+    <div class="grid grid-cols-[616fr_1165fr] gap-6">
+      <div class="flex min-w-0 flex-col gap-6">
+        <!-- Chế độ không làm phiền -->
+        <section class="min-h-[216px] rounded-[20px] border border-[#E0E5EB] bg-white p-6">
+          <h2 class="text-[16px] font-bold uppercase leading-6 text-[#0F1B2D]">Không muốn bị làm phiền</h2>
+          <p class="mt-1 text-[14px] leading-5 text-[#677284]">
+            Tạm dừng tất cả thông báo không quan trọng trong một khoảng thời gian.
+          </p>
+
+          <div class="mt-6 grid grid-cols-5 gap-2">
+            @for (opt of dndOptions; track opt.value) {
+              <button
+                type="button"
+                class="flex min-h-16 items-center justify-center rounded-2xl border px-2 py-1.5 text-center text-[14px] font-medium leading-5 transition"
+                [attr.aria-pressed]="prefs().dnd === opt.value"
+                [style.background-color]="prefs().dnd === opt.value ? '#D4F0FF' : '#FFFFFF'"
+                [style.border-color]="prefs().dnd === opt.value ? '#3061EF' : '#E0E5EB'"
+                [style.color]="prefs().dnd === opt.value ? '#3061EF' : '#0F1B2D'"
+                (click)="setDnd(opt.value)"
+              >
+                {{ opt.label }}
+              </button>
+            }
+          </div>
+
+          <p class="mt-3 flex items-center gap-2 text-[12px] leading-4 text-[#677284]">
+            <svg lucideHistory [size]="16" [strokeWidth]="1.8" class="shrink-0"></svg>
+            <span>Chế độ sẽ tự động tắt sau thời gian bạn chọn.</span>
+          </p>
+        </section>
+
+        <!-- Phương thức nhận tin -->
+        <section class="min-h-[271px] rounded-[16px] border border-[#DBE3ED] bg-white p-6">
+          <h2 class="text-[16px] font-bold uppercase leading-6 text-[#1F293B]">Phương thức nhận tin</h2>
+
+          <div class="mt-8 flex flex-col gap-1">
+            @for (method of methods; track method.key) {
+              <div class="flex min-h-9 items-center justify-between gap-4">
+                <div class="flex min-w-0 items-center gap-4">
+                  <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#F0F6FC] text-[#677284]">
+                    @switch (method.icon) {
+                      @case ('monitor') {
+                        <svg lucideMonitor [size]="18" [strokeWidth]="1.8"></svg>
+                      }
+                      @case ('mail') {
+                        <svg lucideMail [size]="18" [strokeWidth]="1.8"></svg>
+                      }
+                    }
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-[14px] font-semibold leading-5 text-[#0F1B2D]">{{ method.title }}</p>
+                    <p class="text-[12px] leading-4 text-[#677284]">{{ method.sub }}</p>
+                  </div>
+                </div>
+
+                <app-settings-toggle
+                  [checked]="isEnabled(method.key)"
+                  (change)="togglePref(method.key)"
+                  onColor="#3061EF"
+                  offColor="#E0E5EB"
+                />
+              </div>
+            }
+          </div>
+        </section>
+      </div>
+
+      <!-- Loại thông báo -->
+      <section class="min-h-[626px] rounded-[20px] border border-[#E0E5EB] bg-white p-6">
+        <h2 class="text-[16px] font-bold uppercase leading-6 text-[#0F1B2D]">Loại thông báo</h2>
+
+        <div class="mt-16 flex flex-col gap-[30px]">
+          @for (category of categories; track category.title) {
+            <div class="flex min-h-[55px] items-start justify-between gap-4">
+              <div class="flex min-w-0 items-start gap-4">
+                <div
+                  class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                  [style.background-color]="category.bg"
+                  [style.color]="category.color"
+                >
+                  @switch (category.icon) {
+                    @case ('graduation') {
+                      <svg lucideGraduationCap [size]="18" [strokeWidth]="1.8"></svg>
+                    }
+                    @case ('chat') {
+                      <svg lucideMessageSquare [size]="18" [strokeWidth]="1.8"></svg>
+                    }
+                    @case ('refresh') {
+                      <svg lucideRefreshCw [size]="18" [strokeWidth]="1.8"></svg>
+                    }
+                    @case ('send') {
+                      <svg lucideSend [size]="18" [strokeWidth]="1.8"></svg>
+                    }
+                    @case ('key') {
+                      <svg lucideKeyRound [size]="18" [strokeWidth]="1.8"></svg>
+                    }
+                  }
+                </div>
+
+                <div class="min-w-0 max-w-[200px]">
+                  <p
+                    class="text-[14px] font-semibold leading-5"
+                    [style.color]="category.locked ? '#7A8596' : '#0F1B2D'"
+                  >
+                    {{ category.title }}
+                  </p>
+                  <p class="whitespace-pre-line text-[12px] leading-4 text-[#677284]">{{ category.sub }}</p>
+                </div>
+              </div>
+
+              @if (category.key) {
+                <app-settings-toggle
+                  size="md"
+                  [checked]="isEnabled(category.key)"
+                  (change)="togglePref(category.key)"
+                  onColor="#3061EF"
+                  offColor="#E0E5EB"
+                />
+              } @else if (category.locked) {
+                <svg
+                  lucideLock
+                  [size]="30"
+                  [strokeWidth]="1.4"
+                  class="shrink-0 text-[#94A3B8]"
+                ></svg>
+              }
+            </div>
+          }
+        </div>
+      </section>
+    </div>
+  </main>
+</div>

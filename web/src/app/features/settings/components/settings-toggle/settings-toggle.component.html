@@ -1,0 +1,35 @@
+<label
+  class="inline-flex select-none items-center"
+  [class.cursor-pointer]="!disabled()"
+  [class.cursor-not-allowed]="disabled()"
+>
+  <input
+    type="checkbox"
+    role="switch"
+    [checked]="checked()"
+    [disabled]="disabled()"
+    (change)="onChange($event)"
+    class="peer sr-only"
+  />
+  <span
+    class="relative inline-block rounded-full transition-colors duration-200 peer-focus-visible:ring-2 peer-focus-visible:ring-[#155DFC]/40 peer-focus-visible:ring-offset-2"
+    [class.opacity-50]="disabled()"
+    [style.width.px]="size() === 'sm' ? 44 : 52"
+    [style.height.px]="size() === 'sm' ? 24 : 28"
+    [style.background-color]="checked() ? onColor() : offColor()"
+  >
+    <!--
+      Kích thước và vị trí đặt bằng inline style thay vì class binding:
+      tên class có dấu chấm/ngoặc vuông (left-0.5, w-[22px]) không gắn đúng qua [class.*]
+      nên trước đây núm bị dạt về góc trên trái của track.
+    -->
+    <span
+      class="absolute rounded-full bg-white shadow-sm transition-transform duration-200"
+      [style.width.px]="size() === 'sm' ? 20 : 22"
+      [style.height.px]="size() === 'sm' ? 20 : 22"
+      [style.left.px]="size() === 'sm' ? 2 : 3"
+      [style.top.px]="size() === 'sm' ? 2 : 3"
+      [style.transform]="checked() ? 'translateX(' + (size() === 'sm' ? 20 : 24) + 'px)' : 'none'"
+    ></span>
+  </span>
+</label>

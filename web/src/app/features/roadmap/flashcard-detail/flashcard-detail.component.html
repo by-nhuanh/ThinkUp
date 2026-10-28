@@ -1,0 +1,244 @@
+<section class="rm-page fc-detail-page">
+  <div class="rm-container rm-container--full">
+    @if (set(); as s) {
+      <div class="fc-detail-top">
+        <a class="fc-back" routerLink="/learning/flashcards">
+          <svg lucideArrowLeft aria-hidden="true" [size]="15" [strokeWidth]="2"></svg>
+          Quay lại
+        </a>
+
+        <div class="fc-detail-actions">
+          <button
+            type="button"
+            class="fc-detail-head__delete"
+            aria-label="Xóa bộ flashcard"
+            (click)="deleteConfirm.set(true)"
+          >
+            <svg lucideTrash2 [size]="17" [strokeWidth]="1.8"></svg>
+          </button>
+
+          <button type="button" class="rm-btn rm-btn--primary rm-btn--sm" (click)="addCard()">
+            <svg lucidePlus aria-hidden="true" [size]="16" [strokeWidth]="2"></svg>
+            Thêm thẻ
+          </button>
+        </div>
+      </div>
+
+      <header class="fc-detail-head">
+        <div class="fc-detail-head__main">
+          <span class="fc-detail-head__icon" [style.background]="s.tint" [style.color]="s.accent" aria-hidden="true">
+            <app-flashcard-set-icon [icon]="s.icon" [size]="32" />
+          </span>
+          <div class="fc-detail-head__text">
+            <h1 class="fc-detail-head__title">{{ s.title }}</h1>
+            <p class="fc-detail-head__desc">{{ s.desc }}</p>
+          </div>
+        </div>
+
+        <div class="fc-detail-head__meta">
+          <span>
+            <svg lucideLayers aria-hidden="true" [size]="14" [strokeWidth]="1.8"></svg>
+            {{ stats().total }} thẻ
+          </span>
+          <span>
+            <svg lucideCalendarDays aria-hidden="true" [size]="14" [strokeWidth]="1.8"></svg>
+            Tạo lúc {{ formatDate(s.createdAt) }}
+          </span>
+        </div>
+      </header>
+
+      <div class="fc-detail-layout">
+        <div class="rm-card fc-table-card">
+          <div class="fc-table-toolbar">
+            <div class="fc-table-toolbar__filters" role="group" aria-label="Lọc thẻ theo trạng thái">
+              @for (filter of filters(); track filter.id) {
+                <button
+                  type="button"
+                  class="rm-filter"
+                  [class.is-active]="cardFilter() === filter.id"
+                  [attr.aria-pressed]="cardFilter() === filter.id"
+                  (click)="setCardFilter(filter.id)"
+                >
+                  {{ filter.label }} ({{ filter.count }})
+                </button>
+              }
+            </div>
+          </div>
+
+          @if (filteredCards().length > 0) {
+            <div class="fc-table-scroll rm-scroll">
+              <table class="fc-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Mặt trước</th>
+                    <th scope="col">Mặt sau</th>
+                    <th scope="col">Code</th>
+                    <th scope="col">Chú thích</th>
+                    <th scope="col">Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (card of filteredCards(); track card.id) {
+                    <tr>
+                      <td class="fc-table__front" [title]="card.front">
+                        <span class="fc-table__front-inner">
+                          <span class="fc-table__index" aria-hidden="true">{{ $index + 1 }}</span>
+                          <span class="fc-table__front-text">{{ card.front }}</span>
+                        </span>
+                      </td>
+                      <td class="fc-table__back" [title]="card.back">{{ card.back }}</td>
+                      <td class="fc-table__code">
+                        @if (card.code) {
+                          <code [title]="card.code">{{ card.code }}</code>
+                        } @else {
+                          <span class="fc-table__empty">—</span>
+                        }
+                      </td>
+                      <td class="fc-table__note" [title]="card.note ?? ''">
+                        {{ card.note || '—' }}
+                      </td>
+                      <td>
+                        <span
+                          class="fc-status"
+                          [class.fc-status--learned]="card.status === 'learned'"
+                          [class.fc-status--review]="card.status === 'review'"
+                          [class.fc-status--new]="card.status === 'new'"
+                        >
+                          {{ cardStatusLabel(card.status) }}
+                        </span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <div class="fc-table-empty">
+              <p class="rm-small">Không có thẻ nào phù hợp với bộ lọc.</p>
+              <button type="button" class="rm-btn rm-btn--outline rm-btn--sm" (click)="setCardFilter('all')">
+                Xem tất cả thẻ
+              </button>
+            </div>
+          }
+        </div>
+
+        <aside class="fc-detail-sidebar">
+          <section class="rm-card fc-study-card">
+            <div class="fc-study-card__head">
+              <span class="fc-study-card__icon" aria-hidden="true">
+                <svg lucideLightbulb [size]="18" [strokeWidth]="1.8"></svg>
+              </span>
+              <div>
+                <h2>Học flashcard</h2>
+                <p>Chọn chế độ học phù hợp với bạn</p>
+              </div>
+            </div>
+
+            <div class="fc-study-modes" role="radiogroup" aria-label="Chế độ học">
+              @for (mode of studyModes; track mode.id) {
+                <button
+                  type="button"
+                  class="fc-study-mode"
+                  [class.is-active]="studyMode() === mode.id"
+                  role="radio"
+                  [attr.aria-checked]="studyMode() === mode.id"
+                  (click)="chooseMode(mode.id)"
+                >
+                  <span class="fc-study-mode__icon" aria-hidden="true">
+                    @switch (mode.id) {
+                      @case ('ordered') {
+                        <svg lucideListOrdered [size]="17" [strokeWidth]="1.8"></svg>
+                      }
+                      @case ('review-first') {
+                        <svg lucideRotateCcw [size]="17" [strokeWidth]="1.8"></svg>
+                      }
+                      @default {
+                        <svg lucideShuffle [size]="17" [strokeWidth]="1.8"></svg>
+                      }
+                    }
+                  </span>
+                  <span class="fc-study-mode__text">
+                    <strong>{{ mode.label }}</strong>
+                    <small>{{ mode.desc }}</small>
+                  </span>
+                  <span class="fc-study-mode__radio" aria-hidden="true"></span>
+                </button>
+              }
+            </div>
+
+            <button type="button" class="rm-btn rm-btn--primary fc-study-card__cta" (click)="startStudy()">
+              <svg lucidePlay aria-hidden="true" [size]="16" [strokeWidth]="1.9"></svg>
+              Bắt đầu học
+            </button>
+          </section>
+
+          <section class="rm-card fc-stats-card">
+            <h2 class="fc-side-title">Thống kê nhanh</h2>
+            <dl class="fc-stats">
+              <div>
+                <dt>Tổng số thẻ</dt>
+                <dd>{{ stats().total }}</dd>
+              </div>
+              <div>
+                <dt>Đã học</dt>
+                <dd class="is-success">{{ stats().learned }}</dd>
+              </div>
+              <div>
+                <dt>Cần ôn tập</dt>
+                <dd class="is-warning">{{ stats().review }}</dd>
+              </div>
+              <div>
+                <dt>Chưa học</dt>
+                <dd>{{ stats().fresh }}</dd>
+              </div>
+              <div>
+                <dt>Tiến độ</dt>
+                <dd class="is-primary">{{ stats().percent }}%</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section class="fc-tip-card">
+            <span class="fc-tip-card__icon" aria-hidden="true">
+              <svg lucideLightbulb [size]="18" [strokeWidth]="1.9"></svg>
+            </span>
+            <div>
+              <h2>Mẹo học hiệu quả</h2>
+              <p>
+                Ôn tập đều đặn mỗi ngày và lặp lại các thẻ “Cần ôn tập” sau 1–2 ngày để ghi nhớ lâu hơn.
+              </p>
+            </div>
+          </section>
+        </aside>
+      </div>
+    } @else {
+      <div class="rm-card fc-detail-empty">
+        <h1 class="rm-card-title">Không tìm thấy bộ flashcard</h1>
+        <p class="rm-base">Bộ flashcard bạn mở không tồn tại hoặc đã bị xóa.</p>
+        <a class="rm-btn rm-btn--primary rm-btn--sm" routerLink="/learning/flashcards">Về danh sách flashcard</a>
+      </div>
+    }
+  </div>
+
+  @if (deleteConfirm()) {
+    <div class="fc-confirm-overlay" (click)="deleteConfirm.set(false)">
+      <div class="fc-confirm" role="dialog" aria-modal="true" aria-labelledby="fc-delete-title" (click)="$event.stopPropagation()">
+        <button type="button" class="fc-confirm__close" aria-label="Đóng" (click)="deleteConfirm.set(false)">
+          <svg lucideX [size]="18" [strokeWidth]="1.8"></svg>
+        </button>
+        <h2 id="fc-delete-title" class="fc-confirm__title">Xóa bộ flashcard?</h2>
+        <p class="fc-confirm__text">
+          Bộ thẻ và toàn bộ tiến độ học sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác.
+        </p>
+        <div class="fc-confirm__actions">
+          <button type="button" class="rm-btn rm-btn--ghost rm-btn--sm" (click)="deleteConfirm.set(false)">
+            Hủy
+          </button>
+          <button type="button" class="rm-btn rm-btn--danger-soft rm-btn--sm" (click)="confirmDelete()">
+            Xóa bộ thẻ
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</section>

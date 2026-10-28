@@ -1,159 +1,233 @@
+<form class="min-w-0 rounded-[18px] bg-white px-5 py-8 shadow-[0_1px_3px_rgba(0,0,0,0.1),0_1px_2px_-1px_rgba(0,0,0,0.1)] sm:px-8 xl:px-[clamp(32px,4.75vw,91px)] xl:py-[53px]" (ngSubmit)="onSubmit()" novalidate>
+  <!-- Quay lại -->
+  <div class="flex justify-end">
+    <button
+      type="button"
+      (click)="cancel.emit()"
+      class="inline-flex h-11 min-w-[140px] items-center justify-center rounded border border-[#E0E8F2] bg-white px-6 text-[14px] font-bold leading-5 text-[#1F293D] transition-colors hover:bg-[#F7F9FA] sm:min-w-[190px]"
+    >
+      <span class="mr-1 text-[18px] leading-none" aria-hidden="true">‹</span> Quay lại
+    </button>
+  </div>
 
-    <form (ngSubmit)="onSubmit()" class="min-w-0 rounded-[18px] bg-white px-5 py-8 shadow-[0_1px_3px_rgba(0,0,0,0.1),0_1px_2px_-1px_rgba(0,0,0,0.1)] sm:px-8 lg:h-[1659px] xl:py-[53px] xl:pl-[clamp(32px,4.75vw,91px)] xl:pr-[clamp(32px,4.58vw,88px)]">
-      <!-- 1. Thông tin cơ bản -->
-      <section aria-labelledby="basic-info-heading">
-        <h2 id="basic-info-heading" class="text-[16px] font-bold leading-6 text-[#1C1D1F]">
-          Thông tin cơ bản:
-        </h2>
+  <!-- Thông tin cơ bản -->
+  <section aria-labelledby="basic-info-heading" class="mt-2">
+    <h2 id="basic-info-heading" class="text-[16px] font-bold leading-6 text-[#1C1D1F]">
+      Thông tin cơ bản:
+    </h2>
 
-        <div class="mt-4 space-y-4">
-          <!-- Tên -->
-          <div>
-            <input
-              type="text"
-              name="firstName"
-              [(ngModel)]="formData.firstName"
-              required
-              placeholder="Tên"
-              aria-label="Tên"
-              class="h-14 w-full rounded border border-[#C2C6D6] bg-white px-4 text-[14px] text-[#1C1D1F] placeholder:text-[#6A6F73] transition-colors hover:border-[#8A91A5] focus:border-[#155DFC] focus:ring-2 focus:ring-[#155DFC]/15 focus:outline-none"
-            />
-          </div>
-
-          <!-- Họ đệm -->
-          <div>
-            <input
-              type="text"
-              name="lastName"
-              [(ngModel)]="formData.lastName"
-              required
-              placeholder="Họ"
-              aria-label="Họ"
-              class="h-14 w-full rounded border border-[#C2C6D6] bg-white px-4 text-[14px] text-[#1C1D1F] placeholder:text-[#6A6F73] transition-colors hover:border-[#8A91A5] focus:border-[#155DFC] focus:ring-2 focus:ring-[#155DFC]/15 focus:outline-none"
-            />
-          </div>
-
-          <!-- Giới tính -->
-          <fieldset class="h-14 w-full rounded border border-[#C2C6D6] bg-white px-4 flex items-center gap-7">
-            <legend class="sr-only">Giới tính</legend>
-            <span class="shrink-0 text-[#6A6F73] text-[14px]">Giới tính</span>
-            @for (gender of ['Nam', 'Nữ']; track gender) {
-              <label class="flex cursor-pointer items-center gap-2 text-[14px] text-[#1C1D1F]">
-                <input
-                  type="radio"
-                  name="gender"
-                  [value]="gender"
-                  [(ngModel)]="formData.gender"
-                  class="h-4 w-4 accent-[#155DFC]"
-                />
-                <span>{{ gender }}</span>
-              </label>
-            }
-          </fieldset>
-
-          <!-- Ngày sinh -->
-          <div>
-            <input
-              type="text"
-              name="birthDate"
-              [(ngModel)]="formData.birthDate"
-              placeholder="Ngày sinh: DD/MM/YYYY"
-              aria-label="Ngày sinh"
-              inputmode="numeric"
-              class="h-14 w-full rounded border border-[#C2C6D6] bg-white px-4 text-[14px] text-[#1C1D1F] placeholder:text-[#6A6F73] transition-colors hover:border-[#8A91A5] focus:border-[#155DFC] focus:ring-2 focus:ring-[#155DFC]/15 focus:outline-none"
-            />
-          </div>
-
-          <!-- Email (Khóa không sửa) -->
-          <div>
-            <input
-              type="text"
-              [value]="'Email: ' + (formData.maskedEmail || formData.email)"
-              disabled
-              aria-label="Email"
-              class="h-14 w-full rounded border border-[#D1D7DC] bg-[#F7F9FA] px-4 text-[14px] text-[#6A6F73] cursor-not-allowed"
-            />
-          </div>
-        </div>
-      </section>
-
-      <!-- 2. Tiểu sử -->
-      <section class="mt-8" aria-labelledby="bio-heading">
-        <h2 id="bio-heading" class="text-[16px] font-bold leading-6 text-[#1C1D1F]">Tiểu sử</h2>
-        <div class="mt-2 flex h-[183px] flex-col overflow-hidden rounded border border-[#C2C6D6] pb-[9px] pt-[5px] focus-within:border-[#155DFC] focus-within:ring-2 focus-within:ring-[#155DFC]/15">
-          <div class="flex h-[41px] shrink-0 items-center gap-3 border-b border-[#D1D7DC] px-4" role="toolbar" aria-label="Định dạng tiểu sử">
-            <button type="button" class="h-8 w-6 rounded font-bold hover:bg-[#F7F9FA] text-[#1C1D1F]" aria-label="In đậm">B</button>
-            <button type="button" class="h-8 w-6 rounded italic hover:bg-[#F7F9FA] text-[#1C1D1F]" aria-label="In nghiêng">I</button>
-          </div>
-          <textarea
-            name="bio"
-            [(ngModel)]="formData.bio"
-            placeholder="Tiểu sử"
-            aria-label="Tiểu sử"
-            class="min-h-0 flex-1 bg-white px-4 py-3 text-[14px] leading-5 text-[#1C1D1F] placeholder:text-[#6A6F73] focus:outline-none resize-none"
-          ></textarea>
-        </div>
-        <p class="mt-2 text-[12px] leading-4 text-[#1C1D1F]">
-          Không được phép sử dụng đường liên kết và mã coupon trong phần này.
-        </p>
-
-        <!-- Ngôn ngữ -->
-        <div class="mt-6">
-          <label for="language-select" class="sr-only">Ngôn ngữ</label>
-          <select
-            id="language-select"
-            name="language"
-            [(ngModel)]="formData.language"
-            class="h-14 w-full rounded border border-[#C2C6D6] bg-white px-4 text-[14px] text-[#1C1D1F] focus:border-[#155DFC] focus:ring-2 focus:ring-[#155DFC]/15 focus:outline-none"
-          >
-            <option value="vi">Tiếng Việt</option>
-            <option value="en">English</option>
-          </select>
-        </div>
-      </section>
-
-      <!-- 3. Mạng xã hội -->
-      <section class="mt-10" aria-labelledby="social-links-heading">
-        <h2 id="social-links-heading" class="text-[16px] font-bold leading-6 text-[#1C1D1F]">Đường liên kết:</h2>
-        <div class="mt-4 space-y-5">
-          @for (social of socialFields; track social.name) {
-            <div>
-              <div class="flex h-14 overflow-hidden rounded border border-[#C2C6D6] bg-white transition-colors focus-within:border-[#155DFC] focus-within:ring-2 focus-within:ring-[#155DFC]/15">
-                <label
-                  [for]="social.name"
-                  class="flex shrink-0 items-center border-r border-[#C2C6D6] bg-[#F7F9FA] px-4 text-[13.5px] leading-5 text-[#1C1D1F]"
-                >
-                  {{ social.prefix }}
-                </label>
-                <input
-                  [id]="social.name"
-                  [name]="social.name"
-                  [(ngModel)]="formData[social.name]"
-                  placeholder="URL"
-                  autocomplete="url"
-                  class="min-w-0 flex-1 border-0 bg-white px-4 text-[14px] text-[#1C1D1F] placeholder:text-[#6A6F73] focus:outline-none"
-                />
-              </div>
-            </div>
-          }
-        </div>
-      </section>
-
-      <!-- Nút Lưu -->
-      <div class="mt-8 flex items-center gap-4">
-        <button
-          type="submit"
-          [disabled]="isSaving"
-          class="flex h-11 w-full items-center justify-center rounded bg-[#155DFC] px-6 text-[14px] font-bold text-white transition-colors hover:bg-[#0B4DE0] active:bg-[#083BB4] disabled:cursor-wait disabled:bg-[#8CAAFD] sm:w-[190px]"
-        >
-          {{ isSaving ? 'Đang lưu...' : 'Lưu' }}
-        </button>
-
-        @if (saveSuccess) {
-          <span class="inline-flex items-center gap-1.5 text-[14px] font-medium text-emerald-600 animate-fade-in">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            Hồ sơ đã được lưu thành công!
-          </span>
+    <div class="mt-2 flex flex-col gap-4">
+      <!-- Họ -->
+      <div>
+        <input
+          type="text"
+          name="lastName"
+          autocomplete="family-name"
+          [ngModel]="form.lastName"
+          (ngModelChange)="onFieldChange('lastName', $event)"
+          (blur)="onFieldBlur('lastName')"
+          placeholder="Họ"
+          aria-label="Họ"
+          [attr.aria-invalid]="errors['lastName'] ? 'true' : null"
+          [class]="'h-14 w-full rounded bg-white px-4 text-[14px] text-[#1C1D1F] placeholder:text-[#6A6F73] focus:outline-none ' + (errors['lastName'] ? 'border-2 border-[#DB3333]' : 'border border-[#C2C6D6] hover:border-[#8A91A5] focus:border-[#155DFC] focus:ring-2 focus:ring-[#155DFC]/15')"
+        />
+        @if (errors['lastName']) {
+          <p class="mt-1 text-[12px] leading-4 text-[#BA2121]">{{ errors['lastName'] }}</p>
         }
       </div>
-    </form>
+
+      <!-- Tên -->
+      <div>
+        <input
+          type="text"
+          name="firstName"
+          autocomplete="given-name"
+          [ngModel]="form.firstName"
+          (ngModelChange)="onFieldChange('firstName', $event)"
+          (blur)="onFieldBlur('firstName')"
+          placeholder="Tên"
+          aria-label="Tên"
+          [attr.aria-invalid]="errors['firstName'] ? 'true' : null"
+          [class]="'h-14 w-full rounded bg-white px-4 text-[14px] text-[#1C1D1F] placeholder:text-[#6A6F73] focus:outline-none ' + (errors['firstName'] ? 'border-2 border-[#DB3333]' : 'border border-[#C2C6D6] hover:border-[#8A91A5] focus:border-[#155DFC] focus:ring-2 focus:ring-[#155DFC]/15')"
+        />
+        @if (errors['firstName']) {
+          <p class="mt-1 text-[12px] leading-4 text-[#BA2121]">{{ errors['firstName'] }}</p>
+        }
+      </div>
+
+      <!-- Giới tính -->
+      <div>
+        <fieldset
+          [class]="'flex h-14 items-center gap-7 rounded bg-white px-[17px] ' + (errors['gender'] ? 'border-2 border-[#DB3333]' : 'border border-[#C2C6D6]')"
+          (focusout)="onFieldBlur('gender')"
+        >
+          <legend class="sr-only">Giới tính</legend>
+          <span class="shrink-0 text-[14px] text-[#6A6F73]">Giới tính</span>
+          @for (gender of ['Nam', 'Nữ']; track gender) {
+            <label class="flex cursor-pointer items-center gap-2 text-[14px] leading-5 text-[#1C1D1F]">
+              <input
+                type="radio"
+                name="gender"
+                [value]="gender"
+                [ngModel]="form.gender"
+                (ngModelChange)="onFieldChange('gender', $event)"
+                class="h-4 w-4 accent-[#155DFC]"
+              />
+              <span>{{ gender }}</span>
+            </label>
+          }
+        </fieldset>
+        @if (errors['gender']) {
+          <p class="mt-1 text-[12px] leading-4 text-[#BA2121]">{{ errors['gender'] }}</p>
+        }
+      </div>
+
+      <!-- Ngày sinh -->
+      <div>
+        <input
+          type="text"
+          name="birthDate"
+          inputmode="numeric"
+          autocomplete="bday"
+          [ngModel]="form.birthDate"
+          (ngModelChange)="onFieldChange('birthDate', $event)"
+          (blur)="onFieldBlur('birthDate')"
+          placeholder="Ngày sinh: DD/MM/YYYY"
+          aria-label="Ngày sinh"
+          [attr.aria-invalid]="errors['birthDate'] ? 'true' : null"
+          [class]="'h-14 w-full rounded bg-white px-4 text-[14px] text-[#1C1D1F] placeholder:text-[#6A6F73] focus:outline-none ' + (errors['birthDate'] ? 'border-2 border-[#DB3333]' : 'border border-[#C2C6D6] hover:border-[#8A91A5] focus:border-[#155DFC] focus:ring-2 focus:ring-[#155DFC]/15')"
+        />
+        @if (errors['birthDate']) {
+          <p class="mt-1 text-[12px] leading-4 text-[#BA2121]">{{ errors['birthDate'] }}</p>
+        }
+      </div>
+
+      <!-- Email (read-only, masking) -->
+      <div class="flex h-14 items-center gap-3 rounded border border-[#D1D7DC] bg-[#F7F9FA] px-4 opacity-80">
+        <span class="min-w-0 flex-1 truncate text-[14px] leading-5 text-[#6A6F73]">Email: {{ maskedEmail }}</span>
+        <span class="inline-flex shrink-0 items-center rounded-full bg-[#ECFDF5] px-2 py-0.5 text-[12px] leading-4 text-[#63738A]">
+          Đã xác minh
+        </span>
+      </div>
+
+      <!-- Số điện thoại (read-only, masking) -->
+      <div class="flex h-14 items-center gap-3 rounded border border-[#D1D7DC] bg-[#F7F9FA] px-4 opacity-80">
+        <span class="min-w-0 flex-1 truncate text-[14px] leading-5 text-[#6A6F73]">Số điện thoại: {{ maskedPhone }}</span>
+        <span class="inline-flex shrink-0 items-center rounded-full bg-[#ECFDF5] px-2 py-0.5 text-[12px] leading-4 text-[#63738A]">
+          Đã xác minh
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tiểu sử -->
+  <section class="mt-6" aria-labelledby="bio-heading">
+    <h2 id="bio-heading" class="text-[16px] font-bold leading-6 text-[#1C1D1F]">Tiểu sử</h2>
+
+    <div
+      [class]="'mt-2 flex h-[183px] flex-col overflow-hidden rounded bg-white pb-2 pt-1 ' + (errors['bio'] ? 'border-2 border-[#DB3333]' : 'border border-[#C2C6D6] focus-within:border-[#155DFC] focus-within:ring-2 focus-within:ring-[#155DFC]/15')"
+    >
+      <div class="flex h-[41px] shrink-0 items-center gap-3 border-b border-[#D1D7DC] px-4" role="toolbar" aria-label="Định dạng tiểu sử">
+        <button
+          type="button"
+          (click)="applyBioCommand('bold')"
+          class="h-8 w-6 rounded text-[16px] font-bold text-[#1C1D1F] transition-colors hover:bg-[#F7F9FA]"
+          aria-label="In đậm"
+        >
+          B
+        </button>
+        <button
+          type="button"
+          (click)="applyBioCommand('italic')"
+          class="h-8 w-6 rounded text-[16px] italic text-[#1C1D1F] transition-colors hover:bg-[#F7F9FA]"
+          aria-label="In nghiêng"
+        >
+          I
+        </button>
+      </div>
+
+      <div class="relative min-h-0 flex-1">
+        <div
+          #bioEditor
+          class="bio-editor h-full overflow-y-auto px-4 py-3 pr-16 text-[14px] leading-5 text-[#1C1D1F]"
+          contenteditable="true"
+          role="textbox"
+          aria-multiline="true"
+          aria-label="Tiểu sử"
+          data-placeholder="Tiểu sử"
+          (input)="onBioInput($event)"
+          (blur)="onBioBlur()"
+        ></div>
+        <span class="pointer-events-none absolute bottom-1 right-4 text-[12px] leading-4 text-[#636E7D]">
+          {{ bioLength }}/{{ bioLimit }}
+        </span>
+      </div>
+    </div>
+
+    @if (errors['bio']) {
+      <p class="mt-1 text-[12px] leading-4 text-[#BA2121]">{{ errors['bio'] }}</p>
+    }
+    <p class="mt-2 text-[12px] leading-4 text-[#636E7D]">Tối đa 250 ký tự, bao gồm cả khoảng trắng.</p>
+  </section>
+
+  <!-- Đường liên kết -->
+  <section class="mt-8" aria-labelledby="social-links-heading">
+    <h2 id="social-links-heading" class="text-[16px] font-bold leading-6 text-[#1C1D1F]">Đường liên kết:</h2>
+
+    <div class="mt-2 flex flex-col gap-5 pb-6">
+      @for (social of socialFields; track social.name) {
+        <div class="flex flex-col gap-2">
+          <div
+            [class]="'flex h-14 overflow-hidden rounded bg-white ' + (errors[social.name] ? 'border-2 border-[#DB3333]' : 'border border-[#C2C6D6] focus-within:border-[#155DFC] focus-within:ring-2 focus-within:ring-[#155DFC]/15')"
+          >
+            <label
+              [for]="'social-' + social.name"
+              class="flex shrink-0 items-center border-r border-[#C2C6D6] bg-[#F7F9FA] px-4 text-[13.5px] leading-5 text-[#1C1D1F]"
+            >
+              {{ social.prefix }}
+            </label>
+            <input
+              [id]="'social-' + social.name"
+              [attr.name]="social.name"
+              type="url"
+              [ngModel]="form[social.name]"
+              (ngModelChange)="onFieldChange(social.name, $event)"
+              [ngModelOptions]="{ standalone: true }"
+              (blur)="onFieldBlur(social.name)"
+              [placeholder]="social.placeholder"
+              [attr.aria-label]="social.prefix"
+              [attr.aria-invalid]="errors[social.name] ? 'true' : null"
+              class="min-w-0 flex-1 border-0 bg-white px-4 text-[14px] text-[#1C1D1F] placeholder:text-[#6A6F73] focus:outline-none"
+            />
+          </div>
+          @if (errors[social.name]) {
+            <p class="text-[12px] leading-4 text-[#BA2121]">{{ errors[social.name] }}</p>
+          }
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <div class="flex flex-wrap items-center justify-end gap-[18px]">
+    <button
+      type="button"
+      (click)="cancel.emit()"
+      class="inline-flex h-11 min-w-[140px] items-center justify-center rounded border border-[#E0E8F2] bg-white px-6 text-[14px] font-bold leading-5 text-[#1F293D] transition-colors hover:bg-[#F7F9FA] sm:min-w-[190px]"
+    >
+      Hủy bỏ
+    </button>
+    <button
+      type="submit"
+      [disabled]="!canSave"
+      class="inline-flex h-11 min-w-[140px] items-center justify-center gap-2 rounded bg-[#155DFC] px-6 text-[14px] font-bold leading-5 text-white transition-colors hover:bg-[#0B4DE0] disabled:cursor-not-allowed disabled:bg-[#8CAAFD] sm:min-w-[190px]"
+    >
+      @if (isSaving) {
+        <span class="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true"></span>
+        <span>Đang lưu...</span>
+      } @else {
+        <span>Lưu</span>
+      }
+    </button>
+  </div>
+</form>

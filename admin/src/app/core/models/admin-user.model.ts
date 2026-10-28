@@ -23,14 +23,9 @@ export interface AdminLoginRequest {
   rememberMe?: boolean;
 }
 
-/**
- * Shape JSON trả về từ `POST /api/auth/login` của backend.
- * Backend dùng chung endpoint cho học viên và quản trị, phân biệt bằng `user.role`.
- *
- * `requiresTwoFactor`, `twoFactorToken` và `passwordExpiresAt` là các trường tuỳ chọn:
- * backend hiện tại chưa trả về, frontend đọc nếu có và bỏ qua nếu không.
- */
+/** Phản hồi bước 1 từ `POST /api/admin/auth/login`. */
 export interface AdminLoginResponse {
+  success: boolean;
   message?: string;
   accessToken?: string;
   refreshToken?: string;
@@ -55,13 +50,49 @@ export interface AdminLoginResponse {
   must_change_password?: boolean;
   two_factor_setup_required?: boolean;
 };
+  requires2FA: boolean;
+  twoFactorToken: string;
+  expiresInSeconds?: number;
+}
+
+/** Phản hồi hoàn tất từ `POST /api/admin/auth/verify-2fa`. */
+export interface AdminVerifyTwoFactorResponse {
+  success: boolean;
+  message?: string;
+  accessToken: string;
+  admin: {
+    id: string;
+    email: string;
+    full_name: string;
+    role: string;
+  };
+  passwordStatus?: {
+    isExpired: boolean;
+    isWarning: boolean;
+    daysLeft: number;
+    message?: string;
+  };
+}
+
+/** Dữ liệu riêng của từng tài khoản dùng để ghép ứng dụng Authenticator. */
+export interface AdminTwoFactorSetup {
+  setupKey: string;
+  qrUri: string;
+}
+
+/** Phần dữ liệu 2FA backend trả về sau bước khởi tạo mật khẩu onboarding. */
+export interface AdminOnboardingSetupResponse {
+  success: boolean;
+  onboardingToken: string;
+  secretKey: string;
+  qrUri: string;
 }
 
 /** Lỗi API đã được chuẩn hoá để component hiển thị thông điệp tiếng Việt. */
 export interface AdminAuthError extends Error {
   status?: number;
   code?: string;
-  /** Số giây còn phải chờ khi tài khoản bị tạm khoá (backend trả về `retryAfter`). */
+  /** Số giây còn phải chờ khi tài khoản bị tạm khoá. */
   retryAfter?: number;
 }
 
@@ -71,10 +102,11 @@ export interface AdminAuthError extends Error {
  */
 export interface AdminTwoFactorChallenge {
   email: string;
-  /** Token tạm do backend cấp (nếu có) để đổi lấy access token sau khi xác thực. */
-  challengeToken: string | null;
+  /** Token tạm do backend cấp để đổi lấy access token sau khi xác thực. */
+  twoFactorToken: string;
   /** Thời điểm hết hiệu lực của mã xác thực. */
   expiresAt: number;
+  rememberMe: boolean;
 }
 
 /** Trạng thái chính sách mật khẩu của hồ sơ đang đăng nhập. */

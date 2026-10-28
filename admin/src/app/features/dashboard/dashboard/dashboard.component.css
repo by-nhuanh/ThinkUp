@@ -233,7 +233,7 @@ h2 { font-size: 23px; line-height: 26px; font-weight: 700; color: #14336b; }
 .logs-panel .panel-heading { padding: 0 20px; }
 .logs-heading { flex-wrap: nowrap; }
 .logs-heading-actions { display: flex; align-items: center; justify-content: flex-end; gap: clamp(8px, .8vw, 12px); min-width: 0; white-space: nowrap; }
-.log-filter { flex: none; width: fit-content; min-width: 0; }
+.log-filter { flex: none; width: fit-content; min-width: 0; --custom-select-trigger-height: 40px; --custom-select-max-width: 160px; }
 .logs-heading app-export-menu { flex: none; --export-trigger-size: 40px; --export-trigger-width: auto; --export-trigger-padding: 0 14px; }
 .logs-view-all { flex: none; min-height: 40px; padding: 0 4px; border: 0; background: transparent; color: var(--dashboard-primary); font: var(--admin-text-control-label); white-space: nowrap; }
 .logs-view-all:hover { color: #0754c2; text-decoration: underline; }

@@ -1,0 +1,59 @@
+<article class="course-card">
+  <a class="course-cover" [routerLink]="['/main/courses', course().id]" [style.background]="course().bgGradient">
+    <span class="course-cover__badge">{{ badge() }}</span>
+    <button
+      type="button"
+      class="course-cover__fav"
+      [class.is-active]="isFavorite()"
+      [attr.aria-label]="isFavorite() ? 'Bỏ khóa học khỏi yêu thích' : 'Thêm khóa học vào yêu thích'"
+      (click)="toggleFavorite($event)"
+    >
+      <svg lucideBookmark aria-hidden="true" [size]="15" [strokeWidth]="1.8"></svg>
+    </button>
+    <span class="course-cover__glyph" aria-hidden="true">{{ course().icon ?? '⚛' }}</span>
+    <span class="course-cover__title">{{ coverTitle() }}</span>
+    <span class="course-cover__brand">THINKUP</span>
+  </a>
+
+  <div class="course-card__body">
+    <a class="course-card__title" [routerLink]="['/main/courses', course().id]">{{ course().title }}</a>
+
+    <div class="course-card__meta">
+      <span class="course-card__instructor">
+        <svg lucideUserRound aria-hidden="true" [size]="13" [strokeWidth]="1.7"></svg>
+        {{ course().instructor }}
+      </span>
+      <span class="course-card__level">{{ course().level }}</span>
+    </div>
+
+    <div class="course-card__rating">
+      <svg lucideStar aria-hidden="true" [size]="13" [strokeWidth]="1.6" class="course-card__star"></svg>
+      <strong>{{ course().rating }}</strong>
+      <span>({{ course().ratingCount }})</span>
+      <span class="course-card__students">
+        <svg lucideUserRound aria-hidden="true" [size]="12" [strokeWidth]="1.7"></svg>
+        {{ course().studentsCount }}
+      </span>
+    </div>
+
+    @if (tags().length) {
+      <div class="course-card__tags">
+        @for (tag of tags(); track tag) {
+          <span class="course-card__tag">{{ tag }}</span>
+        }
+      </div>
+    }
+
+    <div class="course-card__footer">
+      <div class="course-card__price">
+        <strong>{{ formatPrice(course().salePrice) }}</strong>
+        @if (course().originalPrice > course().salePrice) {
+          <span>{{ formatPrice(course().originalPrice) }}</span>
+        }
+      </div>
+      <button type="button" class="course-card__cart" aria-label="Thêm khóa học vào giỏ" (click)="onAddToCart($event)">
+        <svg lucideShoppingCart aria-hidden="true" [size]="16" [strokeWidth]="1.8"></svg>
+      </button>
+    </div>
+  </div>
+</article>

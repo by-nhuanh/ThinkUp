@@ -1,0 +1,126 @@
+<section class="rm-page fs-page">
+  <div class="rm-container rm-container--full">
+    @if (set(); as s) {
+      @if (total() > 0) {
+        <header class="fs-head">
+          <div class="fs-head__main">
+            <span class="fs-head__icon" [style.background]="s.tint" [style.color]="s.accent" aria-hidden="true">
+              <app-flashcard-set-icon [icon]="s.icon" [size]="30" />
+            </span>
+            <div class="fs-head__text">
+              <h1 class="fs-head__title">{{ s.title }}</h1>
+              <p class="fs-head__desc">{{ s.desc }}</p>
+            </div>
+          </div>
+
+          <div class="fs-head__right">
+            <div class="fs-progress">
+              <div class="fs-progress__top">
+                <span>Tiến độ học</span>
+                <strong>{{ stats().learned }} / {{ stats().total }} thẻ</strong>
+              </div>
+              <app-roadmap-progress [value]="stats().percent" [label]="'Tiến độ học ' + s.title" />
+            </div>
+
+            <button type="button" class="rm-btn rm-btn--ghost rm-btn--sm fs-exit" (click)="exit()">
+              <svg lucideLogOut aria-hidden="true" [size]="16" [strokeWidth]="1.8"></svg>
+              Thoát
+            </button>
+          </div>
+        </header>
+
+        @if (card(); as currentCard) {
+          <div class="fs-stage">
+            <button
+              type="button"
+              class="fs-arrow"
+              aria-label="Thẻ trước"
+              [disabled]="currentIndex() === 0"
+              (click)="previous()"
+            >
+              <svg lucideArrowLeft aria-hidden="true" [size]="24" [strokeWidth]="1.9"></svg>
+              <span class="fs-arrow__label" aria-hidden="true">Thẻ trước</span>
+            </button>
+
+            <article class="rm-card fs-card">
+              <div class="fs-card__top">
+                <span class="fs-card__counter">Thẻ {{ currentIndex() + 1 }} / {{ total() }}</span>
+
+                <button type="button" class="fs-card__toggle" (click)="toggleAnswer()">
+                  @if (flipped()) {
+                    <svg lucideEyeOff aria-hidden="true" [size]="16" [strokeWidth]="1.9"></svg>
+                    Ẩn đáp án
+                  } @else {
+                    <svg lucideEye aria-hidden="true" [size]="16" [strokeWidth]="1.9"></svg>
+                    Hiện đáp án
+                  }
+                </button>
+              </div>
+
+              <div class="fs-card__content">
+                @if (!flipped()) {
+                  <span class="fs-card__badge" aria-hidden="true">
+                    <svg lucideCodeXml [size]="24" [strokeWidth]="1.8"></svg>
+                  </span>
+                  <h2 class="fs-card__question">{{ currentCard.front }}</h2>
+                } @else {
+                  <div class="fs-answer">
+                    <div class="fs-answer__head">
+                      <svg lucideCircleCheck aria-hidden="true" [size]="19" [strokeWidth]="2"></svg>
+                      Đáp án
+                    </div>
+                    <p class="fs-answer__text">{{ currentCard.back }}</p>
+
+                    @if (codeLines().length > 0) {
+                      <pre class="fs-answer__code"><code>{{ currentCard.code }}</code></pre>
+                    }
+
+                    @if (currentCard.note) {
+                      <p class="fs-answer__note">{{ currentCard.note }}</p>
+                    }
+                  </div>
+                }
+              </div>
+            </article>
+
+            <button
+              type="button"
+              class="fs-arrow"
+              aria-label="Thẻ tiếp theo"
+              [disabled]="isLast()"
+              (click)="next()"
+            >
+              <svg lucideArrowRight aria-hidden="true" [size]="24" [strokeWidth]="1.9"></svg>
+              <span class="fs-arrow__label" aria-hidden="true">Thẻ tiếp theo</span>
+            </button>
+          </div>
+
+          <div class="fs-actions">
+            <button type="button" class="fs-decision fs-decision--remember" (click)="mark('learned')">
+              <svg lucideCheck aria-hidden="true" [size]="19" [strokeWidth]="2.2"></svg>
+              Đã nhớ
+            </button>
+            <button type="button" class="fs-decision fs-decision--review" (click)="mark('review')">
+              <svg lucideCircleX aria-hidden="true" [size]="19" [strokeWidth]="2"></svg>
+              Chưa nhớ
+            </button>
+          </div>
+        }
+      } @else {
+        <div class="rm-card fs-empty">
+          <h1 class="rm-card-title">Bộ flashcard chưa có thẻ</h1>
+          <p class="rm-base">Thêm thẻ vào bộ để bắt đầu ôn tập.</p>
+          <a class="rm-btn rm-btn--primary rm-btn--sm" [routerLink]="['/learning/flashcards', s.id, 'edit']">
+            Thêm thẻ ngay
+          </a>
+        </div>
+      }
+    } @else {
+      <div class="rm-card fs-empty">
+        <h1 class="rm-card-title">Không tìm thấy bộ flashcard</h1>
+        <p class="rm-base">Bộ flashcard bạn mở không tồn tại hoặc đã bị xóa.</p>
+        <a class="rm-btn rm-btn--primary rm-btn--sm" routerLink="/learning/flashcards">Về danh sách flashcard</a>
+      </div>
+    }
+  </div>
+</section>

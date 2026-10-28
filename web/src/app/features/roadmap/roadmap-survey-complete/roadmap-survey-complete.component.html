@@ -1,0 +1,56 @@
+<section class="rm-page complete-page">
+  <div class="rm-container rm-container--full">
+    <div class="complete-layout">
+      <app-roadmap-survey-steps
+        title="Khảo sát đầu vào"
+        [activeStep]="3"
+        stepTwoTitle="Chọn kỹ năng & Làm bài test"
+      />
+
+      <div class="complete-main">
+        <img
+          class="complete-main__illustration"
+          src="/assets/roadmap/illustration-survey-complete.png"
+          alt="Học viên hoàn thành khảo sát và nhận lộ trình cá nhân hóa"
+        />
+
+        <div class="complete-panel">
+          <h1 class="complete-panel__title">Lộ trình học cá nhân hóa của bạn đã sẵn sàng!</h1>
+          <p class="complete-panel__sub">
+            Dựa trên kết quả khảo sát, chúng tôi đã đề xuất lộ trình học phù hợp với trình độ, mục tiêu và sở thích
+            của bạn.
+          </p>
+
+          <ul class="complete-values">
+            @for (item of values; track item.title) {
+              <li class="complete-value">
+                <span class="complete-value__icon" [style.background]="item.tint" [style.color]="item.accent">
+                  @switch (item.icon) {
+                    @case ('target') {
+                      <svg lucideTarget [size]="20" [strokeWidth]="1.8"></svg>
+                    }
+                    @case ('route') {
+                      <svg lucideRoute [size]="20" [strokeWidth]="1.8"></svg>
+                    }
+                    @case ('star') {
+                      <svg lucideStar [size]="20" [strokeWidth]="1.8"></svg>
+                    }
+                    @default {
+                      <svg lucideChartColumn [size]="20" [strokeWidth]="1.8"></svg>
+                    }
+                  }
+                </span>
+                <strong>{{ item.title }}</strong>
+                <span class="complete-value__desc">{{ item.desc }}</span>
+              </li>
+            }
+          </ul>
+        </div>
+
+        <button type="button" class="rm-btn rm-btn--primary complete-main__cta" (click)="startLearning()">
+          Bắt đầu học ngay
+        </button>
+      </div>
+    </div>
+  </div>
+</section>

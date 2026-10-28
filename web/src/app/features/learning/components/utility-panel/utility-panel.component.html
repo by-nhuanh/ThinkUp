@@ -1,0 +1,258 @@
+﻿<section class="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl bg-white" aria-label="Tiện ích bài học">
+  <nav class="flex shrink-0 items-center gap-2 border-b border-[#E2E8F0] px-6 pt-7 2xl:gap-[11px]" role="tablist" aria-label="Tiện ích học tập">
+    @for (tab of tabs; track tab.id) {
+      <button
+        type="button"
+        role="tab"
+        (click)="selectTab(tab.id)"
+        class="relative flex h-8 shrink-0 items-center gap-2 pb-3 text-[14px] font-bold leading-5 transition"
+        [class]="activeTab === tab.id ? 'text-[#0072F8]' : 'text-[#62748E] hover:text-[#0F172B]'"
+        [attr.aria-selected]="activeTab === tab.id"
+      >
+        <span class="truncate">{{ tab.label }}</span>
+        @if (tab.id === 'discussion') {
+          <span class="rounded-full bg-[#0072F8] px-2 py-[1.5px] text-[10px] font-bold leading-[14.29px] text-white">
+            {{ discussions.length }}
+          </span>
+        }
+        @if (activeTab === tab.id) {
+          <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-[#0072F8]"></span>
+        }
+      </button>
+    }
+  </nav>
+
+  <div class="min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-5">
+    @switch (activeTab) {
+      @case ('overview') {
+        <div class="space-y-3">
+          <p class="text-[14px] leading-[22.75px] text-[#62748E]">
+            {{ lesson.summary || course.description }}
+          </p>
+
+          <div class="pt-2">
+            <h2 class="text-[16.8px] font-bold leading-5 text-[#08152C]">Trong khóa học này, bạn sẽ học được:</h2>
+          </div>
+
+          <ul class="space-y-2">
+            @for (goal of goals; track goal) {
+              <li class="flex items-start gap-2 text-[14px] leading-5 text-[#08152C]">
+                <svg lucideCheck class="mt-0.5 h-4 w-4 shrink-0 text-[#22C55E]" aria-hidden="true"></svg>
+                <span>{{ goal }}</span>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+
+      @case ('resources') {
+        <div class="space-y-4">
+          <div>
+            <h2 class="text-[16px] font-bold leading-6 text-[#0F172B]">Tài liệu bài học</h2>
+            <p class="mt-1 text-[13px] leading-5 text-[#62748E]">Tải xuống tài liệu để luyện tập sau bài học.</p>
+          </div>
+
+          <div class="space-y-2.5">
+            @for (resource of resources; track resource.id) {
+              <button
+                type="button"
+                (click)="downloadResource(resource)"
+                class="flex w-full items-center gap-3 rounded-xl border border-[#E2E8F0] bg-white p-3 text-left transition hover:border-[#BFD4FF] hover:bg-[#F6F9FF]"
+              >
+                <span class="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#E8F1FF] text-[#155DFC]">
+                  <svg lucideFileText class="h-5 w-5" aria-hidden="true"></svg>
+                </span>
+                <span class="min-w-0 flex-1">
+                  <span class="block truncate text-[13px] font-semibold text-[#0F172B]">{{ resource.title }}</span>
+                  <span class="block text-[12px] text-[#62748E]">{{ resource.meta }} · {{ resource.size }}</span>
+                </span>
+                <svg lucideFileDown class="h-4 w-4 shrink-0 text-[#155DFC]" aria-hidden="true"></svg>
+              </button>
+            }
+          </div>
+
+          <div class="rounded-xl border border-[#E2E8F0] bg-[#F8FAFF] p-4">
+            <p class="text-[12px] leading-5 text-[#62748E]">
+              Tất cả tài liệu được cập nhật theo từng chương. Nếu thiếu tài liệu, hãy gửi câu hỏi cho giảng viên ở tab Hỏi đáp.
+            </p>
+          </div>
+        </div>
+      }
+
+      @case ('qa') {
+        <div class="flex min-h-full flex-col gap-4">
+          <div class="flex gap-2.5 rounded-xl border border-[#C7DBFF] bg-[#F0F6FF] p-3">
+            <svg lucideLock class="mt-0.5 h-4 w-4 shrink-0 text-[#155DFC]" aria-hidden="true"></svg>
+            <p class="text-[12px] leading-5 text-[#35507A]">
+              Hỏi đáp: Cuộc trò chuyện này chỉ hiển thị với bạn và giảng viên.
+            </p>
+          </div>
+
+          <div class="space-y-3">
+            @for (post of questions; track post.id) {
+              <article class="rounded-xl border border-[#E2E8F0] p-3">
+                <div class="flex items-center gap-2">
+                  <span class="grid h-7 w-7 place-items-center rounded-full bg-[#E8F1FF] text-[11px] font-bold text-[#155DFC]">{{ post.initials }}</span>
+                  <div class="min-w-0 flex-1">
+                    <p class="truncate text-[12px] font-semibold text-[#0F172B]">{{ post.author }}</p>
+                    <p class="text-[11px] text-[#90A1B9]">{{ post.createdAt }}</p>
+                  </div>
+                  @if (post.resolved) {
+                    <span class="rounded-full bg-[#DCFCE7] px-2 py-0.5 text-[10px] font-semibold text-[#15803D]">Đã trả lời</span>
+                  }
+                </div>
+                <p class="mt-2 text-[13px] leading-5 text-[#45556C]">{{ post.body }}</p>
+                @for (reply of post.replies; track reply.id) {
+                  <div class="mt-3 rounded-lg bg-[#F6F9FF] p-3">
+                    <p class="text-[12px] font-semibold text-[#155DFC]">{{ reply.author }} · {{ reply.role }}</p>
+                    <p class="mt-1 text-[12px] leading-5 text-[#45556C]">{{ reply.body }}</p>
+                  </div>
+                }
+              </article>
+            }
+          </div>
+
+          <form class="mt-auto rounded-xl border border-[#E2E8F0] p-3" (ngSubmit)="submitQuestion()">
+            <label class="sr-only" for="qa-input">Nhập câu hỏi của bạn</label>
+            <textarea
+              id="qa-input"
+              name="question"
+              rows="3"
+              [(ngModel)]="questionDraft"
+              placeholder="Nhập câu hỏi của bạn..."
+              class="w-full resize-none bg-transparent text-[13px] leading-5 text-[#0F172B] outline-none placeholder:text-[#90A1B9]"
+            ></textarea>
+            <div class="mt-2 flex justify-end">
+              <button
+                type="submit"
+                [disabled]="!questionDraft.trim()"
+                class="inline-flex h-9 items-center gap-2 rounded-lg bg-[#155DFC] px-4 text-[13px] font-semibold text-white transition hover:bg-[#0F4CD1] disabled:cursor-not-allowed disabled:bg-[#BFD4FF]"
+              >
+                Gửi câu hỏi
+                <svg lucideSend class="h-4 w-4" aria-hidden="true"></svg>
+              </button>
+            </div>
+          </form>
+        </div>
+      }
+
+      @case ('discussion') {
+        <div class="flex min-h-full flex-col gap-4">
+          <div class="flex gap-2.5 rounded-xl border border-[#C7DBFF] bg-[#F0F6FF] p-3">
+            <svg lucideGlobe class="mt-0.5 h-4 w-4 shrink-0 text-[#155DFC]" aria-hidden="true"></svg>
+            <p class="text-[12px] leading-5 text-[#35507A]">
+              Thảo luận khóa học - Tất cả học viên trong khóa học đều có thể tham gia thảo luận.
+            </p>
+          </div>
+
+          <form class="rounded-xl border border-[#E2E8F0] p-3" (ngSubmit)="submitComment()">
+            <div class="flex gap-2.5">
+              <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#155DFC] text-[12px] font-bold text-white">B</span>
+              <textarea
+                name="comment"
+                rows="2"
+                [(ngModel)]="commentDraft"
+                placeholder="Viết bình luận của bạn..."
+                class="min-h-[44px] flex-1 resize-none bg-transparent text-[13px] leading-5 text-[#0F172B] outline-none placeholder:text-[#90A1B9]"
+              ></textarea>
+            </div>
+            <div class="mt-2 flex items-center justify-between gap-2">
+              <span class="text-[11px] text-[#90A1B9]">{{ commentDraft.length }}/500</span>
+              <button
+                type="submit"
+                [disabled]="!commentDraft.trim()"
+                class="inline-flex h-8 items-center rounded-lg bg-[#155DFC] px-3 text-[12px] font-semibold text-white transition hover:bg-[#0F4CD1] disabled:cursor-not-allowed disabled:bg-[#BFD4FF]"
+              >
+                Đăng thảo luận
+              </button>
+            </div>
+          </form>
+
+          <div class="space-y-3">
+            @for (post of discussions; track post.id) {
+              <article class="rounded-xl border border-[#E2E8F0] p-3">
+                <div class="flex items-start gap-2.5">
+                  <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#E8F1FF] text-[12px] font-bold text-[#155DFC]">{{ post.initials }}</span>
+                  <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-center gap-1.5">
+                      <p class="text-[13px] font-semibold text-[#0F172B]">{{ post.author }}</p>
+                      @if (post.role) {
+                        <span class="rounded bg-[#E8F1FF] px-1.5 py-0.5 text-[10px] font-semibold text-[#155DFC]">{{ post.role }}</span>
+                      }
+                    </div>
+                    <p class="text-[11px] text-[#90A1B9]">{{ post.createdAt }}</p>
+                  </div>
+                </div>
+
+                <p class="mt-2 text-[13px] leading-5 text-[#45556C]">{{ post.body }}</p>
+
+                @for (reply of post.replies; track reply.id) {
+                  <div class="mt-3 border-l-2 border-[#E2E8F0] pl-3">
+                    <div class="flex items-center gap-1.5">
+                      <span class="text-[12px] font-semibold text-[#0F172B]">{{ reply.author }}</span>
+                      @if (reply.role === 'Giảng viên') {
+                        <span class="rounded bg-[#E8F1FF] px-1.5 py-0.5 text-[10px] font-semibold text-[#155DFC]">Giảng viên</span>
+                      }
+                    </div>
+                    <p class="mt-1 text-[12px] leading-5 text-[#45556C]">{{ reply.body }}</p>
+                  </div>
+                }
+
+                <div class="mt-2.5 flex flex-wrap items-center gap-3 text-[11px] text-[#62748E]">
+                  <button
+                    type="button"
+                    (click)="toggleLike(post)"
+                    class="-ml-1.5 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 transition-colors duration-200"
+                    [class]="post.liked ? 'bg-[#EAF2FF] font-semibold text-[#0B73FF]' : 'text-[#62748E] hover:bg-[#F4F7FB] hover:text-[#0B73FF]'"
+                    [attr.aria-pressed]="post.liked"
+                    [attr.title]="post.liked ? 'Bỏ thích nội dung này' : 'Thích nội dung này'"
+                  >
+                    <svg
+                      lucideThumbsUp
+                      class="h-3.5 w-3.5 transition-transform duration-200"
+                      [class.fill-current]="post.liked"
+                      [class.like-pop]="post.liked"
+                      aria-hidden="true"
+                    ></svg>
+                    Thích ({{ post.likes }})
+                  </button>
+                  <button type="button" (click)="startReply(post)" class="inline-flex items-center gap-1 transition hover:text-[#155DFC]">
+                    <svg lucideMessageSquare class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                    Trả lời ({{ post.replies.length }})
+                  </button>
+                  <button
+                    type="button"
+                    (click)="reportRequested.emit(post)"
+                    class="ml-auto inline-flex items-center gap-1 rounded-md border border-[#E2E8F0] px-2 py-1 transition hover:border-[#FCA5A5] hover:text-[#DC2626]"
+                  >
+                    <svg lucideFlag class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                    Báo cáo
+                  </button>
+                </div>
+
+                @if (replyingToId === post.id) {
+                  <form class="mt-2 flex gap-2" (ngSubmit)="submitReply(post)">
+                    <input
+                      name="reply-{{ post.id }}"
+                      [(ngModel)]="replyDraft"
+                      placeholder="Trả lời {{ post.author }}..."
+                      class="h-9 min-w-0 flex-1 rounded-lg border border-[#E2E8F0] px-3 text-[12px] outline-none focus:border-[#155DFC]"
+                    />
+                    <button type="submit" [disabled]="!replyDraft.trim()" class="grid h-9 w-9 place-items-center rounded-lg bg-[#155DFC] text-white disabled:bg-[#BFD4FF]" aria-label="Gửi trả lời">
+                      <svg lucideSend class="h-4 w-4" aria-hidden="true"></svg>
+                    </button>
+                  </form>
+                }
+              </article>
+            }
+          </div>
+
+          <button type="button" class="mx-auto inline-flex items-center gap-1 text-[12px] font-medium text-[#62748E] hover:text-[#155DFC]">
+            <svg lucideChevronDown class="h-3.5 w-3.5" aria-hidden="true"></svg>
+            Xem thêm thảo luận
+          </button>
+        </div>
+      }
+    }
+  </div>
+</section>

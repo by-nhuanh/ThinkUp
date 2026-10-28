@@ -1,0 +1,174 @@
+<section class="rm-page ff-page">
+  <div class="rm-container rm-container--full">
+    <a class="ff-back" routerLink="/learning/flashcards">
+      <svg lucideArrowLeft aria-hidden="true" [size]="15" [strokeWidth]="2"></svg>
+      Quay lại
+    </a>
+
+    <header class="ff-head">
+      <div class="ff-head__main">
+        <span class="ff-head__icon" aria-hidden="true">
+          <svg lucideLayers [size]="24" [strokeWidth]="1.8"></svg>
+        </span>
+        <div>
+          <h1 class="ff-head__title">Flashcard</h1>
+          <p class="ff-head__sub">Tạo bộ thẻ ghi nhớ để ôn tập kiến thức mỗi ngày.</p>
+        </div>
+      </div>
+    </header>
+
+    <form class="rm-card ff-card" (submit)="save($event)">
+      <div class="ff-card__head">
+        <span class="ff-card__head-icon" aria-hidden="true">
+          <svg lucideLayers [size]="20" [strokeWidth]="1.8"></svg>
+        </span>
+        <div>
+          <h2 class="ff-card__title">{{ isEdit() ? 'Chỉnh sửa bộ flashcard' : 'Tạo flashcard mới' }}</h2>
+          <p class="ff-card__sub">
+            {{ isEdit()
+              ? 'Cập nhật tiêu đề, mô tả và nội dung các thẻ trong bộ flashcard.'
+              : 'Điền thông tin bên dưới để tạo bộ flashcard của riêng bạn.' }}
+          </p>
+        </div>
+      </div>
+
+      <div class="ff-fields">
+        <div class="rm-field">
+          <label class="rm-label" for="ff-title">Tiêu đề bộ flashcard <span>*</span></label>
+          <input
+            id="ff-title"
+            class="rm-input"
+            [class.is-invalid]="titleError()"
+            type="text"
+            placeholder="VD: JavaScript Cơ bản"
+            [value]="title()"
+            (input)="updateTitle($event)"
+          />
+          @if (titleError()) {
+            <span class="rm-error">Vui lòng nhập tiêu đề bộ flashcard.</span>
+          }
+        </div>
+
+        <div class="rm-field">
+          <label class="rm-label" for="ff-desc">Mô tả (tùy chọn)</label>
+          <input
+            id="ff-desc"
+            class="rm-input"
+            type="text"
+            placeholder="VD: Các khái niệm và cú pháp cơ bản trong JavaScript."
+            [value]="desc()"
+            (input)="updateDesc($event)"
+          />
+        </div>
+      </div>
+
+      <hr class="rm-divider ff-divider" />
+
+      <div class="ff-cards-head">
+        <h3 class="ff-cards-title">Danh sách flashcard</h3>
+        <span class="rm-chip">{{ filledCount() }} thẻ</span>
+      </div>
+
+      <div class="ff-table">
+        <div class="ff-table__header" aria-hidden="true">
+          <span>Kiến thức <em>*</em></span>
+          <span>Mô tả <em>*</em></span>
+          <span>Code</span>
+          <span>Chú thích</span>
+          <span></span>
+        </div>
+
+        @for (row of rows(); track row.key; let i = $index) {
+          <div class="ff-row" [class.ff-row--invalid]="rowInvalid(row)">
+            <label class="ff-cell">
+              <span class="ff-cell__label">Kiến thức <em>*</em></span>
+              <input
+                class="rm-input"
+                type="text"
+                placeholder="VD: Closure trong JavaScript là gì?"
+                [value]="row.front"
+                (input)="updateRow(row.key, 'front', $event)"
+                [attr.aria-label]="'Kiến thức thẻ ' + (i + 1)"
+              />
+            </label>
+
+            <label class="ff-cell">
+              <span class="ff-cell__label">Mô tả <em>*</em></span>
+              <input
+                class="rm-input"
+                type="text"
+                placeholder="VD: Closure là hàm ghi nhớ phạm vi nơi nó được tạo..."
+                [value]="row.back"
+                (input)="updateRow(row.key, 'back', $event)"
+                [attr.aria-label]="'Mô tả thẻ ' + (i + 1)"
+              />
+            </label>
+
+            <label class="ff-cell">
+              <span class="ff-cell__label">Code</span>
+              <input
+                class="rm-input ff-input-code"
+                type="text"
+                placeholder="const add = (a, b) => a + b;"
+                [value]="row.code"
+                (input)="updateRow(row.key, 'code', $event)"
+                [attr.aria-label]="'Code thẻ ' + (i + 1)"
+              />
+            </label>
+
+            <label class="ff-cell">
+              <span class="ff-cell__label">Chú thích</span>
+              <input
+                class="rm-input"
+                type="text"
+                placeholder="Ghi chú thêm..."
+                [value]="row.note"
+                (input)="updateRow(row.key, 'note', $event)"
+                [attr.aria-label]="'Chú thích thẻ ' + (i + 1)"
+              />
+            </label>
+
+            <div class="ff-row__actions">
+              <span class="ff-row__index">{{ i + 1 }}</span>
+              <button
+                type="button"
+                class="ff-row__remove"
+                [attr.aria-label]="'Xóa dòng ' + (i + 1)"
+                [disabled]="rows().length === 1"
+                (click)="removeRow(row.key)"
+              >
+                <svg lucideTrash2 [size]="16" [strokeWidth]="1.8"></svg>
+              </button>
+            </div>
+
+            @if (rowInvalid(row)) {
+              <p class="rm-error ff-row__error">Thẻ này cần có đủ kiến thức và mô tả.</p>
+            }
+          </div>
+        }
+      </div>
+
+      <button type="button" class="ff-add-row" (click)="addRow()">
+        <svg lucidePlus aria-hidden="true" [size]="16" [strokeWidth]="2"></svg>
+        Thêm dòng
+      </button>
+
+      @if (cardsError()) {
+        <p class="rm-error ff-cards-error">{{ cardsError() }}</p>
+      }
+
+      <div class="ff-footer">
+        <button type="button" class="rm-btn rm-btn--ghost" (click)="cancel()">Hủy</button>
+        <button type="submit" class="rm-btn rm-btn--primary">
+          @if (isEdit()) {
+            <svg lucideSave aria-hidden="true" [size]="17" [strokeWidth]="1.9"></svg>
+            Lưu thay đổi
+          } @else {
+            <svg lucidePlus aria-hidden="true" [size]="17" [strokeWidth]="2"></svg>
+            Tạo flashcard
+          }
+        </button>
+      </div>
+    </form>
+  </div>
+</section>

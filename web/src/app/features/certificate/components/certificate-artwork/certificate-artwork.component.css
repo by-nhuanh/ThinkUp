@@ -1,0 +1,105 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.certificate-artwork {
+  position: relative;
+  width: 100%;
+  container-type: inline-size;
+  overflow: hidden;
+  background: #ffffff;
+  user-select: none;
+}
+
+.certificate-artwork--view-only {
+  pointer-events: none;
+}
+
+.certificate-artwork__background {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+}
+
+/* Toạ độ theo frame Figma 1375x1024; font-size theo bề rộng artwork (cqw). */
+.certificate-artwork__name,
+.certificate-artwork__course,
+.certificate-artwork__meta {
+  position: absolute;
+  margin: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.certificate-artwork__name {
+  left: 30.4%;
+  top: 45.51%;
+  width: 61.1%;
+  color: #0b63e5;
+  font-size: 2.4727cqw;
+  font-weight: 700;
+  line-height: 3.2cqw;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.certificate-artwork__course {
+  left: 30.4%;
+  top: 63.67%;
+  width: 49.5%;
+  color: #081433;
+  font-size: 2.9818cqw;
+  font-weight: 700;
+  line-height: 3.927cqw;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+.certificate-artwork__meta {
+  left: 22.11%;
+  width: 12.36%;
+  color: #050b19;
+  font-size: 1.4545cqw;
+  font-weight: 500;
+  line-height: 2.036cqw;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.certificate-artwork__date {
+  top: 78.71%;
+}
+
+.certificate-artwork__id {
+  top: 83.89%;
+}
+
+.certificate-artwork__qr {
+  position: absolute;
+  left: 32.44%;
+  top: 77.25%;
+  width: 11.64%;
+  height: 14.45%;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #dbe3f0;
+  border-radius: 0.58cqw;
+  background: #ffffff;
+}
+
+.certificate-artwork__qr img {
+  width: 82%;
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+}

@@ -4,13 +4,13 @@ import { AdminAuthError } from '../../../core/models/admin-user.model';
 import { AdminAuthService } from '../../../core/services/admin-auth.service';
 import { AuthShellComponent } from '../components/auth-shell/auth-shell.component';
 
-const CODE_LENGTH = 16;
+const CODE_LENGTH = 8;
 
 /**
  * Xác thực bằng mã dự phòng khi không có ứng dụng sinh mã
  * (Figma: 4061-18666 trạng thái thường, 4061-18814 trạng thái mã sai).
  *
- * Mã gồm 16 ký tự, hiển thị theo nhóm 4 ký tự cho dễ đọc và chỉ dùng được một lần.
+ * Mã gồm 8 ký tự, hiển thị theo nhóm 4 ký tự cho dễ đọc và chỉ dùng được một lần.
  */
 @Component({
   selector: 'app-admin-backup-code',
@@ -62,6 +62,10 @@ export class BackupCodeComponent {
       },
       error: (error: AdminAuthError) => {
         this.loading.set(false);
+        if (error.code === '2FA_SESSION_EXPIRED') {
+          void this.router.navigateByUrl('/login');
+          return;
+        }
         this.errorMessage.set(error.message || 'Mã dự phòng không chính xác. Vui lòng thử lại.');
       }
     });

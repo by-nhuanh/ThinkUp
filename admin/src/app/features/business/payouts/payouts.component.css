@@ -34,6 +34,7 @@
 }
 .filter-select { height: 40px; border: 1px solid #cddaea; border-radius: 7px; background: #fff; }
 .filter-select { display: block; min-width: 0; }
+.filters-toolbar .filter-select { --custom-select-trigger-height: 40px; --custom-select-max-width: 180px; }
 .filter-select:not(.business-dropdown-field) select { width: 100%; height: 100%; padding: 0 9px; border: 0; outline: 0; background: transparent; color: #213758; font: var(--admin-text-control-input); cursor: pointer; }
 .limit-filter { position: relative; z-index: 4; min-width: 0; padding-top: 3px; }
 .limit-trigger { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; height: 40px; padding: 7px 14px 0; border: 1px solid #cddaea; border-radius: 7px; background: #fff; color: #213758; font: var(--admin-text-control-input); cursor: pointer; }
@@ -73,7 +74,7 @@
 /* Bộ chọn đơn vị nhập: số tiền lớn nên không nhập trực tiếp bằng VNĐ. */
 .limit-unit-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; margin-top: 15px; }
 .limit-unit-label { color: #425b7d; font: var(--admin-text-control-label); }
-.limit-unit-row app-custom-select { display: block; width: 100%; --custom-select-width: 100%; }
+.limit-unit-row app-custom-select { display: block; width: 100%; --custom-select-width: 100%; --custom-select-max-width: 100%; --custom-select-trigger-height: 40px; }
 .limit-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; padding-top: 13px; border-top: 1px solid #e7edf5; }
 .limit-actions button { min-height: 36px; padding: 0 14px; border-radius: 6px; font: var(--admin-text-control-label); cursor: pointer; }
 .limit-reset { border: 1px solid #cddaea; background: #fff; color: #425b7d; }

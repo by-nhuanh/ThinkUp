@@ -2,10 +2,9 @@ import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ProfileService } from '../services/profile.service';
 import { ProfileHeroComponent } from './components/profile-hero/profile-hero.component';
-import { LearningStatsCardComponent } from './components/learning-stats-card/learning-stats-card.component';
 import { CurrentCoursesCardComponent } from './components/current-courses-card/current-courses-card.component';
-import { AchievementsCardComponent } from './components/achievements-card/achievements-card.component';
 import { RecentActivityCardComponent } from './components/recent-activity-card/recent-activity-card.component';
+import { CertificatesCardComponent } from './components/certificates-card/certificates-card.component';
 
 @Component({
   selector: 'app-profile-overview',
@@ -13,10 +12,9 @@ import { RecentActivityCardComponent } from './components/recent-activity-card/r
   imports: [
     CommonModule,
     ProfileHeroComponent,
-    LearningStatsCardComponent,
     CurrentCoursesCardComponent,
-    AchievementsCardComponent,
     RecentActivityCardComponent,
+    CertificatesCardComponent,
   ],
   templateUrl: './profile-overview.component.html',
   styleUrl: './profile-overview.component.css'

@@ -1,1 +1,625 @@
-/* Component styles */
+﻿/* Trang Thanh toán — bám theo frame Figma "Thanh toán" (ATM / chuyển khoản / thẻ / SWIFT). */
+
+.checkout-main {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(16px, 1.15vw, 20px);
+  min-width: 0;
+}
+
+.checkout-card {
+  padding: 22px var(--pay-card-pad) var(--pay-card-pad);
+  border-color: #E6EAF0;
+}
+
+.checkout-section-title {
+  margin: 0 0 16px;
+  color: #1A1A1A;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+/* ─── Tab nội địa / quốc tế ──────────────────────────────────────────────── */
+
+.checkout-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 0 0 16px;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.checkout-tab {
+  position: relative;
+  height: 44px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: #45556C;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  cursor: pointer;
+  transition: color 160ms ease;
+}
+
+.checkout-tab:hover {
+  color: #2463EB;
+}
+
+.checkout-tab.is-active {
+  color: #2463EB;
+  font-weight: 600;
+}
+
+.checkout-tab.is-active::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: #2463EB;
+}
+
+.checkout-tab:focus-visible {
+  outline: none;
+  box-shadow: inset 0 -2px 0 #93B4F5;
+}
+
+/* ─── Thẻ phương thức thanh toán ─────────────────────────────────────────── */
+
+.method-card {
+  border: 1px solid #E5E7EB;
+  border-radius: 14px;
+  background: #fff;
+  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.method-card + .method-card {
+  margin-top: 10px;
+}
+
+.method-card:hover {
+  border-color: #CBD5E1;
+}
+
+.method-card.is-expanded {
+  border-color: #2563EB;
+  background: #F5F8FF;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.08);
+}
+
+.method-head {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  min-height: 62px;
+  padding: 11px 16px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.method-head:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
+}
+
+.method-radio {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid #CBD5E1;
+  border-radius: 50%;
+  background: #fff;
+  transition: border-color 160ms ease;
+}
+
+.method-radio__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: transparent;
+  transition: background 160ms ease;
+}
+
+.method-radio.is-checked {
+  border-color: #2563EB;
+}
+
+.method-radio.is-checked .method-radio__dot {
+  background: #2563EB;
+}
+
+.method-radio--sm {
+  width: 17px;
+  height: 17px;
+  margin-left: auto;
+}
+
+.method-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #EFF6FF;
+  color: #2563EB;
+}
+
+.method-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.method-copy {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.method-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #1A1A1A;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.method-badge {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #DCFCE7;
+  color: #008236;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 15px;
+}
+
+.method-desc {
+  overflow: hidden;
+  color: #62748E;
+  font-size: 12.5px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.method-brands {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  margin-left: 4px;
+}
+
+.brand-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  padding: 0 7px;
+  border: 1px solid #E2E8F0;
+  border-radius: 4px;
+  background: #F8FAFC;
+  color: #334155;
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.brand-chip--momo {
+  border-color: #FFD5E5;
+  background: #FFF1F6;
+  color: #D6006F;
+}
+
+.brand-chip--zalopay {
+  border-color: #D6E6FF;
+  background: #EFF6FF;
+  color: #0068FF;
+}
+
+.brand-chip--vnpay {
+  border-color: #FFE0E4;
+  background: #FFF1F2;
+  color: #E11D48;
+}
+
+.brand-chip--visa {
+  border-color: #D6E6FF;
+  background: #EEF4FF;
+  color: #1A1F71;
+}
+
+.brand-chip--mastercard {
+  border-color: #FFE0E4;
+  background: #FFF1F2;
+  color: #C8102E;
+}
+
+.brand-chip--jcb {
+  border-color: #DBEAFE;
+  background: #EFF6FF;
+  color: #0B4EA2;
+}
+
+.brand-chip--paypal {
+  border-color: #D6E6FF;
+  background: #EEF4FF;
+  color: #003087;
+}
+
+.brand-chip--gpay {
+  border-color: #E2E8F0;
+  background: #fff;
+  color: #4285F4;
+}
+
+.brand-chip--applepay {
+  border-color: #E2E8F0;
+  background: #fff;
+  color: #111;
+}
+
+.method-chevron {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  color: #64748B;
+  transition: transform 160ms ease;
+}
+
+.method-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.method-chevron svg {
+  width: 17px;
+  height: 17px;
+}
+
+.method-body {
+  padding: 0 16px 16px;
+}
+
+.method-subtitle {
+  margin: 0 0 10px;
+  color: #45556C;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+/* Ngân hàng */
+
+.bank-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.bank-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 46px;
+  min-width: 0;
+  padding: 0 11px;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.bank-option:hover {
+  border-color: #93B4F5;
+}
+
+.bank-option.is-active {
+  border-color: #2563EB;
+  box-shadow: inset 0 0 0 1px #2563EB;
+}
+
+.bank-option:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
+}
+
+.bank-option__logo {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
+.bank-option__name {
+  overflow: hidden;
+  color: #0F172A;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.method-secure {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #F1F5F9;
+  color: #62748E;
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.method-secure svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin-top: 1px;
+  color: #64748B;
+}
+
+/* Ví điện tử */
+
+.wallet-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.wallet-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.wallet-option:hover {
+  border-color: #93B4F5;
+}
+
+.wallet-option.is-active {
+  border-color: #2563EB;
+  box-shadow: inset 0 0 0 1px #2563EB;
+}
+
+.wallet-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  height: 30px;
+  min-width: 56px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.wallet-logo--momo {
+  background: #FFF1F6;
+  color: #D6006F;
+}
+
+.wallet-logo--zalopay {
+  background: #EFF6FF;
+  color: #0068FF;
+}
+
+.wallet-logo--paypal {
+  background: #EEF4FF;
+  color: #003087;
+}
+
+.wallet-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.wallet-copy strong {
+  color: #1A1A1A;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.wallet-copy small {
+  color: #62748E;
+  font-size: 11.5px;
+  line-height: 16px;
+}
+
+.method-note {
+  margin-top: 10px;
+  color: #62748E;
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.method-note strong {
+  color: #45556C;
+  font-weight: 600;
+}
+
+/* Chuyển khoản */
+
+.info-list {
+  overflow: hidden;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  line-height: 18px;
+}
+
+.info-row + .info-row {
+  border-top: 1px solid #F1F5F9;
+}
+
+.info-row__label {
+  flex: none;
+  color: #62748E;
+}
+
+.info-row__value {
+  overflow-wrap: anywhere;
+  color: #0F172A;
+  text-align: right;
+}
+
+.info-row__value.is-strong {
+  color: #155DFC;
+  font-weight: 600;
+}
+
+.info-row__value-group {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: 0;
+}
+
+.copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: #2463EB;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+.copy-btn:hover {
+  text-decoration: underline;
+}
+
+.copy-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+.method-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid #FDE68A;
+  border-radius: 8px;
+  background: #FFFBEB;
+  color: #92400E;
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.method-warning svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+}
+
+.method-warning strong {
+  display: block;
+  font-weight: 600;
+}
+
+.method-warning p {
+  margin: 2px 0 0;
+}
+
+/* QR */
+
+.qr-preview {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 14px;
+  border: 1px dashed #BFDBFE;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.qr-preview__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 9px;
+  background: #EFF6FF;
+  color: #2563EB;
+}
+
+.qr-preview__icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.qr-preview__copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.qr-preview__copy strong {
+  display: block;
+  color: #1A1A1A;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.qr-preview__copy p {
+  margin: 2px 0 0;
+  color: #62748E;
+  font-size: 11.5px;
+  line-height: 16px;
+}
+

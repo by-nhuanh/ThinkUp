@@ -162,7 +162,9 @@
                   <!-- Course Info -->
                   <div class="flex flex-1 flex-col gap-1.5 w-full xl:w-auto">
                     <h2 class="line-clamp-2 text-[16px] font-semibold text-[#0F1C33]">
-                      {{ course.title }}
+                      <a [routerLink]="course.id === 'python-co-ban' ? ['/main/my-courses', course.id] : ['/main/courses', course.id]" class="transition hover:text-[#145CF2]">
+                        {{ course.title }}
+                      </a>
                     </h2>
                     <p class="text-[14px] text-[#61738F]">
                       Giảng viên: <span class="font-medium text-[#0F172B]">{{ course.instructor }}</span>

@@ -1,7 +1,9 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { CurrentCourse } from '../../../../../core/models/profile.model';
+
+type CourseTab = 'active' | 'completed';
 
 @Component({
   selector: 'app-current-courses-card',
@@ -12,4 +14,16 @@ import { CurrentCourse } from '../../../../../core/models/profile.model';
 })
 export class CurrentCoursesCardComponent {
   @Input() courses: CurrentCourse[] = [];
+  @Input() completedCourses: CurrentCourse[] = [];
+  @Input() totalCompleted = 0;
+
+  readonly activeTab = signal<CourseTab>('active');
+
+  readonly visibleCourses = computed(() =>
+    this.activeTab() === 'active' ? this.courses : this.completedCourses
+  );
+
+  selectTab(tab: CourseTab): void {
+    this.activeTab.set(tab);
+  }
 }

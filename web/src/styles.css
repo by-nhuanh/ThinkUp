@@ -51,3 +51,77 @@
   }
 }
 
+/*
+ * Token dùng chung cho luồng Giỏ hàng & Thanh toán (Figma: ThinkUp / Thanh toán).
+ * Phạm vi desktop–laptop (1366 → 1920px): cỡ chữ giữ nguyên để cùng một vai trò
+ * typography đọc giống nhau ở mọi bề rộng, khoảng cách co lại có giới hạn.
+ */
+@layer base {
+  :root {
+    --pay-page-bg: #F9F9FF;
+    --pay-surface: #FFFFFF;
+    --pay-border: #EEF0F3;
+    --pay-border-strong: #E2E8F0;
+    --pay-divider: #F1F5F9;
+
+    --pay-text: #0F172A;
+    --pay-text-strong: #1A1A1A;
+    --pay-text-body: #45556C;
+    --pay-text-muted: #62748E;
+    --pay-text-subtle: #90A1B9;
+
+    --pay-primary: #155DFC;
+    --pay-primary-hover: #0B4BDA;
+    --pay-primary-ring: #2463EB;
+    --pay-sale: #EF4444;
+    --pay-sale-strong: #FF2056;
+    --pay-success: #16A34A;
+    --pay-success-bg: #ECFDF5;
+    --pay-success-border: #D0FAE5;
+    --pay-danger: #E63946;
+    --pay-warning: #92400E;
+
+    --pay-font-page-title: 28px;
+    --pay-font-section: 17px;
+    --pay-font-aside-title: 18px;
+    --pay-font-body: 14px;
+    --pay-font-body-lg: 16px;
+    --pay-font-small: 13px;
+    --pay-font-caption: 12px;
+    --pay-font-tiny: 11px;
+    --pay-font-price: 20px;
+    --pay-font-total: 22px;
+
+    --pay-radius-card: 18px;
+    --pay-radius-panel: 14px;
+    --pay-radius-control: 10px;
+    --pay-page-max: 1536px;
+    --pay-page-x: clamp(16px, 1.5vw, 24px);
+    --pay-gap: clamp(16px, 1.25vw, 24px);
+    --pay-card-pad: clamp(16px, 1.25vw, 24px);
+    --pay-aside: 380px;
+  }
+}
+
+@keyframes like-pop {
+  0% {
+    transform: scale(0.82);
+  }
+  55% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.like-pop {
+  animation: like-pop 260ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .like-pop {
+    animation: none;
+  }
+}
+

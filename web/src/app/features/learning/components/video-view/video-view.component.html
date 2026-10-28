@@ -1,0 +1,149 @@
+﻿<div>
+  <div class="overflow-hidden rounded-[20px] bg-[linear-gradient(172deg,#041348_0%,#01052c_100%)] shadow-[0_8px_10px_-6px_rgba(0,0,0,0.1),0_20px_25px_-5px_rgba(0,0,0,0.1)]">
+    <div class="relative aspect-[1356/680] max-h-[680px] w-full">
+      <video
+        #videoElement
+        class="absolute inset-0 h-full w-full object-cover"
+        [src]="lesson.videoUrl"
+        preload="metadata"
+        playsinline
+        (loadedmetadata)="onLoadedMetadata()"
+        (timeupdate)="onTimeUpdate()"
+        (ended)="onEnded()"
+        (click)="togglePlay()"
+      ></video>
+
+      @if (!started()) {
+        <div class="absolute inset-0 flex flex-col justify-between bg-[linear-gradient(160deg,rgba(4,19,72,0.96)_0%,rgba(1,5,44,0.98)_100%)] p-8 pb-[112px] 2xl:p-10 2xl:pb-[120px]">
+          <div class="max-w-[720px]">
+            <h2 class="text-[30px] font-bold leading-[38px] text-white 2xl:text-[36px] 2xl:leading-[45px]">
+              {{ lesson.title }}
+            </h2>
+            <span class="mt-4 block h-1 w-16 rounded-full bg-[#0072F8]"></span>
+            <p class="mt-4 max-w-[320px] text-[14px] leading-5 text-white/70">{{ lesson.summary }}</p>
+          </div>
+
+          <div class="pointer-events-none relative flex flex-1 items-center justify-center">
+            <div class="grid grid-cols-2 gap-x-36 gap-y-3 2xl:gap-x-48 2xl:gap-y-6">
+              <div class="flex flex-col items-center gap-2">
+                <span class="grid h-14 w-14 place-items-center [clip-path:polygon(25%_6.7%,75%_6.7%,100%_50%,75%_93.3%,25%_93.3%,0_50%)] bg-[#FF5C75]">
+                  <svg lucideFlaskConical class="h-5 w-5 text-white" aria-hidden="true"></svg>
+                </span>
+                <span class="text-[10px] font-bold uppercase tracking-[0.05em] text-white/80">Test</span>
+              </div>
+              <div class="flex flex-col items-center gap-2">
+                <span class="grid h-14 w-14 place-items-center [clip-path:polygon(25%_6.7%,75%_6.7%,100%_50%,75%_93.3%,25%_93.3%,0_50%)] bg-[#0072F8]">
+                  <svg lucideSearch class="h-5 w-5 text-white" aria-hidden="true"></svg>
+                </span>
+                <span class="text-[10px] font-bold uppercase tracking-[0.05em] text-white/80">Define</span>
+              </div>
+              <div class="flex flex-col items-center gap-2">
+                <span class="grid h-14 w-14 place-items-center [clip-path:polygon(25%_6.7%,75%_6.7%,100%_50%,75%_93.3%,25%_93.3%,0_50%)] bg-[#FFB330]">
+                  <svg lucideLayoutGrid class="h-5 w-5 text-[#3B2A00]" aria-hidden="true"></svg>
+                </span>
+                <span class="text-[10px] font-bold uppercase tracking-[0.05em] text-white/80">Prototype</span>
+              </div>
+              <div class="flex flex-col items-center gap-2">
+                <span class="grid h-14 w-14 place-items-center [clip-path:polygon(25%_6.7%,75%_6.7%,100%_50%,75%_93.3%,25%_93.3%,0_50%)] bg-[#00BDBE]">
+                  <svg lucideLightbulb class="h-5 w-5 text-white" aria-hidden="true"></svg>
+                </span>
+                <span class="text-[10px] font-bold uppercase tracking-[0.05em] text-white/80">Ideate</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              (click)="togglePlay()"
+              class="pointer-events-auto absolute left-1/2 top-1/2 grid h-20 w-20 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-[#0072F8]/90 text-white shadow-[0_0_0_4px_rgba(255,255,255,0.2)] backdrop-blur-sm transition hover:scale-105 hover:bg-[#0072F8]"
+              aria-label="Phát video"
+            >
+              <svg lucidePlay class="ml-1 h-8 w-8 fill-white" aria-hidden="true"></svg>
+            </button>
+          </div>
+        </div>
+      }
+
+      <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#020A31]/80 via-[#020A31]/25 to-transparent">
+        <div class="px-7 pt-5">
+          <div class="h-1 w-full overflow-hidden rounded-full bg-white/15">
+            <div class="h-full rounded-full bg-[#0072F8]" [style.width.%]="progressPercent"></div>
+          </div>
+          <input
+            type="range"
+            min="0"
+            [max]="duration() || 1"
+            step="0.1"
+            [value]="currentTime()"
+            (input)="onSeek($event)"
+            class="mt-[-6px] h-3 w-full cursor-pointer opacity-0"
+            aria-label="Tua video"
+          />
+        </div>
+
+        <div class="flex h-[72px] items-center justify-between gap-3 px-6">
+          <div class="flex items-center gap-3 text-white">
+            <button type="button" (click)="togglePlay()" class="grid h-8 w-8 place-items-center rounded-md transition hover:bg-white/10" [attr.aria-label]="playing() ? 'Tạm dừng' : 'Phát'">
+              @if (playing()) {
+                <svg lucidePause class="h-4 w-4 fill-white" aria-hidden="true"></svg>
+              } @else {
+                <svg lucidePlay class="h-4 w-4 fill-white" aria-hidden="true"></svg>
+              }
+            </button>
+            <button type="button" (click)="toggleMute()" class="grid h-8 w-8 place-items-center rounded-md transition hover:bg-white/10" [attr.aria-label]="muted() ? 'Bật âm thanh' : 'Tắt âm thanh'">
+              @if (muted()) {
+                <svg lucideVolumeX class="h-4 w-4" aria-hidden="true"></svg>
+              } @else {
+                <svg lucideVolume2 class="h-4 w-4" aria-hidden="true"></svg>
+              }
+            </button>
+            <span class="text-[12px] leading-4 tabular-nums text-white/80">{{ formattedCurrent }} / {{ formattedDuration }}</span>
+          </div>
+
+          <div class="flex items-center gap-3 text-white">
+            <div class="relative">
+              <button type="button" (click)="rateMenuOpen.set(!rateMenuOpen())" class="inline-flex h-8 items-center gap-1 rounded-md px-2 text-[12px] font-medium transition hover:bg-white/10">
+                {{ rate() }}x
+                <svg lucideChevronDown class="h-3 w-3" aria-hidden="true"></svg>
+              </button>
+              @if (rateMenuOpen()) {
+                <div class="absolute bottom-10 right-0 w-24 overflow-hidden rounded-lg bg-[#0B1220] py-1 shadow-xl">
+                  @for (option of rates; track option) {
+                    <button type="button" (click)="setRate(option)" class="flex w-full items-center justify-between px-3 py-1.5 text-left text-[12px] text-white/80 hover:bg-white/10">
+                      {{ option }}x
+                      @if (rate() === option) {
+                        <span class="text-[#2B8CFF]">•</span>
+                      }
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+
+            <div class="relative">
+              <button type="button" (click)="qualityMenuOpen.set(!qualityMenuOpen())" class="inline-flex h-8 items-center gap-1 rounded-md px-2 text-[12px] font-medium transition hover:bg-white/10">
+                <svg lucideSettings class="h-4 w-4" aria-hidden="true"></svg>
+                {{ quality() }}
+              </button>
+              @if (qualityMenuOpen()) {
+                <div class="absolute bottom-10 right-0 w-24 overflow-hidden rounded-lg bg-[#0B1220] py-1 shadow-xl">
+                  @for (option of qualities; track option) {
+                    <button type="button" (click)="setQuality(option)" class="flex w-full items-center justify-between px-3 py-1.5 text-left text-[12px] text-white/80 hover:bg-white/10">
+                      {{ option }}
+                      @if (quality() === option) {
+                        <span class="text-[#2B8CFF]">•</span>
+                      }
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+
+            <button type="button" (click)="toggleFullscreen()" class="grid h-8 w-8 place-items-center rounded-md transition hover:bg-white/10" aria-label="Toàn màn hình">
+              <svg lucideMaximize class="h-4 w-4" aria-hidden="true"></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

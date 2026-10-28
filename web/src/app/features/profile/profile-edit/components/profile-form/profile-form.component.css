@@ -1,0 +1,24 @@
+.bio-editor {
+  outline: none;
+  word-break: break-word;
+}
+
+.bio-editor:empty::before {
+  content: attr(data-placeholder);
+  color: #6a6f73;
+  pointer-events: none;
+}
+
+.bio-editor b,
+.bio-editor strong {
+  font-weight: 700;
+}
+
+.bio-editor i,
+.bio-editor em {
+  font-style: italic;
+}
+
+.bio-editor p {
+  margin: 0;
+}

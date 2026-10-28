@@ -67,7 +67,7 @@
 
     <!-- Courses Grid -->
     @if (isReady() && sortedCourses().length > 0) {
-      <section class="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+      <section class="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
         @for (course of sortedCourses(); track course.id) {
           <app-course-card [course]="course" />
         }

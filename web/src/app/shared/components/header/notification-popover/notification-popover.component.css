@@ -1,0 +1,4 @@
+/* Popover thông báo trên header - Figma 400x460. */
+:host {
+  display: block;
+}

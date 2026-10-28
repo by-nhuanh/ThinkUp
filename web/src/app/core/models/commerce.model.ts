@@ -7,6 +7,10 @@ export interface CartItem extends Course {
   thumbnail?: string;
   theme?: string;
   shortLabel?: string;
+  /** Trạng thái do API giỏ hàng trả về (GET /api/user/cart). */
+  isSelected?: boolean;
+  isEnrolled?: boolean;
+  isAvailable?: boolean;
 }
 
 export interface OrderSummary {

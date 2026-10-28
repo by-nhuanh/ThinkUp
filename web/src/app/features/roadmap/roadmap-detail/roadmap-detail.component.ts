@@ -1,175 +1,155 @@
-import { Component, inject, signal, computed, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { RoadmapService } from '../services/roadmap.service';
+import {
+  LucideArrowRight,
+  LucideBookmark,
+  LucideChevronDown,
+  LucideChevronRight,
+  LucideCircleCheck,
+  LucideSearch
+} from '@lucide/angular';
 import { AuthService } from '../../../core/services/auth.service';
-import { RoadmapDetail, RoadmapMetaItem, RoadmapSkill, RoadmapStage } from '../models/roadmap.model';
+import { ToastService } from '../../../core/services/toast.service';
+import { RoadmapSkill, RoadmapStage } from '../models/roadmap.model';
+import { RoadmapService } from '../services/roadmap.service';
+import { RoadmapProgressComponent } from '../components/roadmap-progress/roadmap-progress.component';
+import { RoadmapStageIconComponent } from '../components/roadmap-stage-icon/roadmap-stage-icon.component';
+import { RoadmapStatusChipComponent } from '../components/roadmap-status-chip/roadmap-status-chip.component';
 
-interface FilterOption {
-  id: 'all' | 'completed' | 'in-progress' | 'not-started';
-  label: string;
-}
+type StageFilter = 'all' | 'completed' | 'in-progress' | 'not-started';
+
+const FILTERS: Array<{ id: StageFilter; label: string }> = [
+  { id: 'all', label: 'Tất cả' },
+  { id: 'completed', label: 'Đã hoàn thành' },
+  { id: 'in-progress', label: 'Đang học' },
+  { id: 'not-started', label: 'Chưa bắt đầu' }
+];
 
 @Component({
   selector: 'app-roadmap-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [
+    RouterLink,
+    LucideArrowRight,
+    LucideBookmark,
+    LucideChevronDown,
+    LucideChevronRight,
+    LucideCircleCheck,
+    LucideSearch,
+    RoadmapProgressComponent,
+    RoadmapStageIconComponent,
+    RoadmapStatusChipComponent
+  ],
   templateUrl: './roadmap-detail.component.html',
-  styleUrl: './roadmap-detail.component.css'
+  styleUrls: ['../styles/roadmap-ui.css', './roadmap-detail.component.css']
 })
-export class RoadmapDetailComponent implements OnInit {
-  private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
+export class RoadmapDetailComponent {
   private readonly roadmapService = inject(RoadmapService);
   private readonly authService = inject(AuthService);
+  private readonly toastService = inject(ToastService);
+  private readonly router = inject(Router);
 
-  readonly roadmapId = signal<string>('');
-  readonly searchKeyword = signal<string>('');
-  readonly statusFilter = signal<'all' | 'completed' | 'in-progress' | 'not-started'>('all');
-  readonly expandedStages = signal<string[]>([]);
-  readonly feedbackMessage = signal<string>('');
-  readonly feedbackType = signal<'success' | 'warning'>('success');
+  readonly roadmapId = inject(ActivatedRoute).snapshot.paramMap.get('id') ?? '';
+  readonly filters = FILTERS;
 
-  readonly filterOptions: FilterOption[] = [
-    { id: 'all', label: 'Tất cả' },
-    { id: 'completed', label: 'Đã hoàn thành' },
-    { id: 'in-progress', label: 'Đang học' },
-    { id: 'not-started', label: 'Chưa bắt đầu' }
-  ];
+  readonly searchKeyword = signal('');
+  readonly statusFilter = signal<StageFilter>('all');
+  private readonly expandedStageIds = signal<ReadonlySet<string>>(new Set());
 
-  readonly roadmapMeta = computed(() => {
-    const id = this.roadmapId();
-    return id ? this.roadmapService.getRoadmapMeta(id) : null;
-  });
+  readonly roadmap = computed(() => this.roadmapService.getRoadmapById(this.roadmapId));
+  readonly progress = computed(() => this.roadmapService.getProgress(this.roadmapId));
+  readonly isEnrolled = computed(() => this.roadmapService.isEnrolled(this.roadmapId));
 
-  readonly roadmapDetail = computed(() => {
-    const id = this.roadmapId();
-    return id ? this.roadmapService.getRoadmapById(id) : null;
-  });
+  readonly visibleStages = computed<RoadmapStage[]>(() => {
+    const roadmap = this.roadmap();
+    if (!roadmap) return [];
 
-  readonly totalStages = computed(() => this.roadmapDetail()?.stages.length || 0);
-
-  readonly progressStats = computed(() => {
-    const detail = this.roadmapDetail();
-    if (!detail) return { completed: 0, total: 0, percent: 0 };
-
-    const allSkills = detail.stages.flatMap((s) => s.skills);
-    const completed = allSkills.filter((sk) => sk.status === 'completed').length;
-    const total = allSkills.length;
-    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
-
-    return { completed, total, percent };
-  });
-
-  readonly filteredStages = computed(() => {
-    const detail = this.roadmapDetail();
-    if (!detail) return [];
-
-    const query = this.searchKeyword().trim().toLowerCase();
+    const keyword = this.searchKeyword().trim().toLowerCase();
     const filter = this.statusFilter();
 
-    return detail.stages
+    return roadmap.stages
       .map((stage) => {
-        const visibleSkills = stage.skills.filter((skill) => {
-          const statusMatches =
-            filter === 'all' ||
-            (filter === 'not-started'
-              ? skill.status === 'not-started' || skill.status === 'locked'
-              : skill.status === filter);
-
-          const queryMatches =
-            !query ||
-            skill.title.toLowerCase().includes(query) ||
-            skill.desc.toLowerCase().includes(query) ||
-            (skill.topics || []).some((t) => t.toLowerCase().includes(query));
-
-          return statusMatches && queryMatches;
+        const skills = stage.skills.filter((skill) => {
+          const matchesKeyword =
+            !keyword ||
+            skill.title.toLowerCase().includes(keyword) ||
+            skill.desc.toLowerCase().includes(keyword);
+          return matchesKeyword && this.matchesFilter(skill, filter);
         });
 
-        return { ...stage, visibleSkills };
+        const stageMatchesKeyword =
+          !keyword ||
+          stage.name.toLowerCase().includes(keyword) ||
+          stage.desc.toLowerCase().includes(keyword);
+
+        return { stage, skills, visible: skills.length > 0 || (stageMatchesKeyword && filter === 'all') };
       })
-      .filter((stage) => stage.visibleSkills.length > 0);
+      .filter((entry) => entry.visible)
+      .map((entry) => entry.stage);
   });
 
-  ngOnInit(): void {
-    this.route.paramMap.subscribe((params) => {
-      const id = params.get('id') || '';
-      this.roadmapId.set(id);
+  readonly hasActiveFilters = computed(
+    () => this.searchKeyword().trim().length > 0 || this.statusFilter() !== 'all'
+  );
 
-      const detail = this.roadmapService.getRoadmapById(id);
-      if (detail && detail.stages.length > 0) {
-        this.expandedStages.set([detail.stages[0].id]);
-      }
+  constructor() {
+    const firstOpenStage = this.roadmap()?.stages.find(
+      (stage) => this.roadmapService.getStageProgress(stage).percent < 100
+    );
+    if (firstOpenStage) {
+      this.expandedStageIds.set(new Set([firstOpenStage.id]));
+    }
+  }
+
+  private matchesFilter(skill: RoadmapSkill, filter: StageFilter): boolean {
+    if (filter === 'all') return true;
+    if (filter === 'in-progress') return skill.status === 'in-progress' || skill.status === 'review';
+    return skill.status === filter;
+  }
+
+  stageProgress(stage: RoadmapStage) {
+    return this.roadmapService.getStageProgress(stage);
+  }
+
+  isExpanded(stage: RoadmapStage): boolean {
+    if (this.hasActiveFilters()) return true;
+    return this.expandedStageIds().has(stage.id);
+  }
+
+  toggleStage(stage: RoadmapStage): void {
+    const next = new Set(this.expandedStageIds());
+    if (next.has(stage.id)) {
+      next.delete(stage.id);
+    } else {
+      next.add(stage.id);
+    }
+    this.expandedStageIds.set(next);
+  }
+
+  visibleChips(stage: RoadmapStage): RoadmapSkill[] {
+    return this.stageSkills(stage).slice(0, 5);
+  }
+
+  hiddenChipCount(stage: RoadmapStage): number {
+    return Math.max(0, this.stageSkills(stage).length - 5);
+  }
+
+  stageSkills(stage: RoadmapStage): RoadmapSkill[] {
+    const keyword = this.searchKeyword().trim().toLowerCase();
+    const filter = this.statusFilter();
+
+    return stage.skills.filter((skill) => {
+      const matchesKeyword =
+        !keyword ||
+        skill.title.toLowerCase().includes(keyword) ||
+        skill.desc.toLowerCase().includes(keyword) ||
+        stage.name.toLowerCase().includes(keyword);
+      return matchesKeyword && this.matchesFilter(skill, filter);
     });
   }
 
-  isEnrolled(): boolean {
-    const id = this.roadmapId();
-    return id ? this.roadmapService.isEnrolled(id) : false;
-  }
-
-  handleToggleEnroll(): void {
-    const id = this.roadmapId();
-    if (!id) return;
-
-    if (!this.authService.isAuthenticated()) {
-      this.router.navigate(['/auth/login'], { queryParams: { returnUrl: `/learning/roadmap/${id}` } });
-      return;
-    }
-
-    if (this.isEnrolled()) {
-      this.roadmapService.unenrollRoadmap(id);
-      this.showToast('Đã hủy tham gia lộ trình học.', 'success');
-      return;
-    }
-
-    const res = this.roadmapService.enrollRoadmap(id);
-    if (res.success) {
-      this.showToast(res.message, 'success');
-    } else {
-      this.showToast(res.message, 'warning');
-    }
-  }
-
-  isStageExpanded(stageId: string): boolean {
-    return this.expandedStages().includes(stageId);
-  }
-
-  toggleStage(stageId: string): void {
-    const current = this.expandedStages();
-    if (current.includes(stageId)) {
-      this.expandedStages.set(current.filter((id) => id !== stageId));
-    } else {
-      this.expandedStages.set([...current, stageId]);
-    }
-  }
-
-  getStageProgress(stage: RoadmapStage): { completed: number; percent: number } {
-    const completed = stage.skills.filter((sk) => sk.status === 'completed').length;
-    const total = stage.skills.length;
-    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
-    return { completed, percent };
-  }
-
-  cycleSkillStatus(stageId: string, skill: RoadmapSkill): void {
-    if (!this.isEnrolled()) {
-      this.showToast('Bạn cần chọn lộ trình này để cập nhật tiến độ.', 'warning');
-      return;
-    }
-
-    const cycle: Array<RoadmapSkill['status']> = ['not-started', 'in-progress', 'completed'];
-    let idx = cycle.indexOf(skill.status);
-    if (idx === -1) idx = 0;
-    const nextStatus = cycle[(idx + 1) % cycle.length];
-
-    this.roadmapService.updateSkillStatus(this.roadmapId(), stageId, skill.id, nextStatus);
-
-    const labels: Record<string, string> = {
-      'not-started': 'Chưa bắt đầu',
-      'in-progress': 'Đang học',
-      completed: 'Đã hoàn thành'
-    };
-    this.showToast(`Đã cập nhật trạng thái: ${labels[nextStatus]}`, 'success');
+  setFilter(filter: StageFilter): void {
+    this.statusFilter.set(filter);
   }
 
   onSearchInput(event: Event): void {
@@ -177,17 +157,37 @@ export class RoadmapDetailComponent implements OnInit {
     this.searchKeyword.set(target.value);
   }
 
-  setStatusFilter(filter: 'all' | 'completed' | 'in-progress' | 'not-started'): void {
-    this.statusFilter.set(filter);
+  clearFilters(): void {
+    this.searchKeyword.set('');
+    this.statusFilter.set('all');
   }
 
-  private showToast(message: string, type: 'success' | 'warning'): void {
-    this.feedbackMessage.set(message);
-    this.feedbackType.set(type);
-    setTimeout(() => {
-      if (this.feedbackMessage() === message) {
-        this.feedbackMessage.set('');
-      }
-    }, 3500);
+  toggleEnroll(): void {
+    if (!this.authService.isAuthenticated()) {
+      this.router.navigate(['/auth/login'], {
+        queryParams: { returnUrl: `/learning/roadmap/${this.roadmapId}` }
+      });
+      return;
+    }
+
+    if (this.isEnrolled()) {
+      this.roadmapService.unenrollRoadmap(this.roadmapId);
+      this.toastService.showToast({ type: 'success', message: 'Đã hủy chọn lộ trình học.' });
+      return;
+    }
+
+    const result = this.roadmapService.enrollRoadmap(this.roadmapId);
+    this.toastService.showToast({
+      type: result.success ? 'success' : 'warning',
+      message: result.message
+    });
+  }
+
+  testLink(stage: RoadmapStage): string[] {
+    return ['/learning/roadmap', this.roadmapId, 'test', stage.id];
+  }
+
+  skillLink(stage: RoadmapStage, skill: RoadmapSkill): string[] {
+    return ['/learning/roadmap', this.roadmapId, skill.id];
   }
 }

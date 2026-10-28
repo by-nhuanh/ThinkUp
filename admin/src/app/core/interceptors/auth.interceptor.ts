@@ -19,7 +19,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     : sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
 
   const isApiRequest = req.url.startsWith(environment.apiUrl);
-  const isLoginRequest = req.url.includes('/auth/login');
+  const isPublicAuthRequest = req.url.includes('/admin/auth/login') ||
+    req.url.includes('/admin/auth/verify-2fa') ||
+    req.url.includes('/admin/auth/forgot-password-guide');
 
   if (token && isApiRequest) {
     req = req.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
@@ -27,7 +29,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
-      if (error.status === 401 && isApiRequest && !isLoginRequest && typeof window !== 'undefined') {
+      if (error.status === 401 && isApiRequest && !isPublicAuthRequest && typeof window !== 'undefined') {
         sessionStorage.removeItem(TOKEN_KEY);
         sessionStorage.removeItem(USER_KEY);
         localStorage.removeItem(TOKEN_KEY);

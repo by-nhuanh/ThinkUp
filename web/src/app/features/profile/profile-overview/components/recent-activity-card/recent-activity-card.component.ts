@@ -12,17 +12,17 @@ import { RecentActivity } from '../../../../../core/models/profile.model';
 export class RecentActivityCardComponent {
   @Input() activities: RecentActivity[] = [];
 
-  getToneClass(tone: string): string {
+  toneColor(tone: string): string {
     switch (tone) {
       case 'amber':
-        return 'bg-[#FFF8DB] text-[#F59E0B]';
+        return '#F59E0B';
       case 'green':
-        return 'bg-[#C9F4D7] text-[#16A05D]';
+        return '#10B981';
       case 'sky':
-        return 'bg-[#F0F9FF] text-[#0088E8]';
+        return '#0EA5E9';
       case 'blue':
       default:
-        return 'bg-[#F0F9FF] text-[#4A79FF]';
+        return '#3B82F6';
     }
   }
 }

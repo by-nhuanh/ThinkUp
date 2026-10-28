@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -9,29 +9,20 @@ import { CommonModule } from '@angular/common';
   styleUrl: './profile-sidebar.component.css'
 })
 export class ProfileSidebarComponent {
-  @Input({ required: true }) displayName = '';
+  @Input() displayName = '';
   @Input() avatarUrl = '';
-  @Output() avatarChange = new EventEmitter<string>();
+  @Input() errorMessage = '';
+  @Input() isUploading = false;
 
-  readonly isUploading = signal(false);
+  @Output() fileSelected = new EventEmitter<File>();
 
-  onFileSelected(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    const file = target.files?.[0];
+  onFileInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
     if (file) {
-      this.isUploading.set(true);
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (reader.result) {
-          this.avatarChange.emit(reader.result as string);
-        }
-        this.isUploading.set(false);
-      };
-      reader.onerror = () => {
-        this.isUploading.set(false);
-      };
-      reader.readAsDataURL(file);
-      target.value = '';
+      this.fileSelected.emit(file);
     }
+    // Cho phép chọn lại đúng tệp vừa bị từ chối
+    input.value = '';
   }
 }

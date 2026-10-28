@@ -1,253 +1,186 @@
+<section class="rm-page rm-page--gradient roadmap-detail">
+  <div class="rm-container">
+    @if (roadmap(); as rm) {
+      <nav class="rm-breadcrumb" aria-label="Breadcrumb">
+        <a routerLink="/main/home">Trang chủ</a>
+        <svg lucideChevronRight aria-hidden="true" [size]="14" [strokeWidth]="1.8"></svg>
+        <a routerLink="/learning/roadmap">Roadmap</a>
+        <svg lucideChevronRight aria-hidden="true" [size]="14" [strokeWidth]="1.8"></svg>
+        <span class="rm-breadcrumb__current">
+          <svg lucideBookmark aria-hidden="true" [size]="14" [strokeWidth]="1.8"></svg>
+          {{ rm.title }}
+        </span>
+      </nav>
 
-    <div class="min-h-screen bg-[#F8FAFB] font-sans text-[#191C1D]">
-      <main class="mx-auto w-full max-w-[1280px] px-6 pb-20 pt-10">
-        <!-- Breadcrumbs -->
-        <nav class="flex items-center gap-2 overflow-hidden text-[14px] leading-[21px] text-[#6D717F]" aria-label="Breadcrumb">
-          <a routerLink="/" class="inline-flex items-center gap-1.5 hover:text-[#0088E8]">
-            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            </svg>
-            <span>Trang chủ</span>
-          </a>
-          <span class="text-[#D2D5DB]">/</span>
-          <a routerLink="/learning/roadmap" class="hover:text-[#0088E8]">Lộ trình</a>
-          <span class="text-[#D2D5DB]">/</span>
-          <span class="truncate font-medium text-[#0088E8]">{{ roadmapMeta()?.title }}</span>
-        </nav>
+      <header class="detail-head">
+        <div class="detail-head__main">
+          <h1 class="rm-page-title">{{ rm.title }}</h1>
+          <p class="detail-head__desc">{{ rm.desc }}</p>
+          <button
+            type="button"
+            class="rm-btn rm-btn--outline detail-head__enroll"
+            [class.detail-head__enroll--active]="isEnrolled()"
+            (click)="toggleEnroll()"
+          >
+            @if (isEnrolled()) {
+              <svg lucideCircleCheck aria-hidden="true" [size]="17" [strokeWidth]="2"></svg>
+              Đã chọn lộ trình
+            } @else {
+              <svg lucideBookmark aria-hidden="true" [size]="17" [strokeWidth]="1.8"></svg>
+              Chọn lộ trình học
+            }
+          </button>
+        </div>
 
-        @if (!roadmapDetail() || !roadmapMeta()) {
-          <div class="mt-12 rounded-2xl border border-dashed border-[#D2D5DB] bg-white p-16 text-center">
-            <p class="text-[16px] text-[#4D5461]">Không tìm thấy lộ trình học tập yêu cầu.</p>
-            <a routerLink="/learning/roadmap" class="mt-4 inline-block text-[14px] font-semibold text-[#0088E8] underline">
-              Quay lại danh sách lộ trình
-            </a>
-          </div>
-        } @else {
-          <!-- Header and Progress Section -->
-          <section class="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_400px]">
-            <div>
-              <div class="flex items-center gap-3">
-                <span
-                  class="rounded-lg px-3 py-1 text-xs font-bold"
-                  [ngStyle]="{ 'background-color': roadmapMeta()?.bgColor, 'color': roadmapMeta()?.color }"
-                >
-                  {{ roadmapMeta()?.shortCode }}
-                </span>
-                <span class="text-xs font-medium text-[#6D717F]">Lộ trình đào tạo chuẩn kỹ sư</span>
-              </div>
-              <h1 class="mt-3 text-[34px] font-bold leading-tight tracking-[-0.025em] text-[#191C1D] sm:text-[44px]">
-                {{ roadmapDetail()?.title }}
-              </h1>
-              <p class="mt-3 max-w-[680px] text-[15px] leading-[24px] text-[#4D5461]">
-                {{ roadmapDetail()?.desc }}
-              </p>
+        <div class="detail-head__progress">
+          <span class="detail-head__progress-label">
+            Tiến độ: <strong>{{ progress().completed }}/{{ progress().total }}</strong> kỹ năng
+          </span>
+          <app-roadmap-progress [value]="progress().percent" [label]="'Tiến độ lộ trình ' + rm.title" />
+          <span class="detail-head__percent">{{ progress().percent }}% hoàn thành</span>
+        </div>
+      </header>
 
-              <div class="mt-5 flex flex-wrap gap-3">
-                @if (isEnrolled()) {
-                  <button
-                    (click)="handleToggleEnroll()"
-                    class="inline-flex items-center gap-2 rounded-xl border border-[#16A34A] bg-[#E6F7EE] px-6 py-3 text-[14px] font-semibold text-[#16A34A] transition hover:bg-[#d4f2e2]"
-                  >
-                    <span>✓ Đang tham gia lộ trình này</span>
-                    <span class="text-xs font-normal text-[#16A34A]/80">(Nhấp để hủy)</span>
-                  </button>
-                } @else {
-                  <button
-                    (click)="handleToggleEnroll()"
-                    class="inline-flex items-center gap-2 rounded-xl bg-[#0088E8] px-6 py-3 text-[14px] font-semibold text-white shadow-sm transition hover:bg-[#0077CC]"
-                  >
-                    <span>+ Đăng ký học lộ trình này</span>
-                  </button>
-                }
-              </div>
-            </div>
+      <div class="detail-toolbar">
+        <label class="rm-search detail-toolbar__search">
+          <svg lucideSearch aria-hidden="true" [size]="18" [strokeWidth]="1.8"></svg>
+          <input
+            type="search"
+            placeholder="Tìm kiếm kỹ năng, chủ đề..."
+            [value]="searchKeyword()"
+            (input)="onSearchInput($event)"
+            aria-label="Tìm kiếm kỹ năng hoặc chủ đề"
+          />
+        </label>
 
-            <!-- Overall Progress Widget -->
-            <div class="rounded-2xl border border-[#D2D5DB]/70 bg-white p-6 shadow-sm">
-              <h3 class="text-[15px] font-semibold text-[#191C1D]">Tiến độ học tập của bạn</h3>
-              <p class="mt-1 text-[13px] text-[#6D717F]">
-                Đã hoàn thành <strong class="text-[#191C1D]">{{ progressStats().completed }}</strong> trên tổng số <strong>{{ progressStats().total }}</strong> kỹ năng
-              </p>
-
-              <div class="mt-4 h-2.5 overflow-hidden rounded-full bg-[#EEF0F3]">
-                <div
-                  class="h-full rounded-full bg-[#0088E8] transition-all duration-500"
-                  [style.width.%]="progressStats().percent"
-                ></div>
-              </div>
-
-              <div class="mt-3 flex items-center justify-between">
-                <span class="text-[14px] font-semibold text-[#0088E8]">{{ progressStats().percent }}% Hoàn thành</span>
-                <span class="text-[12px] text-[#6D717F]">{{ totalStages() }} giai đoạn</span>
-              </div>
-            </div>
-          </section>
-
-          <!-- Search & Status Filter Bar -->
-          <section class="mt-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between" aria-label="Tìm kiếm và lọc kỹ năng">
-            <div class="relative w-full md:max-w-[448px]">
-              <svg class="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#6D717F]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                [value]="searchKeyword()"
-                (input)="onSearchInput($event)"
-                placeholder="Tìm kiếm kỹ năng, công nghệ..."
-                class="h-12 w-full rounded-full border border-[#D2D5DB] bg-white pl-11 pr-4 text-[14px] text-[#191C1D] outline-none transition focus:border-[#0088E8] focus:ring-2 focus:ring-[#8ACEFF]/40"
-              />
-            </div>
-
-            <div class="flex gap-2 overflow-x-auto pb-1 md:pb-0" role="group" aria-label="Lọc theo trạng thái">
-              @for (filter of filterOptions; track filter.id) {
-                <button
-                  type="button"
-                  (click)="setStatusFilter(filter.id)"
-                  class="h-11 shrink-0 rounded-full border px-5 text-[14px] font-medium transition focus-visible:outline-none"
-                  [ngClass]="{
-                    'border-[#0088E8] bg-[#0088E8] text-white': statusFilter() === filter.id,
-                    'border-[#D2D5DB] bg-white text-[#212936] hover:border-[#8ACEFF]': statusFilter() !== filter.id
-                  }"
-                >
-                  {{ filter.label }}
-                </button>
-              }
-            </div>
-          </section>
-
-          <!-- Notification Toast -->
-          @if (feedbackMessage()) {
-            <div
-              class="mt-6 flex items-center justify-between rounded-xl p-4 text-[14px] font-medium transition-all"
-              [ngClass]="{
-                'bg-[#E6F7EE] text-[#16A34A] border border-[#16A34A]/20': feedbackType() === 'success',
-                'bg-[#FFF4D1] text-[#D97706] border border-[#D97706]/20': feedbackType() === 'warning'
-              }"
+        <div class="detail-toolbar__filters" role="group" aria-label="Lọc theo trạng thái kỹ năng">
+          @for (filter of filters; track filter.id) {
+            <button
+              type="button"
+              class="rm-filter"
+              [class.is-active]="statusFilter() === filter.id"
+              [attr.aria-pressed]="statusFilter() === filter.id"
+              (click)="setFilter(filter.id)"
             >
-              <span>{{ feedbackMessage() }}</span>
-              <button (click)="feedbackMessage.set('')" class="text-xs font-bold underline">Đóng</button>
-            </div>
+              {{ filter.label }}
+            </button>
           }
+        </div>
+      </div>
 
-          <!-- Timeline Accordion Stages -->
-          <section class="relative mt-10" aria-label="Các giai đoạn trong lộ trình">
-            <div class="space-y-5">
-              @for (stage of filteredStages(); track stage.id; let idx = $index) {
-                <article class="relative">
-                  <div class="overflow-hidden rounded-2xl border border-[#D2D5DB]/70 bg-white">
-                    <!-- Stage Header / Accordion trigger -->
+      @if (visibleStages().length > 0) {
+        <div class="timeline">
+          @for (stage of visibleStages(); track stage.id) {
+            <div class="timeline__item">
+              <span class="timeline__dot" aria-hidden="true">{{ stage.number }}</span>
+
+              <article class="rm-card stage-card" [class.stage-card--expanded]="isExpanded(stage)">
+                <div class="stage-card__head">
+                  <div
+                    class="stage-card__icon"
+                    [style.background]="stage.tint"
+                    [style.color]="stage.accent"
+                    aria-hidden="true"
+                  >
+                    <app-roadmap-stage-icon [icon]="stage.icon" [size]="26" />
+                  </div>
+
+                  <div class="stage-card__body">
+                    <h2 class="rm-stage-title">{{ stage.number }}. {{ stage.name }}</h2>
+                    <p class="stage-card__desc">{{ stage.desc }}</p>
+
+                    <div class="stage-card__chips">
+                      @for (skill of visibleChips(stage); track skill.id) {
+                        <a class="stage-chip" [routerLink]="skillLink(stage, skill)" [title]="skill.title">
+                          <span
+                            class="stage-chip__dot"
+                            [class.stage-chip__dot--completed]="skill.status === 'completed'"
+                            [class.stage-chip__dot--in-progress]="skill.status === 'in-progress'"
+                            [class.stage-chip__dot--review]="skill.status === 'review'"
+                          ></span>
+                          <span>{{ skill.title }}</span>
+                        </a>
+                      }
+                      @if (hiddenChipCount(stage) > 0) {
+                        <span class="rm-chip stage-chip__more">+{{ hiddenChipCount(stage) }}</span>
+                      }
+                    </div>
+                  </div>
+
+                  <div class="stage-card__side">
                     <button
                       type="button"
-                      (click)="toggleStage(stage.id)"
-                      class="grid w-full gap-5 p-6 text-left transition hover:bg-[#FBFCFD] md:grid-cols-[56px_minmax(0,1fr)_208px_24px] md:items-center"
+                      class="stage-card__toggle"
+                      [attr.aria-expanded]="isExpanded(stage)"
+                      [attr.aria-label]="(isExpanded(stage) ? 'Thu gọn ' : 'Mở rộng ') + stage.name"
+                      (click)="toggleStage(stage)"
                     >
-                      <div
-                        class="flex h-14 w-14 items-center justify-center rounded-2xl text-[16px] font-bold shadow-sm"
-                        [ngStyle]="{ 'background-color': roadmapMeta()?.bgColor, 'color': roadmapMeta()?.color }"
-                      >
-                        {{ stage.number }}
-                      </div>
-
-                      <div class="min-w-0">
-                        <span class="block text-[18px] font-semibold leading-[27px] text-[#191C1D]">{{ stage.title }}</span>
-                        <span class="mt-0.5 block text-[14px] leading-[21px] text-[#4D5461]">{{ stage.desc }}</span>
-                        <div class="mt-2 flex flex-wrap gap-1.5">
-                          @for (skill of stage.skills.slice(0, 4); track skill.id) {
-                            <span class="rounded-full bg-[#F4F6F9] px-2.5 py-0.5 text-[11px] font-medium text-[#212936]">{{ skill.title }}</span>
-                          }
-                          @if (stage.skills.length > 4) {
-                            <span class="rounded-full bg-[#EEF0F3] px-2 py-0.5 text-[11px] text-[#6D717F]">+{{ stage.skills.length - 4 }}</span>
-                          }
-                        </div>
-                      </div>
-
-                      <div>
-                        <div class="flex justify-between text-[13px]">
-                          <span class="text-[#4D5461]">{{ getStageProgress(stage).completed }}/{{ stage.skills.length }} kỹ năng</span>
-                          <strong [ngClass]="getStageProgress(stage).percent === 100 ? 'text-[#16A34A]' : 'text-[#0088E8]'">
-                            {{ getStageProgress(stage).percent }}%
-                          </strong>
-                        </div>
-                        <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-[#D2D5DB]/60">
-                          <div
-                            class="h-full rounded-full transition-all duration-300"
-                            [ngClass]="getStageProgress(stage).percent === 100 ? 'bg-[#16A34A]' : 'bg-[#0088E8]'"
-                            [style.width.%]="getStageProgress(stage).percent"
-                          ></div>
-                        </div>
-                      </div>
-
-                      <div class="flex items-center justify-center">
-                        <svg
-                          class="h-5 w-5 text-[#6D717F] transition-transform duration-200"
-                          [class.rotate-180]="isStageExpanded(stage.id)"
-                          fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                        >
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </div>
+                      <span class="stage-card__count">
+                        {{ stageProgress(stage).completed }}/{{ stageProgress(stage).total }} kỹ năng
+                      </span>
+                      <strong class="stage-card__percent">{{ stageProgress(stage).percent }}%</strong>
+                      <svg
+                        lucideChevronDown
+                        aria-hidden="true"
+                        class="stage-card__chevron"
+                        [class.is-open]="isExpanded(stage)"
+                        [size]="18"
+                        [strokeWidth]="2"
+                      ></svg>
                     </button>
 
-                    <!-- Expanded Stage Skills List -->
-                    @if (isStageExpanded(stage.id)) {
-                      <div class="border-t border-[#D2D5DB]/60 px-6 py-4">
-                        @for (skill of stage.visibleSkills; track skill.id) {
-                          <div class="flex min-h-[64px] w-full flex-col gap-3 border-b border-[#EEF0F3] py-3 text-left last:border-0 sm:flex-row sm:items-center sm:justify-between hover:bg-[#F8FAFB] px-2 rounded-lg transition-colors">
-                            <!-- Skill Status Cycle Button -->
-                            <div class="w-[150px] shrink-0">
-                              <button
-                                type="button"
-                                (click)="cycleSkillStatus(stage.id, skill)"
-                                class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium transition hover:opacity-80"
-                                [ngClass]="{
-                                  'border-[#16A34A]/30 bg-[#E6F7EE] text-[#16A34A]': skill.status === 'completed',
-                                  'border-[#0088E8]/30 bg-[#E6F4FF] text-[#0088E8]': skill.status === 'in-progress',
-                                  'border-[#D2D5DB] bg-white text-[#6D717F]': skill.status === 'not-started' || skill.status === 'locked'
-                                }"
-                              >
-                                @if (skill.status === 'completed') {
-                                  <span>✓ Hoàn thành</span>
-                                } @else if (skill.status === 'in-progress') {
-                                  <span>⏳ Đang học</span>
-                                } @else {
-                                  <span>○ Chưa học</span>
-                                }
-                              </button>
-                            </div>
+                    <app-roadmap-progress
+                      [value]="stageProgress(stage).percent"
+                      [success]="stageProgress(stage).percent === 100"
+                      [label]="'Tiến độ giai đoạn ' + stage.name"
+                    />
 
-                            <!-- Skill Link to Detail -->
-                            <div class="flex flex-1 items-center justify-between min-w-0">
-                              <div class="min-w-0 pr-4">
-                                <a
-                                  [routerLink]="['/learning/roadmap', roadmapId(), skill.id]"
-                                  class="text-[14px] font-semibold text-[#212936] hover:text-[#0088E8] transition-colors"
-                                >
-                                  {{ skill.title }}
-                                </a>
-                                @if (skill.desc) {
-                                  <p class="truncate text-[12px] text-[#6D717F]">{{ skill.desc }}</p>
-                                }
-                              </div>
-
-                              <a
-                                [routerLink]="['/learning/roadmap', roadmapId(), skill.id]"
-                                class="shrink-0 text-[13px] font-medium text-[#0088E8] hover:underline"
-                              >
-                                Chi tiết →
-                              </a>
-                            </div>
-                          </div>
-                        }
-                      </div>
+                    @if (stageProgress(stage).percent < 100) {
+                      <a class="rm-btn rm-btn--primary rm-btn--sm stage-card__test" [routerLink]="testLink(stage)">
+                        Làm bài test
+                      </a>
                     }
                   </div>
-                </article>
-              } @empty {
-                <div class="rounded-2xl border border-dashed border-[#D2D5DB] bg-white p-12 text-center text-[#6D717F]">
-                  <p class="text-[15px]">Không tìm thấy kỹ năng nào phù hợp với bộ lọc hiện tại.</p>
                 </div>
-              }
+
+                @if (isExpanded(stage)) {
+                  <div class="stage-card__skills">
+                    @for (skill of stageSkills(stage); track skill.id) {
+                      <a class="stage-skill" [routerLink]="skillLink(stage, skill)">
+                        <app-roadmap-status-chip [status]="skill.status" />
+                        <span class="stage-skill__title">{{ skill.title }}</span>
+                        <svg lucideChevronRight aria-hidden="true" [size]="18" [strokeWidth]="1.8"></svg>
+                      </a>
+                    }
+                    @if (stageSkills(stage).length === 0) {
+                      <p class="stage-card__no-skill rm-small">Không có kỹ năng phù hợp với bộ lọc.</p>
+                    }
+                  </div>
+                }
+              </article>
             </div>
-          </section>
-        }
-      </main>
-    </div>
+          }
+        </div>
+      } @else {
+        <div class="rm-card detail-empty">
+          <svg lucideSearch aria-hidden="true" [size]="32" [strokeWidth]="1.5"></svg>
+          <h2 class="rm-card-title">Không tìm thấy kỹ năng phù hợp</h2>
+          <p class="rm-base">Thử từ khoá khác hoặc bỏ bộ lọc trạng thái.</p>
+          <button type="button" class="rm-btn rm-btn--outline rm-btn--sm" (click)="clearFilters()">
+            Xóa bộ lọc
+          </button>
+        </div>
+      }
+    } @else {
+      <div class="rm-card detail-empty">
+        <svg lucideSearch aria-hidden="true" [size]="32" [strokeWidth]="1.5"></svg>
+        <h1 class="rm-card-title">Không tìm thấy lộ trình</h1>
+        <p class="rm-base">Lộ trình bạn mở không tồn tại hoặc đã bị gỡ.</p>
+        <a class="rm-btn rm-btn--primary rm-btn--sm" routerLink="/learning/roadmap">
+          Về danh sách lộ trình
+          <svg lucideArrowRight aria-hidden="true" [size]="16" [strokeWidth]="2"></svg>
+        </a>
+      </div>
+    }
+  </div>
+</section>

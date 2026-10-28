@@ -1,15 +1,49 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { catchError, tap } from 'rxjs/operators';
+import { catchError, map, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { CartItem, OrderSummary, Voucher, TransactionRow, TransactionDetail } from '../models/commerce.model';
+import {
+  ApiCartCourse,
+  CartView,
+  CheckoutVoucher,
+  CreatePaymentSessionPayload,
+  PaymentSession,
+  PaymentStatus,
+  VoucherValidateResult,
+} from '../models/payment.model';
 import { Course } from '../models/course.model';
 import { MOCK_COURSES } from '../data/mock/mock-courses';
 import { MOCK_BILLING_DETAILS, MOCK_BILLING_EMAIL, MOCK_BILLING_ROWS } from '../data/mock/mock-billing';
 
 function formatMoney(value: number): string {
   return `${new Intl.NumberFormat('vi-VN').format(value)}đ`;
+}
+
+/** Chuyển khóa học của API giỏ hàng sang model dùng chung của app. */
+function mapApiCartCourse(course: ApiCartCourse): CartItem {
+  const instructorName = course.instructor?.name || 'Giảng viên ThinkUp';
+  return {
+    id: course.course_id || course.id,
+    courseId: course.course_id,
+    slug: course.slug,
+    title: course.title,
+    displayTitle: course.title,
+    instructor: instructorName,
+    instructorInitial: instructorName.charAt(0).toUpperCase(),
+    rating: course.rating,
+    ratingCount: course.total_reviews,
+    studentsCount: course.total_students,
+    students: `${new Intl.NumberFormat('vi-VN').format(course.total_students || 0)} học viên`,
+    originalPrice: course.price?.original ?? 0,
+    salePrice: course.price?.sale ?? 0,
+    tags: course.tags ?? [],
+    thumbnailUrl: course.thumbnail_url || '',
+    isSelected: course.is_selected,
+    isEnrolled: course.is_already_enrolled,
+    isAvailable: course.is_available,
+  };
 }
 
 function normalizeCommerceCourse(course: Course): CartItem {
@@ -32,12 +66,14 @@ export class CommerceService {
   // State
   private _cartItems = signal<CartItem[]>([]);
   private _checkoutIds = signal<string[]>([]);
+  private _checkoutVoucher = signal<CheckoutVoucher | null>(null);
   private _transactions = signal<TransactionRow[]>([]);
   private _transactionDetails = signal<Record<string, TransactionDetail>>({});
 
   readonly cartItems = this._cartItems.asReadonly();
   readonly cartCount = computed(() => this._cartItems().length);
   readonly checkoutIds = this._checkoutIds.asReadonly();
+  readonly checkoutVoucher = this._checkoutVoucher.asReadonly();
   readonly checkoutCourses = computed(() => {
     const ids = this._checkoutIds();
     const items = this._cartItems();
@@ -105,16 +141,59 @@ export class CommerceService {
   }
 
   // Cart API
+  /**
+   * Tải giỏ hàng từ API thật (GET /api/user/cart).
+   * Không truyền selectedIds để lấy toàn bộ giỏ; trang giỏ hàng tự tính lại tổng tiền
+   * khi người dùng bỏ tick (yêu cầu TC-04: cập nhật tức thời).
+   */
+  loadCartView(params: { selectedIds?: string[]; voucherCode?: string } = {}): Observable<CartItem[]> {
+    let query = '';
+    const search: string[] = [];
+    if (params.selectedIds?.length) {
+      search.push(`selectedIds=${encodeURIComponent(params.selectedIds.join(','))}`);
+    }
+    if (params.voucherCode) {
+      search.push(`voucherCode=${encodeURIComponent(params.voucherCode)}`);
+    }
+    if (search.length) query = `?${search.join('&')}`;
+
+    return this.http
+      .get<{ success: boolean; data: CartView }>(`${this.apiUrl}/user/cart${query}`, { withCredentials: true })
+      .pipe(
+        map(res => this.applyCartPayload(res?.data)),
+        catchError(() => of(this._cartItems())),
+      );
+  }
+
+  /** PATCH-like refresh: đồng bộ lại danh sách khóa học sau mỗi thao tác giỏ hàng. */
+  refreshCart(): Observable<CartItem[]> {
+    return this.loadCartView();
+  }
+
+  private applyCartPayload(payload: unknown): CartItem[] {
+    const data = payload as CartView | Course[] | null;
+    if (!data) return this._cartItems();
+
+    if (Array.isArray(data)) {
+      const items = data.map(normalizeCommerceCourse);
+      this._cartItems.set(items);
+      this.persistState();
+      return items;
+    }
+
+    if (Array.isArray(data.courses)) {
+      const items = data.courses.map(mapApiCartCourse);
+      this._cartItems.set(items);
+      this._checkoutIds.update(ids => ids.filter(id => items.some(item => item.id === id)));
+      this.persistState();
+      return items;
+    }
+
+    return this._cartItems();
+  }
+
   getCart(): Observable<{ success: boolean; data: CartItem[] }> {
-    return this.http.get<{ success: boolean; data: CartItem[] }>(`${this.apiUrl}/user/cart`, { withCredentials: true }).pipe(
-      tap(res => {
-        if (res.success && res.data) {
-          this._cartItems.set(res.data.map(normalizeCommerceCourse));
-          this.persistState();
-        }
-      }),
-      catchError(() => of({ success: true, data: this._cartItems() }))
-    );
+    return this.loadCartView().pipe(map(items => ({ success: true, data: items })));
   }
 
   addToCart(courseId: string): Observable<{ success: boolean; data: CartItem[]; added: boolean }> {
@@ -127,15 +206,10 @@ export class CommerceService {
       }
     }
 
-    return this.http.post<{ success: boolean; data: CartItem[]; added: boolean }>(
+    return this.http.post<{ success: boolean; data: unknown; added: boolean }>(
       `${this.apiUrl}/user/cart`, { courseId }, { withCredentials: true }
     ).pipe(
-      tap(res => {
-        if (res.success && res.data) {
-          this._cartItems.set(res.data.map(normalizeCommerceCourse));
-          this.persistState();
-        }
-      }),
+      map(res => ({ success: res?.success ?? true, data: this.applyCartPayload(res?.data), added: true })),
       catchError(() => of({ success: true, data: this._cartItems(), added: true }))
     );
   }
@@ -145,9 +219,10 @@ export class CommerceService {
     this._checkoutIds.update(ids => ids.filter(id => id !== courseId));
     this.persistState();
 
-    return this.http.delete<{ success: boolean; data: CartItem[] }>(
+    return this.http.delete<{ success: boolean; data: unknown }>(
       `${this.apiUrl}/user/cart`, { body: { courseId }, withCredentials: true }
     ).pipe(
+      map(res => ({ success: res?.success ?? true, data: this.applyCartPayload(res?.data) })),
       catchError(() => of({ success: true, data: this._cartItems() }))
     );
   }
@@ -155,6 +230,38 @@ export class CommerceService {
   setCheckoutCourses(courseIds: string[]): void {
     this._checkoutIds.set(courseIds);
     this.persistState();
+  }
+
+  /** Voucher đã áp dụng ở giỏ hàng, cần bảo toàn sang trang thanh toán (BR-PAY-02). */
+  setCheckoutVoucher(voucher: CheckoutVoucher | null): void {
+    this._checkoutVoucher.set(voucher);
+  }
+
+  /** POST /api/user/cart/voucher/validate */
+  validateVoucher(code: string, eligibleSubtotal: number): Observable<VoucherValidateResult> {
+    return this.http
+      .post<{ success: boolean; data: VoucherValidateResult }>(
+        `${this.apiUrl}/user/cart/voucher/validate`,
+        { code, eligibleSubtotal },
+        { withCredentials: true },
+      )
+      .pipe(map(res => res.data));
+  }
+
+  /** POST /api/payment/create-session — khởi tạo phiên thanh toán thật. */
+  createPaymentSession(payload: CreatePaymentSessionPayload): Observable<PaymentSession> {
+    return this.http
+      .post<{ success: boolean; data: PaymentSession }>(`${this.apiUrl}/payment/create-session`, payload, {
+        withCredentials: true,
+      })
+      .pipe(map(res => res.data));
+  }
+
+  /** GET /api/payment/status/:id — dùng để polling trạng thái và đồng hồ đếm ngược. */
+  getPaymentStatus(transactionId: string): Observable<PaymentStatus> {
+    return this.http.get<PaymentStatus>(`${this.apiUrl}/payment/status/${encodeURIComponent(transactionId)}`, {
+      withCredentials: true,
+    });
   }
 
   // TODO(pre-deploy): Nhớ xóa giao dịch và hóa đơn mock khi tích hợp thanh toán thật.

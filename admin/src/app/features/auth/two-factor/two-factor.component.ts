@@ -57,6 +57,10 @@ export class TwoFactorComponent {
       },
       error: (error: AdminAuthError) => {
         this.loading.set(false);
+        if (error.code === '2FA_SESSION_EXPIRED') {
+          void this.router.navigateByUrl('/login');
+          return;
+        }
         this.errorMessage.set(
           error.message || 'Mã xác thực không chính xác hoặc đã hết hạn. Vui lòng thử lại.'
         );

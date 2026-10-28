@@ -1,0 +1,34 @@
+:host {
+  display: block;
+}
+
+.certificate-page-button {
+  display: grid;
+  height: 36px;
+  width: 36px;
+  place-items: center;
+  border-radius: 10px;
+  border: 1px solid #e0e5eb;
+  background: #ffffff;
+  color: #62748e;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.certificate-page-button:hover {
+  border-color: #b7d9ff;
+  background: #f4f9ff;
+  color: #005ccc;
+}
+
+.certificate-page-button--active,
+.certificate-page-button--active:hover {
+  border-color: #155dfc;
+  background: #155dfc;
+  color: #ffffff;
+}

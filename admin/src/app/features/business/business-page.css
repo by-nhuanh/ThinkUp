@@ -120,7 +120,7 @@ tbody tr:nth-last-child(-n + 2) .row-actions-menu { top: auto; bottom: calc(100%
    every input, select and date picker of the Business module shares one look. */
 .business-dropdown-field, .business-float-field, .custom-select-control { position: relative; display: block; padding-top: 3px; }
 .custom-select-control { width: fit-content; min-width: 0; }
-.business-float-field { --custom-select-width: 100%; }
+.business-float-field { --custom-select-width: 100%; --custom-select-max-width: 100%; }
 .business-dropdown-field > label, .business-dropdown-field > span:first-child, .business-float-field > label, .custom-select-control > label { position: absolute; z-index: 2; top: -5px; left: 4px; max-width: calc(100% - 8px); padding: 0 4px; overflow: hidden; background: #fff; color: #64748b; font: var(--admin-text-control-label); text-overflow: ellipsis; white-space: nowrap; pointer-events: none; }
 .business-dropdown-field > select, .business-float-field > select, .business-float-field > input, .business-float-field > textarea { width: 100%; height: 48px; border: 1px solid #b8bec7; border-radius: 8px; outline: 0; background: #fff; color: #071b48; font: var(--admin-text-control-input); }
 .business-dropdown-field > select, .business-float-field > select { appearance: none; padding: 7px 42px 0 14px; background: #fff url('/assets/business/orders/chevron-down.svg') no-repeat right 14px center / 16px 16px; text-overflow: ellipsis; cursor: pointer; }

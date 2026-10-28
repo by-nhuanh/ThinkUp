@@ -15,6 +15,18 @@ export const MOCK_ENROLLED_COURSES: EnrolledCourse[] = [
     lastStudiedAt: 'Hôm qua'
   },
   {
+    id: 'python-co-ban',
+    title: 'Python Cơ Bản Cho Người Mới Bắt Đầu',
+    instructor: 'Trần Minh Hiếu',
+    totalLessons: 15,
+    completedLessons: 5,
+    coverTitle: 'Python',
+    coverSubtitle: 'Nền tảng lập trình vững chắc',
+    cover: '#061543',
+    badge: 'MỚI',
+    lastStudiedAt: 'Hôm nay'
+  },
+  {
     id: 'python-data',
     title: 'Python for Data Science - Phân tích dữ liệu thực chiến',
     instructor: 'Lê Văn C',

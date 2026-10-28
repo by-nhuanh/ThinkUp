@@ -1,0 +1,106 @@
+﻿<div class="flex h-full min-h-0">
+  <!-- Vertical rail -->
+  <nav class="flex w-12 shrink-0 flex-col items-center gap-1 border-r border-[#1D293D] bg-[#151823] py-3" aria-label="Điều hướng không gian học">
+    <button
+      type="button"
+      (click)="toggle.emit()"
+      class="grid h-9 w-9 place-items-center rounded-lg text-white/80 transition hover:bg-white/10 hover:text-white"
+      [attr.aria-label]="open ? 'Ẩn nội dung khóa học' : 'Hiện nội dung khóa học'"
+      [attr.aria-expanded]="open"
+    >
+      <svg lucidePanelLeft class="h-6 w-6" aria-hidden="true"></svg>
+    </button>
+  </nav>
+
+  <!-- Course outline drawer -->
+  @if (open) {
+    <aside class="flex w-[320px] shrink-0 flex-col overflow-y-auto border-r border-[#1D293D] bg-[#151823] 2xl:w-[360px]" aria-label="Nội dung khóa học">
+      <div class="border-b border-white/10 px-5 py-5">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/40">Nội dung khóa học</p>
+        <h2 class="mt-2 text-[16px] font-bold leading-6 text-white">{{ course.title }}</h2>
+        <p class="mt-1 text-[12px] leading-4 text-white/50">Bởi {{ course.instructor }}</p>
+
+        <div class="mt-4 flex items-center justify-between text-[12px] leading-4 text-white/55">
+          <span>Tiến độ khóa học</span>
+          <strong class="font-bold text-white">{{ progress }}%</strong>
+        </div>
+        <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+          <div class="h-full rounded-full bg-[#0072F8] transition-all duration-500" [style.width.%]="progress"></div>
+        </div>
+      </div>
+
+      <nav class="pb-6">
+        @for (chapter of course.chapters; track chapter.id) {
+          <section class="border-b border-white/5">
+            <button
+              type="button"
+              (click)="chapterToggled.emit(chapter.id)"
+              class="flex min-h-12 w-full items-center justify-between gap-3 px-5 py-3 text-left text-[14px] font-semibold leading-5 text-white/90 transition hover:bg-white/5"
+              [attr.aria-expanded]="isOpen(chapter)"
+            >
+              <span class="min-w-0 truncate">{{ chapter.title }}</span>
+              <svg
+                lucideChevronDown
+                class="h-4 w-4 shrink-0 text-white/60 transition-transform"
+                [class.rotate-180]="isOpen(chapter)"
+                aria-hidden="true"
+              ></svg>
+            </button>
+
+            @if (isOpen(chapter)) {
+              <div class="pb-2">
+                @for (lesson of chapter.lessons; track lesson.id) {
+                  <button
+                    type="button"
+                    (click)="lessonSelected.emit(lesson)"
+                    class="flex w-full items-center gap-3 border-l-2 px-5 py-2.5 text-left transition"
+                    [class]="
+                      lesson.id === activeLessonId
+                        ? 'border-[#0072F8] bg-[#0072F8]/15'
+                        : 'border-transparent hover:bg-white/5'
+                    "
+                    [attr.aria-current]="lesson.id === activeLessonId ? 'step' : null"
+                  >
+                    <span class="grid h-4 w-4 shrink-0 place-items-center">
+                      @switch (lessonStatus(lesson)) {
+                        @case ('done') {
+                          <svg lucideCheck class="h-4 w-4 text-[#22C55E]" aria-hidden="true"></svg>
+                        }
+                        @case ('failed') {
+                          <svg lucideCircleAlert class="h-4 w-4 text-[#F59E0B]" aria-hidden="true"></svg>
+                        }
+                        @default {
+                          <svg lucideCircle class="h-4 w-4 text-white/30" aria-hidden="true"></svg>
+                        }
+                      }
+                    </span>
+
+                    <span class="shrink-0 text-white/60">
+                      @switch (lesson.type) {
+                        @case ('video') {
+                          <svg lucideCirclePlay class="h-4 w-4" aria-hidden="true"></svg>
+                        }
+                        @case ('reading') {
+                          <svg lucideFileText class="h-4 w-4" aria-hidden="true"></svg>
+                        }
+                        @case ('quiz') {
+                          <svg lucideCircleQuestionMark class="h-4 w-4" aria-hidden="true"></svg>
+                        }
+                        @default {
+                          <svg lucideCode2 class="h-4 w-4" aria-hidden="true"></svg>
+                        }
+                      }
+                    </span>
+
+                    <span class="min-w-0 flex-1 truncate text-[14px] leading-5 text-white/80">{{ lesson.title }}</span>
+                    <span class="shrink-0 text-[12px] leading-4 text-white/45">{{ lesson.duration }}</span>
+                  </button>
+                }
+              </div>
+            }
+          </section>
+        }
+      </nav>
+    </aside>
+  }
+</div>

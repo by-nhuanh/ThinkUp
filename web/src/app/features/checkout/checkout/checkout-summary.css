@@ -1,0 +1,625 @@
+/* ─── Tóm tắt đơn hàng ───────────────────────────────────────────────────── */
+
+.checkout-summary {
+  padding: 22px 20px 20px;
+  border-color: #E6EAF0;
+}
+
+.checkout-summary__head {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.checkout-summary__title {
+  margin: 0;
+  color: #1A1A1A;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 26px;
+}
+
+.checkout-summary__count {
+  margin: 0;
+  color: #62748E;
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.checkout-summary__empty {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px dashed #E2E8F0;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.checkout-summary__empty p {
+  margin: 0;
+  color: #62748E;
+  font-size: 12.5px;
+}
+
+.checkout-summary__back {
+  display: inline-block;
+  margin-top: 8px;
+  color: #2463EB;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.checkout-summary__courses {
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.checkout-summary__course {
+  display: flex;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #F1F5F9;
+}
+
+.checkout-summary__course:first-child {
+  padding-top: 0;
+}
+
+.checkout-summary__thumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 52px;
+  height: 52px;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.checkout-summary__thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.checkout-summary__thumb-label {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.checkout-summary__thumb-label.is-dark {
+  color: #1A1A1A;
+}
+
+.checkout-summary__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.checkout-summary__course-title {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #1A1A1A;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 17px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.checkout-summary__instructor {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #62748E;
+  font-size: 11px;
+  line-height: 15px;
+}
+
+.checkout-summary__instructor svg {
+  flex: none;
+  width: 12px;
+  height: 12px;
+}
+
+.checkout-summary__price {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 1px;
+}
+
+.checkout-summary__price strong {
+  color: #FF2056;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.checkout-summary__price s {
+  color: #90A1B9;
+  font-size: 10.5px;
+  line-height: 14px;
+}
+
+.checkout-summary__rows {
+  margin-top: 12px;
+}
+
+.checkout-summary__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  color: #45556C;
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.checkout-summary__row strong {
+  color: #0F172A;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.checkout-summary__row strong.is-sale {
+  color: #EF4444;
+}
+
+.checkout-summary__total {
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 1px solid #E5E7EB;
+}
+
+.checkout-summary__total-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.checkout-summary__total-row span {
+  color: #0F172A;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.checkout-summary__total-row strong {
+  color: #EF4444;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 30px;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.checkout-summary__vat {
+  display: block;
+  margin-top: 2px;
+  color: #90A1B9;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.checkout-summary__secure {
+  margin-top: 16px;
+}
+
+/* ─── Modal phiên thanh toán ─────────────────────────────────────────────── */
+
+.pay-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.pay-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.pay-modal__panel {
+  position: relative;
+  width: min(680px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  padding: 22px 24px 24px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.24);
+  animation: pay-modal-in 180ms ease-out;
+}
+
+.pay-modal__panel--result {
+  width: min(480px, 100%);
+  padding: 28px 26px 24px;
+  text-align: center;
+}
+
+@keyframes pay-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.pay-modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.pay-modal__heading h3 {
+  margin: 0;
+  color: #1A1A1A;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 26px;
+}
+
+.pay-modal__heading p {
+  margin: 2px 0 0;
+  color: #62748E;
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.pay-modal__heading p strong {
+  color: #45556C;
+  font-weight: 600;
+}
+
+.pay-modal__close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  background: #fff;
+  color: #64748B;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.pay-modal__close:hover {
+  background: #F8FAFC;
+  color: #0F172A;
+}
+
+.pay-modal__close svg {
+  width: 16px;
+  height: 16px;
+}
+
+.pay-pending {
+  display: grid;
+  grid-template-columns: 236px minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.pay-pending--wide {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pay-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.pay-qr__image {
+  width: 220px;
+  height: 220px;
+  padding: 6px;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  background: #fff;
+  object-fit: contain;
+}
+
+.pay-qr__placeholder {
+  display: grid;
+  place-items: center;
+  width: 220px;
+  height: 220px;
+  border: 1px dashed #CBD5E1;
+  border-radius: 12px;
+  background: #F8FAFC;
+  color: #94A3B8;
+}
+
+.pay-qr__placeholder svg {
+  width: 56px;
+  height: 56px;
+}
+
+.pay-qr__caption {
+  color: #62748E;
+  font-size: 11px;
+  line-height: 16px;
+  text-align: center;
+}
+
+.pay-pending__amount {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-bottom: 12px;
+  padding: 11px 14px;
+  border: 1px solid #DBEAFE;
+  border-radius: 10px;
+  background: #EFF6FF;
+}
+
+.pay-pending__amount span {
+  color: #62748E;
+  font-size: 11.5px;
+  line-height: 16px;
+}
+
+.pay-pending__amount strong {
+  color: #155DFC;
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 27px;
+  letter-spacing: -0.01em;
+}
+
+.pay-countdown {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: #F8FAFC;
+  color: #45556C;
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.pay-countdown strong {
+  color: #155DFC;
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+}
+
+.pay-countdown.is-urgent strong {
+  color: #E11D48;
+}
+
+.pay-pending__hint {
+  margin: 10px 0 0;
+  color: #62748E;
+  font-size: 11.5px;
+  line-height: 16px;
+}
+
+.pay-modal__foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #F1F5F9;
+}
+
+.pay-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding: 0 18px;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  background: #fff;
+  color: #45556C;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.pay-ghost:hover {
+  border-color: #CBD5E1;
+  background: #F8FAFC;
+}
+
+.pay-cta--compact {
+  width: auto;
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+/* ─── Kết quả ────────────────────────────────────────────────────────────── */
+
+.pay-result__icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin: 2px auto 14px;
+  border-radius: 50%;
+}
+
+.pay-result__icon svg {
+  width: 34px;
+  height: 34px;
+}
+
+.pay-result__icon--success {
+  background: #ECFDF5;
+  color: #16A34A;
+}
+
+.pay-result__icon--error {
+  background: #FEF2F2;
+  color: #E11D48;
+}
+
+.pay-result__title {
+  margin: 0;
+  color: #0F172A;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 28px;
+}
+
+.pay-result__text {
+  max-width: 380px;
+  margin: 8px auto 0;
+  color: #62748E;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.pay-result__meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 18px 0 0;
+  padding: 13px 14px;
+  border-radius: 10px;
+  background: #F8FAFC;
+  text-align: left;
+}
+
+.pay-result__meta div {
+  min-width: 0;
+}
+
+.pay-result__meta dt {
+  color: #90A1B9;
+  font-size: 10.5px;
+  line-height: 15px;
+}
+
+.pay-result__meta dd {
+  margin: 3px 0 0;
+  overflow-wrap: anywhere;
+  color: #0F172A;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.pay-result__courses {
+  max-height: 132px;
+  margin: 12px 0 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+  text-align: left;
+}
+
+.pay-result__courses li {
+  padding: 7px 10px;
+  border-radius: 6px;
+  background: #F8FAFC;
+  color: #45556C;
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.pay-result__courses li + li {
+  margin-top: 6px;
+}
+
+.pay-result__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.pay-result__actions .pay-cta,
+.pay-result__actions .pay-ghost {
+  flex: 1 1 0;
+  height: 46px;
+}
+
+/* ─── Responsive an toàn ─────────────────────────────────────────────────── */
+
+@media (max-width: 1280px) {
+  .bank-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .checkout-tabs {
+    grid-template-columns: 1fr;
+  }
+
+  .checkout-tab {
+    height: 40px;
+  }
+
+  .bank-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .wallet-grid,
+  .field-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pay-pending {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pay-qr {
+    align-items: flex-start;
+  }
+
+  .info-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .info-row__value,
+  .info-row__value-group {
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .swift-info__row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .pay-result__meta {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

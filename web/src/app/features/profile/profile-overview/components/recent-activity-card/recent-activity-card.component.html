@@ -1,33 +1,25 @@
+<section class="flex h-full min-w-0 flex-col gap-5 rounded-2xl border border-[#E2E8F0] bg-white p-6">
+  <div class="flex items-center justify-between gap-4">
+    <h2 class="text-[18px] font-bold leading-7 text-[#111827]">Hoạt động gần đây</h2>
+  </div>
 
-    <section class="min-w-0 rounded-[20px] border border-[#E0E5EB] bg-white p-6 xl:h-[369px] xl:p-[25px]">
-      <h2 class="text-[18px] font-bold leading-7 text-[#071123]">Hoạt động gần đây</h2>
-      <ul class="mt-4 space-y-1">
-        @for (item of activities; track item.key) {
-          <li class="flex min-h-16 flex-col justify-between gap-3 border-b border-[#E0E5EB]/60 px-4 py-3 last:border-0 sm:flex-row sm:items-center sm:px-6 transition hover:bg-[#FAFBFF] rounded-lg">
-            <time class="text-[12px] font-medium leading-4 text-[#596475] sm:w-[150px] shrink-0">{{ item.time }}</time>
-            <div class="flex w-full items-center gap-4 sm:flex-1">
-              <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full shadow-sm" [ngClass]="getToneClass(item.tone)">
-                @switch (item.key) {
-                  @case ('start') {
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
-                  }
-                  @case ('badge') {
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
-                  }
-                  @case ('progress') {
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
-                  }
-                  @case ('finish') {
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
-                  }
-                  @default {
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/></svg>
-                  }
-                }
-              </span>
-              <p class="text-[14px] leading-5 text-[#071123] font-medium">{{ item.text }}</p>
-            </div>
-          </li>
-        }
-      </ul>
-    </section>
+  @if (activities.length) {
+    <ul class="flex flex-col gap-4">
+      @for (activity of activities; track activity.key) {
+        <li class="flex min-h-[72px] items-center gap-3 xl:min-h-[88px]">
+          <span
+            class="h-2 w-2 shrink-0 rounded-full"
+            [style.background-color]="toneColor(activity.tone)"
+            aria-hidden="true"
+          ></span>
+          <div class="flex min-w-0 flex-col justify-center gap-1">
+            <p class="text-[14px] leading-5 text-[#1F2937]">{{ activity.text }}</p>
+            <p class="text-[12px] leading-4 text-[#64748B]">{{ activity.time }}</p>
+          </div>
+        </li>
+      }
+    </ul>
+  } @else {
+    <p class="py-10 text-center text-[14px] text-[#64748B]">Chưa có hoạt động nào.</p>
+  }
+</section>

@@ -1,0 +1,153 @@
+<section class="rm-page flashcard-page">
+  <div class="rm-container rm-container--full">
+    <a class="flashcard-back" routerLink="/learning/roadmap">
+      <svg lucideArrowLeft aria-hidden="true" [size]="15" [strokeWidth]="2"></svg>
+      Quay lại
+    </a>
+
+    <header class="flashcard-head">
+      <div class="flashcard-head__title">
+        <span class="flashcard-head__icon" aria-hidden="true">
+          <svg lucideLayers [size]="22" [strokeWidth]="1.8"></svg>
+        </span>
+        <div>
+          <h1 class="flashcard-head__heading">Flashcard</h1>
+          <p class="flashcard-head__sub">Ôn tập kiến thức hiệu quả với phương pháp ghi nhớ chủ động.</p>
+        </div>
+      </div>
+
+      <a class="rm-btn rm-btn--primary" routerLink="/learning/flashcards/new">
+        <svg lucidePlus aria-hidden="true" [size]="17" [strokeWidth]="2"></svg>
+        Tạo mới flashcard
+      </a>
+    </header>
+
+    <div class="rm-card flashcard-toolbar">
+      <div class="flashcard-toolbar__filters" role="group" aria-label="Lọc bộ flashcard">
+        @for (filter of filters; track filter.id) {
+          <button
+            type="button"
+            class="rm-filter"
+            [class.is-active]="activeFilter() === filter.id"
+            [attr.aria-pressed]="activeFilter() === filter.id"
+            (click)="setFilter(filter.id)"
+          >
+            {{ filter.label }} ({{ counts()[filter.id] }})
+          </button>
+        }
+      </div>
+
+      <label class="rm-search flashcard-toolbar__search">
+        <svg lucideSearch aria-hidden="true" [size]="18" [strokeWidth]="1.8"></svg>
+        <input
+          type="search"
+          placeholder="Tìm kiếm bộ flashcard..."
+          [value]="keyword()"
+          (input)="onSearchInput($event)"
+          aria-label="Tìm kiếm bộ flashcard"
+        />
+      </label>
+    </div>
+
+    @if (sets().length === 0) {
+      <div class="rm-card flashcard-empty">
+        <img
+          class="flashcard-empty__illustration"
+          src="/assets/roadmap/illustration-flashcard-empty.png"
+          alt="Chưa có bộ flashcard nào"
+        />
+        <h2 class="flashcard-empty__title">Bạn chưa có bộ flashcard nào</h2>
+        <p class="flashcard-empty__text">
+          Tạo bộ flashcard đầu tiên để ghi nhớ kiến thức nhanh hơn và không bỏ lỡ nội dung quan trọng.
+        </p>
+        <a class="rm-btn rm-btn--primary" routerLink="/learning/flashcards/new">
+          <svg lucidePlus aria-hidden="true" [size]="17" [strokeWidth]="2"></svg>
+          Tạo flashcard đầu tiên
+        </a>
+      </div>
+    } @else if (filteredSets().length === 0) {
+      <div class="rm-card flashcard-empty flashcard-empty--compact">
+        <svg lucideSearch aria-hidden="true" [size]="30" [strokeWidth]="1.5"></svg>
+        <h2 class="flashcard-empty__title">Không tìm thấy bộ flashcard phù hợp</h2>
+        <p class="flashcard-empty__text">Thử từ khoá khác hoặc chọn bộ lọc khác.</p>
+        <button type="button" class="rm-btn rm-btn--outline rm-btn--sm" (click)="clearSearch(); setFilter('all')">
+          Xóa bộ lọc
+        </button>
+      </div>
+    } @else {
+      <div class="rm-card flashcard-list">
+        @for (set of filteredSets(); track set.id) {
+          <article
+            class="flashcard-row"
+            role="link"
+            tabindex="0"
+            [attr.aria-label]="'Mở bộ flashcard ' + set.title"
+            (click)="openSet(set.id)"
+            (keydown.enter)="openSet(set.id)"
+          >
+            <span class="flashcard-row__icon" [style.background]="set.tint" [style.color]="set.accent" aria-hidden="true">
+              <app-flashcard-set-icon [icon]="set.icon" [size]="26" />
+            </span>
+
+            <div class="flashcard-row__info">
+              <h2 class="flashcard-row__title">{{ set.title }}</h2>
+              <p class="flashcard-row__desc">{{ set.desc }}</p>
+            </div>
+
+            <div class="flashcard-row__stats">
+              <span class="flashcard-row__stat">
+                <svg lucideLayers aria-hidden="true" [size]="14" [strokeWidth]="1.8"></svg>
+                {{ stats(set).total }} thẻ
+              </span>
+              <span class="flashcard-row__stat">
+                <svg lucideCalendarDays aria-hidden="true" [size]="14" [strokeWidth]="1.8"></svg>
+                Tạo lúc {{ formatDate(set.createdAt) }}
+              </span>
+
+              <div class="flashcard-row__progress">
+                <app-roadmap-progress
+                  class="flashcard-row__bar"
+                  [value]="stats(set).percent"
+                  [success]="isCompleted(set)"
+                  [label]="'Tiến độ bộ ' + set.title"
+                />
+                <span class="flashcard-row__progress-label" [class.is-completed]="isCompleted(set)">
+                  @if (isCompleted(set)) {
+                    Đã hoàn thành
+                  } @else {
+                    Đang học {{ stats(set).learned }}/{{ stats(set).total }}
+                  }
+                </span>
+              </div>
+            </div>
+
+            <div class="flashcard-row__actions">
+              <button
+                type="button"
+                class="rm-btn rm-btn--outline rm-btn--sm flashcard-row__study"
+                (click)="study(set.id, $event)"
+              >
+                @if (isCompleted(set)) {
+                  <svg lucideRotateCcw aria-hidden="true" [size]="15" [strokeWidth]="1.9"></svg>
+                  Ôn lại
+                } @else {
+                  <svg lucidePlay aria-hidden="true" [size]="15" [strokeWidth]="1.9"></svg>
+                  Ôn tập
+                }
+              </button>
+
+              <button
+                type="button"
+                class="rm-btn rm-btn--ghost rm-btn--sm flashcard-row__edit"
+                (click)="edit(set.id, $event)"
+              >
+                <svg lucidePencil aria-hidden="true" [size]="15" [strokeWidth]="1.8"></svg>
+                Chỉnh sửa
+              </button>
+            </div>
+          </article>
+        }
+      </div>
+    }
+  </div>
+</section>

@@ -1,0 +1,30 @@
+@let cert = certificate();
+
+<div
+  class="certificate-artwork"
+  [class.certificate-artwork--view-only]="viewOnly()"
+  [style.aspect-ratio]="aspectRatio()"
+  role="img"
+  [attr.aria-label]="'Chứng chỉ ' + cert.courseTitle + ' của ' + cert.studentName + ', mã ' + cert.code"
+  (contextmenu)="blockInteraction($event)"
+  (dragstart)="blockInteraction($event)"
+>
+  <img
+    class="certificate-artwork__background"
+    src="/assets/certificate/certificate-bg.png"
+    alt=""
+    draggable="false"
+    aria-hidden="true"
+  />
+
+  <p class="certificate-artwork__name">{{ cert.certificateName }}</p>
+  <p class="certificate-artwork__course">{{ cert.courseTitle }}</p>
+  <p class="certificate-artwork__meta certificate-artwork__date">{{ cert.issuedAtEn }}</p>
+  <p class="certificate-artwork__meta certificate-artwork__id">{{ cert.code }}</p>
+
+  <span class="certificate-artwork__qr">
+    @if (qrDataUrl(); as qr) {
+      <img [src]="qr" alt="" draggable="false" />
+    }
+  </span>
+</div>

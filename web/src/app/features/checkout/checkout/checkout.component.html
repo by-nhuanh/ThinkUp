@@ -1,155 +1,912 @@
-<main class="min-h-screen bg-[#F9F9FF] text-[#0F172A]">
-  <div class="mx-auto w-full max-w-[1570px] px-4 pb-[72px] pt-8 sm:px-6 xl:px-6">
-    <!-- Breadcrumb -->
-    <nav class="flex h-5 flex-wrap items-center gap-2 text-[14px] leading-5 text-[#6B7280] mb-4" aria-label="Breadcrumb">
-      <a routerLink="/main/courses" class="hover:text-[#2463EB]">Khóa học</a>
-      <span>›</span>
-      <a routerLink="/main/cart" class="hover:text-[#2463EB]">Giỏ hàng</a>
-      <span>›</span>
-      <span>Thanh toán</span>
+<main class="pay-page">
+  <div class="pay-container">
+    <nav class="pay-breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/main/home" class="pay-breadcrumb__link">Trang chủ</a>
+      <span class="pay-breadcrumb__sep" aria-hidden="true">›</span>
+      <a routerLink="/main/cart" class="pay-breadcrumb__link">Giỏ hàng</a>
+      <span class="pay-breadcrumb__sep" aria-hidden="true">›</span>
+      <span class="pay-breadcrumb__current" aria-current="page">Thanh toán</span>
     </nav>
 
-    <!-- Title -->
-    <div class="mt-4 flex min-h-[59px] items-start gap-4 pb-2">
-      <h1 class="text-[34px] font-bold leading-[51px] tracking-[-0.85px] text-[#0F172A]">Thanh toán</h1>
+    <div class="pay-heading">
+      <h1 class="pay-page-title">Thanh toán</h1>
     </div>
 
-    @if (courses().length === 0) {
-      <div class="text-center py-20 bg-white rounded-[18px] border border-[#EEF0F3] p-8">
-        <p class="text-[16px] text-[#64748B] mb-4">Giỏ hàng của bạn không có khóa học nào để thanh toán.</p>
-        <a routerLink="/main/courses" class="inline-flex h-11 items-center px-6 rounded-full bg-[#006AB5] text-white font-semibold text-[14px]">
-          Xem khóa học
-        </a>
-      </div>
-    } @else {
-      <div class="grid items-start gap-6 pt-2 xl:grid-cols-[minmax(0,1118px)_380px]">
-        <!-- Left: Payment Methods -->
-        <div class="min-w-0 space-y-6">
-          <section class="rounded-[18px] border border-[#EEF0F3] bg-white p-[25px]">
-            <h2 class="text-[18px] font-bold text-[#111827] mb-4">Phương thức thanh toán</h2>
+    <div class="pay-layout">
+      <div class="checkout-main">
+        <!-- 1. Phương thức thanh toán -->
+        <section class="pay-card checkout-card" aria-labelledby="checkout-method-title">
+          <h2 id="checkout-method-title" class="checkout-section-title">1. Phương thức thanh toán</h2>
 
-            <!-- Category Tabs -->
-            <div class="flex gap-3 mb-5 border-b border-[#F1F5F9] pb-3">
-              <button
-                type="button"
-                (click)="selectedCategory.set('domestic')"
-                class="pb-2 text-[14px] font-semibold transition border-b-2"
-                [class]="selectedCategory() === 'domestic' ? 'border-[#0088E8] text-[#0088E8]' : 'border-transparent text-[#64748B] hover:text-[#111827]'"
-              >
-                Chuyển khoản / Ngân hàng
-              </button>
-              <button
-                type="button"
-                (click)="selectedCategory.set('wallet')"
-                class="pb-2 text-[14px] font-semibold transition border-b-2"
-                [class]="selectedCategory() === 'wallet' ? 'border-[#0088E8] text-[#0088E8]' : 'border-transparent text-[#64748B] hover:text-[#111827]'"
-              >
-                Ví điện tử
-              </button>
-            </div>
-
-            <!-- Methods list -->
-            <div class="space-y-3">
-              @if (selectedCategory() === 'domestic') {
-                @for (m of domesticMethods; track m.id) {
-                  <label
-                    class="flex items-start gap-3.5 p-4 rounded-[12px] border-2 cursor-pointer transition"
-                    [class]="selectedMethod() === m.id ? 'border-[#0088E8] bg-[#F0F7FF]' : 'border-[#E2E8F0] hover:bg-[#F8FAFC]'"
-                  >
-                    <input
-                      type="radio"
-                      name="payment"
-                      [checked]="selectedMethod() === m.id"
-                      (change)="selectMethod(m.id)"
-                      class="mt-1 w-4 h-4 text-[#0088E8] focus:ring-[#0088E8]"
-                    />
-                    <div class="flex-1">
-                      <div class="font-bold text-[15px] text-[#111827]">{{ m.name }}</div>
-                      <div class="text-[13px] text-[#64748B] mt-0.5">{{ m.desc }}</div>
-                    </div>
-                  </label>
-                }
-              }
-
-              @if (selectedCategory() === 'wallet') {
-                @for (m of walletMethods; track m.id) {
-                  <label
-                    class="flex items-start gap-3.5 p-4 rounded-[12px] border-2 cursor-pointer transition"
-                    [class]="selectedMethod() === m.id ? 'border-[#0088E8] bg-[#F0F7FF]' : 'border-[#E2E8F0] hover:bg-[#F8FAFC]'"
-                  >
-                    <input
-                      type="radio"
-                      name="payment"
-                      [checked]="selectedMethod() === m.id"
-                      (change)="selectMethod(m.id)"
-                      class="mt-1 w-4 h-4 text-[#0088E8] focus:ring-[#0088E8]"
-                    />
-                    <div class="flex-1">
-                      <div class="font-bold text-[15px] text-[#111827]">{{ m.name }}</div>
-                      <div class="text-[13px] text-[#64748B] mt-0.5">{{ m.desc }}</div>
-                    </div>
-                  </label>
-                }
-              }
-            </div>
-          </section>
-
-          <!-- Terms -->
-          <div class="rounded-[18px] border border-[#EEF0F3] bg-white p-[25px]">
-            <label class="flex items-center gap-3 cursor-pointer text-[13px] text-[#475569]">
-              <input
-                type="checkbox"
-                [checked]="acceptedTerms()"
-                (change)="acceptedTerms.set(!acceptedTerms())"
-                class="w-4 h-4 rounded border-[#CBD5E1] text-[#0088E8] focus:ring-[#0088E8]"
-              />
-              <span>Tôi đồng ý với <a href="#" class="text-[#0088E8] hover:underline">Điều khoản dịch vụ</a> và <a href="#" class="text-[#0088E8] hover:underline">Chính sách hoàn tiền</a> của ThinkUp.</span>
-            </label>
+          <div class="checkout-tabs" role="tablist" aria-label="Loại thanh toán">
+            <button
+              type="button"
+              role="tab"
+              class="checkout-tab"
+              [class.is-active]="tab() === 'domestic'"
+              [attr.aria-selected]="tab() === 'domestic'"
+              (click)="selectTab('domestic')"
+            >
+              Thanh toán Nội địa
+            </button>
+            <button
+              type="button"
+              role="tab"
+              class="checkout-tab"
+              [class.is-active]="tab() === 'international'"
+              [attr.aria-selected]="tab() === 'international'"
+              (click)="selectTab('international')"
+            >
+              Thanh toán Quốc tế
+            </button>
           </div>
-        </div>
 
-        <!-- Right: Order Summary -->
-        <aside class="sticky top-[102px]">
-          <div class="rounded-[18px] border border-[#EEF0F3] bg-white p-[25px]">
-            <h2 class="text-[18px] font-bold text-[#111827] pb-4 border-b border-[#EEF0F3]">
-              Đơn hàng ({{ courses().length }})
-            </h2>
+          <div class="checkout-methods">
+            @for (method of methodOptions(); track method.id) {
+              @let expanded = isExpanded(method.id);
+              <article
+                class="method-card"
+                [class.is-expanded]="expanded"
+                [class.is-selected]="isSelectedMethod(method.id)"
+              >
+                <button
+                  type="button"
+                  class="method-head"
+                  [attr.aria-expanded]="expanded"
+                  (click)="selectMethod(method.id)"
+                >
+                  <span class="method-radio" [class.is-checked]="isSelectedMethod(method.id)" aria-hidden="true">
+                    <span class="method-radio__dot"></span>
+                  </span>
 
-            <div class="divide-y divide-[#F1F5F9] max-h-[300px] overflow-y-auto my-4 pr-1">
-              @for (c of courses(); track c.id) {
-                <div class="py-3 flex justify-between gap-3 text-[13px]">
-                  <div class="min-w-0 flex-1">
-                    <p class="font-semibold text-[#111827] line-clamp-1">{{ c.displayTitle || c.title }}</p>
-                    <p class="text-[12px] text-[#64748B]">{{ c.instructor }}</p>
+                  <span class="method-icon" aria-hidden="true">
+                    @switch (method.icon) {
+                      @case ('card') {
+                        <svg viewBox="0 0 24 24" fill="none">
+                          <rect x="2.6" y="5.2" width="18.8" height="13.6" rx="2.6" stroke="currentColor" stroke-width="1.5" />
+                          <path d="M2.9 9.6h18.2M6.2 15.4h3.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                        </svg>
+                      }
+                      @case ('wallet') {
+                        <svg viewBox="0 0 24 24" fill="none">
+                          <path d="M3.5 7.4A2.4 2.4 0 0 1 5.9 5h10.7a2 2 0 0 1 2 2v1.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                          <rect x="3.5" y="7.4" width="17" height="11.4" rx="2.4" stroke="currentColor" stroke-width="1.5" />
+                          <path d="M20.5 11.6h-4.3a2 2 0 0 0 0 4h4.3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+                        </svg>
+                      }
+                      @case ('bank') {
+                        <svg viewBox="0 0 24 24" fill="none">
+                          <path d="M3.4 9.2 12 4.4l8.6 4.8v1.1H3.4V9.2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+                          <path d="M5.6 10.9v6.4M10.2 10.9v6.4M13.8 10.9v6.4M18.4 10.9v6.4M3.8 19.6h16.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                        </svg>
+                      }
+                      @default {
+                        <svg viewBox="0 0 24 24" fill="none">
+                          <rect x="4" y="4" width="6.2" height="6.2" rx="1.4" stroke="currentColor" stroke-width="1.5" />
+                          <rect x="13.8" y="4" width="6.2" height="6.2" rx="1.4" stroke="currentColor" stroke-width="1.5" />
+                          <rect x="4" y="13.8" width="6.2" height="6.2" rx="1.4" stroke="currentColor" stroke-width="1.5" />
+                          <path d="M13.8 13.8h2.6v2.6h-2.6zM17.4 17.4h2.6v2.6h-2.6z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+                        </svg>
+                      }
+                    }
+                  </span>
+
+                  <span class="method-copy">
+                    <span class="method-title">
+                      {{ method.title }}
+                      @if (method.badge) {
+                        <span class="method-badge">{{ method.badge }}</span>
+                      }
+                    </span>
+                    <span class="method-desc">{{ method.description }}</span>
+                  </span>
+
+                  @if (method.brands?.length) {
+                    <span class="method-brands" aria-hidden="true">
+                      @for (brand of method.brands ?? []; track brand) {
+                        <span class="brand-chip" [class]="'brand-chip brand-chip--' + brand">{{ brandText(brand) }}</span>
+                      }
+                    </span>
+                  }
+
+                  <span class="method-chevron" [class.is-open]="expanded" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none">
+                      <path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  </span>
+                </button>
+
+                @if (expanded) {
+                  <div class="method-body">
+                    @switch (method.id) {
+                      @case ('atm') {
+                        <p class="method-subtitle">Chọn ngân hàng</p>
+                        <div class="bank-grid">
+                          @for (bank of banks; track bank.id) {
+                            <button
+                              type="button"
+                              class="bank-option"
+                              [class.is-active]="selectedBank() === bank.id"
+                              [attr.aria-pressed]="selectedBank() === bank.id"
+                              (click)="selectBank(bank)"
+                            >
+                              <img class="bank-option__logo" [src]="bank.logo" [alt]="bank.name" loading="lazy" />
+                              <span class="bank-option__name">{{ bank.name }}</span>
+                            </button>
+                          }
+                        </div>
+                        <div class="method-secure">
+                          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M7.5 10V7.8a4.5 4.5 0 0 1 9 0V10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                            <rect x="4.6" y="10" width="14.8" height="10" rx="2.2" stroke="currentColor" stroke-width="1.5" />
+                            <path d="M12 14v2.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                          </svg>
+                          <span>Bảo mật bởi Napas. Thông tin giao dịch của bạn được mã hóa và bảo vệ tuyệt đối.</span>
+                        </div>
+                      }
+
+                      @case ('wallet') {
+                        <p class="method-subtitle">Chọn ví điện tử</p>
+                        <div class="wallet-grid">
+                          <button
+                            type="button"
+                            class="wallet-option"
+                            [class.is-active]="walletProvider() === 'momo'"
+                            [attr.aria-pressed]="walletProvider() === 'momo'"
+                            (click)="selectWallet('momo')"
+                          >
+                            <span class="wallet-logo wallet-logo--momo" aria-hidden="true">momo</span>
+                            <span class="wallet-copy">
+                              <strong>Ví MoMo</strong>
+                              <small>Thanh toán bằng ứng dụng MoMo</small>
+                            </span>
+                            <span class="method-radio method-radio--sm" [class.is-checked]="walletProvider() === 'momo'" aria-hidden="true">
+                              <span class="method-radio__dot"></span>
+                            </span>
+                          </button>
+
+                          <button
+                            type="button"
+                            class="wallet-option"
+                            [class.is-active]="walletProvider() === 'zalopay'"
+                            [attr.aria-pressed]="walletProvider() === 'zalopay'"
+                            (click)="selectWallet('zalopay')"
+                          >
+                            <span class="wallet-logo wallet-logo--zalopay" aria-hidden="true">ZaloPay</span>
+                            <span class="wallet-copy">
+                              <strong>Ví ZaloPay</strong>
+                              <small>Thanh toán bằng ứng dụng ZaloPay</small>
+                            </span>
+                            <span class="method-radio method-radio--sm" [class.is-checked]="walletProvider() === 'zalopay'" aria-hidden="true">
+                              <span class="method-radio__dot"></span>
+                            </span>
+                          </button>
+                        </div>
+                        <div class="method-note">
+                          Sau khi bấm <strong>Thanh toán ngay</strong>, hệ thống sẽ tạo mã QR để quét bằng ứng dụng ví điện tử.
+                        </div>
+                      }
+
+                      @case ('bank-transfer') {
+                        <div class="info-list">
+                          <div class="info-row">
+                            <span class="info-row__label">Ngân hàng</span>
+                            <span class="info-row__value">{{ displayBank().bankName }}</span>
+                          </div>
+                          <div class="info-row">
+                            <span class="info-row__label">Số tài khoản</span>
+                            <span class="info-row__value-group">
+                              <span class="info-row__value">{{ displayBank().accountNo }}</span>
+                              <button type="button" class="copy-btn" (click)="copyText(displayBank().accountNo, 'accountNo', 'số tài khoản')">
+                                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                  <rect x="8.6" y="8.6" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.5" />
+                                  <path d="M15.4 6.4V5.6a2 2 0 0 0-2-2h-8a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                                </svg>
+                                {{ copiedField() === 'accountNo' ? 'Đã sao chép' : 'Sao chép' }}
+                              </button>
+                            </span>
+                          </div>
+                          <div class="info-row">
+                            <span class="info-row__label">Tên tài khoản</span>
+                            <span class="info-row__value-group">
+                              <span class="info-row__value">{{ displayBank().accountName }}</span>
+                              <button type="button" class="copy-btn" (click)="copyText(displayBank().accountName, 'accountName', 'tên tài khoản')">
+                                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                  <rect x="8.6" y="8.6" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.5" />
+                                  <path d="M15.4 6.4V5.6a2 2 0 0 0-2-2h-8a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                                </svg>
+                                {{ copiedField() === 'accountName' ? 'Đã sao chép' : 'Sao chép' }}
+                              </button>
+                            </span>
+                          </div>
+                          <div class="info-row">
+                            <span class="info-row__label">Nội dung chuyển khoản</span>
+                            <span class="info-row__value-group">
+                              <span class="info-row__value is-strong">{{ displayBank().transferContent }}</span>
+                              <button type="button" class="copy-btn" (click)="copyText(displayBank().transferContent, 'transferContent', 'nội dung chuyển khoản')">
+                                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                  <rect x="8.6" y="8.6" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.5" />
+                                  <path d="M15.4 6.4V5.6a2 2 0 0 0-2-2h-8a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                                </svg>
+                                {{ copiedField() === 'transferContent' ? 'Đã sao chép' : 'Sao chép' }}
+                              </button>
+                            </span>
+                          </div>
+                        </div>
+
+                        <div class="method-warning">
+                          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M12 8.4v4.4M12 16.3v.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+                            <path d="M10.3 3.9 2.9 17a2 2 0 0 0 1.7 3h14.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+                          </svg>
+                          <div>
+                            <strong>Vui lòng chuyển khoản đúng nội dung và đủ số tiền.</strong>
+                            <p>Đơn hàng sẽ được xác nhận sau khi chúng tôi nhận được thanh toán.</p>
+                          </div>
+                        </div>
+                      }
+
+                      @case ('qr') {
+                        <div class="qr-preview">
+                          <span class="qr-preview__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none">
+                              <rect x="4" y="4" width="6.2" height="6.2" rx="1.4" stroke="currentColor" stroke-width="1.5" />
+                              <rect x="13.8" y="4" width="6.2" height="6.2" rx="1.4" stroke="currentColor" stroke-width="1.5" />
+                              <rect x="4" y="13.8" width="6.2" height="6.2" rx="1.4" stroke="currentColor" stroke-width="1.5" />
+                              <path d="M13.8 13.8h2.6v2.6h-2.6zM17.4 17.4h2.6v2.6h-2.6z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+                            </svg>
+                          </span>
+                          <div class="qr-preview__copy">
+                            <strong>Mã QR sẽ hiển thị sau khi bấm Thanh toán ngay</strong>
+                            <p>Mở ứng dụng ngân hàng hoặc ví điện tử, chọn quét mã QR và xác nhận giao dịch.</p>
+                          </div>
+                          <span class="brand-chip brand-chip--vnpay">VNPAY</span>
+                        </div>
+                        <div class="method-secure">
+                          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M7.5 10V7.8a4.5 4.5 0 0 1 9 0V10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                            <rect x="4.6" y="10" width="14.8" height="10" rx="2.2" stroke="currentColor" stroke-width="1.5" />
+                            <path d="M12 14v2.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                          </svg>
+                          <span>Giao dịch được xử lý qua VNPay, an toàn và bảo mật.</span>
+                        </div>
+                      }
+
+                      @case ('card') {
+                        <label class="field field--full">
+                          <span class="field-label">Số thẻ</span>
+                          <span class="field-control">
+                            <input
+                              type="text"
+                              inputmode="numeric"
+                              autocomplete="cc-number"
+                              class="field-input"
+                              placeholder="1234 5678 9012 3456"
+                              [value]="cardNumber()"
+                              (input)="updateCardNumber($event)"
+                            />
+                            <svg class="field-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                              <rect x="2.6" y="5.2" width="18.8" height="13.6" rx="2.6" stroke="currentColor" stroke-width="1.5" />
+                              <path d="M2.9 9.6h18.2" stroke="currentColor" stroke-width="1.5" />
+                            </svg>
+                          </span>
+                        </label>
+
+                        <div class="field-row">
+                          <label class="field">
+                            <span class="field-label">Họ tên chủ thẻ</span>
+                            <input
+                              type="text"
+                              autocomplete="cc-name"
+                              class="field-input field-input--boxed"
+                              placeholder="VÍ DỤ: NGUYEN VAN A"
+                              [value]="cardName()"
+                              (input)="updateCardName($event)"
+                            />
+                          </label>
+                          <label class="field">
+                            <span class="field-label">Ngày hết hạn</span>
+                            <input
+                              type="text"
+                              inputmode="numeric"
+                              autocomplete="cc-exp"
+                              class="field-input field-input--boxed"
+                              placeholder="MM / YY"
+                              [value]="cardExpiry()"
+                              (input)="updateCardExpiry($event)"
+                            />
+                          </label>
+                          <label class="field">
+                            <span class="field-label">
+                              CVV
+                              <span class="field-hint" title="3 hoặc 4 số ở mặt sau thẻ">?</span>
+                            </span>
+                            <input
+                              type="password"
+                              inputmode="numeric"
+                              autocomplete="cc-csc"
+                              class="field-input field-input--boxed"
+                              placeholder="123"
+                              maxlength="4"
+                              [value]="cardCvv()"
+                              (input)="updateCardCvv($event)"
+                            />
+                          </label>
+                        </div>
+
+                        <div class="method-secure">
+                          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M7.5 10V7.8a4.5 4.5 0 0 1 9 0V10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                            <rect x="4.6" y="10" width="14.8" height="10" rx="2.2" stroke="currentColor" stroke-width="1.5" />
+                            <path d="M12 14v2.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                          </svg>
+                          <span>Thông tin thẻ được mã hóa và bảo mật tuyệt đối.</span>
+                        </div>
+                      }
+
+                      @case ('paypal') {
+                        <div class="redirect-note">
+                          <span class="redirect-note__logo wallet-logo--paypal" aria-hidden="true">PayPal</span>
+                          <div>
+                            <strong>Thanh toán an toàn qua PayPal</strong>
+                            <p>Bạn sẽ được chuyển đến cổng PayPal để đăng nhập và xác nhận giao dịch.</p>
+                          </div>
+                        </div>
+                      }
+
+                      @case ('apple-pay') {
+                        <div class="redirect-note">
+                          <span class="redirect-note__brands" aria-hidden="true">
+                            <span class="brand-chip brand-chip--gpay">G Pay</span>
+                            <span class="brand-chip brand-chip--applepay"> Pay</span>
+                          </span>
+                          <div>
+                            <strong>Thanh toán một chạm</strong>
+                            <p>Bạn sẽ được chuyển đến cổng thanh toán để xác nhận bằng Apple Pay hoặc Google Pay.</p>
+                          </div>
+                        </div>
+                      }
+
+                      @default {
+                        <div class="method-warning">
+                          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M12 8.4v4.4M12 16.3v.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+                            <path d="M10.3 3.9 2.9 17a2 2 0 0 0 1.7 3h14.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+                          </svg>
+                          <div>
+                            <strong>Vui lòng chuyển khoản đúng nội dung và đủ số tiền.</strong>
+                            <p>Đơn hàng sẽ được xác nhận sau khi chúng tôi nhận được thanh toán.</p>
+                          </div>
+                        </div>
+
+                        <div class="swift-info">
+                          <div class="swift-info__row">
+                            <span>Tên ngân hàng</span>
+                            <strong>{{ swiftInfo.bankName }}</strong>
+                          </div>
+                          <div class="swift-info__row">
+                            <span>Địa chỉ ngân hàng</span>
+                            <strong>{{ swiftInfo.address }}</strong>
+                          </div>
+                          <div class="swift-info__row">
+                            <span>SWIFT / BIC</span>
+                            <strong>{{ swiftInfo.swift }}</strong>
+                          </div>
+                          <div class="swift-info__row">
+                            <span>Số tài khoản (USD)</span>
+                            <strong>{{ swiftInfo.account }}</strong>
+                          </div>
+                          <div class="swift-info__row">
+                            <span>Tên tài khoản</span>
+                            <strong>{{ swiftInfo.accountName }}</strong>
+                          </div>
+                          <div class="swift-info__row">
+                            <span>Nội dung chuyển khoản</span>
+                            <strong class="is-link">{{ swiftInfo.content }}</strong>
+                          </div>
+                        </div>
+
+                        <div class="swift-guide">
+                          <strong>Hướng dẫn</strong>
+                          <ul>
+                            <li>Chuyển khoản bằng USD.</li>
+                            <li>Phí chuyển khoản do người chuyển trả.</li>
+                            <li>Thời gian xử lý: 1–3 ngày làm việc sau khi chúng tôi nhận được thanh toán.</li>
+                          </ul>
+                        </div>
+                      }
+                    }
                   </div>
-                  <span class="font-bold text-[#0088E8] shrink-0">{{ formatPrice(c.salePrice) }}</span>
+                }
+              </article>
+            }
+          </div>
+        </section>
+
+        <!-- 2. Voucher -->
+        <section class="pay-card checkout-card" aria-labelledby="checkout-voucher-title">
+          <h2 id="checkout-voucher-title" class="checkout-section-title">2. Chọn voucher</h2>
+
+          <div class="checkout-voucher">
+            <div class="voucher-form checkout-voucher__form">
+              <input
+                id="checkout-voucher-code"
+                type="text"
+                class="voucher-input"
+                [value]="voucherCode()"
+                [disabled]="voucherLoading()"
+                placeholder="Nhập mã voucher"
+                autocomplete="off"
+                spellcheck="false"
+                (input)="updateVoucherCode($event)"
+                (keydown.enter)="applyVoucher()"
+              />
+              <button
+                type="button"
+                class="voucher-apply"
+                [disabled]="voucherLoading()"
+                (click)="applyVoucher()"
+              >
+                {{ voucherLoading() ? 'Đang kiểm tra' : 'Áp dụng' }}
+              </button>
+            </div>
+
+            @if (voucher(); as appliedVoucher) {
+              <div class="voucher-card voucher-card--success checkout-voucher__banner" role="status">
+                <span class="voucher-card__icon" aria-hidden="true">
+                  <svg viewBox="0 0 16 16" fill="none">
+                    <circle cx="8" cy="8" r="6.667" stroke="currentColor" stroke-width="1.333" />
+                    <path d="m6 8 1.333 1.333L10 6.667" stroke="currentColor" stroke-width="1.333" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </span>
+                <span class="checkout-voucher__code">{{ appliedVoucher.code }}</span>
+                <span class="checkout-voucher__copy">
+                  <strong>{{ voucherTitle() }}</strong>
+                  <span>{{ appliedVoucher.message || 'Mã giảm giá đã được áp dụng cho đơn hàng này.' }}</span>
+                </span>
+                <strong class="checkout-voucher__discount">-{{ formatPrice(voucherDiscount()) }}</strong>
+              </div>
+            }
+
+            @if (voucherError()) {
+              <div class="voucher-card voucher-card--error checkout-voucher__banner" role="alert">
+                <span class="voucher-card__icon" aria-hidden="true">
+                  <svg viewBox="0 0 16 16" fill="none">
+                    <circle cx="8" cy="8" r="6.667" stroke="currentColor" stroke-width="1.333" />
+                    <path d="M8 5.333V8M8 10.667h.007" stroke="currentColor" stroke-width="1.333" stroke-linecap="round" />
+                  </svg>
+                </span>
+                <span class="checkout-voucher__copy">
+                  <strong>Mã giảm giá không hợp lệ hoặc đã hết hạn.</strong>
+                  <span>{{ voucherErrorText() }}</span>
+                </span>
+              </div>
+            }
+          </div>
+        </section>
+
+        <!-- 3. Điều khoản -->
+        <section class="pay-card checkout-card checkout-terms" aria-labelledby="checkout-terms-title">
+          <h2 id="checkout-terms-title" class="checkout-section-title">3. Điều khoản</h2>
+
+          <div class="checkout-terms__row">
+            <button
+              type="button"
+              class="pay-check"
+              role="checkbox"
+              [attr.aria-checked]="acceptedTerms()"
+              [class.is-checked]="acceptedTerms()"
+              aria-label="Đồng ý với điều khoản dịch vụ và chính sách"
+              (click)="toggleTerms()"
+            >
+              @if (acceptedTerms()) {
+                <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path d="M3.25 8.25L6.5 11.5L12.75 4.75" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              }
+            </button>
+            <p class="checkout-terms__text">
+              Tôi đồng ý với
+              <a routerLink="/legal/terms">Điều khoản dịch vụ</a>
+              &amp;
+              <a routerLink="/legal/policy">Chính sách</a>
+              <span class="checkout-terms__req" aria-hidden="true">*</span>
+            </p>
+          </div>
+
+          @if (termsWarning()) {
+            <p class="checkout-terms__warning" role="alert">Vui lòng đồng ý với điều khoản để tiếp tục thanh toán.</p>
+          }
+
+          @if (paymentError()) {
+            <div class="checkout-error" role="alert">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6" />
+                <path d="M12 7.8v5M12 16.2v.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+              </svg>
+              <span>{{ paymentError() }}</span>
+            </div>
+          }
+
+          <button
+            type="button"
+            class="pay-cta checkout-submit"
+            [disabled]="processing()"
+            (click)="submit()"
+          >
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M7.5 10V7.8a4.5 4.5 0 0 1 9 0V10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+              <rect x="4.6" y="10" width="14.8" height="10" rx="2.2" stroke="currentColor" stroke-width="1.7" />
+            </svg>
+            {{ processing() ? 'Đang tạo phiên thanh toán...' : 'Thanh toán ngay' }}
+          </button>
+
+          <p class="checkout-terms__hint">
+            Giao dịch được bảo mật theo tiêu chuẩn PCI DSS. ThinkUp không lưu trữ thông tin thẻ của bạn.
+          </p>
+        </section>
+      </div>
+
+      <!-- Tóm tắt đơn hàng -->
+      <aside class="pay-aside" aria-label="Tóm tắt đơn hàng">
+        <div class="pay-card pay-summary checkout-summary">
+          <div class="checkout-summary__head">
+            <h2 class="checkout-summary__title">Tóm tắt đơn hàng</h2>
+            <p class="checkout-summary__count">{{ courseCount() }} khóa học</p>
+          </div>
+
+          @if (courseCount() === 0) {
+            <div class="checkout-summary__empty">
+              <p>Chưa có khóa học nào được chọn.</p>
+              <a routerLink="/main/cart" class="checkout-summary__back">Quay lại giỏ hàng</a>
+            </div>
+          } @else {
+            <ul class="checkout-summary__courses">
+              @for (course of courses(); track course.id) {
+                @let art = summaryArt(course);
+                <li class="checkout-summary__course">
+                  <span class="checkout-summary__thumb" [style.background]="art.gradient">
+                    @if (hasThumb(course)) {
+                      <img
+                        class="checkout-summary__thumb-img"
+                        [src]="course.thumbnailUrl"
+                        [alt]="course.displayTitle || course.title"
+                        loading="lazy"
+                        (error)="onThumbError(course)"
+                      />
+                    } @else {
+                      <span class="checkout-summary__thumb-label" [class.is-dark]="art.dark">{{ art.label }}</span>
+                    }
+                  </span>
+
+                  <span class="checkout-summary__info">
+                    <span class="checkout-summary__course-title">{{ course.displayTitle || course.title }}</span>
+                    <span class="checkout-summary__instructor">
+                      <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                        <circle cx="10" cy="6.6" r="3" stroke="currentColor" stroke-width="1.4" />
+                        <path d="M4.3 16.4c.5-2.5 2.8-4.1 5.7-4.1s5.2 1.6 5.7 4.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+                      </svg>
+                      <span>{{ course.instructor }}</span>
+                    </span>
+                    <span class="checkout-summary__price">
+                      <strong>{{ formatPrice(course.salePrice) }}</strong>
+                      @if (course.originalPrice > course.salePrice) {
+                        <s>{{ formatPrice(course.originalPrice) }}</s>
+                      }
+                    </span>
+                  </span>
+                </li>
+              }
+            </ul>
+
+            <div class="checkout-summary__rows">
+              <div class="checkout-summary__row">
+                <span>Tạm tính</span>
+                <strong>{{ formatPrice(saleSubtotal()) }}</strong>
+              </div>
+
+              @if (voucher()) {
+                <div class="checkout-summary__row">
+                  <span>{{ summaryVoucherLabel() }}</span>
+                  <strong class="is-sale">-{{ formatPrice(voucherDiscount()) }}</strong>
                 </div>
               }
             </div>
 
-            <div class="border-t border-[#EEF0F3] pt-4 space-y-2 text-[14px]">
-              <div class="flex justify-between text-[#64748B]">
-                <span>Tạm tính</span>
-                <span class="font-semibold text-[#111827]">{{ formatPrice(subtotal()) }}</span>
+            <div class="checkout-summary__total">
+              <div class="checkout-summary__total-row">
+                <span>Tổng thanh toán</span>
+                <strong>{{ formatPrice(total()) }}</strong>
               </div>
-              <div class="flex justify-between items-baseline pt-2 border-t border-[#F1F5F9]">
-                <span class="text-[16px] font-bold text-[#111827]">Tổng cộng</span>
-                <span class="text-[24px] font-extrabold text-[#0088E8]">{{ formatPrice(total()) }}</span>
-              </div>
+              <span class="checkout-summary__vat">(Đã bao gồm VAT nếu có)</span>
             </div>
 
-            @if (paymentError()) {<p class="mb-3 text-sm text-[#B42346]" role="alert">{{ paymentError() }}</p>}
-            <button
-              type="button"
-              (click)="confirmPayment()"
-              [disabled]="processing() || !acceptedTerms()"
-              class="w-full mt-6 h-[48px] bg-[#006AB5] hover:bg-[#00528C] disabled:bg-[#CBD5E1] disabled:cursor-not-allowed text-white font-bold text-[15px] rounded-[10px] transition shadow-sm flex items-center justify-center"
-            >
-              {{ processing() ? 'Đang xử lý giao dịch...' : 'Xác nhận thanh toán' }}
-            </button>
-          </div>
-        </aside>
-      </div>
-    }
+            <div class="pay-secure-note checkout-summary__secure">
+              <span class="pay-secure-note__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M12 3.2 5.5 5.7v5.4c0 4.1 2.7 7.8 6.5 9.2 3.8-1.4 6.5-5.1 6.5-9.2V5.7L12 3.2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+                  <path d="m9.2 12 1.9 1.9 3.7-3.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </span>
+              <span>Thông tin của bạn được bảo mật tuyệt đối và không chia sẻ cho bên thứ ba.</span>
+            </div>
+          }
+        </div>
+      </aside>
+    </div>
   </div>
+
+  <!-- Phiên thanh toán đang chờ (QR / chuyển khoản / SWIFT) -->
+  @if (session(); as current) {
+    <div class="pay-modal" role="dialog" aria-modal="true" [attr.aria-label]="pendingTitle()">
+      <div class="pay-modal__backdrop" (click)="closePending()"></div>
+
+      @if (pendingKind() === 'qr') {
+        <div class="pay-qr-panel" role="document">
+          <header class="pay-qr-panel__head">
+            <span class="pay-qr-panel__radio" aria-hidden="true"></span>
+            <span class="pay-qr-panel__icon" aria-hidden="true">
+              <svg viewBox="0 0 20 20" fill="none">
+                <path d="M3.33333 2.5H5.83333C6.29357 2.5 6.66667 2.8731 6.66667 3.33333V5.83333C6.66667 6.29357 6.29357 6.66667 5.83333 6.66667H3.33333C2.8731 6.66667 2.5 6.29357 2.5 5.83333V3.33333C2.5 2.8731 2.8731 2.5 3.33333 2.5Z" stroke="currentColor" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M14.1693 2.5H16.6693C17.1295 2.5 17.5026 2.8731 17.5026 3.33333V5.83333C17.5026 6.29357 17.1295 6.66667 16.6693 6.66667H14.1693C13.709 6.66667 13.3359 6.29357 13.3359 5.83333V3.33333C13.3359 2.8731 13.709 2.5 14.1693 2.5Z" stroke="currentColor" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M3.33333 13.3333H5.83333C6.29357 13.3333 6.66667 13.7063 6.66667 14.1666V16.6666C6.66667 17.1268 6.29357 17.4999 5.83333 17.4999H3.33333C2.8731 17.4999 2.5 17.1268 2.5 16.6666V14.1666C2.5 13.7063 2.8731 13.3333 3.33333 13.3333Z" stroke="currentColor" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M17.5026 13.3333H15.0026C14.5606 13.3333 14.1367 13.5088 13.8241 13.8214C13.5115 14.134 13.3359 14.5579 13.3359 14.9999V17.4999" stroke="currentColor" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M17.5 17.5V17.5083" stroke="currentColor" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M10.0026 5.83325V8.33325C10.0026 8.77528 9.82701 9.1992 9.51445 9.51176C9.20189 9.82432 8.77796 9.99992 8.33594 9.99992H5.83594" stroke="currentColor" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M2.5 10H2.50833" stroke="currentColor" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M10 2.5H10.0083" stroke="currentColor" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M10 13.3333V13.3416" stroke="currentColor" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M13.3359 10H14.1693" stroke="currentColor" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M17.5 10V10.0083" stroke="currentColor" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M10 17.5001V16.6667" stroke="currentColor" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </span>
+            <div class="pay-qr-panel__heading">
+              <strong>QR Code (VNPAY-QR)</strong>
+              <span>Quét mã QR để thanh toán nhanh chóng</span>
+            </div>
+            <span class="pay-qr-panel__brand">VNPAY<span>GR</span></span>
+            <button type="button" class="pay-qr-panel__close" aria-label="Đóng" (click)="closePending()">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="m6.5 6.5 11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+              </svg>
+            </button>
+          </header>
+
+          <div class="pay-qr-panel__body">
+            <section class="pay-qr-card">
+              <h4>Quét mã QR để thanh toán</h4>
+              <div class="pay-qr-card__code">
+                @if (current.qrCodeUrl) {
+                  <img [src]="current.qrCodeUrl" alt="Mã QR thanh toán VNPAY" />
+                } @else {
+                  <span class="pay-qr-card__placeholder" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none">
+                      <rect x="4" y="4" width="6.2" height="6.2" rx="1.4" stroke="currentColor" stroke-width="1.5" />
+                      <rect x="13.8" y="4" width="6.2" height="6.2" rx="1.4" stroke="currentColor" stroke-width="1.5" />
+                      <rect x="4" y="13.8" width="6.2" height="6.2" rx="1.4" stroke="currentColor" stroke-width="1.5" />
+                      <path d="M13.8 13.8h2.6v2.6h-2.6zM17.4 17.4h2.6v2.6h-2.6z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+                    </svg>
+                  </span>
+                }
+              </div>
+              <div class="pay-qr-card__timer">
+                <span class="pay-qr-card__timer-label">
+                  <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <circle cx="8" cy="8" r="6.667" stroke="currentColor" stroke-width="1.333" />
+                    <path d="M8 4v4l2.667 1.333" stroke="currentColor" stroke-width="1.333" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  Mã QR hết hạn sau
+                </span>
+                <strong>{{ formatCountdown(remaining()) }}</strong>
+              </div>
+            </section>
+
+            <section class="pay-qr-guide">
+              <h4>Hướng dẫn thanh toán</h4>
+              <ol class="pay-qr-guide__steps">
+                <li>Mở ứng dụng ngân hàng hoặc ví điện tử hỗ trợ VNPAY-QR</li>
+                <li>Chọn tính năng quét mã QR</li>
+                <li>Quét mã QR bên cạnh</li>
+                <li>Kiểm tra thông tin và xác nhận thanh toán</li>
+              </ol>
+              <div class="pay-qr-guide__note">
+                <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <circle cx="8" cy="8" r="6.667" stroke="currentColor" stroke-width="1.333" />
+                  <path d="M8 10.667V8M8 5.333h.007" stroke="currentColor" stroke-width="1.333" stroke-linecap="round" />
+                </svg>
+                <span>Đơn hàng sẽ được xác nhận ngay sau khi thanh toán thành công.</span>
+              </div>
+            </section>
+          </div>
+
+          <div class="pay-qr-panel__foot">
+            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M13.331 8.667c0 3.333-2.334 5-5.107 5.966a.833.833 0 0 1-.447-.006C4.997 13.667 2.664 12 2.664 8.667V4c0-.177.07-.346.195-.471a.667.667 0 0 1 .471-.196c1.334 0 3-0.8 4.16-1.813a.667.667 0 0 1 1.013 0c1.167 1.02 2.827 1.813 4.16 1.813.177 0 .347.07.472.196a.667.667 0 0 1 .195.47v4.667Z" stroke="currentColor" stroke-width="1.333" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="m6 8 1.333 1.333L10 6.667" stroke="currentColor" stroke-width="1.333" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <span>Bảo mật bởi NAPAS. Thông tin giao dịch của bạn được mã hóa và bảo vệ tuyệt đối.</span>
+          </div>
+        </div>
+      } @else {
+      <div class="pay-modal__panel pay-modal__panel--pending">
+        <header class="pay-modal__head">
+          <div class="pay-modal__heading">
+            <h3>{{ pendingTitle() }}</h3>
+            <p>Mã đơn hàng: <strong>{{ current.orderId }}</strong></p>
+          </div>
+          <button type="button" class="pay-modal__close" aria-label="Đóng" (click)="closePending()">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="m6.5 6.5 11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+            </svg>
+          </button>
+        </header>
+
+        <div class="pay-pending" [class.pay-pending--wide]="pendingKind() === 'swift'">
+          <div class="pay-pending__info">
+            <div class="pay-pending__amount">
+              <span>Số tiền cần thanh toán</span>
+              <strong>{{ formatPrice(current.amount || total()) }}</strong>
+            </div>
+
+            @if (pendingKind() === 'swift') {
+              <div class="pay-pending__rows">
+                <div class="info-row">
+                  <span class="info-row__label">Ngân hàng</span>
+                  <span class="info-row__value">{{ swiftInfo.bankName }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-row__label">SWIFT / BIC</span>
+                  <span class="info-row__value">{{ swiftInfo.swift }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-row__label">Số tài khoản (USD)</span>
+                  <span class="info-row__value">{{ swiftInfo.account }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-row__label">Tên tài khoản</span>
+                  <span class="info-row__value">{{ swiftInfo.accountName }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-row__label">Nội dung chuyển khoản</span>
+                  <span class="info-row__value-group">
+                    <span class="info-row__value is-strong">{{ current.transferContent || swiftInfo.content }}</span>
+                    <button
+                      type="button"
+                      class="copy-btn"
+                      (click)="copyText(current.transferContent || swiftInfo.content, 'sessionContent', 'nội dung chuyển khoản')"
+                    >
+                      {{ copiedField() === 'sessionContent' ? 'Đã sao chép' : 'Sao chép' }}
+                    </button>
+                  </span>
+                </div>
+              </div>
+            } @else {
+              <div class="pay-pending__rows">
+                <div class="info-row">
+                  <span class="info-row__label">Ngân hàng</span>
+                  <span class="info-row__value">{{ displayBank().bankName }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-row__label">Số tài khoản</span>
+                  <span class="info-row__value-group">
+                    <span class="info-row__value">{{ displayBank().accountNo }}</span>
+                    <button
+                      type="button"
+                      class="copy-btn"
+                      (click)="copyText(displayBank().accountNo, 'sessionAccount', 'số tài khoản')"
+                    >
+                      {{ copiedField() === 'sessionAccount' ? 'Đã sao chép' : 'Sao chép' }}
+                    </button>
+                  </span>
+                </div>
+                <div class="info-row">
+                  <span class="info-row__label">Tên tài khoản</span>
+                  <span class="info-row__value">{{ displayBank().accountName }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-row__label">Nội dung chuyển khoản</span>
+                  <span class="info-row__value-group">
+                    <span class="info-row__value is-strong">{{ displayBank().transferContent }}</span>
+                    <button
+                      type="button"
+                      class="copy-btn"
+                      (click)="copyText(displayBank().transferContent, 'sessionContent', 'nội dung chuyển khoản')"
+                    >
+                      {{ copiedField() === 'sessionContent' ? 'Đã sao chép' : 'Sao chép' }}
+                    </button>
+                  </span>
+                </div>
+              </div>
+            }
+
+            <div class="pay-countdown" [class.is-urgent]="remaining() <= 120">
+              <span>Thời gian còn lại</span>
+              <strong>{{ formatCountdown(remaining()) }}</strong>
+            </div>
+
+            @if (pendingKind() !== 'qr') {
+              <p class="pay-pending__hint">
+                Vui lòng chuyển đúng số tiền và nội dung. Đơn hàng sẽ tự động xác nhận sau khi thanh toán thành công.
+              </p>
+            }
+          </div>
+        </div>
+
+        <footer class="pay-modal__foot">
+          <button type="button" class="pay-ghost" (click)="closePending()">Đóng</button>
+          <button type="button" class="pay-cta pay-cta--compact" [disabled]="checkingStatus()" (click)="checkStatusNow()">
+            {{ checkingStatus() ? 'Đang kiểm tra...' : 'Tôi đã thanh toán' }}
+          </button>
+        </footer>
+      </div>
+      }
+    </div>
+  }
+
+  <!-- Kết quả thanh toán -->
+  @if (dialog(); as kind) {
+    <div class="pay-modal" role="dialog" aria-modal="true" [attr.aria-label]="kind === 'success' ? 'Thanh toán thành công' : 'Thanh toán chưa hoàn tất'">
+      <div class="pay-modal__backdrop"></div>
+
+      <div class="pay-modal__panel pay-modal__panel--result">
+        @if (kind === 'success') {
+          <span class="pay-result__icon pay-result__icon--success" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none">
+              <path d="m8.5 16.5 5 5 10-11" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </span>
+          <h3 class="pay-result__title">Thanh toán thành công!</h3>
+          <p class="pay-result__text">
+            Cảm ơn bạn đã tin tưởng ThinkUp. Khóa học đã được thêm vào tài khoản của bạn và sẵn sàng để bắt đầu học.
+          </p>
+
+          <dl class="pay-result__meta">
+            <div>
+              <dt>Mã đơn hàng</dt>
+              <dd>{{ paidOrderId() || '—' }}</dd>
+            </div>
+            <div>
+              <dt>Số tiền</dt>
+              <dd>{{ formatPrice(paidAmount()) }}</dd>
+            </div>
+            <div>
+              <dt>Phương thức</dt>
+              <dd>{{ lastMethodLabel() || '—' }}</dd>
+            </div>
+          </dl>
+
+          @if (purchasedCourses().length > 0) {
+            <ul class="pay-result__courses">
+              @for (course of purchasedCourses(); track course.id) {
+                <li>{{ course.displayTitle || course.title }}</li>
+              }
+            </ul>
+          }
+
+          <div class="pay-result__actions">
+            <button type="button" class="pay-cta" (click)="goToLearning()">Vào học ngay</button>
+            <button type="button" class="pay-ghost" (click)="goToBilling()">Xem hóa đơn</button>
+          </div>
+        } @else {
+          <span class="pay-result__icon pay-result__icon--error" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none">
+              <path d="m10.5 10.5 11 11M21.5 10.5l-11 11" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
+            </svg>
+          </span>
+          <h3 class="pay-result__title">
+            {{ kind === 'expired' ? 'Phiên thanh toán đã hết hạn' : 'Thanh toán chưa hoàn tất' }}
+          </h3>
+          <p class="pay-result__text">
+            {{ dialogMessage() || 'Giao dịch chưa thể hoàn tất. Vui lòng thử lại hoặc chọn phương thức thanh toán khác.' }}
+          </p>
+
+          <div class="pay-result__actions">
+            <button type="button" class="pay-cta" (click)="retryPayment()">Thử lại</button>
+            <button type="button" class="pay-ghost" (click)="goToCart()">Quay lại giỏ hàng</button>
+          </div>
+        }
+      </div>
+    </div>
+  }
 </main>

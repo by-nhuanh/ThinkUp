@@ -374,32 +374,34 @@
 
 /* ---------- Hộp thoại quên mật khẩu (node 4061-18965) ---------- */
 .help-card {
-  padding: 55px 96px 72px;
+  box-sizing: border-box;
+  padding: 32px;
   text-align: center;
 }
 
 .help-title {
   margin: 0;
-  font: var(--admin-font-weight-bold) 28px / 42px var(--admin-font-family);
+  font: var(--admin-text-dialog-title);
+  letter-spacing: -0.02em;
   color: var(--login-ink);
 }
 
 .help-desc {
-  margin: 18px 0 0;
-  font: var(--admin-font-weight-regular) 16px / 29px var(--admin-font-family);
+  margin: 12px 0 0;
+  font: var(--admin-text-body-default);
   color: #576985;
   text-wrap: balance;
 }
 
 .help-action {
   width: 100%;
-  height: 48px;
-  margin-top: 47px;
+  min-height: 44px;
+  margin-top: 28px;
   border: 0;
   border-radius: 8px;
   background: #0078f2;
   color: #ffffff;
-  font: var(--admin-font-weight-semibold) 16px / 19px var(--admin-font-family);
+  font: var(--admin-text-control-label);
   cursor: pointer;
   transition: background-color 0.16s ease;
 }
@@ -432,9 +434,12 @@
 }
 
 @media (max-width: 699px) {
-  .lock-card,
-  .help-card {
+  .lock-card {
     padding: 36px 24px;
+  }
+
+  .help-card {
+    padding: 28px 24px 24px;
   }
 }
 
@@ -455,13 +460,6 @@
     line-height: 66px;
   }
 
-  .help-card {
-    padding: 40px 84px 48px;
-  }
-
-  .help-action {
-    margin-top: 32px;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

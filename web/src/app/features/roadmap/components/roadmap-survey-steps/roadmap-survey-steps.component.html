@@ -1,0 +1,44 @@
+<aside class="survey-steps">
+  <div class="survey-steps__head">
+    <h2 class="survey-steps__title">{{ title() }}</h2>
+    <p class="survey-steps__desc">Giúp chúng tôi đề xuất khóa học phù hợp với bạn nhất.</p>
+  </div>
+
+  <ol class="survey-steps__list">
+    @for (step of steps(); track step.number) {
+      <li
+        class="survey-step"
+        [class.survey-step--done]="isDone(step.number)"
+        [class.survey-step--active]="step.number === activeStep()"
+      >
+        <span class="survey-step__marker" aria-hidden="true">
+          @if (isDone(step.number)) {
+            <svg lucideCheck [size]="18" [strokeWidth]="2.4"></svg>
+          } @else {
+            {{ step.number }}
+          }
+        </span>
+        <div class="survey-step__body">
+          <h3>{{ step.title }}</h3>
+          <p>{{ step.description }}</p>
+
+          @if (showTip() && step.number === activeStep()) {
+            <div class="survey-tip">
+              <span class="survey-tip__icon" aria-hidden="true">
+                <svg lucideLightbulb [size]="17" [strokeWidth]="1.9"></svg>
+              </span>
+              <div>
+                <strong>Đang làm bài test</strong>
+                <span>{{ tipLabel() }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      </li>
+    }
+  </ol>
+
+  <div class="survey-steps__illustration" aria-hidden="true">
+    <img src="/assets/roadmap/illustration-learner-coding.png" alt="" />
+  </div>
+</aside>

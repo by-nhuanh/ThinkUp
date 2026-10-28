@@ -1,0 +1,175 @@
+<div class="min-h-full bg-[#F9F9FF]">
+  <main class="mx-auto w-full max-w-[1920px] px-[clamp(16px,3.33vw,64px)] pb-16 pt-0">
+    <header class="flex flex-col gap-1">
+      <h1 class="text-[24px] font-bold leading-8 text-[#0F172B]">Chứng chỉ</h1>
+      <p class="text-[14px] leading-5 text-[#62748E]">
+        Xem và quản lý các chứng chỉ bạn đã đạt được trên ThinkUp.
+      </p>
+    </header>
+
+    <div #listTop class="mt-6 scroll-mt-24">
+      @if (loading()) {
+        <div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3" aria-busy="true" aria-live="polite">
+          @for (item of skeletonItems; track item) {
+            <div class="overflow-hidden rounded-[18px] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.1),0_1px_2px_rgba(0,0,0,0.06)]">
+              <div class="m-px animate-pulse rounded-[17px] bg-[#EEF2F7]" style="aspect-ratio: 584 / 419.5"></div>
+              <div class="flex flex-col gap-2 p-4">
+                <div class="h-5 w-3/4 animate-pulse rounded bg-[#EEF2F7]"></div>
+                <div class="h-4 w-1/3 animate-pulse rounded bg-[#EEF2F7]"></div>
+                <div class="mt-3 h-7 w-full animate-pulse rounded bg-[#EEF2F7]"></div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      @if (!loading() && loadError()) {
+        <div class="flex flex-col items-center gap-4 rounded-2xl bg-white px-6 py-16 text-center shadow-[0_1px_3px_rgba(0,0,0,0.1),0_1px_2px_rgba(0,0,0,0.06)]">
+          <span class="grid h-16 w-16 place-items-center rounded-full bg-[#FFECEC] text-[#E7000B]">
+            <svg class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+              <path d="M12 9v4M12 17h.01" />
+            </svg>
+          </span>
+          <div class="flex flex-col gap-1">
+            <h2 class="text-[18px] font-semibold leading-6 text-[#0F172B]">Không thể tải danh sách chứng chỉ</h2>
+            <p class="text-[14px] leading-5 text-[#62748E]">Đã có lỗi xảy ra. Vui lòng thử lại sau ít phút.</p>
+          </div>
+          <button
+            type="button"
+            class="mt-1 inline-flex h-11 min-w-[132px] items-center justify-center rounded-xl bg-[#005CCC] px-4 text-[14px] font-semibold leading-5 text-white transition-colors hover:bg-[#004F9F] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#005CCC]"
+            (click)="loadCertificates()"
+          >
+            Thử lại
+          </button>
+        </div>
+      }
+
+      @if (!loading() && !loadError() && certificates().length === 0) {
+        <div class="flex flex-col items-center gap-4 rounded-2xl bg-white px-6 py-16 text-center shadow-[0_1px_3px_rgba(0,0,0,0.1),0_1px_2px_rgba(0,0,0,0.06)]">
+          <span class="grid h-16 w-16 place-items-center rounded-full bg-[#EEF6FF] text-[#005CCC]">
+            <svg class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="9" r="6" />
+              <path d="M8.5 14 7 22l5-3 5 3-1.5-8" />
+            </svg>
+          </span>
+          <div class="flex flex-col gap-1">
+            <h2 class="text-[18px] font-semibold leading-6 text-[#0F172B]">Bạn chưa có chứng chỉ nào</h2>
+            <p class="text-[14px] leading-5 text-[#62748E]">
+              Hoàn thành khóa học để nhận chứng chỉ từ ThinkUp.
+            </p>
+          </div>
+          <a
+            routerLink="/main/courses"
+            class="mt-1 inline-flex h-11 min-w-[132px] items-center justify-center rounded-xl bg-[#005CCC] px-4 text-[14px] font-semibold leading-5 text-white transition-colors hover:bg-[#004F9F] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#005CCC]"
+          >
+            Khám phá khóa học
+          </a>
+        </div>
+      }
+
+      @if (!loading() && !loadError() && certificates().length > 0) {
+        <div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+          @for (certificate of pagedCertificates(); track certificate.code) {
+            <article class="flex flex-col overflow-hidden rounded-[18px] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.1),0_1px_2px_rgba(0,0,0,0.06)]">
+              <div class="m-px overflow-hidden rounded-[17px] border border-[#E0E5EB]">
+                <app-certificate-artwork
+                  [certificate]="certificate"
+                  aspectRatio="584 / 419.5"
+                  [viewOnly]="true"
+                />
+              </div>
+
+              <div class="flex flex-1 flex-col px-4 pb-4 pt-4">
+                <h2
+                  class="line-clamp-2 text-[14px] font-semibold leading-5 text-[#0F172B]"
+                  [title]="certificate.courseTitle"
+                >
+                  {{ certificate.courseTitle }}
+                </h2>
+                <p class="mt-0.5 text-[12px] leading-4 text-[#62748E]">Hoàn thành ngày {{ certificate.issuedAt }}</p>
+
+                <div class="mt-2.5">
+                  <div class="flex items-center justify-between gap-2 border-t border-[#F1F5F9] pt-3">
+                    <button
+                      type="button"
+                      class="inline-flex h-7 w-[132px] items-center justify-center gap-1.5 rounded-lg border border-[#E0E5EB] bg-white text-[12px] font-semibold leading-4 text-[#0B1723] transition-colors hover:bg-[#F8FAFD] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#005CCC]"
+                      (click)="download(certificate)"
+                    >
+                      <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M12 3v12M7 10l5 5 5-5M5 21h14" />
+                      </svg>
+                      Tải chứng chỉ
+                    </button>
+                    <button
+                      type="button"
+                      class="inline-flex h-7 w-[148px] items-center justify-center gap-1.5 rounded-lg border border-[#005CCC] bg-white text-[12px] font-semibold leading-4 text-[#005CCC] transition-colors hover:bg-[#F4F9FF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#005CCC]"
+                      (click)="openShare(certificate)"
+                    >
+                      <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="18" cy="5" r="3" />
+                        <circle cx="6" cy="12" r="3" />
+                        <circle cx="18" cy="19" r="3" />
+                        <path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4" />
+                      </svg>
+                      Chia sẻ kết quả
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </article>
+          }
+        </div>
+
+        @if (totalPages() > 1) {
+          <nav class="mt-6 flex items-center justify-center gap-2" aria-label="Phân trang chứng chỉ">
+            <button
+              type="button"
+              class="certificate-page-button disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="Trang trước"
+              [disabled]="page() === 1"
+              (click)="goToPage(page() - 1)"
+            >
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="m15 18-6-6 6-6" />
+              </svg>
+            </button>
+
+            @for (item of pages(); track $index) {
+              @if (item.ellipsis) {
+                <span class="grid h-9 w-9 place-items-center text-[14px] leading-5 text-[#62748E]">{{ item.label }}</span>
+              } @else {
+                <button
+                  type="button"
+                  class="certificate-page-button"
+                  [class.certificate-page-button--active]="page() === item.value"
+                  [attr.aria-current]="page() === item.value ? 'page' : null"
+                  [attr.aria-label]="'Trang ' + item.label"
+                  (click)="goToPage(item.value)"
+                >
+                  {{ item.label }}
+                </button>
+              }
+            }
+
+            <button
+              type="button"
+              class="certificate-page-button disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="Trang sau"
+              [disabled]="page() === totalPages()"
+              (click)="goToPage(page() + 1)"
+            >
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="m9 18 6-6-6-6" />
+              </svg>
+            </button>
+          </nav>
+        }
+      }
+    </div>
+  </main>
+
+  @if (shareTarget(); as certificate) {
+    <app-share-certificate-modal [certificate]="certificate" (closed)="shareTarget.set(null)" />
+  }
+</div>

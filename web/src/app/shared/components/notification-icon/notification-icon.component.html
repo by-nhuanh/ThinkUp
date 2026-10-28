@@ -1,0 +1,38 @@
+<svg
+  [attr.width]="size()"
+  [attr.height]="size()"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  [attr.stroke-width]="strokeWidth()"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  aria-hidden="true"
+  focusable="false"
+>
+  @for (node of nodes(); track $index) {
+    @switch (node.tag) {
+      @case ('path') {
+        <path [attr.d]="node.d" />
+      }
+      @case ('circle') {
+        <circle [attr.cx]="node.cx" [attr.cy]="node.cy" [attr.r]="node.r" />
+      }
+      @case ('ellipse') {
+        <ellipse [attr.cx]="node.cx" [attr.cy]="node.cy" [attr.rx]="node.rx" [attr.ry]="node.ry" />
+      }
+      @case ('rect') {
+        <rect
+          [attr.x]="node.x"
+          [attr.y]="node.y"
+          [attr.width]="node.width"
+          [attr.height]="node.height"
+          [attr.rx]="node.rx"
+        />
+      }
+      @case ('line') {
+        <line [attr.x1]="node.x1" [attr.x2]="node.x2" [attr.y1]="node.y1" [attr.y2]="node.y2" />
+      }
+    }
+  }
+</svg>

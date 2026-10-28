@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ToastService, ToastType } from '../../../core/services/toast.service';
+import { ToastAction, ToastService, ToastType } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-toast',
@@ -28,5 +28,11 @@ export class ToastComponent {
 
   close(id: number): void {
     this.toastService.removeToast(id);
+  }
+
+  /** Chạy hành động phụ (ví dụ Hoàn tác) rồi đóng toast. */
+  runAction(id: number, action: ToastAction): void {
+    action.run();
+    this.close(id);
   }
 }

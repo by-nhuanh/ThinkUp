@@ -1,175 +1,461 @@
-<main class="min-h-screen bg-[#F9F9FF] text-[#0F172B]">
-  <div class="mx-auto w-full max-w-[1589px] px-4 pb-16 pt-8 sm:px-6 xl:px-6">
-    <!-- Breadcrumb -->
-    <nav class="flex items-center gap-2 text-[14px] leading-5 text-[#6B7280] mb-4" aria-label="Breadcrumb">
-      <a routerLink="/main/courses" class="hover:text-[#0088E8]">Khóa học</a>
-      <span>›</span>
-      <span>Giỏ hàng</span>
+<main class="pay-page">
+  <div class="pay-container">
+    <nav class="pay-breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/main/home" class="pay-breadcrumb__link">Trang chủ</a>
+      <span class="pay-breadcrumb__sep" aria-hidden="true">›</span>
+      <span class="pay-breadcrumb__current" aria-current="page">Giỏ hàng</span>
     </nav>
 
-    <!-- Page Title -->
-    <div class="flex min-h-[42px] items-center mb-6">
-      <h1 class="text-[28px] font-bold leading-[42px] tracking-[-0.7px] text-[#1A1A1A]">
-        Giỏ hàng của bạn <span class="align-baseline text-[16px] font-normal leading-6 text-[#6B7280]">({{ cartItems().length }} khóa học)</span>
+    <div class="pay-heading">
+      <h1 class="pay-page-title">
+        Giỏ hàng của bạn
+        <span class="pay-page-title__count">({{ cartItems().length }} khóa học)</span>
       </h1>
     </div>
 
-    @if (!loading() && cartItems().length === 0) {
-      <div class="flex flex-col items-center justify-center min-h-[400px] py-16 text-center bg-white rounded-[18px] border border-[#EEF0F3] p-8">
-        <div class="w-20 h-20 rounded-full bg-[#EFF6FF] flex items-center justify-center text-[#0088E8] mb-4">
-          <svg class="w-10 h-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/>
-            <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
-          </svg>
-        </div>
-        <h2 class="text-[20px] font-bold text-[#1A1A1A] mb-2">Giỏ hàng của bạn đang trống</h2>
-        <p class="text-[14px] text-[#6B7280] max-w-md mb-6">Hãy khám phá các khóa học chất lượng cao và thêm vào giỏ hàng ngay!</p>
-        <a routerLink="/main/courses" class="inline-flex h-[44px] items-center px-6 rounded-full bg-[#006AB5] text-white font-semibold text-[14px] hover:bg-[#00528C] transition">
-          Khám phá khóa học
-        </a>
-      </div>
-    }
-
-    @if (cartItems().length > 0) {
-      <div class="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <!-- Left Table Section -->
-        <section class="min-w-0 rounded-[18px] border border-[#EEF0F3] bg-white p-[25px]">
-          <!-- Table Header -->
-          <div class="grid grid-cols-[22px_minmax(0,1fr)_120px] items-center gap-4 border-b border-[#EEF0F3] pb-[13px] text-[14px] font-semibold leading-5 text-[#374151]">
-            <button
-              type="button"
-              (click)="toggleSelectAll()"
-              class="grid h-[22px] w-[22px] place-items-center rounded-[6px] border-[1.5px] transition"
-              [class]="isAllSelected() ? 'border-[#0088E8] bg-[#0088E8] text-white' : 'border-[#D1D5DB] bg-white'"
-            >
-              @if (isAllSelected()) {
-                <span class="text-[14px] font-bold leading-none">✓</span>
-              }
-            </button>
-            <span>Khóa học</span>
-            <span class="text-right">Đơn giá</span>
+    <div class="pay-layout">
+      <section class="pay-card cart-card" aria-label="Danh sách khóa học trong giỏ hàng">
+        @if (loading()) {
+          <div class="cart-skeleton" aria-live="polite" aria-label="Đang tải giỏ hàng">
+            @for (row of [1, 2, 3]; track row) {
+              <div class="cart-skeleton__row">
+                <span class="cart-skeleton__check"></span>
+                <span class="cart-skeleton__thumb"></span>
+                <span class="cart-skeleton__lines">
+                  <span class="cart-skeleton__line cart-skeleton__line--lg"></span>
+                  <span class="cart-skeleton__line"></span>
+                  <span class="cart-skeleton__line cart-skeleton__line--sm"></span>
+                </span>
+              </div>
+            }
           </div>
+        } @else if (cartItems().length === 0) {
+          <div class="cart-empty">
+            <img
+              class="cart-empty__image"
+              src="/assets/payment/cart-empty.png"
+              width="164"
+              height="164"
+              alt=""
+              aria-hidden="true"
+            />
+            <h2 class="cart-empty__title">Giỏ hàng của bạn đang trống</h2>
+            <p class="cart-empty__text">
+              Bạn chưa thêm khóa học nào vào giỏ hàng.<br />
+              Hãy khám phá các khóa học thú vị và bắt đầu hành trình học tập ngay nhé!
+            </p>
+          </div>
+        } @else {
+          <div class="cart-table">
+            <div class="cart-head">
+              <button
+                type="button"
+                class="pay-check"
+                role="checkbox"
+                [attr.aria-checked]="isAllSelected()"
+                aria-label="Chọn tất cả khóa học"
+                [class.is-checked]="isAllSelected()"
+                (click)="toggleSelectAll()"
+              >
+                @if (isAllSelected()) {
+                  <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path d="M3.25 8.25L6.5 11.5L12.75 4.75" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                }
+              </button>
+              <span class="cart-head__label">Khóa học</span>
+              <span class="cart-head__price">Đơn giá</span>
+            </div>
 
-          <!-- Items List -->
-          <div class="divide-y divide-[#EEF0F3]">
-            @for (item of cartItems(); track item.id) {
-              <div class="grid grid-cols-[22px_minmax(0,1fr)_120px] items-start gap-4 py-5">
-                <!-- Checkbox -->
+            @for (item of cartItems(); track item.id; let last = $last) {
+              @let art = courseArt(item);
+              <div
+                class="cart-row"
+                [class.is-selected]="isSelected(item.id)"
+                [class.is-unselected]="!isSelected(item.id)"
+                [class.is-last]="last"
+              >
                 <button
                   type="button"
+                  class="pay-check"
+                  role="checkbox"
+                  [attr.aria-checked]="isSelected(item.id)"
+                  [attr.aria-label]="'Chọn khóa học ' + (item.displayTitle || item.title)"
+                  [class.is-checked]="isSelected(item.id)"
+                  [disabled]="!isSelectable(item)"
                   (click)="toggleSelect(item.id)"
-                  class="mt-1 grid h-[22px] w-[22px] place-items-center rounded-[6px] border-[1.5px] transition"
-                  [class]="selectedIds().includes(item.id) ? 'border-[#0088E8] bg-[#0088E8] text-white' : 'border-[#D1D5DB] bg-white'"
                 >
-                  @if (selectedIds().includes(item.id)) {
-                    <span class="text-[14px] font-bold leading-none">✓</span>
+                  @if (isSelected(item.id)) {
+                    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                      <path d="M3.25 8.25L6.5 11.5L12.75 4.75" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
                   }
                 </button>
 
-                <!-- Course Info -->
-                <div class="flex flex-col sm:flex-row gap-4 min-w-0">
-                  <div
-                    class="h-[80px] w-full sm:w-[140px] shrink-0 rounded-[8px] overflow-hidden"
-                    [style.background]="item.thumbnailUrl ? 'url(' + item.thumbnailUrl + ') center/cover' : 'linear-gradient(164deg, #0A1535 0%, #1A2A5E 100%)'"
-                  ></div>
-                  <div class="flex-1 min-w-0">
-                    <h3 class="text-[15px] font-bold leading-5 text-[#111827] line-clamp-2 hover:text-[#0088E8] cursor-pointer"
-                        [routerLink]="['/main/courses', item.id]">
+                <div class="cart-course">
+                  <div class="cart-thumb" [style.background]="art.gradient">
+                    @if (hasArtImage(item)) {
+                      <img
+                        class="cart-thumb__image"
+                        [src]="item.thumbnailUrl"
+                        [alt]="item.displayTitle || item.title"
+                        loading="lazy"
+                        (error)="onArtImageError(item)"
+                      />
+                    } @else {
+                      <span class="art-badge" [class]="'art-badge ' + badgeClass(item.badge)">{{ art.badge }}</span>
+                      <span class="cart-thumb__icon" aria-hidden="true">{{ art.icon }}</span>
+                      <span class="cart-thumb__title" [class.is-dark]="art.dark">{{ art.title }}</span>
+                      <span class="cart-thumb__subtitle" [class.is-dark]="art.dark">{{ art.subtitle }}</span>
+                    }
+                  </div>
+
+                  <div class="cart-info">
+                    <a class="cart-title" [routerLink]="['/main/courses', item.courseId || item.id]">
                       {{ item.displayTitle || item.title }}
-                    </h3>
-                    <p class="text-[12px] text-[#64748B] mt-1">Giảng viên: <span class="font-medium text-[#111827]">{{ item.instructor }}</span></p>
-                    <div class="flex items-center gap-4 mt-3 text-[12px]">
-                      <button type="button" (click)="removeItem(item.id)" class="text-[#EF4444] hover:underline font-medium">
-                        Xóa
-                      </button>
-                      <button type="button" (click)="addToFavorites(item)" class="text-[#64748B] hover:text-[#0088E8] font-medium">
-                        Lưu vào yêu thích
-                      </button>
+                    </a>
+
+                    <div class="cart-instructor">
+                      <span class="cart-instructor__avatar" aria-hidden="true">
+                        {{ item.instructorInitial || item.instructor.charAt(0) }}
+                      </span>
+                      <span>{{ item.instructor }}</span>
                     </div>
+
+                    <div class="cart-rating">
+                      <svg class="cart-rating__star" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path d="M9.05 2.93c.3-.92 1.6-.92 1.9 0l1.28 3.94a1 1 0 0 0 .95.69h4.15c.97 0 1.37 1.24.59 1.81l-3.36 2.44a1 1 0 0 0-.36 1.12l1.28 3.94c.3.92-.75 1.69-1.54 1.12l-3.35-2.44a1 1 0 0 0-1.18 0l-3.35 2.44c-.79.57-1.84-.2-1.54-1.12l1.28-3.94a1 1 0 0 0-.36-1.12L2.08 9.37c-.78-.57-.38-1.81.59-1.81H6.8a1 1 0 0 0 .95-.69l1.28-3.94Z" />
+                      </svg>
+                      <strong>{{ item.rating }}</strong>
+                      <span class="cart-rating__muted">({{ compactRating(item.ratingCount) }})</span>
+                      <span class="cart-rating__dot" aria-hidden="true">•</span>
+                      <span class="cart-rating__muted">{{ studentsLabel(item) }}</span>
+                    </div>
+
+                    @if (item.tags?.length) {
+                      <div class="cart-tags">
+                        @for (tag of item.tags; track tag) {
+                          <span class="cart-tag">{{ tag }}</span>
+                        }
+                      </div>
+                    }
+
+                    @if (item.isEnrolled) {
+                      <span class="cart-state cart-state--owned">Đã sở hữu</span>
+                    } @else if (item.isAvailable === false) {
+                      <span class="cart-state cart-state--unavailable">Tạm ngừng bán</span>
+                    }
                   </div>
                 </div>
 
-                <!-- Price -->
-                <div class="text-right">
-                  <div class="text-[16px] font-bold text-[#0088E8]">
-                    {{ formatPrice(item.salePrice) }}
-                  </div>
+                <div class="cart-price">
                   @if (item.originalPrice > item.salePrice) {
-                    <div class="text-[12px] text-[#94A3B8] line-through mt-0.5">
-                      {{ formatPrice(item.originalPrice) }}
-                    </div>
+                    <span class="cart-price__original">{{ formatPrice(item.originalPrice) }}</span>
                   }
+                  <span class="cart-price__sale">{{ formatPrice(item.salePrice) }}</span>
+                  @if (discountPercent(item) > 0) {
+                    <span class="cart-price__badge">-{{ discountPercent(item) }}%</span>
+                  }
+
+                  <div class="cart-actions">
+                    <button
+                      type="button"
+                      class="cart-action"
+                      [class.is-active]="isFavorite(item.courseId || item.id)"
+                      [attr.aria-label]="(isFavorite(item.courseId || item.id) ? 'Bỏ ' : 'Lưu ') + (item.displayTitle || item.title) + (isFavorite(item.courseId || item.id) ? ' khỏi' : ' vào') + ' yêu thích'"
+                      [title]="isFavorite(item.courseId || item.id) ? 'Bỏ khỏi yêu thích' : 'Lưu vào yêu thích'"
+                      (click)="toggleCartFavorite(item)"
+                    >
+                      <svg viewBox="0 0 24 24" [attr.fill]="isFavorite(item.courseId || item.id) ? 'currentColor' : 'none'" aria-hidden="true">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      class="cart-action"
+                      [class.is-loading]="removingIds().includes(item.id)"
+                      [attr.aria-label]="'Xóa ' + (item.displayTitle || item.title) + ' khỏi giỏ hàng'"
+                      title="Xóa khỏi giỏ hàng"
+                      [disabled]="removingIds().includes(item.id)"
+                      (click)="removeItem(item)"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M3 6h18M8 6V4.5A1.5 1.5 0 0 1 9.5 3h5A1.5 1.5 0 0 1 16 4.5V6m2.5 0-.7 13.1a2 2 0 0 1-2 1.9H8.2a2 2 0 0 1-2-1.9L5.5 6M10 11v6M14 11v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
             }
           </div>
 
-          <a routerLink="/main/courses" class="mt-5 inline-flex h-[43px] items-center rounded-[8px] border border-[#E5E7EB] bg-white px-4 text-[13px] font-medium leading-5 text-[#374151] transition hover:bg-[#F8FAFC]">
-            ← Tiếp tục mua sắm
+          <a routerLink="/main/courses" class="cart-continue">
+            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M16.25 10H3.75M8.75 5L3.75 10l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            Tiếp tục mua sắm
           </a>
-        </section>
+        }
+      </section>
 
-        <!-- Right Summary Card -->
-        <aside class="sticky top-[102px] space-y-4">
-          <div class="rounded-[18px] border border-[#EEF0F3] bg-white p-[25px]">
-            <h2 class="text-[18px] font-bold text-[#111827] pb-4 border-b border-[#EEF0F3]">
-              Tóm tắt đơn hàng
-            </h2>
+      <aside class="pay-aside" aria-label="Tóm tắt đơn hàng">
+        <div class="pay-card pay-summary">
+          <h2 class="pay-summary__title">Tóm tắt đơn hàng</h2>
 
-            <div class="space-y-3 py-4 text-[14px]">
-              <div class="flex justify-between text-[#64748B]">
-                <span>Đã chọn</span>
-                <span class="font-semibold text-[#111827]">{{ selectedIds().length }} khóa học</span>
-              </div>
-              <div class="flex justify-between text-[#64748B]">
-                <span>Tạm tính</span>
-                <span class="font-semibold text-[#111827]">{{ formatPrice(selectedTotal()) }}</span>
-              </div>
-              @if (voucherDiscount() > 0) {
-                <div class="flex justify-between text-[#16A34A]">
-                  <span>Giảm giá</span>
-                  <span class="font-semibold">-{{ formatPrice(voucherDiscount()) }}</span>
-                </div>
-              }
+          <div class="pay-summary__rows">
+            <div class="pay-summary__row">
+              <span>Tạm tính ({{ selectedCount() }} khóa học)</span>
+              <strong>{{ formatPrice(originalSubtotal()) }}</strong>
             </div>
+            <div class="pay-summary__row">
+              <span>Giảm giá khóa học</span>
+              <strong class="is-sale">-{{ formatPrice(courseDiscount()) }}</strong>
+            </div>
+            <div class="pay-summary__row">
+              <span>Tạm tính sau giảm giá</span>
+              <strong>{{ formatPrice(saleSubtotal()) }}</strong>
+            </div>
+          </div>
 
-            <!-- Voucher Box -->
-            <div class="pt-2 pb-4 border-t border-[#EEF0F3]">
-              <div class="flex gap-2">
+          @if (cartItems().length > 0) {
+            <div class="pay-summary__voucher">
+              <label class="voucher-label" for="cart-voucher-code">Mã giảm giá</label>
+              <div class="voucher-form">
                 <input
+                  id="cart-voucher-code"
                   type="text"
-                  [(ngModel)]="voucherCode"
-                  placeholder="Mã giảm giá (ví dụ: THINKUP50)"
-                  class="flex-1 h-10 px-3 border border-[#E2E8F0] rounded-[8px] text-[13px] focus:outline-none focus:ring-2 focus:ring-[#006AB5]/40"
+                  class="voucher-input"
+                  [value]="voucherCode()"
+                  [disabled]="voucherLoading()"
+                  placeholder="Nhập mã giảm giá"
+                  autocomplete="off"
+                  spellcheck="false"
+                  (input)="updateVoucherCode($event)"
+                  (keydown.enter)="applyVoucher()"
                 />
                 <button
                   type="button"
+                  class="voucher-apply"
+                  [disabled]="voucherLoading()"
                   (click)="applyVoucher()"
-                  class="px-4 h-10 bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#0F172A] font-semibold text-[13px] rounded-[8px] transition"
                 >
-                  Áp dụng
+                  {{ voucherLoading() ? 'Đang kiểm tra' : 'Áp dụng' }}
                 </button>
               </div>
-            </div>
 
-            <div class="border-t border-[#EEF0F3] pt-4">
-              <div class="flex justify-between items-baseline mb-6">
-                <span class="text-[16px] font-bold text-[#111827]">Tổng thanh toán</span>
-                <span class="text-[24px] font-extrabold text-[#0088E8]">{{ formatPrice(finalTotal()) }}</span>
+              @if (voucherApplied()) {
+                <div class="voucher-card voucher-card--success" role="status">
+                  <span class="voucher-card__icon" aria-hidden="true">
+                    <svg viewBox="0 0 16 16" fill="none">
+                      <circle cx="8" cy="8" r="6.667" stroke="currentColor" stroke-width="1.333" />
+                      <path d="m6 8 1.333 1.333L10 6.667" stroke="currentColor" stroke-width="1.333" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  </span>
+                  <div class="voucher-card__body">
+                    <strong>Mã giảm giá đã được áp dụng!</strong>
+                    <span>Bạn được giảm {{ formatPrice(voucherDiscount()) }}</span>
+                  </div>
+                </div>
+              }
+
+              @if (voucherError()) {
+                <div class="voucher-card voucher-card--error" role="alert">
+                  <span class="voucher-card__icon" aria-hidden="true">
+                    <svg viewBox="0 0 16 16" fill="none">
+                      <circle cx="8" cy="8" r="6.667" stroke="currentColor" stroke-width="1.333" />
+                      <path d="M8 5.333V8M8 10.667h.007" stroke="currentColor" stroke-width="1.333" stroke-linecap="round" />
+                    </svg>
+                  </span>
+                  <div class="voucher-card__body">
+                    <strong>Mã giảm giá không hợp lệ hoặc đã hết hạn.</strong>
+                    <span>{{ voucherErrorText() }}</span>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+          <div class="pay-summary__total">
+            <div class="pay-summary__total-head">
+              <span>Tổng thanh toán</span>
+              <strong>{{ formatPrice(finalTotal()) }}</strong>
+            </div>
+            <span class="pay-summary__vat">(Đã bao gồm VAT nếu có)</span>
+          </div>
+
+          <button
+            type="button"
+            class="pay-cta cart-cta"
+            [class.is-disabled]="selectedCount() === 0 || loading()"
+            [disabled]="selectedCount() === 0 || loading()"
+            (click)="proceedToCheckout()"
+          >
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M6.5 8h11l1.2 11.2a1.5 1.5 0 0 1-1.5 1.8H6.8a1.5 1.5 0 0 1-1.5-1.8L6.5 8Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" />
+              <path d="M9 8V6.5a3 3 0 0 1 6 0V8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+            </svg>
+            {{ selectedCount() > 0 ? 'Tiến hành thanh toán' : 'Thanh toán ngay' }}
+          </button>
+
+          <div class="pay-secure-note">
+            <span class="pay-secure-note__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M12 3.2 5.5 5.7v5.4c0 4.1 2.7 7.8 6.5 9.2 3.8-1.4 6.5-5.1 6.5-9.2V5.7L12 3.2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+                <path d="m9.2 12 1.9 1.9 3.7-3.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </span>
+            <span>Thông tin của bạn được bảo mật tuyệt đối và không chia sẻ cho bên thứ ba.</span>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    @if (!loading() && suggestions().length > 0) {
+      <section class="cart-suggestions" aria-labelledby="cart-suggestions-title">
+        <h2 id="cart-suggestions-title" class="cart-section-title">Bạn cũng có thể thích</h2>
+
+        <div class="suggest-grid">
+          @for (course of suggestions(); track course.id) {
+            <article class="suggest-card">
+              <div class="suggest-cover" [style.background]="coverGradient(course)" [class.is-light]="isLightCover(course)">
+                <span class="art-badge" [class]="'art-badge ' + badgeClass(course.badge)">{{ course.badge || 'KHÓA HỌC' }}</span>
+
+                <div class="suggest-cover__text">
+                  <span class="suggest-cover__title">{{ coverTitle(course) }}</span>
+                  <span class="suggest-cover__subtitle">{{ coverSubtitle(course) }}</span>
+                </div>
+
+                <span class="suggest-cover__deco" aria-hidden="true">{{ course.icon || course.instructorInitial }}</span>
+
+                <button
+                  type="button"
+                  class="suggest-fav"
+                  [class.is-active]="isFavorite(course.id)"
+                  [attr.aria-label]="isFavorite(course.id) ? 'Bỏ khóa học khỏi yêu thích' : 'Lưu khóa học vào yêu thích'"
+                  (click)="toggleSuggestionFavorite(course)"
+                >
+                  <svg viewBox="0 0 24 24" [attr.fill]="isFavorite(course.id) ? 'currentColor' : 'none'" aria-hidden="true">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </button>
               </div>
 
-              <button
-                type="button"
-                (click)="proceedToCheckout()"
-                [disabled]="selectedIds().length === 0"
-                class="w-full h-[48px] bg-[#006AB5] hover:bg-[#00528C] disabled:bg-[#CBD5E1] disabled:cursor-not-allowed text-white font-bold text-[15px] rounded-[10px] transition shadow-sm flex items-center justify-center"
-              >
-                Thanh toán ({{ selectedIds().length }})
-              </button>
-            </div>
-          </div>
-        </aside>
-      </div>
+              <div class="suggest-body">
+                <a class="suggest-title" [routerLink]="['/main/courses', course.id]">{{ course.title }}</a>
+
+                <div class="suggest-instructor">
+                  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <circle cx="10" cy="6.6" r="3" stroke="currentColor" stroke-width="1.4" />
+                    <path d="M4.3 16.4c.5-2.5 2.8-4.1 5.7-4.1s5.2 1.6 5.7 4.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+                  </svg>
+                  <span>{{ course.instructor }}</span>
+                </div>
+
+                <div class="suggest-rating">
+                  <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path d="M9.05 2.93c.3-.92 1.6-.92 1.9 0l1.28 3.94a1 1 0 0 0 .95.69h4.15c.97 0 1.37 1.24.59 1.81l-3.36 2.44a1 1 0 0 0-.36 1.12l1.28 3.94c.3.92-.75 1.69-1.54 1.12l-3.35-2.44a1 1 0 0 0-1.18 0l-3.35 2.44c-.79.57-1.84-.2-1.54-1.12l1.28-3.94a1 1 0 0 0-.36-1.12L2.08 9.37c-.78-.57-.38-1.81.59-1.81H6.8a1 1 0 0 0 .95-.69l1.28-3.94Z" />
+                  </svg>
+                  <strong>{{ course.rating }}</strong>
+                  <span>({{ compactRating(course.ratingCount) }})</span>
+                  <span class="suggest-dot" aria-hidden="true">•</span>
+                  <span>{{ course.students || ((course.studentsCount || 0).toLocaleString('vi-VN') + ' học viên') }}</span>
+                </div>
+
+                <div class="suggest-tags">
+                  @for (tag of course.tags?.slice(0, 3) ?? []; track tag) {
+                    <span class="cart-tag">{{ tag }}</span>
+                  }
+                </div>
+
+                <div class="suggest-footer">
+                  <div class="suggest-price">
+                    <span class="suggest-price__sale">{{ formatPrice(course.salePrice) }}</span>
+                    @if (course.originalPrice > course.salePrice) {
+                      <span class="suggest-price__original">{{ formatPrice(course.originalPrice) }}</span>
+                    }
+                  </div>
+                  <div class="suggest-actions">
+                    <button
+                      type="button"
+                      class="suggest-action"
+                      aria-label="Thêm khóa học vào giỏ hàng"
+                      title="Thêm vào giỏ hàng"
+                      (click)="addSuggestionToCart(course)"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M3.2 4.2h2.1l2.2 10.4a1.8 1.8 0 0 0 1.8 1.4h8.1a1.8 1.8 0 0 0 1.7-1.3l1.4-6.1H6.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+                        <circle cx="9.3" cy="19.2" r="1.2" stroke="currentColor" stroke-width="1.4" />
+                        <circle cx="17.4" cy="19.2" r="1.2" stroke="currentColor" stroke-width="1.4" />
+                      </svg>
+                    </button>
+                    <a class="suggest-action" [routerLink]="['/main/courses', course.id]" aria-label="Xem chi tiết khóa học">
+                      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </article>
+          }
+        </div>
+      </section>
     }
+
+    <section class="cart-trust" aria-label="Cam kết của ThinkUp">
+      <div class="cart-trust__item">
+        <span class="cart-trust__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M4.5 13.5c0-4.2 3.3-7.5 7.5-7.5s7.5 3.3 7.5 7.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+            <path d="M3.5 14.5h3v5h-3zM17.5 14.5h3v5h-3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+            <path d="M20.5 19.5c0 1.1-.9 2-2 2h-3M5.5 19.5c0 1.1.9 2 2 2h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          </svg>
+        </span>
+        <div class="cart-trust__text">
+          <strong>Chất lượng hàng đầu</strong>
+          <span>Nội dung chuyên sâu, cập nhật liên tục</span>
+        </div>
+      </div>
+
+      <div class="cart-trust__item">
+        <span class="cart-trust__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M12 3.5 2.8 8 12 12.5 21.2 8 12 3.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+            <path d="M6 10.3v4.6c0 1.9 2.7 3.4 6 3.4s6-1.5 6-3.4v-4.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          </svg>
+        </span>
+        <div class="cart-trust__text">
+          <strong>Giảng viên uy tín</strong>
+          <span>Đội ngũ chuyên gia giàu kinh nghiệm</span>
+        </div>
+      </div>
+
+      <div class="cart-trust__item">
+        <span class="cart-trust__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <rect x="4.5" y="3.5" width="15" height="17" rx="2" stroke="currentColor" stroke-width="1.6" />
+            <path d="M8 7.5h8M8 11h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          </svg>
+        </span>
+        <div class="cart-trust__text">
+          <strong>Học mọi lúc, mọi nơi</strong>
+          <span>Trên mọi thiết bị, không giới hạn</span>
+        </div>
+      </div>
+
+      <div class="cart-trust__item">
+        <span class="cart-trust__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <circle cx="9" cy="8.5" r="3" stroke="currentColor" stroke-width="1.6" />
+            <path d="M3.5 19c.6-2.8 2.8-4.5 5.5-4.5s4.9 1.7 5.5 4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+            <path d="M15.5 6.2a2.7 2.7 0 0 1 0 5M17.5 14.9c1.7.5 2.8 1.9 3.2 4.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          </svg>
+        </span>
+        <div class="cart-trust__text">
+          <strong>Cộng đồng hỗ trợ</strong>
+          <span>Hỗ trợ nhanh chóng, tận tâm 24/7</span>
+        </div>
+      </div>
+    </section>
   </div>
 </main>

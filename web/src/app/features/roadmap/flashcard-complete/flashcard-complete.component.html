@@ -1,0 +1,71 @@
+<section class="rm-page fc-complete-page">
+  <div class="fc-complete">
+    @if (set(); as s) {
+      <img
+        class="fc-complete__illustration"
+        src="/assets/roadmap/illustration-flashcard-trophy.png"
+        alt="Cúp chúc mừng hoàn thành bộ flashcard"
+      />
+
+      <h1 class="fc-complete__title">Bạn đã hoàn thành bộ flashcard!</h1>
+      <p class="fc-complete__sub">
+        Bạn vừa ôn tập xong <strong>{{ s.title }}</strong>. Duy trì thói quen ôn tập mỗi ngày để ghi nhớ lâu hơn nhé!
+      </p>
+
+      <ul class="rm-card fc-complete__stats">
+        <li>
+          <svg lucideLayers aria-hidden="true" [size]="16" [strokeWidth]="1.8"></svg>
+          <strong>{{ stats().total }}</strong>
+          <span>Tổng số thẻ</span>
+        </li>
+        <li>
+          <svg lucideCircleCheck aria-hidden="true" [size]="16" [strokeWidth]="1.8"></svg>
+          <strong class="is-success">{{ stats().learned }}</strong>
+          <span>Đã nhớ</span>
+        </li>
+        <li>
+          <svg lucideRotateCcw aria-hidden="true" [size]="16" [strokeWidth]="1.8"></svg>
+          <strong class="is-warning">{{ stats().review }}</strong>
+          <span>Cần ôn lại</span>
+        </li>
+        <li>
+          <svg lucideFileText aria-hidden="true" [size]="16" [strokeWidth]="1.8"></svg>
+          <strong class="is-muted">{{ stats().fresh }}</strong>
+          <span>Chưa học</span>
+        </li>
+        <li>
+          <svg lucidePercent aria-hidden="true" [size]="16" [strokeWidth]="1.8"></svg>
+          <strong class="is-primary">{{ stats().percent }}%</strong>
+          <span>Tỷ lệ ghi nhớ</span>
+        </li>
+      </ul>
+
+      <div class="fc-complete__actions">
+        <button type="button" class="rm-btn rm-btn--primary" (click)="restart()">
+          <svg lucideRotateCcw aria-hidden="true" [size]="17" [strokeWidth]="2"></svg>
+          Học lại từ đầu
+        </button>
+
+        <button
+          type="button"
+          class="rm-btn rm-btn--outline"
+          [disabled]="stats().review === 0"
+          (click)="reviewAgain()"
+        >
+          Ôn lại {{ stats().review }} thẻ
+        </button>
+
+        <a class="rm-btn rm-btn--ghost" routerLink="/learning/flashcards">
+          <svg lucideArrowLeft aria-hidden="true" [size]="16" [strokeWidth]="2"></svg>
+          Quay về danh sách
+        </a>
+      </div>
+    } @else {
+      <div class="rm-card fc-complete__empty">
+        <h1 class="rm-card-title">Không tìm thấy bộ flashcard</h1>
+        <p class="rm-base">Bộ flashcard bạn mở không tồn tại hoặc đã bị xóa.</p>
+        <a class="rm-btn rm-btn--primary rm-btn--sm" routerLink="/learning/flashcards">Về danh sách flashcard</a>
+      </div>
+    }
+  </div>
+</section>

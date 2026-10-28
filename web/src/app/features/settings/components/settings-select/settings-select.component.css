@@ -1,0 +1,17 @@
+/* Dropdown chọn cho cài đặt học tập. Khớp Figma các node dropdown 3200:232xx. */
+:host {
+  display: contents;
+}
+
+/*
+ * Không hiện thanh cuộn của danh sách (Figma không có scrollbar).
+ * Danh sách vẫn cuộn được bằng chuột/phím khi màn hình quá thấp.
+ */
+.settings-select__panel {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.settings-select__panel::-webkit-scrollbar {
+  display: none;
+}

@@ -315,6 +315,11 @@ button.voucher-kpi:focus-visible { outline: 2px solid #176de1; outline-offset: 2
 .voucher-panel { border-color: #e2e8f0; border-radius: 12px; box-shadow: 0 8px 24px #10294a0b; }
 .voucher-toolbar { padding: 20px; background: #fbfcfe; border-bottom: 1px solid #e8edf3; }
 .create-button { height: 40px; border-radius: 8px; }
+.voucher-toolbar .custom-select-control { --custom-select-trigger-height: 40px; --custom-select-min-width: 146px; --custom-select-max-width: 180px; }
+.voucher-toolbar .voucher-sort-control { --custom-select-max-width: 220px; }
+.voucher-toolbar > app-search-field + .custom-select-control { margin-left: auto; }
+.voucher-toolbar .custom-select-control { flex: 0 0 auto; }
+.voucher-toolbar .voucher-toolbar-actions { margin-left: 0; }
 .voucher-toolbar app-export-menu { --export-trigger-size: 40px; }
 /* Export button mirrors the Orders toolbar design: solid primary with a download icon. */
 .toolbar-button { display: inline-flex; flex: none; justify-content: center; align-items: center; gap: 7px; height: 48px; padding: 0 16px; border: 1px solid #0965e4; border-radius: 8px; white-space: nowrap; background: #0965e4; color: #fff; font: var(--admin-text-control-label); }

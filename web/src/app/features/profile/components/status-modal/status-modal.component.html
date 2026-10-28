@@ -1,0 +1,40 @@
+<div class="status-modal__overlay" (click)="onBackdropClick()">
+  <div
+    class="status-modal"
+    [class.status-modal--warning]="isWarning"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-label]="title"
+    (click)="onDialogClick($event)"
+  >
+    <div class="status-modal__icon" [class]="'status-modal__icon status-modal__icon--' + variant" aria-hidden="true">
+      @switch (variant) {
+        @case ('success') {
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m5 12 5 5L20 7" />
+          </svg>
+        }
+        @default {
+          <span>!</span>
+        }
+      }
+    </div>
+
+    <p class="status-modal__title">{{ title }}</p>
+
+    <div class="status-modal__actions">
+      @if (isWarning) {
+        <button type="button" class="status-modal__button status-modal__button--primary" (click)="primary.emit()">
+          {{ primaryLabel }}
+        </button>
+        <button type="button" class="status-modal__button status-modal__button--danger" (click)="secondary.emit()">
+          {{ secondaryLabel }}
+        </button>
+      } @else {
+        <button type="button" class="status-modal__button status-modal__button--primary" (click)="primary.emit()">
+          {{ primaryLabel }}
+        </button>
+      }
+    </div>
+  </div>
+</div>

@@ -1,0 +1,315 @@
+<div class="flex min-h-[calc(100vh-82px)] bg-[#0B1220]">
+  <nav class="flex w-12 shrink-0 flex-col items-center gap-1 border-r border-[#1D293D] bg-[#0A0F1F] py-3" aria-label="Điều hướng bài lab">
+    <button type="button" (click)="backToCourse.emit()" class="grid h-9 w-9 place-items-center rounded-lg text-white/70 transition hover:bg-white/10 hover:text-white" aria-label="Quay lại khóa học">
+      <svg lucidePanelLeft class="h-5 w-5" aria-hidden="true"></svg>
+    </button>
+    <span class="my-2 h-px w-6 bg-white/10"></span>
+    <button type="button" (click)="backToCourse.emit()" class="grid h-9 w-9 place-items-center rounded-lg text-white/55 transition hover:bg-white/10 hover:text-white" aria-label="Nội dung khóa học">
+      <svg lucideBookOpen class="h-[18px] w-[18px]" aria-hidden="true"></svg>
+    </button>
+    <span class="grid h-9 w-9 place-items-center rounded-lg bg-[#0072F8] text-white" aria-label="Bài lab đang mở">
+      <svg lucideFlaskConical class="h-[18px] w-[18px]" aria-hidden="true"></svg>
+    </span>
+    <button type="button" (click)="openSolution()" class="grid h-9 w-9 place-items-center rounded-lg text-white/55 transition hover:bg-white/10 hover:text-white" aria-label="Phương án tối ưu">
+      <svg lucideLightbulb class="h-[18px] w-[18px]" aria-hidden="true"></svg>
+    </button>
+  </nav>
+
+  <div class="flex min-w-0 flex-1 flex-col">
+    <!-- Lesson navigation toolbar -->
+    <div class="flex h-[47px] shrink-0 items-center justify-between gap-3 border-b border-[#1D293D] bg-[#0A0F1F] px-4">
+      <button
+        type="button"
+        (click)="previousLesson && lessonSelected.emit(previousLesson)"
+        [disabled]="!previousLesson"
+        class="inline-flex h-8 min-w-[92px] items-center justify-center rounded-md border border-[#1D293D] bg-[#151823] px-3 text-[12px] font-medium text-white/80 transition hover:bg-[#1D293D] disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        Bài trước
+      </button>
+
+      <div class="flex min-w-0 items-center gap-1 overflow-x-auto">
+        @for (item of chapter.lessons; track item.id; let index = $index) {
+          <button
+            type="button"
+            (click)="lessonSelected.emit(item)"
+            class="grid h-7 min-w-7 shrink-0 place-items-center rounded px-1.5 text-[12px] font-semibold transition"
+            [class]="
+              item.id === lesson.id
+                ? 'bg-[#155DFC] text-white'
+                : item.completed
+                  ? 'bg-[#132A4F] text-[#93C5FD] hover:bg-[#1A3663]'
+                  : 'text-white/55 hover:bg-white/10'
+            "
+            [attr.aria-current]="item.id === lesson.id ? 'step' : null"
+          >
+            {{ index + 1 }}
+          </button>
+        }
+      </div>
+
+      <button
+        type="button"
+        (click)="next()"
+        [disabled]="!nextLesson"
+        class="inline-flex h-8 min-w-[92px] items-center justify-center rounded-md border border-[#1D293D] bg-[#151823] px-3 text-[12px] font-medium text-white/80 transition hover:bg-[#1D293D] disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        Bài tiếp theo
+      </button>
+    </div>
+
+    @if (lab; as labConfig) {
+      <div class="flex min-h-0 flex-1">
+        <!-- Instructions -->
+        <section class="w-[45%] shrink-0 overflow-y-auto bg-white px-8 py-7 2xl:px-12" aria-label="Đề bài">
+          <h1 class="text-[18px] font-bold leading-7 text-[#0F172B]">{{ labConfig.taskTitle }}</h1>
+          <p class="mt-1 text-[12px] text-[#62748E]">Bài lab · {{ lesson.duration }}</p>
+
+          <div class="mt-5 space-y-5">
+            @for (block of labConfig.instructions; track $index) {
+              <section>
+                @if (block.heading) {
+                  <h2 class="text-[16px] font-bold leading-6 text-[#0F172B]">{{ block.heading }}</h2>
+                }
+                @for (paragraph of block.paragraphs; track $index) {
+                  <p class="mt-2 text-[13px] leading-[22px] text-[#45556C]">{{ paragraph }}</p>
+                }
+                @if (block.bullets?.length) {
+                  <ul class="mt-2 space-y-1.5">
+                    @for (bullet of block.bullets; track $index) {
+                      <li class="flex gap-2 text-[13px] leading-[22px] text-[#45556C]">
+                        <span class="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#155DFC]"></span>
+                        <span>{{ bullet }}</span>
+                      </li>
+                    }
+                  </ul>
+                }
+                @if (block.code) {
+                  <pre class="mt-3 overflow-x-auto rounded-lg bg-[#0F172A] px-5 py-4 font-mono text-[12.5px] leading-6 text-[#E2E8F0]"><code>{{ block.code }}</code></pre>
+                }
+                @if (block.note) {
+                  <p class="mt-3 rounded-lg bg-[#F4F6FB] px-4 py-2.5 text-[13px] leading-[22px] text-[#45556C]">{{ block.note }}</p>
+                }
+              </section>
+            }
+          </div>
+        </section>
+
+        <!-- Editor + tests -->
+        <section class="flex min-w-0 flex-1 flex-col border-l border-[#1D293D]" aria-label="Trình soạn mã">
+          <div class="flex h-[47px] shrink-0 items-center justify-between gap-2 border-b border-[#1D293D] px-3">
+            <span class="inline-flex h-7 items-center rounded-md border border-[#334155] bg-[#151823] px-3 text-[11px] font-bold uppercase tracking-wide text-white/70">
+              {{ labConfig.language }}
+            </span>
+
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                (click)="run()"
+                [disabled]="running"
+                class="inline-flex h-8 items-center gap-1.5 rounded-md bg-[#155DFC] px-3 text-[12px] font-semibold text-white transition hover:bg-[#0F4CD1] disabled:opacity-60"
+              >
+                <svg lucidePlay class="h-3.5 w-3.5 fill-white" aria-hidden="true"></svg>
+                {{ running ? 'Đang chạy...' : 'Chạy thử' }}
+              </button>
+              <button type="button" (click)="reset()" class="inline-flex h-8 items-center gap-1.5 rounded-md border border-[#334155] px-3 text-[12px] font-medium text-white/70 transition hover:bg-white/5">
+                <svg lucideRotateCcw class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                Khôi phục mã mẫu
+              </button>
+              <button type="button" (click)="submit()" class="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/20 bg-white px-3 text-[12px] font-semibold text-[#0F172B] transition hover:bg-[#E2E8F0]">
+                <svg lucideSend class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                Nộp bài
+              </button>
+              <button type="button" (click)="solutionOpen ? solutionOpen = false : openSolution()" class="hidden h-8 items-center gap-1.5 rounded-md border border-[#334155] px-3 text-[12px] font-medium text-white/70 transition hover:bg-white/5 xl:inline-flex">
+                <svg lucideLightbulb class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                Phương án tối ưu
+              </button>
+            </div>
+          </div>
+
+          @if (submitted) {
+            <div
+              class="flex shrink-0 items-center gap-2 border-b px-4 py-2.5 text-[12px] font-medium"
+              [class]="result === 'pass' ? 'border-[#14532D] bg-[#052E16] text-[#86EFAC]' : 'border-[#7F1D1D] bg-[#450A0A] text-[#FCA5A5]'"
+            >
+              @if (result === 'pass') {
+                <svg lucideCheck class="h-4 w-4" aria-hidden="true"></svg>
+                <span>Chúc mừng! Bạn đã vượt qua {{ passedCount }}/{{ tests.length }} kiểm thử và hoàn thành bài lab.</span>
+              } @else {
+                <svg lucideCircleAlert class="h-4 w-4" aria-hidden="true"></svg>
+                <span>Chưa đạt yêu cầu. Hãy kiểm tra lại kết quả trả về và chạy thử lại.</span>
+                <button type="button" (click)="reset()" class="ml-auto inline-flex items-center gap-1 rounded border border-[#FCA5A5]/40 px-2 py-1 text-[11px] hover:bg-white/5">
+                  <svg lucideRotateCcw class="h-3 w-3" aria-hidden="true"></svg>
+                  Làm lại
+                </button>
+              }
+            </div>
+          }
+
+          <div class="flex min-h-[300px] flex-1 overflow-hidden">
+            <div class="select-none border-r border-[#1D293D] bg-[#0B1220] px-3 py-4 text-right font-mono text-[12.5px] leading-6 text-white/25" aria-hidden="true">
+              @for (line of lines; track line) {
+                <div>{{ line }}</div>
+              }
+            </div>
+            <textarea
+              name="lab-code"
+              [(ngModel)]="code"
+              spellcheck="false"
+              class="min-h-[300px] flex-1 resize-none overflow-auto bg-[#0B1220] px-4 py-4 font-mono text-[12.5px] leading-6 text-[#E2E8F0] outline-none"
+              aria-label="Mã nguồn bài lab"
+            ></textarea>
+          </div>
+
+          <!-- Test cases -->
+          <div class="shrink-0 border-t border-[#1D293D] bg-[#0A0F1F]">
+            <button type="button" (click)="testsOpen = !testsOpen" class="flex h-11 w-full items-center justify-between px-4 text-left">
+              <span class="text-[12px] font-bold uppercase tracking-wide text-white">Kiểm thử</span>
+              @if (testsOpen) {
+                <svg lucideChevronDown class="h-4 w-4 text-white/60" aria-hidden="true"></svg>
+              } @else {
+                <svg lucideChevronUp class="h-4 w-4 text-white/60" aria-hidden="true"></svg>
+              }
+            </button>
+
+            @if (testsOpen) {
+              <p class="px-4 pb-2 text-[11px] text-white/45">
+                @if (passedCount === tests.length && tests.length > 0) {
+                  <span class="text-[#4ADE80]">{{ passedCount }}/{{ tests.length }} test case đúng.</span>
+                } @else {
+                  Vui lòng chạy thử code của bạn trước!
+                }
+              </p>
+
+              <div class="grid grid-cols-[150px_minmax(0,1fr)] border-t border-[#1D293D]">
+                <div class="max-h-[220px] overflow-y-auto border-r border-[#1D293D] py-1">
+                  @for (test of tests; track test.id; let index = $index) {
+                    <button
+                      type="button"
+                      (click)="activeTestId = test.id"
+                      class="flex h-9 w-full items-center gap-2 px-4 text-left text-[11px] transition"
+                      [class]="test.id === activeTestId ? 'bg-[#151823] text-white' : 'text-white/55 hover:bg-white/5'"
+                    >
+                      @if (test.passed) {
+                        <span class="grid h-4 w-4 place-items-center rounded-full bg-[#16A34A] text-white">
+                          <svg lucideCheck class="h-2.5 w-2.5" aria-hidden="true"></svg>
+                        </span>
+                      } @else {
+                        <span class="h-4 w-4 rounded-full border border-white/25"></span>
+                      }
+                      Kiểm thử {{ index + 1 }}
+                    </button>
+                  }
+                </div>
+
+                @if (activeTest; as test) {
+                  <div class="max-h-[220px] overflow-y-auto px-5 py-3">
+                    <dl class="grid grid-cols-[150px_minmax(0,1fr)] gap-y-2 text-[11px]">
+                      <dt class="text-white/45">Đầu vào</dt>
+                      <dd class="font-mono text-white/80">{{ test.input }}</dd>
+
+                      <dt class="text-white/45">Đầu ra thực tế</dt>
+                      <dd class="font-mono" [class]="test.passed ? 'text-[#4ADE80]' : test.actual ? 'text-[#FCA5A5]' : 'text-white/50'">{{ test.actual || '—' }}</dd>
+
+                      <dt class="text-white/45">Đầu ra mong đợi</dt>
+                      <dd class="font-mono text-[#4ADE80]">{{ test.expected }}</dd>
+
+                      <dt class="text-white/45">Giới hạn thời gian</dt>
+                      <dd class="text-white/80">2000 ms</dd>
+
+                      <dt class="text-white/45">Thời gian thực thi</dt>
+                      <dd class="text-white/80">{{ test.passed ? '10 ms' : '—' }}</dd>
+
+                      <dt class="text-white/45">Mô tả</dt>
+                      <dd [class]="test.passed ? 'text-[#4ADE80]' : test.actual ? 'text-[#FCA5A5]' : 'text-white/50'">{{ test.passed ? 'Correct answer' : test.actual ? 'Chưa đạt' : 'Chưa chạy' }}</dd>
+                    </dl>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </section>
+
+        @if (solutionOpen) {
+          <aside class="flex w-[340px] shrink-0 flex-col border-l border-[#1D293D] bg-[#0A0F1F] 2xl:w-[376px]" aria-label="Phương án tối ưu">
+            <header class="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-[#1D293D] px-4">
+              <h2 class="text-[12px] font-bold uppercase tracking-wide text-white">Phương án tối ưu của bài</h2>
+              <button type="button" (click)="solutionOpen = false" class="grid h-7 w-7 place-items-center rounded text-white/60 hover:bg-white/10 hover:text-white" aria-label="Đóng phương án tối ưu">
+                <svg lucideX class="h-4 w-4" aria-hidden="true"></svg>
+              </button>
+            </header>
+
+            <div class="min-h-0 flex-1 overflow-y-auto p-4">
+              <div class="grid grid-cols-3 gap-1 rounded-lg border border-[#1D293D] p-1">
+                @for (solution of labConfig.solutions; track solution.id; let index = $index) {
+                  <button
+                    type="button"
+                    (click)="activeSolutionId = solution.id"
+                    class="truncate rounded-md px-1.5 py-2 text-[11px] font-semibold transition"
+                    [class]="solution.id === activeSolutionId ? 'bg-[#1E3A8A] text-white' : 'text-white/60 hover:bg-white/5'"
+                  >
+                    Cách {{ index + 1 }} · {{ solutionName(solution) }}
+                  </button>
+                }
+              </div>
+
+              @if (activeSolution; as solution) {
+                <div class="mt-4 overflow-hidden rounded-xl border border-[#334155]">
+                  <div class="flex items-center justify-between border-b border-[#334155] px-4 py-2.5">
+                    <span class="text-[10px] font-bold uppercase tracking-wide text-white/50">{{ labConfig.language }}</span>
+                    <button type="button" (click)="copySolution()" class="inline-flex h-7 items-center gap-1.5 rounded border border-[#334155] bg-[#151823] px-2.5 text-[11px] text-white/75 transition hover:bg-[#1E293B]">
+                      <svg lucideCopy class="h-3 w-3" aria-hidden="true"></svg>
+                      {{ copied ? 'Đã sao chép' : 'Sao chép code' }}
+                    </button>
+                  </div>
+                  <pre class="overflow-x-auto bg-[#0F172A] p-4 font-mono text-[12px] leading-6 text-[#E2E8F0]"><code>{{ solution.code }}</code></pre>
+                  <p class="border-t border-[#334155] px-4 py-2.5 text-[12px] leading-5 text-white/60">{{ solution.description }}</p>
+                </div>
+
+                <div class="mt-5">
+                  <h3 class="flex items-center gap-2 text-[12px] font-semibold text-white">
+                    <span class="h-2.5 w-2.5 rounded-full bg-[#22C55E]"></span>
+                    Ưu điểm
+                  </h3>
+                  <ul class="mt-2 space-y-1.5">
+                    @for (pro of solution.pros; track $index) {
+                      <li class="text-[12px] leading-5 text-white/60">{{ pro }}</li>
+                    }
+                  </ul>
+                </div>
+
+                <div class="mt-4">
+                  <h3 class="flex items-center gap-2 text-[12px] font-semibold text-white">
+                    <span class="h-2.5 w-2.5 rounded-full bg-[#EF4444]"></span>
+                    Nhược điểm
+                  </h3>
+                  <ul class="mt-2 space-y-1.5">
+                    @for (con of solution.cons; track $index) {
+                      <li class="text-[12px] leading-5 text-white/60">{{ con }}</li>
+                    }
+                  </ul>
+                </div>
+              }
+            </div>
+
+            <footer class="grid shrink-0 grid-cols-2 gap-2 border-t border-[#1D293D] p-4">
+              <button type="button" (click)="reset()" class="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-[#334155] text-[12px] font-semibold text-white/75 transition hover:bg-white/5">
+                Thử gợi lại
+              </button>
+              <button
+                type="button"
+                (click)="next()"
+                [disabled]="!nextLesson"
+                class="inline-flex h-9 items-center justify-center gap-1.5 rounded-md bg-[#155DFC] text-[12px] font-semibold text-white transition hover:bg-[#0F4CD1] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Bài tiếp theo
+                <svg lucideArrowRight class="h-3.5 w-3.5" aria-hidden="true"></svg>
+              </button>
+            </footer>
+          </aside>
+        }
+      </div>
+    } @else {
+      <div class="grid flex-1 place-items-center text-[14px] text-white/60">Bài lab đang được cập nhật.</div>
+    }
+  </div>
+</div>

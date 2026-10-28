@@ -1,0 +1,149 @@
+<div class="min-h-full bg-[#F9F9FF] text-[#071123]">
+  <main class="mx-auto flex w-full min-w-0 max-w-[1920px] flex-1 flex-col gap-6 overflow-x-hidden px-[clamp(16px,3.33vw,64px)] py-6">
+    <!-- Header trang -->
+    <header class="flex flex-col gap-1">
+      <div class="flex items-center justify-between gap-4">
+        <h1 class="text-[24px] font-bold leading-8 tracking-[-0.6px] text-[#0F172B]">Tùy chọn học tập</h1>
+        <app-settings-back-button (back)="back()" />
+      </div>
+      <p class="text-[14px] leading-5 text-[#62748E]">
+        Cá nhân hóa trải nghiệm học tập để phù hợp với nhu cầu của bạn.
+      </p>
+    </header>
+
+    <!-- Ngôn ngữ hiển thị + Múi giờ -->
+    <section class="grid grid-cols-2 gap-6 rounded-[18px] border border-[#E2E8F0] bg-white p-6">
+      <div class="flex flex-col gap-1">
+        <span class="text-[13.5px] font-semibold leading-[20.25px] text-[#1D293D]">Ngôn ngữ hiển thị</span>
+        <p class="pb-1.5 text-[12px] leading-4 text-[#62748E]">Chọn ngôn ngữ bạn muốn sử dụng trên ThinkUp.</p>
+        <app-settings-select
+          [value]="options().language"
+          [options]="languageOptions"
+          (change)="patch('language', $event)"
+        />
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <span class="text-[13.5px] font-semibold leading-[20.25px] text-[#1D293D]">Múi giờ</span>
+        <p class="pb-1.5 text-[12px] leading-4 text-[#62748E]">Chọn múi giờ để hiển thị thời gian phù hợp.</p>
+        <app-settings-select
+          [value]="options().timezone"
+          [options]="timezoneOptions"
+          (change)="patch('timezone', $event)"
+        />
+      </div>
+    </section>
+
+    <!-- Trình phát video -->
+    <section class="rounded-[18px] border border-[#E2E8F0] bg-white p-6">
+      <h2 class="text-[15px] font-bold leading-[22.5px] text-[#0F172B]">Trình phát video</h2>
+      <p class="mt-1 text-[12px] leading-4 text-[#62748E]">Tùy chỉnh trải nghiệm xem video bài giảng.</p>
+
+      <div class="mt-4 grid grid-cols-2 gap-x-10">
+        <div class="flex flex-col gap-6">
+          <div class="flex flex-col gap-1">
+            <span class="text-[13.5px] font-semibold leading-[20.25px] text-[#1D293D]">Chất lượng mặc định</span>
+            <p class="pb-1.5 text-[12px] leading-4 text-[#62748E]">Chọn chất lượng video mặc định khi bắt đầu.</p>
+            <app-settings-select
+              [value]="options().videoQuality"
+              [options]="videoQualityOptions"
+              (change)="patch('videoQuality', $event)"
+            />
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <span class="text-[13.5px] font-semibold leading-[20.25px] text-[#1D293D]">Tốc độ phát mặc định</span>
+            <p class="pb-1.5 text-[12px] leading-4 text-[#62748E]">Tốc độ phát mặc định cho video.</p>
+            <app-settings-select
+              [value]="options().playbackSpeed"
+              [options]="playbackSpeedOptions"
+              (change)="patch('playbackSpeed', $event)"
+            />
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-[34px]">
+          <div class="flex items-start justify-between gap-6">
+            <div class="flex flex-col gap-1">
+              <span class="text-[13.5px] font-semibold leading-[20.25px] text-[#1D293D]">Phụ đề mặc định</span>
+              <p class="text-[12px] leading-4 text-[#62748E]">Bật phụ đề khi xem video.</p>
+            </div>
+            <app-settings-toggle [(checked)]="subtitles" />
+          </div>
+
+          <div class="flex items-start justify-between gap-6">
+            <div class="flex flex-col gap-1">
+              <span class="text-[13.5px] font-semibold leading-[20.25px] text-[#1D293D]">Tự động phát video tiếp theo</span>
+              <p class="text-[12px] leading-4 text-[#62748E]">Tự động phát video khi video hiện tại kết thúc.</p>
+            </div>
+            <app-settings-toggle [(checked)]="autoNext" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tải xuống -->
+    <section class="rounded-[18px] border border-[#E2E8F0] bg-white p-6">
+      <h2 class="text-[15px] font-bold leading-[22.5px] text-[#0F172B]">Tải xuống</h2>
+      <p class="mt-1 text-[12px] leading-4 text-[#62748E]">Quản lý cài đặt tải xuống tài liệu và bài học.</p>
+
+      <div class="mt-4 grid grid-cols-2 gap-x-10">
+        <div class="flex flex-col gap-6">
+          <div class="flex flex-col gap-1">
+            <span class="text-[13.5px] font-semibold leading-[20.25px] text-[#1D293D]">Chất lượng tài liệu tải xuống</span>
+            <p class="pb-1.5 text-[12px] leading-4 text-[#62748E]">Chọn chất lượng cho tài liệu, slide, ebook.</p>
+            <app-settings-select
+              [value]="options().downloadQuality"
+              [options]="downloadQualityOptions"
+              (change)="patch('downloadQuality', $event)"
+            />
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <span class="text-[13.5px] font-semibold leading-[20.25px] text-[#1D293D]">Lưu vào thiết bị</span>
+            <p class="pb-1.5 text-[12px] leading-4 text-[#62748E]">Chọn nơi lưu mặc định cho các tệp tải xuống.</p>
+            <app-settings-select
+              [value]="options().downloadLocation"
+              [options]="downloadLocationOptions"
+              (change)="patch('downloadLocation', $event)"
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Hành động cuối trang -->
+    <div class="flex flex-wrap items-center justify-end gap-3">
+      <button
+        type="button"
+        class="flex h-9 items-center rounded-lg border border-[#E2E8F0] bg-white px-7 text-[12px] font-semibold leading-4 text-[#314158] transition hover:bg-[#F9F9FF]"
+        (click)="onReset()"
+      >
+        Khôi phục cài đặt mặc định
+      </button>
+      <button
+        type="button"
+        class="flex h-9 items-center rounded-lg border border-[#E2E8F0] bg-white px-7 text-[12px] font-semibold leading-4 text-[#314158] transition hover:bg-[#F9F9FF]"
+        (click)="onCancel()"
+      >
+        Hủy
+      </button>
+      <button
+        type="button"
+        class="flex h-9 items-center rounded-lg bg-[#155DFC] px-4 text-[12px] font-semibold leading-4 text-white transition hover:bg-[#0E4BD6] disabled:cursor-not-allowed disabled:opacity-60"
+        [disabled]="isSaving()"
+        (click)="onSave()"
+      >
+        {{ isSaving() ? 'Đang lưu...' : 'Lưu thay đổi' }}
+      </button>
+
+      <p class="sr-only" role="status" aria-live="polite">
+        @if (saveStatus() === 'success') {
+          Đã lưu thay đổi.
+        } @else if (saveStatus() === 'error') {
+          Lưu thay đổi thất bại. Vui lòng thử lại.
+        }
+      </p>
+    </div>
+  </main>
+</div>

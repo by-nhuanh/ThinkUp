@@ -1,30 +1,54 @@
+<div class="min-h-full bg-[#F9F9FF]">
+  <main class="mx-auto w-full min-w-0 max-w-[1920px] px-[clamp(16px,2.55vw,49px)] py-6">
+    <div class="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(260px,413fr)_minmax(0,1372fr)]">
+      <app-profile-sidebar
+        [displayName]="displayName()"
+        [avatarUrl]="avatarUrl()"
+        [errorMessage]="avatarError()"
+        [isUploading]="isUploading()"
+        (fileSelected)="onAvatarSelected($event)"
+      />
 
-    <div class="min-h-full bg-[#F9F9FF] text-[#1C1D1F] flex flex-col font-['Inter',sans-serif]">
-      <!-- Main Edit View (Khớp tỉ lệ lưới Figma) -->
-      <main class="mx-auto grid w-full min-w-0 max-w-[1920px] grid-cols-1 items-start gap-6 overflow-x-hidden px-4 pb-16 pt-8 sm:px-6 lg:grid-cols-[minmax(280px,413px)_minmax(0,1fr)] lg:pl-[clamp(24px,2.55vw,49px)] lg:pr-[clamp(24px,3.23vw,62px)] flex-1">
-        <!-- Sidebar Upload Avatar -->
-        <div class="flex flex-col gap-4">
-          <a
-            routerLink="/main/profile"
-            class="inline-flex items-center gap-2 text-[14px] font-semibold text-[#155DFC] hover:underline"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
-            Quay lại trang tổng quan
-          </a>
-
-          <app-profile-sidebar
-            [displayName]="displayName()"
-            [avatarUrl]="profileService.profile().avatarUrl"
-            (avatarChange)="onAvatarChange($event)"
-          />
-        </div>
-
-        <!-- Form Edit Details -->
-        <app-profile-form
-          [formData]="profileData()"
-          [isSaving]="isSaving()"
-          [saveSuccess]="saveSuccess()"
-          (save)="onSave($event)"
-        />
-      </main>
+      <app-profile-form
+        [profile]="profileService.profile()"
+        [isSaving]="isSaving()"
+        [externalDirty]="avatarDirty()"
+        (stateChange)="onFormState($event)"
+        (save)="onSave($event)"
+        (cancel)="onCancel()"
+      />
     </div>
+  </main>
+
+  @if (modal() === 'success') {
+    <app-status-modal
+      variant="success"
+      title="Cập nhật hồ sơ thành công!"
+      primaryLabel="Đóng"
+      (primary)="onSuccessClose()"
+      (dismissed)="onSuccessClose()"
+    />
+  }
+
+  @if (modal() === 'error') {
+    <app-status-modal
+      variant="error"
+      title="Lưu thông tin thất bại. Vui lòng kiểm tra lại kết nối!"
+      primaryLabel="Đóng"
+      (primary)="onErrorClose()"
+      (dismissed)="onErrorClose()"
+    />
+  }
+
+  @if (unsaved.isOpen()) {
+    <app-status-modal
+      variant="warning"
+      title="Những thay đổi của bạn chưa được lưu. Bạn có chắc muốn rời đi?"
+      primaryLabel="Tiếp tục chỉnh sửa"
+      secondaryLabel="Rời đi"
+      (primary)="onWarningPrimary()"
+      (secondary)="onWarningSecondary()"
+      (dismissed)="onWarningPrimary()"
+    />
+  }
+</div>

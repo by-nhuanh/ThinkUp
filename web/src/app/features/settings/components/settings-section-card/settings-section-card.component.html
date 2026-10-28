@@ -1,0 +1,34 @@
+<div class="flex items-center justify-between gap-4 p-6 rounded-[18px] border border-[#E2E8F0] bg-white cursor-pointer transition hover:bg-[#F9F9FF]">
+  <a [routerLink]="section().href" class="flex min-w-0 items-center gap-4">
+    <div
+      class="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[12px]"
+      [style.backgroundColor]="section().bgColor"
+    >
+      @switch (section().icon) {
+        @case ('Shield') {
+          <svg lucideShield [size]="20" [color]="section().iconColor" [strokeWidth]="1.8"></svg>
+        }
+        @case ('Bell') {
+          <svg lucideBell [size]="20" [color]="section().iconColor" [strokeWidth]="1.8"></svg>
+        }
+        @case ('GraduationCap') {
+          <svg lucideGraduationCap [size]="20" [color]="section().iconColor" [strokeWidth]="1.8"></svg>
+        }
+        @case ('CreditCard') {
+          <svg lucideCreditCard [size]="20" [color]="section().iconColor" [strokeWidth]="1.8"></svg>
+        }
+      }
+    </div>
+    <div class="min-w-0">
+      <h3 class="text-[16px] font-semibold leading-6 text-[#191B23]">{{ section().title }}</h3>
+      <p class="text-[12px] leading-5 text-[#62748E]">{{ section().description }}</p>
+    </div>
+  </a>
+  <button
+    type="button"
+    class="flex h-[38px] shrink-0 items-center justify-center rounded-[10px] border border-[#BEDBFF] bg-white px-4 text-[13px] font-semibold leading-5 text-[#155DFC] transition hover:bg-[#EBF5FF]"
+    (click)="manage.emit()"
+  >
+    Quản lý
+  </button>
+</div>

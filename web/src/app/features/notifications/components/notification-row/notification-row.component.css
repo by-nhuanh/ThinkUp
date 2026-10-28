@@ -1,0 +1,46 @@
+/* Dòng thông báo - Figma section "thông báo" (3188:19571). */
+
+:host {
+  display: block;
+}
+
+/* Token chữ co giãn có biên: 1920 giữ đúng Figma, 1440/1366 thu nhỏ vừa khung. */
+.n-row-title {
+  font-size: clamp(14px, 0.781vw, 15px);
+  line-height: 1.21;
+  font-weight: 600;
+  color: #102a56;
+}
+
+.n-row-body {
+  font-size: clamp(13.5px, 0.8125vw, 15.6px);
+  line-height: 1.22;
+  color: #536780;
+}
+
+.n-row-badge {
+  font-size: clamp(10.5px, 0.573vw, 11px);
+  line-height: 1.21;
+  font-weight: 600;
+}
+
+.n-row-time {
+  font-size: clamp(10.5px, 0.573vw, 11px);
+  line-height: 1.21;
+  color: #50709a;
+}
+
+.n-row-menu-item {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+}
+
+.n-row-menu-item--neutral {
+  color: #314156;
+}
+
+.n-row-menu-item--neutral.is-locked {
+  color: #94a3b8;
+  cursor: not-allowed;
+}

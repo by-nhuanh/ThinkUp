@@ -1,0 +1,186 @@
+<div class="min-h-full bg-[#F9F9FF] text-[#071123]">
+  <main class="mx-auto flex w-full min-w-0 max-w-[1920px] flex-1 flex-col gap-6 overflow-x-hidden px-[clamp(16px,3.33vw,64px)] py-6">
+    <!-- Header trang -->
+    <header class="flex flex-col gap-1">
+      <div class="flex items-center justify-between gap-4">
+        <h1 class="text-[28px] font-bold leading-[42px] text-[#0F172B]">Tài khoản &amp; Bảo mật</h1>
+        <app-settings-back-button (back)="back()" />
+      </div>
+      <p class="text-[14px] leading-[21px] text-[#62748E]">
+        Quản lý mật khẩu, đăng nhập và các thiết lập bảo mật cho tài khoản của bạn.
+      </p>
+    </header>
+
+    <div class="flex flex-col gap-10">
+      <!-- 1. Đổi mật khẩu -->
+      <section class="rounded-[18px] border border-[#E2E8F0] bg-white p-6">
+        <div class="flex flex-col gap-3">
+          <h2 class="text-[#191B23] text-[16px] font-semibold leading-5">Đổi mật khẩu</h2>
+          <p class="text-[#62748E] text-[12px] leading-[16px]">Đảm bảo mật khẩu của bạn đều được mã hóa để bảo vệ tài khoản.</p>
+        </div>
+
+        <form (ngSubmit)="onSavePassword()" class="mt-5 flex flex-col gap-3" novalidate>
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div class="flex flex-col gap-1.5">
+              <label class="text-[#62748E] text-[12px] leading-[16px]">Mật khẩu hiện tại</label>
+              <div class="relative">
+                <input
+                  type="password"
+                  [(ngModel)]="form().currentPassword"
+                  name="currentPassword"
+                  placeholder="Nhập mật khẩu hiện tại"
+                  class="w-full px-3 py-[10px] rounded-[8px] border border-[#E2E8F0] bg-white text-[#191B23] text-[12px] leading-[16px] transition focus:border-[#BEDBFF] focus:outline-none"
+                  [attr.type]="hideCurrent() ? 'password' : 'text'"
+                />
+                <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-[#62748E] hover:text-[#191B23]" (click)="hideCurrent.update(v => !v)">
+                  @if (hideCurrent()) {
+                    <svg lucideEye [size]="16" [strokeWidth]="1.8"></svg>
+                  } @else {
+                    <svg lucideEyeOff [size]="16" [strokeWidth]="1.8"></svg>
+                  }
+                </button>
+              </div>
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label class="text-[#62748E] text-[12px] leading-[16px]">Mật khẩu mới</label>
+              <div class="relative">
+                <input
+                  type="password"
+                  [(ngModel)]="form().newPassword"
+                  name="newPassword"
+                  placeholder="Nhập mật khẩu mới"
+                  class="w-full px-3 py-[10px] rounded-[8px] border border-[#E2E8F0] bg-white text-[#191B23] text-[12px] leading-[16px] transition focus:border-[#BEDBFF] focus:outline-none"
+                  [attr.type]="hideNew() ? 'password' : 'text'"
+                />
+                <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-[#62748E] hover:text-[#191B23]" (click)="hideNew.update(v => !v)">
+                  @if (hideNew()) {
+                    <svg lucideEye [size]="16" [strokeWidth]="1.8"></svg>
+                  } @else {
+                    <svg lucideEyeOff [size]="16" [strokeWidth]="1.8"></svg>
+                  }
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[#62748E] text-[12px] leading-[16px]">Xác nhận mật khẩu mới</label>
+            <div class="relative">
+              <input
+                type="password"
+                [(ngModel)]="form().confirmNewPassword"
+                name="confirmNewPassword"
+                placeholder="Nhập lại mật khẩu mới"
+                class="w-full px-3 py-[10px] rounded-[8px] border border-[#E2E8F0] bg-white text-[#191B23] text-[12px] leading-[16px] transition focus:border-[#BEDBFF] focus:outline-none"
+                [attr.type]="hideConfirm() ? 'password' : 'text'"
+              />
+              <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-[#62748E] hover:text-[#191B23]" (click)="hideConfirm.update(v => !v)">
+                @if (hideConfirm()) {
+                  <svg lucideEye [size]="16" [strokeWidth]="1.8"></svg>
+                } @else {
+                  <svg lucideEyeOff [size]="16" [strokeWidth]="1.8"></svg>
+                }
+              </button>
+            </div>
+          </div>
+
+          @if (passwordTooWeak()) {
+            <p class="flex items-center gap-1 text-[11px] leading-5 text-[#F59E0B]">
+              <svg lucideCircleAlert [size]="14" [strokeWidth]="1.8"></svg>
+              Mật khẩu cần ít nhất 8 ký tự, gồm chữ hoa, chữ thường và số.
+            </p>
+          }
+
+          <button
+            type="submit"
+            class="mt-2 w-full h-[44px] rounded-[10px] bg-[#3061EF] text-white text-[14px] font-semibold leading-5 transition hover:bg-[#2557E0] disabled:opacity-60"
+            [disabled]="isSaving()"
+          >
+            {{ isSaving() ? 'Đang cập nhật...' : 'Cập nhật mật khẩu' }}
+          </button>
+        </form>
+      </section>
+
+      <!-- 2. Thiết bị đang nhập -->
+      <section class="rounded-[18px] border border-[#E2E8F0] bg-white p-6">
+        <div class="flex items-center justify-between gap-4 mb-4">
+          <div class="flex flex-col gap-1">
+            <h2 class="text-[#191B23] text-[16px] font-semibold leading-5">Thiết bị đang nhập</h2>
+            <p class="text-[#62748E] text-[12px] leading-[16px]">Quản lý các thiết bị đã đăng nhập vào tài khoản của bạn.</p>
+          </div>
+          <a routerLink="#" class="text-[#3061EF] text-[13px] font-semibold leading-5 hover:underline">Xem tất cả thiết bị (3)</a>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-[#F1F5F9]">
+                <th class="pb-3 text-[#62748E] text-[11px] font-semibold uppercase tracking-wider">Thiết bị</th>
+                <th class="pb-3 text-[#62748E] text-[11px] font-semibold uppercase tracking-wider">Vị trí</th>
+                <th class="pb-3 text-[#62748E] text-[11px] font-semibold uppercase tracking-wider">IP</th>
+                <th class="pb-3 text-right pr-2 text-[#62748E] text-[11px] font-semibold uppercase tracking-wider">Thời gian</th>
+                <th class="pb-3 text-right pr-2 text-[#62748E] text-[11px] font-semibold uppercase tracking-wider">Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[#F1F5F9]">
+              @for (d of devices; track d.name) {
+                <tr class="hover:bg-[#F9F9FF]">
+                  <td class="py-4 text-[#191B23] text-[13px] leading-5">
+                    <div class="flex items-center gap-3">
+                      <div class="w-[34px] h-[34px] rounded-[8px] bg-[#EFF6FF] flex shrink-0 items-center justify-center">
+                        @if (d.name.startsWith('Windows')) {
+                          <svg lucideMonitor [size]="18" [strokeWidth]="1.8" class="text-[#155DFC]"></svg>
+                        } @else if (d.name.startsWith('iPhone')) {
+                          <svg lucideSmartphone [size]="18" [strokeWidth]="1.8" class="text-[#191B23]"></svg>
+                        } @else {
+                          <svg lucideLaptop [size]="18" [strokeWidth]="1.8" class="text-[#155DFC]"></svg>
+                        }
+                      </div>
+                      <div class="min-w-0">
+                        <span class="text-[#191B23] text-[13px] leading-5">{{ d.name }}</span>
+                        @if (d.badge) {
+                          <span class="ml-1.5 inline-flex h-[16px] items-center rounded-[4px] {{ d.badgeClass }} px-1.5 text-[10px] font-semibold">{{ d.badge }}</span>
+                        }
+                      </div>
+                    </div>
+                  </td>
+                  <td class="py-4 text-[#62748E] text-[12px] leading-[16px]">{{ d.location }}</td>
+                  <td class="py-4 text-[#62748E] text-[12px] leading-[16px]">{{ d.ip }}</td>
+                  <td class="py-4 text-right pr-2 text-[#62748E] text-[12px] leading-[16px]">{{ d.time || '-' }}</td>
+                  <td class="py-4 text-right pr-2">
+                    @if (d.action) {
+                      <button type="button" class="px-2 py-[6px] rounded-[6px] {{ d.statusClass }} text-[11px] font-semibold border transition hover:opacity-90">{{ d.action }}</button>
+                    } @else {
+                      <span class="text-[#16A34A] text-[12px] leading-[16px]">{{ d.status }}</span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 3. Hoạt động tài khoản -->
+      <section class="rounded-[18px] border border-[#E2E8F0] bg-white p-6">
+        <div class="flex flex-col gap-3">
+          <h2 class="text-[#191B23] text-[16px] font-semibold leading-5">Hoạt động tài khoản</h2>
+          <p class="text-[#62748E] text-[12px] leading-[16px]">Các hoạt động đăng nhập và thay đổi đối với tài khoản gần đây.</p>
+        </div>
+
+        <div class="mt-4 flex flex-col gap-3">
+          @for (a of activities; track a.title) {
+            <div class="flex items-start gap-3 p-2.5 rounded-[8px] hover:bg-[#F9F9FF] transition">
+              <div class="mt-0.5 flex h-[6px] w-[6px] shrink-0 rounded-full {{ a.dotClass }}"></div>
+              <div class="min-w-0 flex flex-col gap-0.5">
+                <span class="text-[#191B23] text-[13px] leading-5">{{ a.title }}</span>
+                <span class="text-[#62748E] text-[11px] leading-[16px]">{{ a.sub }}</span>
+              </div>
+              <span class="ml-auto text-[#62748E] text-[11px] leading-[16px]">{{ a.time }}</span>
+            </div>
+          }
+        </div>
+      </section>
+    </div>
+  </main>
+</div>

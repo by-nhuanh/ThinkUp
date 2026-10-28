@@ -1,0 +1,554 @@
+<div class="flex min-h-[calc(100vh-82px)] bg-[#F9F9FF]">
+  <nav class="flex w-12 shrink-0 flex-col items-center gap-1 border-r border-[#1D293D] bg-[#151823] py-3" aria-label="Điều hướng bài kiểm tra">
+    <button type="button" (click)="backToCourse.emit()" class="grid h-9 w-9 place-items-center rounded-lg text-white/70 transition hover:bg-white/10 hover:text-white" aria-label="Quay lại khóa học">
+      <svg lucidePanelLeft class="h-5 w-5" aria-hidden="true"></svg>
+    </button>
+    <span class="my-2 h-px w-6 bg-white/10"></span>
+    <button type="button" (click)="backToCourse.emit()" class="grid h-9 w-9 place-items-center rounded-lg text-white/55 transition hover:bg-white/10 hover:text-white" aria-label="Nội dung khóa học">
+      <svg lucideBookOpen class="h-[18px] w-[18px]" aria-hidden="true"></svg>
+    </button>
+    <span class="grid h-9 w-9 place-items-center rounded-lg bg-[#0072F8] text-white" aria-label="Bài kiểm tra đang mở">
+      <svg lucideCircleQuestionMark class="h-[18px] w-[18px]" aria-hidden="true"></svg>
+    </span>
+    <button type="button" (click)="phase === 'intro' ? start() : null" class="grid h-9 w-9 place-items-center rounded-lg text-white/55 transition hover:bg-white/10 hover:text-white" aria-label="Trợ giúp bài kiểm tra">
+      <svg lucideLightbulb class="h-[18px] w-[18px]" aria-hidden="true"></svg>
+    </button>
+  </nav>
+
+  <div class="min-w-0 flex-1 py-6 pl-6 pr-6">
+    <div [class]="phase === 'result' ? 'block' : 'grid grid-cols-1 items-start gap-6 xl:grid-cols-[280px_minmax(0,1fr)]'">
+      @if (phase !== 'result') {
+      <aside class="space-y-4">
+        <section class="rounded-[18px] border border-[#F1F5F9] bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <div class="flex items-center gap-2">
+            <span class="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-[#EFF6FF]">
+              <img src="assets/learning/quiz-info-icon.svg" class="h-4 w-4" alt="" />
+            </span>
+            <h2 class="text-[15px] font-semibold leading-[22.5px] text-[#0F172B]">Thông tin bài kiểm tra</h2>
+          </div>
+
+          <dl class="mt-5 space-y-4">
+            <div class="space-y-0.5">
+              <dt class="text-[12px] leading-4 text-[#90A1B9]">Tên bài kiểm tra</dt>
+              <dd class="text-[14px] font-medium leading-5 text-[#0F172B]">{{ lesson.title }}</dd>
+            </div>
+            <div class="space-y-0.5">
+              <dt class="text-[12px] leading-4 text-[#90A1B9]">Chương hiện tại</dt>
+              <dd class="text-[14px] font-medium leading-5 text-[#0F172B]">{{ chapter.title }}</dd>
+            </div>
+            <div class="space-y-1">
+              <dt class="text-[12px] leading-4 text-[#90A1B9]">Loại bài học</dt>
+              <dd>
+                <span class="inline-flex rounded-lg bg-[#EFF6FF] px-2.5 py-1 text-[12px] font-medium leading-4 text-[#2B7FFF]">Quiz</span>
+              </dd>
+            </div>
+            <div class="space-y-[3px]">
+              <dt class="text-[12px] leading-4 text-[#90A1B9]">Mô tả bài kiểm tra</dt>
+              <dd class="text-[13px] font-normal leading-[21px] text-[#45556C]">{{ quizDescription }}</dd>
+            </div>
+            <div class="space-y-0.5">
+              <dt class="text-[12px] leading-4 text-[#90A1B9]">Số lượng câu hỏi</dt>
+              <dd class="text-[14px] font-medium leading-5 text-[#0F172B]">{{ questions.length }} câu hỏi</dd>
+            </div>
+            <div class="space-y-0.5">
+              <dt class="text-[12px] leading-4 text-[#90A1B9]">Thời gian làm bài</dt>
+              <dd class="text-[14px] font-medium leading-5 text-[#0F172B]">{{ quiz?.timeLimit ?? 0 }} phút</dd>
+            </div>
+            <div class="space-y-0.5">
+              <dt class="text-[12px] leading-4 text-[#90A1B9]">Điểm tối thiểu để đạt</dt>
+              <dd class="text-[14px] font-medium leading-5 text-[#0F172B]">{{ quiz?.passingScore ?? 0 }}%</dd>
+            </div>
+            <div class="space-y-1.5">
+              <dt class="text-[12px] leading-4 text-[#90A1B9]">Trạng thái hoàn thành</dt>
+              <dd>
+                <span
+                  class="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[12px] font-medium leading-4"
+                  [class]="completionStatusClass"
+                >
+                  <span class="h-1.5 w-1.5 rounded-full" [class]="completionDotClass"></span>
+                  {{ completionStatus }}
+                </span>
+              </dd>
+            </div>
+          </dl>
+        </section>
+
+        @if (phase !== 'intro') {
+          <section class="rounded-2xl bg-white p-4 shadow-[0_1px_3px_rgba(15,23,43,0.06)]">
+            <h2 class="text-[13px] font-bold text-[#0F172B]">Điều hướng câu hỏi</h2>
+            <div class="mt-3 grid grid-cols-5 gap-1.5">
+              @for (question of questions; track question.id; let index = $index) {
+                <button
+                  type="button"
+                  (click)="goTo(index)"
+                  class="grid h-8 place-items-center rounded-md border text-[11px] font-semibold transition"
+                  [class]="
+                    index === currentIndex && phase === 'running'
+                      ? 'border-[#155DFC] bg-[#155DFC] text-white'
+                      : isAnswered(question)
+                        ? 'border-[#BFD4FF] bg-[#E8F1FF] text-[#155DFC]'
+                        : isFlagged(question)
+                          ? 'border-[#FCD34D] bg-[#FEF3C7] text-[#B45309]'
+                          : 'border-[#E2E8F0] bg-white text-[#45556C]'
+                  "
+                  [attr.aria-label]="'Câu ' + (index + 1)"
+                >
+                  {{ index + 1 }}
+                </button>
+              }
+            </div>
+            <div class="mt-3 space-y-1.5 text-[11px] text-[#62748E]">
+              <p class="flex items-center gap-2"><span class="h-2.5 w-2.5 rounded bg-[#155DFC]"></span> Đang làm</p>
+              <p class="flex items-center gap-2"><span class="h-2.5 w-2.5 rounded bg-[#E8F1FF] ring-1 ring-[#BFD4FF]"></span> Đã trả lời</p>
+              <p class="flex items-center gap-2"><span class="h-2.5 w-2.5 rounded bg-[#FEF3C7] ring-1 ring-[#FCD34D]"></span> Đã đánh dấu</p>
+            </div>
+          </section>
+        }
+      </aside>
+      }
+
+      <div class="min-w-0">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div class="min-w-0">
+            <nav class="flex items-center gap-1.5 text-[12px] text-[#62748E]" aria-label="Breadcrumb">
+              <span class="max-w-[220px] truncate">{{ course.title }}</span>
+              <span aria-hidden="true">›</span>
+              <span class="max-w-[180px] truncate">{{ chapter.title }}</span>
+            </nav>
+            <h1 class="mt-1 text-[24px] font-bold leading-8 text-[#0F172B]">{{ lesson.title }}</h1>
+          </div>
+
+          @if (phase === 'running') {
+            <div class="flex items-center gap-3">
+              <span
+                class="inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-[14px] font-bold tabular-nums"
+                [class]="secondsLeft <= 60 ? 'border-[#FECACA] bg-[#FEF2F2] text-[#DC2626]' : 'border-[#E2E8F0] bg-white text-[#0F172B]'"
+                aria-label="Thời gian còn lại"
+              >
+                <svg lucideClock class="h-4 w-4" aria-hidden="true"></svg>
+                {{ formattedTime }}
+              </span>
+              <button type="button" (click)="submit()" class="h-10 rounded-lg bg-[#155DFC] px-5 text-[13px] font-semibold text-white transition hover:bg-[#0F4CD1]">
+                Nộp bài
+              </button>
+            </div>
+          }
+        </div>
+
+        <div [class]="phase === 'result' ? 'mt-5' : 'mt-5 grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1152px)_320px]'">
+          <!-- Center column -->
+      @switch (phase) {
+        @case ('intro') {
+          <section class="overflow-hidden rounded-2xl bg-white shadow-[0_1px_3px_rgba(15,23,43,0.06)]">
+            <div class="bg-[linear-gradient(135deg,#F0F6FF_0%,#FFFFFF_60%)] px-8 pb-8 pt-3 text-center">
+              <img src="assets/learning/quiz-intro-document-pencil.svg" class="mx-auto h-[176px] w-[176px]" alt="" />
+              <h2 class="mt-3.5 text-[26px] font-bold leading-9 text-[#0F172B]">Bạn đã sẵn sàng để làm bài kiểm tra?</h2>
+              <p class="mx-auto mt-2 max-w-[520px] text-[14px] leading-6 text-[#62748E]">
+                Bài kiểm tra gồm {{ questions.length }} câu hỏi trắc nghiệm, đánh giá mức độ hiểu bài của bạn sau chương
+                {{ chapter.title }}. Hãy đọc kỹ từng câu và chọn đáp án đúng nhất.
+              </p>
+
+              <div class="mx-auto mt-6 grid max-w-[520px] grid-cols-3 gap-3">
+                <div class="rounded-xl border border-[#E2E8F0] bg-white p-3">
+                  <svg lucideClock class="mx-auto h-5 w-5 text-[#155DFC]" aria-hidden="true"></svg>
+                  <p class="mt-1.5 text-[14px] font-bold text-[#0F172B]">{{ quiz?.timeLimit ?? 0 }} phút</p>
+                  <p class="text-[11px] text-[#62748E]">Thời gian</p>
+                </div>
+                <div class="rounded-xl border border-[#E2E8F0] bg-white p-3">
+                  <svg lucideCircleQuestionMark class="mx-auto h-5 w-5 text-[#155DFC]" aria-hidden="true"></svg>
+                  <p class="mt-1.5 text-[14px] font-bold text-[#0F172B]">{{ questions.length }} câu</p>
+                  <p class="text-[11px] text-[#62748E]">Câu hỏi</p>
+                </div>
+                <div class="rounded-xl border border-[#E2E8F0] bg-white p-3">
+                  <svg lucideBadgeCheck class="mx-auto h-5 w-5 text-[#155DFC]" aria-hidden="true"></svg>
+                  <p class="mt-1.5 text-[14px] font-bold text-[#0F172B]">{{ quiz?.passingScore ?? 0 }}%</p>
+                  <p class="text-[11px] text-[#62748E]">Điểm đạt</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="px-8 pb-8">
+              <div class="flex gap-2.5 rounded-xl border border-[#FDE68A] bg-[#FFFBEB] p-4">
+                <svg lucideCircleAlert class="mt-0.5 h-4 w-4 shrink-0 text-[#D97706]" aria-hidden="true"></svg>
+                <div class="text-[12px] leading-5 text-[#92400E]">
+                  <p class="font-semibold">Lưu ý trước khi bắt đầu</p>
+                  <ul class="mt-1 list-disc space-y-0.5 pl-4">
+                    <li>Bài làm sẽ tự động nộp khi hết thời gian.</li>
+                    <li>Đáp án đúng sẽ không được hiển thị sau khi nộp bài.</li>
+                    <li>Bạn có thể làm lại bài kiểm tra nếu chưa đạt yêu cầu.</li>
+                  </ul>
+                </div>
+              </div>
+
+              <button type="button" (click)="start()" class="mt-5 h-12 w-full rounded-xl bg-[#155DFC] text-[14px] font-semibold text-white transition hover:bg-[#0F4CD1]">
+                Bắt đầu làm bài
+              </button>
+            </div>
+          </section>
+        }
+
+        @case ('running') {
+          @if (currentQuestion; as question) {
+            <section class="rounded-2xl bg-white p-6 shadow-[0_1px_3px_rgba(15,23,43,0.06)]">
+              <div class="flex items-center justify-between gap-3">
+                <span class="text-[13px] font-semibold text-[#0F172B]">Câu hỏi {{ currentIndex + 1 }} / {{ questions.length }}</span>
+                <button
+                  type="button"
+                  (click)="toggleFlag()"
+                  class="inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-[11px] font-medium transition"
+                  [class]="isFlagged(question) ? 'border-[#F59E0B] bg-[#FFFBEB] text-[#B45309]' : 'border-[#E2E8F0] text-[#62748E] hover:border-[#FCD34D]'"
+                >
+                  <svg lucideFlag class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                  {{ isFlagged(question) ? 'Đã đánh dấu' : 'Đánh dấu xem lại' }}
+                </button>
+              </div>
+
+              <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-[#EEF2F7]">
+                <div class="h-full rounded-full bg-[#155DFC] transition-all" [style.width.%]="questionProgress"></div>
+              </div>
+
+              <h3 class="mt-5 text-[19px] font-semibold leading-8 text-[#0F172B]">{{ question.text }}</h3>
+
+              <div class="mt-5 space-y-2.5">
+                @for (option of question.options; track option.id; let index = $index) {
+                  <button
+                    type="button"
+                    (click)="selectAnswer(question.id, option.id)"
+                    class="flex w-full items-center gap-3 rounded-xl border p-3.5 text-left transition"
+                    [class]="isSelected(option.id) ? 'border-[#155DFC] bg-[#F0F6FF]' : 'border-[#E2E8F0] bg-white hover:border-[#BFD4FF] hover:bg-[#FAFCFF]'"
+                  >
+                    <span
+                      class="grid h-7 w-7 shrink-0 place-items-center rounded-full border text-[12px] font-bold"
+                      [class]="isSelected(option.id) ? 'border-[#155DFC] bg-[#155DFC] text-white' : 'border-[#CBD5E1] text-[#64748B]'"
+                    >
+                      {{ optionLetter(index) }}
+                    </span>
+                    <span class="min-w-0 flex-1 text-[14px] leading-6 text-[#0F172B]">{{ option.text }}</span>
+                  </button>
+                }
+              </div>
+
+              <div class="mt-6 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  (click)="previousQuestion()"
+                  [disabled]="currentIndex === 0"
+                  class="inline-flex h-10 items-center gap-1.5 rounded-lg border border-[#E2E8F0] px-4 text-[13px] font-semibold text-[#45556C] transition hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <svg lucideArrowLeft class="h-4 w-4" aria-hidden="true"></svg>
+                  Câu trước
+                </button>
+
+                @if (currentIndex < questions.length - 1) {
+                  <button type="button" (click)="nextQuestion()" class="inline-flex h-10 items-center gap-1.5 rounded-lg bg-[#155DFC] px-5 text-[13px] font-semibold text-white transition hover:bg-[#0F4CD1]">
+                    Câu tiếp theo
+                    <svg lucideArrowRight class="h-4 w-4" aria-hidden="true"></svg>
+                  </button>
+                } @else {
+                  <button type="button" (click)="submit()" class="inline-flex h-10 items-center gap-1.5 rounded-lg bg-[#155DFC] px-5 text-[13px] font-semibold text-white transition hover:bg-[#0F4CD1]">
+                    Nộp bài
+                    <svg lucideCheck class="h-4 w-4" aria-hidden="true"></svg>
+                  </button>
+                }
+              </div>
+            </section>
+          }
+        }
+
+        @case ('result') {
+          <section class="mx-auto w-full max-w-[1146px] rounded-[18px] border border-[#E2E8F0]/70 bg-white p-5 text-center shadow-[0_1px_3px_rgba(15,23,43,0.04)] sm:p-8 lg:p-10">
+            <div class="relative mx-auto h-20 w-20">
+              <span class="absolute -left-3 top-2 h-1.5 w-1.5 rounded-full bg-[#FACC15]" aria-hidden="true"></span>
+              <span class="absolute -right-2 -top-1 h-1.5 w-1.5 rounded-full bg-[#2563EB]" aria-hidden="true"></span>
+              <span class="absolute -left-4 top-11 h-2 w-2 rounded-full bg-[#A855F7]" aria-hidden="true"></span>
+              <span class="absolute -right-5 top-12 h-1 w-1 rounded-full bg-[#F97316]" aria-hidden="true"></span>
+              <span class="absolute -top-3 left-8 h-1 w-1 rounded-full bg-[#EC4899]" aria-hidden="true"></span>
+              <span class="absolute -top-4 right-8 h-1.5 w-1.5 rounded-full bg-[#22C55E]" aria-hidden="true"></span>
+              <span class="absolute -bottom-2 left-6 h-1 w-1 rounded-full bg-[#06B6D4]" aria-hidden="true"></span>
+              <span class="absolute -bottom-3 right-6 h-1.5 w-1.5 rounded-full bg-[#EF4444]" aria-hidden="true"></span>
+
+              <span
+                class="relative grid h-20 w-20 place-items-center rounded-full text-white ring-8"
+                [class]="
+                  passed
+                    ? 'bg-[#00C950] ring-[#F0FDF4] shadow-[0_10px_15px_-3px_rgba(0,201,80,0.3)]'
+                    : 'bg-[#FB2C36] ring-[#FEF2F2] shadow-[0_10px_15px_-3px_rgba(251,44,54,0.3)]'
+                "
+              >
+                @if (passed) {
+                  <svg lucideCheck class="h-10 w-10" aria-hidden="true"></svg>
+                } @else {
+                  <svg lucideX class="h-10 w-10" aria-hidden="true"></svg>
+                }
+              </span>
+            </div>
+
+            <h2
+              class="mt-5 text-[22px] font-bold leading-8 sm:text-[24px]"
+              [class]="passed ? 'text-[#00A63E]' : 'text-[#FB2C36]'"
+            >
+              {{ passed ? 'Chúc mừng! Bạn đã vượt qua bài kiểm tra!' : 'Rất tiếc! Bạn chưa đạt yêu cầu.' }}
+            </h2>
+            <p class="mt-1 text-[14px] leading-5 text-[#62748E]">{{ resultMessage }}</p>
+
+            <div class="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+              <div class="flex h-[168px] flex-col items-center justify-center rounded-[14px] border border-[#E2E8F0] bg-white px-4 text-center">
+                <span class="grid h-10 w-10 place-items-center rounded-full bg-[#EFF6FF] text-[#2563EB]">
+                  <svg lucideClipboardList class="h-5 w-5" aria-hidden="true"></svg>
+                </span>
+                <p class="mt-3 text-[13px] leading-5 text-[#62748E]">Tổng số câu hỏi</p>
+                <p class="mt-1 text-[32px] font-bold leading-10 text-[#0F172B]">{{ questions.length }}</p>
+              </div>
+
+              <div class="flex h-[168px] flex-col items-center justify-center rounded-[14px] border border-[#E2E8F0] bg-white px-4 text-center">
+                <span class="grid h-10 w-10 place-items-center rounded-full bg-[#ECFDF5] text-[#00A63E]">
+                  <svg lucideCircleCheck class="h-5 w-5" aria-hidden="true"></svg>
+                </span>
+                <p class="mt-3 text-[13px] leading-5 text-[#62748E]">Câu trả lời đúng</p>
+                <p class="mt-1 text-[32px] font-bold leading-10 text-[#0F172B]">{{ correctCount }}</p>
+              </div>
+
+              <div class="flex h-[168px] flex-col items-center justify-center rounded-[14px] border border-[#E2E8F0] bg-white px-4 text-center">
+                <span class="grid h-10 w-10 place-items-center rounded-full bg-[#FEF2F2] text-[#FB2C36]">
+                  <svg lucideCircleX class="h-5 w-5" aria-hidden="true"></svg>
+                </span>
+                <p class="mt-3 text-[13px] leading-5 text-[#62748E]">Câu trả lời sai</p>
+                <p class="mt-1 text-[32px] font-bold leading-10 text-[#0F172B]">{{ wrongCount }}</p>
+              </div>
+
+              <div class="flex h-[168px] flex-col items-center justify-center rounded-[14px] border border-[#E2E8F0] bg-white px-4 text-center">
+                <span class="grid h-10 w-10 place-items-center rounded-full bg-[#FFFBEB] text-[#F59E0B]">
+                  <svg lucideStar class="h-5 w-5" aria-hidden="true"></svg>
+                </span>
+                <p class="mt-3 text-[13px] leading-5 text-[#62748E]">Điểm số đạt được</p>
+                <p class="mt-1 text-[32px] font-bold leading-10 text-[#0F172B]">{{ resultPercent }}%</p>
+                <span
+                  class="mt-1 inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold leading-4"
+                  [class]="passed ? 'bg-[#DCFCE7] text-[#00A63E]' : 'bg-[#FFE2E2] text-[#FB2C36]'"
+                >
+                  {{ passed ? 'Đạt' : 'Không đạt' }}
+                </span>
+              </div>
+            </div>
+
+            <div
+              class="mt-8 rounded-[14px] border p-4 text-left sm:p-5"
+              [class]="passed ? 'border-[#DCFCE7] bg-[#F0FDF4]/60' : 'border-[#FFE2E2] bg-[#FEF2F2]'"
+            >
+              <div class="flex items-center gap-4 sm:gap-[60px]">
+                <div class="relative h-14 w-14 shrink-0">
+                  <svg viewBox="0 0 80 80" class="h-full w-full -rotate-90" aria-hidden="true">
+                    <circle cx="40" cy="40" r="32" fill="none" [attr.stroke]="passed ? '#DBF3E4' : '#FFDADA'" stroke-width="8"></circle>
+                    <circle
+                      cx="40"
+                      cy="40"
+                      r="32"
+                      fill="none"
+                      [attr.stroke]="passed ? '#3B82F6' : '#FB2C36'"
+                      stroke-width="8"
+                      stroke-linecap="round"
+                      [attr.stroke-dasharray]="201.06"
+                      [attr.stroke-dashoffset]="dashOffset(resultPercent)"
+                    ></circle>
+                  </svg>
+                  <div class="absolute inset-0 grid place-items-center text-center">
+                    <div>
+                      <p class="text-[14px] font-bold leading-5 text-[#0F172B]">{{ resultPercent }}%</p>
+                      <p class="text-[7.5px] leading-3 text-[#62748E]">Hoàn thành</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="min-w-0 flex-1">
+                  <p class="text-[15px] font-semibold leading-[22px] text-[#0F172B] sm:text-[16px] sm:leading-6">Tỷ lệ hoàn thành</p>
+                  @if (passed) {
+                    <p class="mt-1 text-[13px] leading-5 text-[#45556C] sm:text-[14px] sm:leading-6">Bạn đã hoàn thành xuất sắc bài kiểm tra này!</p>
+                  } @else {
+                    <p class="mt-1 text-[13px] leading-5 text-[#45556C] sm:text-[14px] sm:leading-6">
+                      Bạn cần đạt tối thiểu {{ quiz?.passingScore ?? 70 }}% để hoàn thành bài kiểm tra.<br />
+                      Hãy ôn tập lại kiến thức và thử lại nhé!
+                    </p>
+                  }
+                  <div class="mt-2 h-1.5 overflow-hidden rounded-full" [class]="passed ? 'bg-[#DCFCE7]' : 'bg-[#FFE2E2]'">
+                    <div
+                      class="h-full rounded-full transition-all"
+                      [class]="passed ? 'bg-[#22C55E]' : 'bg-[#FB2C36]'"
+                      [style.width.%]="resultPercent"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-12 flex flex-col-reverse items-stretch justify-end gap-4 sm:flex-row sm:items-center">
+              @if (passed) {
+                <button
+                  type="button"
+                  (click)="retry()"
+                  class="inline-flex h-12 items-center justify-center gap-2 rounded-[12px] border border-[#E2E8F0] bg-white px-6 text-[14px] font-semibold text-[#314158] transition hover:bg-[#F8FAFC]"
+                >
+                  <svg lucideRotateCcw class="h-4 w-4" aria-hidden="true"></svg>
+                  Làm lại bài
+                </button>
+                <button
+                  type="button"
+                  (click)="continueLesson()"
+                  class="inline-flex h-12 items-center justify-center gap-2 rounded-[12px] bg-[#155DFC] px-6 text-[14px] font-semibold text-white transition hover:bg-[#0F4CD1]"
+                >
+                  Tiếp tục bài học
+                  <svg lucideArrowRight class="h-4 w-4" aria-hidden="true"></svg>
+                </button>
+              } @else {
+                <button
+                  type="button"
+                  (click)="retry()"
+                  class="inline-flex h-12 items-center justify-center gap-2 rounded-[12px] bg-[#155DFC] px-6 text-[14px] font-semibold text-white transition hover:bg-[#0F4CD1]"
+                >
+                  <svg lucideRotateCcw class="h-4 w-4" aria-hidden="true"></svg>
+                  Làm lại bài
+                </button>
+                <button
+                  type="button"
+                  (click)="continueLesson()"
+                  class="inline-flex h-12 items-center justify-center gap-2 rounded-[12px] border border-[#E2E8F0] bg-white px-6 text-[14px] font-semibold text-[#314158] transition hover:bg-[#F8FAFC]"
+                >
+                  Tiếp tục bài học
+                  <svg lucideArrowRight class="h-4 w-4" aria-hidden="true"></svg>
+                </button>
+              }
+            </div>
+          </section>
+        }
+      }
+
+      @if (phase !== 'result') {
+      <!-- Right column -->
+      <div>
+        @if (phase === 'intro') {
+          <div class="space-y-5">
+            <section class="rounded-[20px] border border-[#DCE6F2] bg-white p-5">
+              <h2 class="text-[15.8px] font-bold leading-6 text-[#051127]">Tiến độ làm bài</h2>
+
+              <div class="mt-4 flex items-center gap-4">
+                <div class="relative h-24 w-24 shrink-0 rounded-full border-[10px] border-[#DBEAFE]">
+                  <div class="absolute inset-0 flex flex-col items-center justify-center">
+                    <span class="text-[16.3px] font-bold leading-7 text-[#051127]">0%</span>
+                    <span class="text-[8px] leading-[15px] text-[#56647A]">Chưa hoàn thành</span>
+                  </div>
+                </div>
+
+                <dl class="min-w-0 flex-1 space-y-2 text-[13.6px] leading-5 text-[#051127]">
+                  <div class="flex items-center gap-2">
+                    <span class="h-2 w-2 shrink-0 rounded-full bg-[#2076FF]"></span>
+                    <dt class="min-w-0 flex-1">Điểm cao nhất</dt>
+                    <dd class="shrink-0 font-bold">-- / 100</dd>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="h-2 w-2 shrink-0 rounded-full bg-[#56647A]/40"></span>
+                    <dt class="min-w-0 flex-1">Số lần làm</dt>
+                    <dd class="shrink-0 font-bold">0 lần</dd>
+                  </div>
+                </dl>
+              </div>
+            </section>
+
+            <section class="rounded-[20px] border border-[#DCE6F2] bg-white p-5">
+              <div class="flex items-start gap-3">
+                <span class="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[#DBEAFE]">
+                  <img src="assets/learning/quiz-hint-icon.svg" class="h-4 w-4" alt="" />
+                </span>
+                <div class="min-w-0">
+                  <h2 class="text-[14px] font-semibold leading-5 text-[#0F172B]">Gợi ý</h2>
+                  <p class="mt-1 text-[14px] leading-[22.75px] text-[#45556C]">
+                    Để đạt kết quả tốt nhất, bạn có thể xem lại video bài giảng trước khi bắt đầu.
+                  </p>
+                </div>
+              </div>
+            </section>
+          </div>
+        } @else {
+          <div class="space-y-4">
+            <section class="rounded-2xl bg-white p-4 shadow-[0_1px_3px_rgba(15,23,43,0.06)]">
+              <h2 class="text-[13px] font-bold text-[#0F172B]">Tiến độ làm bài</h2>
+
+              <div class="mt-4 flex justify-center">
+                <div class="relative h-24 w-24">
+                  <svg viewBox="0 0 80 80" class="h-full w-full -rotate-90" aria-hidden="true">
+                    <circle cx="40" cy="40" r="32" fill="none" stroke="#EEF2F7" stroke-width="8"></circle>
+                    <circle
+                      cx="40"
+                      cy="40"
+                      r="32"
+                      fill="none"
+                      stroke="#155DFC"
+                      stroke-width="8"
+                      stroke-linecap="round"
+                      [attr.stroke-dasharray]="201.06"
+                      [attr.stroke-dashoffset]="dashOffset(progressPercent)"
+                      class="transition-all duration-300"
+                    ></circle>
+                  </svg>
+                  <div class="absolute inset-0 grid place-items-center">
+                    <span class="text-[18px] font-bold text-[#0F172B]">{{ progressPercent }}%</span>
+                  </div>
+                </div>
+              </div>
+
+              <dl class="mt-4 space-y-2 border-t border-[#F1F5F9] pt-3 text-[12px]">
+                <div class="flex items-center justify-between">
+                  <dt class="text-[#62748E]">Đã trả lời</dt>
+                  <dd class="font-semibold text-[#155DFC]">{{ answeredCount }}/{{ questions.length }}</dd>
+                </div>
+                <div class="flex items-center justify-between">
+                  <dt class="text-[#62748E]">Chưa trả lời</dt>
+                  <dd class="font-semibold text-[#0F172B]">{{ questions.length - answeredCount }}</dd>
+                </div>
+                <div class="flex items-center justify-between">
+                  <dt class="text-[#62748E]">Đã đánh dấu</dt>
+                  <dd class="font-semibold text-[#B45309]">{{ flagged.size }}</dd>
+                </div>
+                <div class="flex items-center justify-between">
+                  <dt class="text-[#62748E]">Thời gian còn lại</dt>
+                  <dd class="font-semibold text-[#0F172B]">{{ formattedTime }}</dd>
+                </div>
+              </dl>
+            </section>
+
+            @if (phase === 'running') {
+              <section class="rounded-2xl border border-[#FDE68A] bg-[#FFFBEB] p-4">
+                <h2 class="flex items-center gap-2 text-[13px] font-bold text-[#92400E]">
+                  <svg lucideLightbulb class="h-4 w-4" aria-hidden="true"></svg>
+                  Mẹo làm bài
+                </h2>
+                <ul class="mt-2 list-disc space-y-1.5 pl-4 text-[12px] leading-5 text-[#92400E]">
+                  <li>Đọc kỹ câu hỏi và loại trừ đáp án sai.</li>
+                  <li>Đánh dấu câu khó để quay lại sau.</li>
+                  <li>Kiểm tra lại các câu chưa trả lời trước khi nộp.</li>
+                </ul>
+              </section>
+            } @else {
+              <section class="rounded-2xl bg-white p-4 shadow-[0_1px_3px_rgba(15,23,43,0.06)]">
+                <h2 class="text-[13px] font-bold text-[#0F172B]">Gợi ý tiếp theo</h2>
+                @if (nextLesson; as next) {
+                  <p class="mt-2 text-[12px] leading-5 text-[#62748E]">
+                    Sau khi hoàn thành bài kiểm tra, bạn sẽ tiếp tục với:
+                  </p>
+                  <p class="mt-2 line-clamp-2 text-[13px] font-semibold text-[#0F172B]">{{ next.title }}</p>
+                  <button type="button" (click)="continueLesson()" class="mt-3 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-[#155DFC] text-[12px] font-semibold text-[#155DFC] transition hover:bg-[#F0F6FF]">
+                    Đi tới bài học
+                    <svg lucideChevronRight class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                  </button>
+                } @else {
+                  <p class="mt-2 text-[12px] leading-5 text-[#62748E]">Bạn đã ở bài cuối cùng của khóa học.</p>
+                }
+              </section>
+            }
+          </div>
+        }
+      </div>
+      }
+    </div>
+  </div>
+</div>
+</div>
+</div>

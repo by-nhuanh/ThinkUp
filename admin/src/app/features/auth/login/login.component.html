@@ -105,16 +105,6 @@
           </div>
         </form>
 
-        @if (demoEnabled) {
-          <!-- TODO(pre-deploy): xoá khối tài khoản demo khi backend đã có tài khoản role 'admin'. -->
-          <div class="demo-note">
-            <span>
-              Demo: <strong>{{ demoAccount.email }}</strong> / <strong>{{ demoAccount.password }}</strong>
-              · OTP <strong>123456</strong>
-            </span>
-            <button class="link-button" type="button" (click)="fillDemoAccount()">Điền nhanh</button>
-          </div>
-        }
       </div>
     </section>
   </main>
@@ -134,7 +124,7 @@
 }
 
 @if (helpOpen()) {
-  <app-auth-modal ariaLabel="Quên mật khẩu" cardWidth="620px" cardRadius="16px" [dismissible]="true" (closed)="closeHelp()">
+  <app-auth-modal ariaLabel="Quên mật khẩu" cardWidth="480px" cardRadius="16px" [dismissible]="true" (closed)="closeHelp()">
     <div class="help-card">
       <h2 class="help-title">Quên mật khẩu?</h2>
       <p class="help-desc">Để đặt lại mật khẩu, vui lòng liên hệ bộ phận IT để được hỗ trợ.</p>

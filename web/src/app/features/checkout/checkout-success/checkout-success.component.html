@@ -1,13 +1,158 @@
-<div class="min-h-screen bg-[#F9F9FF] flex items-center justify-center px-4">
-  <div class="bg-white rounded-2xl border border-[#E2E8F0] shadow-lg p-10 max-w-md w-full text-center">
-    <div class="w-20 h-20 mx-auto mb-6 rounded-full bg-[#DCFCE7] flex items-center justify-center">
-      <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 text-[#16A34A]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
-    </div>
-    <h1 class="text-[24px] font-bold text-[#191B23] mb-2">Thanh toán thành công!</h1>
-    <p class="text-[14px] text-[#62748E] mb-8">Chúc mừng bạn đã mua khóa học thành công. Hãy bắt đầu học ngay!</p>
-    <div class="flex flex-col gap-3">
-      <a routerLink="/main/courses" class="h-12 inline-flex items-center justify-center bg-[#0058BE] text-white rounded-lg text-[14px] font-semibold hover:bg-[#004a9e] transition">Tiếp tục khám phá</a>
-      <a routerLink="/main/favorites" class="h-12 inline-flex items-center justify-center border border-[#E2E8F0] text-[#424754] rounded-lg text-[14px] font-medium hover:bg-[#F8FAFC] transition">Khóa học yêu thích</a>
-    </div>
+<main class="pay-page result-page">
+  <div class="pay-container result-container">
+    <nav class="pay-breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/main/home" class="pay-breadcrumb__link">Trang chủ</a>
+      <span class="pay-breadcrumb__sep" aria-hidden="true">›</span>
+      <a routerLink="/main/cart" class="pay-breadcrumb__link">Giỏ hàng</a>
+      <span class="pay-breadcrumb__sep" aria-hidden="true">›</span>
+      <span class="pay-breadcrumb__current" aria-current="page">Kết quả thanh toán</span>
+    </nav>
+
+    <section class="pay-card result-card" [attr.aria-busy]="isBusy()">
+      @switch (state()) {
+        @case ('checking') {
+          <span class="result-spinner" aria-hidden="true"></span>
+          <h1 class="result-title">{{ title() }}</h1>
+          <p class="result-text">{{ message() }}</p>
+          <div class="result-skeleton" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        }
+
+        @case ('pending') {
+          <span class="result-spinner result-spinner--amber" aria-hidden="true"></span>
+          <h1 class="result-title">{{ title() }}</h1>
+          <p class="result-text">{{ message() }}</p>
+
+          @if (orderId() || amount() > 0) {
+            <dl class="result-meta">
+              @if (orderId()) {
+                <div>
+                  <dt>Mã đơn hàng</dt>
+                  <dd>{{ orderId() }}</dd>
+                </div>
+              }
+              @if (amount() > 0) {
+                <div>
+                  <dt>Số tiền</dt>
+                  <dd>{{ formatPrice(amount()) }}</dd>
+                </div>
+              }
+            </dl>
+          }
+
+          <div class="result-actions">
+            <button type="button" class="result-btn result-btn--primary" (click)="checkNow()">Kiểm tra lại</button>
+            <button type="button" class="result-btn result-btn--ghost" (click)="goToCart()">Về giỏ hàng</button>
+          </div>
+        }
+
+        @case ('success') {
+          <span class="result-icon result-icon--success" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none">
+              <path d="m8.5 16.5 5 5 10-11" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </span>
+          <h1 class="result-title">{{ title() }}</h1>
+          <p class="result-text">{{ message() }}</p>
+
+          @if (orderId() || amount() > 0 || paidAt()) {
+            <dl class="result-meta">
+              @if (orderId()) {
+                <div>
+                  <dt>Mã đơn hàng</dt>
+                  <dd>{{ orderId() }}</dd>
+                </div>
+              }
+              @if (amount() > 0) {
+                <div>
+                  <dt>Số tiền</dt>
+                  <dd>{{ formatPrice(amount()) }}</dd>
+                </div>
+              }
+              @if (paidAt()) {
+                <div>
+                  <dt>Thời gian</dt>
+                  <dd>{{ formatPaidAt(paidAt()) }}</dd>
+                </div>
+              }
+            </dl>
+          }
+
+          @if (transactionId()) {
+            <p class="result-transaction">Mã giao dịch: <strong>{{ transactionId() }}</strong></p>
+          }
+
+          <div class="result-actions">
+            <button type="button" class="result-btn result-btn--primary" (click)="goToLearning()">Vào học ngay</button>
+            <button type="button" class="result-btn result-btn--ghost" (click)="goToBilling()">Xem hóa đơn</button>
+          </div>
+
+          <div class="result-note">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 3.2 5.5 5.7v5.4c0 4.1 2.7 7.8 6.5 9.2 3.8-1.4 6.5-5.1 6.5-9.2V5.7L12 3.2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+              <path d="m9.2 12 1.9 1.9 3.7-3.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <span>Hóa đơn điện tử đã được gửi tới email đăng ký của bạn.</span>
+          </div>
+        }
+
+        @default {
+          <span class="result-icon" [class.result-icon--error]="state() === 'failed'" [class.result-icon--expired]="state() === 'expired'" aria-hidden="true">
+            @if (state() === 'expired') {
+              <svg viewBox="0 0 32 32" fill="none">
+                <circle cx="16" cy="17" r="10" stroke="currentColor" stroke-width="2" />
+                <path d="M16 11.5V17l3.4 2.2M12 4.5h8" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              </svg>
+            } @else {
+              <svg viewBox="0 0 32 32" fill="none">
+                <path d="m10.5 10.5 11 11M21.5 10.5l-11 11" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
+              </svg>
+            }
+          </span>
+          <h1 class="result-title">{{ title() }}</h1>
+          <p class="result-text">{{ message() }}</p>
+
+          @if (orderId() || transactionId()) {
+            <dl class="result-meta">
+              @if (orderId()) {
+                <div>
+                  <dt>Mã đơn hàng</dt>
+                  <dd>{{ orderId() }}</dd>
+                </div>
+              }
+              @if (transactionId()) {
+                <div>
+                  <dt>Mã giao dịch</dt>
+                  <dd>{{ transactionId() }}</dd>
+                </div>
+              }
+            </dl>
+          }
+
+          <div class="result-actions">
+            <button type="button" class="result-btn result-btn--primary" (click)="retryPayment()">Thử thanh toán lại</button>
+            <button type="button" class="result-btn result-btn--ghost" (click)="goToCart()">Quay lại giỏ hàng</button>
+          </div>
+        }
+      }
+
+      @if (!isBusy() && state() !== 'success') {
+        <button type="button" class="result-billing" (click)="goToBilling()">
+          Kiểm tra lịch sử giao dịch trong Hóa đơn
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M4.5 10h11M11 5.5l4.5 4.5-4.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+      }
+    </section>
+
+    <p class="result-help">
+      Cần hỗ trợ về giao dịch?
+      <a routerLink="/main/contact">Liên hệ ThinkUp</a>
+      hoặc gọi hotline <a href="tel:0234000864">0234 000 864</a>.
+    </p>
   </div>
-</div>
+</main>

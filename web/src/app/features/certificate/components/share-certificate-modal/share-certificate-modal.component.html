@@ -1,0 +1,83 @@
+<div
+  class="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-[rgba(11,23,41,0.48)] p-6"
+  (click)="close()"
+  role="presentation"
+>
+  <section
+    class="flex w-[560px] max-w-full flex-col gap-5 rounded-2xl bg-white p-6 shadow-[0_20px_40px_rgba(0,0,0,0.24)]"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="share-certificate-title"
+    (click)="$event.stopPropagation()"
+  >
+    <header class="flex items-center justify-between gap-3">
+      <h2 id="share-certificate-title" class="text-[20px] font-semibold leading-6 text-[#0B1729]">
+        Chia sẻ kết quả chứng chỉ
+      </h2>
+      <button
+        #closeButton
+        type="button"
+        class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#F4F7FB] text-[#5B646F] transition-colors hover:bg-[#E8EFF8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#005CCC]"
+        aria-label="Đóng"
+        (click)="close()"
+      >
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+      </button>
+    </header>
+
+    <p class="text-[14px] leading-5 text-[#5B646F]">
+      Chia sẻ thông tin xác thực chứng chỉ này với bạn bè hoặc nhà tuyển dụng.
+    </p>
+
+    <div class="flex flex-col gap-1 rounded-xl border border-[#B7D9FF] bg-[#EEF6FF] px-4 py-[14px]">
+      <span class="text-[12px] font-semibold leading-5 text-[#005CCC]">CHỨNG CHỈ THINKUP</span>
+      <span class="line-clamp-2 text-[16px] font-semibold leading-6 text-[#0B1729]">{{ certificate().courseTitle }}</span>
+      <span class="truncate text-[13px] leading-5 text-[#5B646F]">
+        {{ certificate().studentName }}&nbsp;&nbsp;•&nbsp;&nbsp;{{ certificate().code }}
+      </span>
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="share-certificate-url" class="text-[14px] font-medium leading-5 text-[#0B1729]">Liên kết chia sẻ</label>
+      <div class="flex items-center gap-2">
+        <input
+          id="share-certificate-url"
+          type="text"
+          readonly
+          [value]="displayShareUrl()"
+          class="h-11 min-w-0 flex-1 rounded-lg border border-[#E0E5EB] bg-[#F8FAFD] px-3 text-[13px] leading-5 text-[#5B646F] outline-none"
+          (focus)="selectInput($event)"
+        />
+        <button
+          type="button"
+          class="h-11 w-24 shrink-0 rounded-lg bg-[#005CCC] text-[14px] font-semibold leading-5 text-white transition-colors hover:bg-[#004F9F] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#005CCC]"
+          (click)="copyLink()"
+        >
+          Sao chép
+        </button>
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <span class="text-[14px] font-medium leading-5 text-[#0B1729]">Chia sẻ nhanh</span>
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          class="inline-flex h-10 flex-1 items-center justify-center rounded-lg border border-[#B7D9FF] bg-white text-[14px] font-medium leading-5 text-[#005CCC] transition-colors hover:bg-[#F4F9FF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#005CCC]"
+          (click)="shareToFacebook()"
+        >
+          Facebook
+        </button>
+        <button
+          type="button"
+          class="inline-flex h-10 flex-1 items-center justify-center rounded-lg border border-[#B7D9FF] bg-white text-[14px] font-medium leading-5 text-[#005CCC] transition-colors hover:bg-[#F4F9FF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#005CCC]"
+          (click)="shareToLinkedIn()"
+        >
+          LinkedIn
+        </button>
+      </div>
+    </div>
+  </section>
+</div>

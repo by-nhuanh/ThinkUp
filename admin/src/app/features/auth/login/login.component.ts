@@ -2,8 +2,6 @@ import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { environment } from '../../../../environments/environment';
-import { MOCK_ADMIN_ACCOUNT } from '../../../core/data/mock/admin-auth.mock';
 import { AdminAuthError } from '../../../core/models/admin-user.model';
 import { AdminAuthService } from '../../../core/services/admin-auth.service';
 import { AuthBrandBarComponent } from '../components/auth-brand-bar/auth-brand-bar.component';
@@ -46,10 +44,6 @@ export class LoginComponent {
 
   readonly lockSeconds = signal(0);
   readonly lockActive = signal(false);
-
-  // TODO(pre-deploy): xoá khối tài khoản demo cùng cờ `adminDemoLogin` trong environment.ts.
-  readonly demoEnabled = environment.adminDemoLogin;
-  readonly demoAccount = MOCK_ADMIN_ACCOUNT;
 
   readonly form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
@@ -104,7 +98,7 @@ export class LoginComponent {
         this.loading.set(false);
         this.password.reset('');
 
-        if (error.code === 'BRUTE_FORCE_LOCKED') {
+        if (error.code === 'ACCOUNT_LOCKED') {
           this.startLock(error.retryAfter ?? DEFAULT_LOCK_SECONDS);
           return;
         }
@@ -129,10 +123,6 @@ export class LoginComponent {
 
   closeHelp(): void {
     this.helpOpen.set(false);
-  }
-
-  fillDemoAccount(): void {
-    this.form.patchValue({ email: this.demoAccount.email, password: this.demoAccount.password });
   }
 
   /** mm:ss cho đồng hồ đếm ngược của hộp thoại tạm khoá. */
