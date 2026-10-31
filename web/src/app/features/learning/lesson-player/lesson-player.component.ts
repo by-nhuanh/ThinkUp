@@ -52,7 +52,7 @@ export class LessonPlayerComponent implements OnDestroy {
   readonly course = signal<LearningCourse | null>(null);
   readonly status = signal<'loading' | 'ready' | 'error'>('loading');
   readonly activeLessonId = signal('');
-  readonly sidebarOpen = signal(false);
+  readonly sidebarOpen = signal(true);
   readonly openChapterIds = signal<string[]>([]);
   readonly activeTab = signal<UtilityTab>('overview');
   readonly reviewOpen = signal(false);

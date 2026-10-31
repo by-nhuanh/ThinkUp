@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { onboardingRequiredGuard, onboardingCompletedGuard } from './core/guards/onboarding.guard';
 import { guestGuard } from './core/guards/guest.guard';
 import { authGuard } from './core/guards/auth.guard';
+import { guestHomeGuard, memberHomeGuard } from './core/guards/home-audience.guard';
 import { BlogService } from './features/blog/services/blog.service';
 import { BLOG_PROVIDERS } from './features/blog/services/blog.providers';
 import { unsavedChangesGuard } from './features/profile/guards/unsaved-changes.guard';
@@ -47,6 +48,7 @@ export const routes: Routes = [
     children: [
       {
         path: 'home',
+        canActivate: [memberHomeGuard],
         loadComponent: () => import('./features/home/home.component').then(m => m.HomeComponent)
       },
       { path: 'courses', loadComponent: () => import('./features/courses/course-list/course-list.component').then(m => m.CourseListComponent) },
@@ -87,7 +89,12 @@ export const routes: Routes = [
       { path: 'contact', loadComponent: () => import('./features/support/contact/contact.component').then(m => m.ContactComponent) },
       { path: 'help-center', loadComponent: () => import('./features/support/contact/contact.component').then(m => m.ContactComponent) },
       { path: 'instructors', loadComponent: () => import('./features/support/contact/contact.component').then(m => m.ContactComponent) },
-      { path: '', redirectTo: 'courses', pathMatch: 'full' },
+      {
+        path: '',
+        pathMatch: 'full',
+        canActivate: [guestHomeGuard],
+        loadComponent: () => import('./features/landing/landing.component').then(m => m.LandingComponent)
+      },
     ]
   },
   // Learning feature routes
@@ -95,7 +102,7 @@ export const routes: Routes = [
     path: 'learning',
     canActivateChild: [onboardingRequiredGuard],
     children: [
-      { path: 'learn/:courseId', loadComponent: () => import('./features/learning/lesson-player/lesson-player.component').then(m => m.LessonPlayerComponent) },
+      { path: 'learn/:courseId', data: { hideFooter: true }, loadComponent: () => import('./features/learning/lesson-player/lesson-player.component').then(m => m.LessonPlayerComponent) },
       { path: 'study-room', loadComponent: () => import('./features/study-room/study-room-lobby/study-room-lobby.component').then(m => m.StudyRoomLobbyComponent) },
       { path: 'study-room/:roomId', data: { hideShell: true }, loadComponent: () => import('./features/study-room/study-room-view/study-room-view.component').then(m => m.StudyRoomViewComponent) },
       { path: 'roadmap', loadComponent: () => import('./features/roadmap/roadmap-list/roadmap-list.component').then(m => m.RoadmapListComponent) },
@@ -140,8 +147,7 @@ export const routes: Routes = [
     path: 'chung-chi/:code',
     redirectTo: route => `/tra-cuu?code=${encodeURIComponent(route.params['code'] ?? '')}`
   },
-  // Default fallbacks: khách chưa đăng nhập xem Landing page chuẩn
-  { path: 'main', loadComponent: () => import('./features/landing/landing.component').then(m => m.LandingComponent) },
+  // Default fallback: /main phân luồng landing guest và dashboard member trong nhóm route phía trên.
   { path: '', redirectTo: 'main', pathMatch: 'full' },
   { path: '**', redirectTo: 'main' },
 ];
