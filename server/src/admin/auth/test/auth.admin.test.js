@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import bcrypt from 'bcryptjs';
+import { ObjectId } from 'mongodb';
+import { getMongoDb, closeMongoDb } from '../../../user/db.js';
 import {
   base32Encode,
   base32Decode,
@@ -16,7 +18,9 @@ import {
   checkPasswordExpiry,
   rotateAdminPassword,
   getAdminProfile,
+  createAdminAuthMiddleware,
 } from '../auth.admin.js';
+import { signJwt } from '../../../user/db.js';
 
 // Mock DB InMemory tối giản để chạy test độc lập
 class MockCollection {
@@ -43,10 +47,31 @@ class MockCollection {
     return { insertedId: item._id };
   }
   async updateOne(query, update) {
-    const item = await this.findOne(query);
+    const backupElement = query.backup_codes?.$elemMatch;
+    const item = backupElement
+      ? this.data.find(candidate => String(candidate._id) === String(query._id))
+      : await this.findOne(query);
     if (!item) return { modifiedCount: 0 };
+    let matchedBackupIndex = -1;
+    if (backupElement) {
+      matchedBackupIndex = (item.backup_codes || []).findIndex(code =>
+        Object.entries(backupElement).every(([key, value]) => {
+          if (key === 'is_used' && value && typeof value === 'object' && '$ne' in value) {
+            return code.is_used !== value.$ne;
+          }
+          return code[key] === value;
+        })
+      );
+      if (matchedBackupIndex < 0) return { modifiedCount: 0 };
+    }
     if (update.$set) {
-      Object.assign(item, update.$set);
+      for (const [field, value] of Object.entries(update.$set)) {
+        if (field.startsWith('backup_codes.$.')) {
+          item.backup_codes[matchedBackupIndex][field.slice('backup_codes.$.'.length)] = value;
+        } else {
+          item[field] = value;
+        }
+      }
     }
     if (update.$push) {
       for (const [field, val] of Object.entries(update.$push)) {
@@ -315,6 +340,92 @@ test('ADMIN AUTH SUITE: Luồng 2 - Đăng nhập, Brute-force lockout & 2FA', a
       /Mã dự phòng không chính xác hoặc đã được sử dụng/
     );
   });
+});
+
+test('ADMIN AUTH INTEGRATION: Backup code chỉ được chấp nhận một lần khi request đồng thời trên MongoDB thật', async (t) => {
+  const dbName = process.env.MONGODB_DB_NAME || '';
+  if (!dbName.startsWith('ThinkUp_admin_auth_test_')) {
+    t.skip('Chỉ chạy với MONGODB_DB_NAME cô lập có tiền tố ThinkUp_admin_auth_test_.');
+    return;
+  }
+
+  const db = await getMongoDb();
+  const admins = db.collection('admins');
+  const adminId = new ObjectId();
+  const email = `backup-race-${adminId.toString()}@test.invalid`;
+  const backupCode = 'A8F9-3B2C';
+  const [passwordHash, codeHash] = await Promise.all([
+    bcrypt.hash('StrongAdminPassword@2026', 10),
+    bcrypt.hash(backupCode, 10),
+  ]);
+
+  await admins.insertOne({
+    _id: adminId,
+    email,
+    full_name: 'Isolated backup code test',
+    role: 'ADMIN',
+    status: 'ACTIVE',
+    is_active: true,
+    is_2fa_enabled: true,
+    password_hash: passwordHash,
+    two_factor_secret: 'JBSWY3DPEHPK3PXP',
+    failed_login_attempts: 0,
+    password_changed_at: new Date(),
+    backup_codes: [{ code_hash: codeHash, is_used: false, used_at: null }],
+  });
+
+  t.after(async () => {
+    await admins.deleteOne({ _id: adminId });
+    assert.equal(await admins.countDocuments({ _id: adminId }), 0);
+    await closeMongoDb();
+  });
+
+  const login = await loginAdminCredentials({ email, password: 'StrongAdminPassword@2026' }, { db });
+  const attempts = await Promise.allSettled([
+    verifyAdmin2FA({ twoFactorToken: login.twoFactorToken, backupCode }, { db }),
+    verifyAdmin2FA({ twoFactorToken: login.twoFactorToken, backupCode }, { db }),
+  ]);
+
+  assert.equal(attempts.filter(result => result.status === 'fulfilled').length, 1);
+  assert.equal(attempts.filter(result => result.status === 'rejected').length, 1);
+  const updatedAdmin = await admins.findOne({ _id: adminId });
+  assert.equal(updatedAdmin.backup_codes[0].is_used, true);
+  assert.ok(updatedAdmin.backup_codes[0].used_at instanceof Date);
+
+  const middleware = createAdminAuthMiddleware();
+  const token = signJwt({ adminId: adminId.toString() }, '1h');
+  const invokeMiddleware = async () => {
+    let responseStatus = 200;
+    let responseBody;
+    let finish;
+    const nextResult = new Promise(resolve => { finish = resolve; });
+    const response = {
+      status(value) { responseStatus = value; return this; },
+      json(value) { responseBody = value; finish({ responseStatus, responseBody }); return this; },
+    };
+    const nextValue = await Promise.race([nextResult, new Promise(resolve => middleware({
+      headers: { authorization: `Bearer ${token}` },
+    }, response, error => resolve(error || 'next')))]);
+    return { responseStatus, responseBody, nextValue };
+  };
+  assert.equal((await invokeMiddleware()).nextValue, 'next');
+  await admins.updateOne({ _id: adminId }, { $set: { status: 'LOCKED' } });
+  const disabledResult = await invokeMiddleware();
+  assert.equal(disabledResult.responseStatus, 403);
+  assert.equal(disabledResult.responseBody.code, 'ADMIN_ACCOUNT_INACTIVE');
+  await admins.updateOne({ _id: adminId }, { $set: { status: 'ACTIVE' } });
+
+  // The losing concurrent backup-code request counts as one failed 2FA attempt.
+  let finalInvalidAttempt;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    finalInvalidAttempt = await Promise.allSettled([
+      verifyAdmin2FA({ twoFactorToken: login.twoFactorToken, otp: generateTOTP('JBSWY3DPEHPK3PXP', 10) }, { db }),
+    ]);
+  }
+  assert.equal(finalInvalidAttempt[0].status, 'rejected');
+  assert.equal(finalInvalidAttempt[0].reason.code, 'ACCOUNT_TEMPORARILY_LOCKED');
+  const lockedAdmin = await admins.findOne({ _id: adminId });
+  assert.ok(new Date(lockedAdmin.locked_until).getTime() > Date.now());
 });
 
 test('ADMIN AUTH SUITE: Luồng 3 - Password Rotation & Password History', async (t) => {

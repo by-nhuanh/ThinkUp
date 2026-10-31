@@ -1,4 +1,5 @@
 import { ObjectId } from 'mongodb';
+import { createHash } from 'node:crypto';
 import { getMongoDb } from '../db.js';
 
 // ─── 0. Tên Collection MongoDB ───────────────────────────────────────────────
@@ -6,6 +7,10 @@ export const COLLECTION_CERTIFICATES = 'certificates';
 export const COLLECTION_COURSES = 'courses';
 export const COLLECTION_USERS = 'users';
 export const COLLECTION_USER_PROGRESS = 'user_course_progress';
+export const COLLECTION_USER_LESSON_PROGRESS = 'user_lesson_progress';
+export const COLLECTION_LESSONS = 'lessons';
+export const COLLECTION_ENROLLMENTS = 'user_enrollments';
+export const COLLECTION_USER_COURSES = 'user_courses';
 
 // Base URL công khai chuẩn hóa theo hệ thống ThinkUp
 export const PUBLIC_WEB_ORIGIN = process.env.CLIENT_URL?.split(',')[0]?.trim()?.replace(/\/+$/, '') || 'https://thinkup.vn';
@@ -139,6 +144,19 @@ export function formatCertificateDto(doc) {
   };
 }
 
+function certificateClaimResult(doc) {
+  if (doc.status === 'valid') return formatCertificateDto(doc);
+
+  const error = new Error(
+    doc.status === 'revoked'
+      ? 'Chứng chỉ đã bị Admin thu hồi và không thể cấp lại tự động.'
+      : 'Trạng thái chứng chỉ hiện có chưa được xác minh.',
+  );
+  error.status = doc.status === 'revoked' ? 410 : 409;
+  error.code = doc.status === 'revoked' ? 'CERTIFICATE_REVOKED' : 'CERTIFICATE_STATUS_UNVERIFIED';
+  throw error;
+}
+
 /**
  * Tra cứu chứng chỉ công khai theo mã (Không cần đăng nhập).
  * Quy tắc:
@@ -182,6 +200,15 @@ export async function verifyCertificateByCode(rawCode) {
     certificate: formatCertificateDto(certDoc),
     verifiedAt: formatVietnamVerificationTime(new Date()),
   };
+}
+
+/** Validate that a certificate is public and valid before reporting the unavailable PDF artifact. */
+export async function getCertificateDownload(code) {
+  await verifyCertificateByCode(code);
+  const error = new Error('Tệp PDF chứng chỉ chưa được tạo hoặc lưu trữ.');
+  error.status = 501;
+  error.code = 'CERTIFICATE_PDF_UNAVAILABLE';
+  throw error;
 }
 
 /**
@@ -243,89 +270,117 @@ export async function issueCertificateForUser({ userId, courseId }) {
   }
 
   const db = await getMongoDb();
-  let userObjectId = null;
-  let courseObjectId = null;
+  const uid = String(userId).trim();
+  const requestedCourseId = String(courseId).trim();
+  const userObjectId = ObjectId.isValid(uid) ? new ObjectId(uid) : null;
+  const courseObjectId = ObjectId.isValid(requestedCourseId) ? new ObjectId(requestedCourseId) : null;
+  const userConditions = [
+    { id: uid },
+    { user_id: uid },
+    { student_id: uid },
+    ...(userObjectId ? [{ _id: userObjectId }] : []),
+  ];
+  const courseConditions = [
+    { course_id: requestedCourseId },
+    { slug: requestedCourseId },
+    { id: requestedCourseId },
+    ...(courseObjectId ? [{ _id: courseObjectId }] : []),
+  ];
 
-  try {
-    if (ObjectId.isValid(userId)) userObjectId = new ObjectId(userId);
-    if (ObjectId.isValid(courseId)) courseObjectId = new ObjectId(courseId);
-  } catch {
-    // Giữ nguyên dạng chuỗi nếu không hợp lệ ObjectId
+  const [user, course] = await Promise.all([
+    db.collection(COLLECTION_USERS).findOne({ $or: userConditions }),
+    db.collection(COLLECTION_COURSES).findOne({ $or: courseConditions }),
+  ]);
+  if (!user) {
+    const error = new Error('Không tìm thấy tài khoản học viên.');
+    error.status = 404;
+    error.code = 'USER_NOT_FOUND';
+    throw error;
+  }
+  if (!course) {
+    const error = new Error('Khóa học không tồn tại.');
+    error.status = 404;
+    error.code = 'COURSE_NOT_FOUND';
+    throw error;
   }
 
-  // 1. Kiểm tra chứng chỉ đã tồn tại hay chưa
+  const canonicalUserId = String(user.id || user.user_id || user._id || uid);
+  const canonicalCourseId = String(course.course_id || course._id || course.id || requestedCourseId);
+  const userAliases = [...new Set([uid, canonicalUserId, user._id ? String(user._id) : null].filter(Boolean))];
+  const userDbAliases = [...userAliases, ...(user._id ? [user._id] : [])];
+  const courseAliases = [...new Set([
+    requestedCourseId,
+    canonicalCourseId,
+    course.course_id ? String(course.course_id) : null,
+    course._id ? String(course._id) : null,
+    course.slug ? String(course.slug) : null,
+  ].filter(Boolean))];
+  const courseDbAliases = [...courseAliases, ...(course._id ? [course._id] : [])];
+  const ownershipFilter = {
+    $and: [
+      { $or: userDbAliases.flatMap(id => [{ user_id: id }, { userId: id }]) },
+      { $or: courseDbAliases.flatMap(id => [{ course_id: id }, { courseId: id }]) },
+    ],
+  };
+
   const existingCert = await db.collection(COLLECTION_CERTIFICATES).findOne({
-    $or: [
-      { user_id: userObjectId || userId, course_id: courseObjectId || courseId },
-      { user_id: String(userId), course_id: String(courseId) },
+    $and: [
+      { $or: userDbAliases.flatMap(id => [{ user_id: id }, { userId: id }]) },
+      { $or: courseDbAliases.flatMap(id => [{ course_id: id }, { courseId: id }]) },
     ],
   });
 
   if (existingCert) {
-    return formatCertificateDto(existingCert);
+    return certificateClaimResult(existingCert);
   }
 
-  // 2. Tìm thông tin người dùng và khóa học
-  const user = await db.collection(COLLECTION_USERS).findOne(
-    userObjectId ? { _id: userObjectId } : { id: userId }
+  const [enrollment, ownedCourse, courseLessons] = await Promise.all([
+    db.collection(COLLECTION_ENROLLMENTS).findOne(ownershipFilter),
+    db.collection(COLLECTION_USER_COURSES).findOne(ownershipFilter),
+    db.collection(COLLECTION_LESSONS).find({ course_id: { $in: courseDbAliases } }).toArray(),
+  ]);
+  if (!enrollment && !ownedCourse) {
+    const error = new Error('Bạn chưa được ghi danh khóa học này.');
+    error.status = 403;
+    error.code = 'COURSE_ENROLLMENT_REQUIRED';
+    throw error;
+  }
+  if (courseLessons.length === 0) {
+    const error = new Error('Chưa có dữ liệu bài học để xác minh điều kiện cấp chứng chỉ.');
+    error.status = 403;
+    error.code = 'CERTIFICATE_NOT_ELIGIBLE';
+    throw error;
+  }
+
+  const lessonProgress = await db.collection(COLLECTION_USER_LESSON_PROGRESS).find({
+    $and: [
+      { $or: userDbAliases.flatMap(id => [{ user_id: id }, { userId: id }]) },
+      { $or: courseDbAliases.flatMap(id => [{ course_id: id }, { courseId: id }]) },
+    ],
+  }).toArray();
+  const courseLessonIds = new Set(courseLessons.map(lesson => String(lesson.lesson_id || lesson._id)));
+  const completedLessonIds = new Set(
+    lessonProgress
+      .filter(progress => progress.status === 'completed' || progress.is_completed === true)
+      .map(progress => String(progress.lesson_id))
+      .filter(lessonId => courseLessonIds.has(lessonId)),
   );
-  const course = await db.collection(COLLECTION_COURSES).findOne(
-    courseObjectId ? { _id: courseObjectId } : { id: courseId }
+  const progressPercent = Math.round((completedLessonIds.size / courseLessons.length) * 100);
+  const quizLessons = courseLessons.filter(lesson =>
+    ['quiz', 'test', 'exam', 'assessment'].includes(String(lesson.lesson_type || '').toLowerCase()),
   );
-
-  const studentName = user?.fullName || user?.name || user?.email || 'Học viên ThinkUp';
-  const courseTitle = course?.title || 'Khóa học ThinkUp';
-
-  // 3. Tạo mã ngẫu nhiên duy nhất
-  let newCode = generateCertificateCode();
-  let duplicate = await db.collection(COLLECTION_CERTIFICATES).findOne({ code: newCode });
-  while (duplicate) {
-    newCode = generateCertificateCode();
-    duplicate = await db.collection(COLLECTION_CERTIFICATES).findOne({ code: newCode });
+  const completedQuizCount = quizLessons.filter(lesson => completedLessonIds.has(String(lesson.lesson_id || lesson._id))).length;
+  if (progressPercent < 80 || completedQuizCount < quizLessons.length) {
+    const error = new Error('Chưa đạt điều kiện cấp chứng chỉ: cần hoàn thành ít nhất 80% tiến độ và tất cả bài kiểm tra.');
+    error.status = 403;
+    error.code = 'CERTIFICATE_NOT_ELIGIBLE';
+    throw error;
   }
 
-  const now = new Date();
-  const certRecord = {
-    code: newCode,
-    user_id: userObjectId || userId,
-    course_id: courseObjectId || courseId,
-    student_name: studentName,
-    certificate_name: studentName, // Đồng nhất student_name và certificate_name
-    course_title: courseTitle,
-    status: 'valid',
-    issued_at: now,
-    issued_at_vn: formatVietnamIssuedDate(now),
-    issued_at_en: formatEnglishIssuedDate(now),
-    qr_url: buildCertificateQrUrl(newCode),
-    created_at: now,
-    updated_at: now,
-  };
-
-  await db.collection(COLLECTION_CERTIFICATES).insertOne(certRecord);
-
-  // 4. Đồng bộ vào user_course_progress nếu có
-  try {
-    await db.collection(COLLECTION_USER_PROGRESS).updateOne(
-      {
-        $or: [
-          { user_id: userObjectId || userId, course_id: courseObjectId || courseId },
-          { user_id: String(userId), course_id: String(courseId) },
-        ],
-      },
-      {
-        $set: {
-          certificate_id: newCode,
-          certificate_url: buildCertificateQrUrl(newCode),
-          certificate_issued_at: now,
-          updated_at: now,
-        },
-      }
-    );
-  } catch (syncErr) {
-    console.warn('[Certificate Sync Warning]:', syncErr.message);
-  }
-
-  return formatCertificateDto(certRecord);
+  const unverifiedError = new Error('Không thể xác minh độc lập điều kiện hoàn thành; chứng chỉ chưa được cấp.');
+  unverifiedError.status = 409;
+  unverifiedError.code = 'CERTIFICATE_ELIGIBILITY_UNVERIFIED';
+  throw unverifiedError;
 }
 
 // ─── 3. Tạo Express Router Module ──────────────────────────────────────────
@@ -384,22 +439,7 @@ export function createCertificateRouter(expressLib, requireAuthMiddleware) {
   // GET /api/v1/certificates/:code/download
   router.get('/:code/download', async (req, res, next) => {
     try {
-      const { code } = req.params;
-      const result = await verifyCertificateByCode(code);
-      const cleanCode = result.certificate.code;
-
-      // Đặt header theo đúng đặc tả BA: ThinkUp_Certificate_{Mã_chứng_chỉ}.pdf
-      const fileName = `ThinkUp_Certificate_${cleanCode}.pdf`;
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-
-      // Mock buffer PDF chuẩn header tối thiểu để tải về thành công
-      // (Khung sẵn sàng để nối engine render PDF chất lượng cao hoặc stream từ Storage)
-      const pdfBuffer = Buffer.from(
-        `%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Count 1/Kids[3 0 R]>>endobj\n3 0 obj<</Type/Page/MediaBox[0 0 842 595]/Parent 2 0 R/Resources<<>>>>endobj\nxref\n0 4\n0000000000 65535 f \n0000000010 00000 n \n0000000053 00000 n \n0000000102 00000 n \ntrailer<</Size 4/Root 1 0 R>>\nstartxref\n185\n%%EOF`
-      );
-
-      return res.send(pdfBuffer);
+      await getCertificateDownload(req.params.code);
     } catch (err) {
       next(err);
     }

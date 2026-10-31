@@ -1,6 +1,9 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { getMongoDb } from '../../db.js';
+import { closeMongoDb, getMongoDb } from '../../db.js';
+import { randomUUID } from 'node:crypto';
+import { createServer } from 'node:http';
+import express from 'express';
 import {
   formatVND,
   calculateDiscount,
@@ -10,11 +13,15 @@ import {
   getCourseDetailLanding,
   getCoursePreviewData,
   getCourseReviews,
+  getUserEnrolledCourses,
+  getInstructorProfileDetail,
   createCourseRouter,
   COLLECTION_COURSES,
   COLLECTION_CARTS,
   COLLECTION_FAVORITES,
   COLLECTION_ENROLLMENTS,
+  COLLECTION_LESSONS,
+  COLLECTION_LESSON_VIDEOS,
 } from '../course.user.js';
 
 describe('Kiểm thử Module Truy Xuất Thẻ Khóa Học (Course Cards)', () => {
@@ -46,6 +53,7 @@ describe('Kiểm thử Module Truy Xuất Thẻ Khóa Học (Course Cards)', () 
         db.collection(COLLECTION_CARTS).deleteMany({ user_id: testUserId }),
         db.collection(COLLECTION_ENROLLMENTS).deleteMany({ user_id: testUserId }),
       ]);
+      await closeMongoDb();
     }
   });
 
@@ -278,6 +286,55 @@ describe('Kiểm thử Module Truy Xuất Thẻ Khóa Học (Course Cards)', () 
       const router = createCourseRouter(mockExpress);
       assert.ok(router);
     });
+
+    it('TC-STREAM-COURSE-01: Không phát lesson của course khác và vẫn phát preview thuộc đúng course', async () => {
+      const suffix = randomUUID();
+      const courseA = `stream-a-${suffix}`;
+      const courseB = `stream-b-${suffix}`;
+      const lessonA = `lesson-a-${suffix}`;
+      const lessonB = `lesson-b-${suffix}`;
+      let server;
+
+      try {
+        await db.collection(COLLECTION_COURSES).insertMany([
+          { course_id: courseA, slug: courseA, title: 'Stream A', status: 'published' },
+          { course_id: courseB, slug: courseB, title: 'Stream B', status: 'published' },
+        ]);
+        await db.collection(COLLECTION_LESSONS).insertMany([
+          { lesson_id: lessonA, course_id: courseA, is_free: '1' },
+          { lesson_id: lessonB, course_id: courseB, is_free: '1' },
+        ]);
+        await db.collection(COLLECTION_LESSON_VIDEOS).insertMany([
+          { lesson_id: lessonA, video_url: 'https://example.test/a.mp4' },
+          { lesson_id: lessonB, video_url: 'https://example.test/b.mp4' },
+        ]);
+
+        const app = express();
+        app.use('/courses', createCourseRouter(express, (req, res, next) => next()));
+        server = createServer(app);
+        await new Promise((resolve, reject) => {
+          server.once('error', reject);
+          server.listen(0, '127.0.0.1', resolve);
+        });
+        const address = server.address();
+        const baseUrl = `http://127.0.0.1:${address.port}`;
+
+        const crossCourseResponse = await fetch(`${baseUrl}/courses/${courseA}/lessons/${lessonB}/stream`);
+        assert.equal(crossCourseResponse.status, 404);
+
+        const matchingPreviewResponse = await fetch(`${baseUrl}/courses/${courseA}/lessons/${lessonA}/stream`);
+        assert.equal(matchingPreviewResponse.status, 200);
+        const matchingPreview = await matchingPreviewResponse.json();
+        assert.equal(matchingPreview.data.video_url, 'https://example.test/a.mp4');
+      } finally {
+        if (server?.listening) await new Promise(resolve => server.close(resolve));
+        await Promise.all([
+          db.collection(COLLECTION_COURSES).deleteMany({ course_id: { $in: [courseA, courseB] } }),
+          db.collection(COLLECTION_LESSONS).deleteMany({ lesson_id: { $in: [lessonA, lessonB] } }),
+          db.collection(COLLECTION_LESSON_VIDEOS).deleteMany({ lesson_id: { $in: [lessonA, lessonB] } }),
+        ]);
+      }
+    });
   });
 
   // ─── 5. Kiểm thử Tái Sử Dụng & Chiết Xuất Trường (Projection / Selective Fields) ─
@@ -420,4 +477,128 @@ describe('Kiểm thử Module Truy Xuất Thẻ Khóa Học (Course Cards)', () 
       }
     });
   });
+
+  // ─── 7. Kiểm thử Khóa học của tôi (My Courses / Enrolled Courses Dashboard) ─
+  describe('7. Kiểm thử Nghiệp vụ Khóa học của tôi (getUserEnrolledCourses)', () => {
+    it('TC-ENROLL-01: Trả về mảng rỗng nếu userId không có khóa học nào', async () => {
+      const res = await getUserEnrolledCourses('non-existent-user-id');
+      assert.ok(Array.isArray(res));
+      assert.strictEqual(res.length, 0);
+    });
+
+    it('TC-ENROLL-02: Lấy danh sách khóa học của học viên đã ghi danh đầy đủ thuộc tính', async () => {
+      // Giả lập ghi danh khóa học mẫu cho testUserId
+      await db.collection(COLLECTION_ENROLLMENTS).insertOne({
+        user_id: testUserId,
+        course_id: sampleCourseId,
+        enrolled_at: new Date(),
+      });
+      await db.collection('user_course_progress').insertOne({
+        user_id: testUserId,
+        course_id: sampleCourseId,
+        progress_percentage: 45,
+        completed_lessons_count: 5,
+        updated_at: new Date(),
+      });
+
+      const res = await getUserEnrolledCourses(testUserId);
+      assert.ok(Array.isArray(res));
+      assert.ok(res.length >= 1, 'Phải có ít nhất 1 khóa học đã ghi danh');
+
+      const enrolled = res.find((c) => c.id === sampleCourseId);
+      assert.ok(enrolled, 'Khóa học mẫu phải có trong danh sách');
+      assert.ok(enrolled.title, 'Phải có title');
+      assert.ok(enrolled.instructor, 'Phải có instructor');
+      assert.ok(typeof enrolled.totalLessons === 'number', 'Phải có totalLessons');
+      assert.ok(typeof enrolled.completedLessons === 'number', 'Phải có completedLessons');
+      assert.ok(enrolled.cover, 'Phải có cover color');
+      assert.ok(enrolled.coverTitle, 'Phải có coverTitle');
+      assert.ok(enrolled.lastStudiedAt, 'Phải có lastStudiedAt');
+
+      // Dọn dẹp
+      await db.collection(COLLECTION_ENROLLMENTS).deleteMany({ user_id: testUserId });
+      await db.collection('user_course_progress').deleteMany({ user_id: testUserId });
+    });
+  });
+
+  // ─── 8. Kiểm thử Hồ sơ giảng viên công khai (Public Instructor Profile) ────
+  describe('8. Kiểm thử Hồ sơ giảng viên công khai (getInstructorProfileDetail)', () => {
+    it('TC-INST-01: Báo lỗi 400 hoặc 404 khi instructorId không hợp lệ hoặc không tồn tại', async () => {
+      await assert.rejects(
+        async () => {
+          await getInstructorProfileDetail('');
+        },
+        (err) => err.status === 400
+      );
+
+      await assert.rejects(
+        async () => {
+          await getInstructorProfileDetail('instructor-that-never-exists-9999');
+        },
+        (err) => err.status === 404
+      );
+    });
+
+    it('TC-INST-02: Truy xuất đầy đủ thông tin giảng viên chuẩn chuyên nghiệp và danh sách khóa học', async () => {
+      const res = await getInstructorProfileDetail('dang-van-anh-tai');
+      assert.ok(res.instructor, 'Phải có object instructor');
+      assert.strictEqual(res.instructor.full_name, 'ĐẶNG VĂN ANH TÀI');
+      assert.ok(res.instructor.title, 'Phải có chức danh title');
+      assert.ok(res.instructor.avatar_url, 'Phải có avatar_url');
+      assert.ok(res.instructor.location, 'Phải có location');
+      assert.ok(res.instructor.joined_at, 'Phải có joined_at');
+      assert.ok(res.instructor.total_students >= 0, 'Phải có tổng học viên');
+      assert.ok(res.instructor.rating >= 0, 'Phải có rating');
+      assert.ok(res.instructor.github, 'Phải có link github');
+      assert.ok(res.instructor.linkedin, 'Phải có link linkedin');
+      assert.ok(Array.isArray(res.instructor.specializations), 'Phải có mảng công nghệ chuyên môn');
+      assert.ok(Array.isArray(res.instructor.experiences), 'Phải có mảng kinh nghiệm & học vấn');
+      assert.ok(Array.isArray(res.courses), 'Phải có mảng danh sách khóa học đang giảng dạy');
+    });
+  });
+});
+import { getLessonStream, hasCourseEnrollment } from '../course.user.js';
+it('Learning integration: stream applies settings only after course access', async () => {
+  let enrolled = false, mediaReads = 0;
+  const db = { collection(name) { return { async findOne(query) {
+    if (name === 'courses') return { course_id: 'course', _id: 'course-db' };
+    if (name === 'lessons') return query.course_id.$in.includes('course') && query.lesson_id === 'lesson' ? { lesson_id: 'lesson', is_free: '0' } : null;
+    if (name === 'users') return null;
+    if (name === 'user_enrollments') return null;
+    if (name === 'user_courses') return enrolled ? { user_id: 'learner' } : null;
+    if (name === 'learning_preferences') return { _id: 'learner', playbackSpeed: '1.5', autoNext: false, videoQuality: '720p' };
+    if (name === 'lesson_videos') { mediaReads++; return { video_url: '/original.mp4', video_sources: [{ quality: '720p', url: '/720.mp4' }] }; }
+    throw new Error('Unexpected collection ' + name);
+  } }; } };
+  await assert.rejects(getLessonStream('course', 'lesson', 'learner', { db }), { status: 403 });
+  assert.equal(mediaReads, 0);
+  enrolled = true;
+  const result = await getLessonStream('course', 'lesson', 'learner', { db });
+  assert.equal(result.video_url, '/720.mp4');assert.equal(result.playback.effective.playbackSpeed, 1.5);
+  assert.equal(result.playback.effective.autoNext, false);
+  await assert.rejects(getLessonStream('course', 'other', 'learner', { db }), { status: 404 });
+  assert.equal(await hasCourseEnrollment({ course_id: 'course' }, null, { db }), false);
+});
+
+it('Learning integration: course preview cannot bypass document download permissions', async () => {
+  let enrolled = false;
+  const db = { collection(name) { return {
+    async findOne() {
+      if (name === 'courses') return { _id: 'course-db', course_id: 'course', status: 'published', price: 100 };
+      if (name === 'users') return null;
+      if (name === 'user_enrollments') return enrolled ? { user_id: 'learner' } : null;
+      if (name === 'user_courses') return null;
+      throw new Error(name);
+    },
+    find() { return { sort() { return this; }, async toArray() {
+      if (name === 'course_sections') return [];
+      if (name === 'course_documents') return [{ _id: 'document', file_url: '/private.pdf', download_url: '/old-public.pdf' }];
+      throw new Error(name);
+    } }; },
+  }; } };
+  const guest = await getCoursePreviewData('course', null, db);
+  assert.equal(guest.resources[0].download_url, null);assert.equal(guest.resources[0].can_download, false);
+  enrolled = true;
+  const owner = await getCoursePreviewData('course', 'learner', db);
+  assert.equal(owner.resources[0].download_url, '/api/user/lessons/documents/document/download');
 });

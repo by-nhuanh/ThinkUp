@@ -8,6 +8,10 @@ import {
   COLLECTION_USER_COURSES,
   COLLECTION_ENROLLMENTS,
 } from './course.user.js';
+import {
+  scoreCourseWithModel,
+  trainCourseRanker,
+} from './ml/course_ranker.js';
 
 // ─── 0. Hằng số cấu hình thuật toán gợi ý ────────────────────────────────────
 export const DEFAULT_RECOMMEND_LIMIT = 4;
@@ -36,6 +40,10 @@ const BUDGET_LIMIT_RATIO = 2.5;
 const FREE_COURSE_BUDGET_SCORE = 40;
 const MAX_CO_OWNERS = 500;
 const CATALOG_CACHE_TTL_MS = 60 * 1000;
+const ML_EVENTS_CACHE_TTL_MS = 5 * 60 * 1000;
+const ML_MODEL_CACHE_TTL_MS = 60 * 60 * 1000;
+const ML_MODEL_MIN_EVENTS = 200;
+const ML_MODEL_MIN_LABELS_PER_CLASS = 30;
 
 function createError(message, status, field) {
   const err = new Error(message);
@@ -218,12 +226,87 @@ function toUserIdVariants(userId) {
 
 // Cache danh mục khóa học nhẹ (đã gắn tag) theo từng kết nối DB
 let catalogCache = new WeakMap();
+let mlEventsCache = new WeakMap();
+let mlModelCache = new WeakMap();
 
 /**
  * Xóa cache danh mục khóa học (gọi khi khóa học/tag thay đổi hoặc trong kiểm thử).
  */
 export function clearRecommendationCache() {
   catalogCache = new WeakMap();
+  mlEventsCache = new WeakMap();
+  mlModelCache = new WeakMap();
+}
+
+function getMlFeatures(scoreBreakdown, behaviorWeight) {
+  return {
+    tag_affinity: Math.max(0, Math.min(1, scoreBreakdown.tag / SCORE_WEIGHTS.tag)),
+    cooccurrence: Math.max(0, Math.min(1, scoreBreakdown.cooccurrence / SCORE_WEIGHTS.cooccurrence)),
+    budget_fit: Math.max(0, Math.min(1, scoreBreakdown.budget / SCORE_WEIGHTS.budget)),
+    popularity: Math.max(0, Math.min(1, scoreBreakdown.popularity / SCORE_WEIGHTS.popularity)),
+    level_fit: Math.max(0, Math.min(1, scoreBreakdown.level / SCORE_WEIGHTS.level)),
+    behavior_weight: behaviorWeight,
+  };
+}
+
+async function fetchCourseFeedback(db, now) {
+  const cached = mlEventsCache.get(db);
+  if (cached && now - cached.at < ML_EVENTS_CACHE_TTL_MS) return cached.events;
+
+  const [carts, owned, enrolled, reviews, progress] = await Promise.all([
+    db.collection(COLLECTION_CARTS).find({}).project({ user_id: 1, userId: 1, course_id: 1, courseId: 1 }).limit(5000).toArray(),
+    db.collection(COLLECTION_USER_COURSES).find({}).project({ user_id: 1, userId: 1, course_id: 1, courseId: 1 }).limit(5000).toArray(),
+    db.collection(COLLECTION_ENROLLMENTS).find({}).project({ user_id: 1, userId: 1, course_id: 1, courseId: 1 }).limit(5000).toArray(),
+    db.collection('course_reviews').find({}).project({ user_id: 1, userId: 1, course_id: 1, courseId: 1, rating: 1 }).limit(5000).toArray(),
+    db.collection('user_course_progress').find({}).project({ user_id: 1, userId: 1, course_id: 1, courseId: 1, progress_percentage: 1, is_completed: 1 }).limit(5000).toArray(),
+  ]);
+  const labels = new Map();
+  const add = (rows, labelForRow) => {
+    for (const row of rows) {
+      const userId = row.user_id ?? row.userId;
+      const courseId = row.course_id ?? row.courseId;
+      if (userId === undefined || courseId === undefined) continue;
+      const key = `${String(userId)}|${String(courseId)}`;
+      const label = labelForRow(row);
+      const existing = labels.get(key);
+      if (label < 0 || existing === -1) labels.set(key, -1);
+      else if (label > 0) labels.set(key, 1);
+      else if (existing === undefined) labels.set(key, 0);
+    }
+  };
+  add(carts, () => 1);
+  add(owned, () => 1);
+  add(enrolled, () => 1);
+  add(reviews, (row) => Number(row.rating) >= 4 ? 1 : (Number(row.rating) > 0 && Number(row.rating) <= 2 ? -1 : 0));
+  add(progress, (row) => row.is_completed === true || Number(row.progress_percentage) >= 80 ? 1 : 0);
+
+  // Unobserved interactions are not treated as dislikes. Only explicit low ratings
+  // create negative labels; positives come from course ownership, strong ratings,
+  // or substantial learning progress.
+  const events = [...labels].filter(([, label]) => label !== 0).map(([key, label]) => {
+    const [userId, courseId] = key.split('|');
+    return { userId, courseId, label: label < 0 ? 0 : 1 };
+  });
+  mlEventsCache.set(db, { at: now, events });
+  return events;
+}
+
+async function getCourseRanker(db, now, rankedById) {
+  const cached = mlModelCache.get(db);
+  if (cached && now - cached.at < ML_MODEL_CACHE_TTL_MS) return cached.model;
+  const feedback = await fetchCourseFeedback(db, now);
+  const events = feedback.map((event) => {
+    const ranked = rankedById.get(event.courseId);
+    if (!ranked) return null;
+    return { label: event.label, features: ranked.ml_features };
+  }).filter(Boolean);
+  const model = trainCourseRanker(events, {
+    minEvents: ML_MODEL_MIN_EVENTS,
+    minPositive: ML_MODEL_MIN_LABELS_PER_CLASS,
+    minNegative: ML_MODEL_MIN_LABELS_PER_CLASS,
+  });
+  mlModelCache.set(db, { at: now, model });
+  return model;
 }
 
 /**
@@ -415,11 +498,24 @@ async function rankCatalog({ db, userId, cartIds, excludeOwned }) {
       course_id: item.course_id,
       total_students: item.total_students,
       recommend_score: round1(total),
+      ml_features: getMlFeatures(breakdown, behaviorWeight),
       score_breakdown: Object.fromEntries(
         Object.entries(breakdown).map(([k, v]) => [k, round1(v)]),
       ),
     };
   });
+
+  const model = await getCourseRanker(db, Date.now(), new Map(ranked.map((item) => [item.course_id, item])));
+  if (model) {
+    for (const item of ranked) {
+      item.rule_recommend_score = item.recommend_score;
+      item.ml_score = scoreCourseWithModel(model, item.ml_features);
+      item.recommend_score = round1(item.ml_score * 100);
+      item.recommendation_method = 'ml';
+    }
+  } else {
+    for (const item of ranked) item.recommendation_method = 'rules';
+  }
 
   ranked.sort((a, b) => b.recommend_score - a.recommend_score
     || b.total_students - a.total_students);
@@ -453,7 +549,12 @@ async function hydrateCards(db, userId, picked, guestCartIds) {
   return picked
     .map((p) => {
       const card = cardById.get(p.course_id);
-      return card ? { ...card, recommend_score: p.recommend_score, score_breakdown: p.score_breakdown } : null;
+      return card ? {
+        ...card,
+        recommend_score: p.recommend_score,
+        score_breakdown: p.score_breakdown,
+        recommendation_method: p.recommendation_method,
+      } : null;
     })
     .filter(Boolean);
 }

@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { ObjectId } from 'mongodb';
 import { getMongoDb, sendEmail } from '../db.js';
 import { renderNewsletterWelcomeEmail, renderNewBlogPostEmail } from '../email/email-templates.js';
+import { createNotificationForEvent, getNotificationDeliveryPolicy } from '../notification/notification.user.js';
 
 // ─── 0. Xác Định Collection MongoDB ─────────────────────────────────────────
 
@@ -14,6 +15,40 @@ import { renderNewsletterWelcomeEmail, renderNewBlogPostEmail } from '../email/e
  */
 export function getBlogCollection(db) {
   return db.collection('blog_posts');
+}
+
+async function resolveBlogOwner(userId) {
+  if (!userId) {
+    const error = new Error('Yêu cầu đăng nhập để quản lý bài viết.');
+    error.status = 401;
+    error.code = 'UNAUTHORIZED';
+    throw error;
+  }
+  const db = await getMongoDb();
+  const userObjectId = ObjectId.isValid(String(userId)) ? new ObjectId(String(userId)) : null;
+  const user = await db.collection('users').findOne({
+    $or: [
+      { id: String(userId) },
+      { user_id: String(userId) },
+      ...(userObjectId ? [{ _id: userObjectId }] : []),
+    ],
+  }, { projection: { _id: 1, id: 1, user_id: 1, email: 1, full_name: 1, name: 1, avatar: 1, avatar_url: 1 } });
+  if (!user) {
+    const error = new Error('Không tìm thấy tài khoản người dùng đã xác thực.');
+    error.status = 401;
+    error.code = 'AUTHENTICATED_USER_NOT_FOUND';
+    throw error;
+  }
+  const authenticatedUserId = String(user.id || user.user_id || user._id);
+  const authenticatedEmail = String(user.email || '').trim().toLowerCase();
+  return {
+    userId: authenticatedUserId,
+    ownerUserId: authenticatedUserId,
+    email: authenticatedEmail,
+    ownerEmail: authenticatedEmail,
+    name: user.full_name || user.name || '',
+    avatar: user.avatar_url || user.avatar || null,
+  };
 }
 
 // ─── 1. Các Hàm Tiện Ích (Helpers & XSS Sanitizer & SEO Utilities) ──────────
@@ -608,11 +643,12 @@ export async function getManageBlogList(query = {}, options = {}) {
 
   // Lọc chính xác theo chủ sở hữu bài viết (chỉ bài do chính người dùng tạo)
   const baseOwnerFilter = {};
-  const ownerEmail = (query.ownerEmail || options.ownerEmail || '').trim().toLowerCase();
-  if (ownerEmail) {
+  const ownerEmail = (options.ownerEmail || query.ownerEmail || '').trim().toLowerCase();
+  const ownerUserId = String(options.ownerUserId || query.ownerUserId || '').trim();
+  if (ownerUserId || ownerEmail) {
     baseOwnerFilter.$or = [
-      { owner_email: ownerEmail },
-      { ownerEmail: ownerEmail },
+      ...(ownerUserId ? [{ owner_user_id: ownerUserId }] : []),
+      ...(ownerEmail ? [{ owner_email: ownerEmail }, { ownerEmail }] : []),
     ];
   }
 
@@ -805,9 +841,10 @@ export async function saveBlogPost(blogData = {}, options = {}) {
 
   const categoryId = generateSlug(rawCategory) || 'chung';
   const readTime = blogData.readTime || calculateReadTime(cleanContent);
-  const ownerEmail = (blogData.ownerEmail || blogData.owner_email || options.ownerEmail || '').toLowerCase();
-  const authorName = blogData.author || blogData.author_name || 'ThinkUp Team';
-  const authorAvatar = blogData.authorAvatar || blogData.author_avatar || null;
+  const ownerEmail = String(options.ownerEmail || blogData.ownerEmail || blogData.owner_email || '').trim().toLowerCase();
+  const ownerUserId = String(options.ownerUserId || '').trim();
+  const authorName = options.name || blogData.author || blogData.author_name || 'ThinkUp Team';
+  const authorAvatar = options.avatar || blogData.authorAvatar || blogData.author_avatar || null;
   const featuredContent = (blogData.featuredContent || blogData.featured_content || '').slice(0, 200);
   const commentsEnabled = blogData.commentsEnabled ?? blogData.comments_enabled ?? blogData.allowComments ?? true;
   const pinned = Boolean(blogData.pinned ?? blogData.isPinned ?? false);
@@ -820,7 +857,24 @@ export async function saveBlogPost(blogData = {}, options = {}) {
   if (postId) {
     // ── Cập nhật bài viết hiện có ──
     const existingObjId = ObjectId.isValid(postId) ? new ObjectId(postId) : postId;
-    const existingPost = await collection.findOne({ _id: existingObjId });
+    const ownerFilter = ownerUserId
+      ? {
+          $or: [
+            { owner_user_id: ownerUserId },
+            ...(ownerEmail ? [{ owner_email: ownerEmail }, { ownerEmail }] : []),
+          ],
+        }
+      : null;
+    const existingPost = await collection.findOne({
+      _id: existingObjId,
+      ...(ownerFilter ? { $and: [ownerFilter] } : {}),
+    });
+    if (ownerFilter && !existingPost) {
+      const err = new Error('Bài viết không tồn tại hoặc bạn không có quyền chỉnh sửa.');
+      err.status = 404;
+      err.code = 'BLOG_NOT_FOUND';
+      throw err;
+    }
 
     // Nếu bài viết đã từng publish trước đó và cập nhật lại -> chuyển thành 'updated'
     let finalStatus = rawStatus;
@@ -860,8 +914,9 @@ export async function saveBlogPost(blogData = {}, options = {}) {
       updateDoc.owner_email = ownerEmail;
       updateDoc.ownerEmail = ownerEmail;
     }
+    if (ownerUserId) updateDoc.owner_user_id = ownerUserId;
 
-    await collection.updateOne({ _id: existingObjId }, { $set: updateDoc });
+    await collection.updateOne({ _id: existingObjId, ...(ownerFilter ? { $and: [ownerFilter] } : {}) }, { $set: updateDoc });
 
     return {
       id: String(postId),
@@ -896,6 +951,7 @@ export async function saveBlogPost(blogData = {}, options = {}) {
     updated_at: now,
     owner_email: ownerEmail,
     ownerEmail,
+    ...(ownerUserId ? { owner_user_id: ownerUserId } : {}),
     featuredContent,
     commentsEnabled,
     pinned,
@@ -1281,11 +1337,10 @@ export async function getBlogDetail(idOrSlug, options = {}) {
   // Kiểm tra quyền xem bài nháp
   const isDraft = String(rawPost.status).toLowerCase() === 'draft';
   if (isDraft) {
-    const isOwner = options.ownerEmail && (
-      rawPost.owner_email === options.ownerEmail.toLowerCase() ||
-      rawPost.ownerEmail === options.ownerEmail.toLowerCase()
-    );
-    if (!options.allowDraft && !isOwner) {
+    const ownerEmail = String(options.ownerEmail || '').trim().toLowerCase();
+    const isOwner = (options.ownerUserId && String(rawPost.owner_user_id || '') === String(options.ownerUserId)) ||
+      (ownerEmail && (rawPost.owner_email === ownerEmail || rawPost.ownerEmail === ownerEmail));
+    if (!isOwner) {
       const err = new Error('Bài viết này đang ở chế độ bản nháp và chưa được xuất bản công khai.');
       err.status = 404;
       err.code = 'DRAFT_NOT_PUBLIC';
@@ -1430,11 +1485,17 @@ export async function deleteBlogPost(id, options = {}) {
   const collection = getBlogCollection(db);
 
   const query = ObjectId.isValid(id) ? { _id: new ObjectId(id) } : { id: String(id) };
-  if (options.ownerEmail) {
+  if (options.isAdmin !== true && (options.ownerUserId || options.ownerEmail)) {
+    const ownerEmail = String(options.ownerEmail || '').trim().toLowerCase();
     query.$or = [
-      { owner_email: options.ownerEmail.toLowerCase() },
-      { ownerEmail: options.ownerEmail.toLowerCase() },
+      ...(options.ownerUserId ? [{ owner_user_id: String(options.ownerUserId) }] : []),
+      ...(ownerEmail ? [{ owner_email: ownerEmail }, { ownerEmail }] : []),
     ];
+  } else if (options.isAdmin !== true && !options.ownerUserId && !options.ownerEmail) {
+    const err = new Error('Chỉ chủ bài viết hoặc Admin mới được xóa bài.');
+    err.status = 401;
+    err.code = 'BLOG_DELETE_AUTH_REQUIRED';
+    throw err;
   }
 
   const result = await collection.deleteOne(query);
@@ -1576,6 +1637,17 @@ export async function getBlogSidebar(options = {}) {
  * @param {object} [options]
  * @returns {Promise<{ success: boolean, alreadySubscribed: boolean, message: string }>}
  */
+async function newsletterRecipient(db, email, options) {
+  const validation = validateEmail(email);
+  if (!validation.valid) throw Object.assign(new Error('Địa chỉ nhận bản tin không hợp lệ.'), { status:400,code:'INVALID_EMAIL' });
+  const address = validation.value;
+  const user = await db.collection('users').findOne({ email:address });
+  if (!user) return { user: null, email: true, address };
+  if (!user.email_verified || user.status !== 'active' || user.is_active === false) return { user, email: false, address };
+  const policy = await getNotificationDeliveryPolicy(String(user._id || user.id), 'marketing', { ...options, db });
+  return { user, email: policy.email, address };
+}
+
 export async function subscribeNewsletter({ email }, options = {}) {
   const validation = validateEmail(email);
   if (!validation.valid) {
@@ -1613,23 +1685,24 @@ export async function subscribeNewsletter({ email }, options = {}) {
   }
 
   try {
-    await sendEmail({
-      to: normalizedEmail,
-      subject: '🎉 Chào mừng bạn đến với Bản Tin ThinkUp Blog!',
-      html: renderNewsletterWelcomeEmail({
-        email: normalizedEmail,
-        clientUrl: process.env.CLIENT_URL,
-      }),
-      text: 'Cảm ơn bạn đã đăng ký nhận bản tin ThinkUp Blog! Bạn sẽ nhận được thông báo khi có bài viết công nghệ mới nhất.',
-    });
-  } catch (mailError) {
-    console.warn('[Newsletter] Không thể gửi email xác nhận chào mừng:', mailError.message);
+    const recipient = await newsletterRecipient(db, normalizedEmail, options);
+    if (recipient.email) {
+      const delivered = await (options.sendEmail || sendEmail)({
+        to: normalizedEmail,
+        subject: '🎉 Chào mừng bạn đến với Bản Tin ThinkUp Blog!',
+        html: renderNewsletterWelcomeEmail({ email: normalizedEmail, clientUrl: process.env.CLIENT_URL }),
+        text: 'Cảm ơn bạn đã đăng ký nhận bản tin ThinkUp Blog! Bạn sẽ nhận được thông báo khi có bài viết công nghệ mới nhất.',
+      });
+      if (delivered?.sent === false || !delivered?.accepted?.length) throw new Error('Newsletter delivery unavailable');
+    }
+  } catch {
+    console.warn('[Newsletter] Chưa gửi được email xác nhận đăng ký.');
   }
 
   return {
     success: true,
     alreadySubscribed: false,
-    message: 'Đăng ký nhận bản tin thành công! Bạn sẽ nhận được thông báo khi có bài viết mới.',
+    message: 'Đã ghi nhận đăng ký bản tin. Việc gửi bản tin tuân theo cài đặt thông báo của tài khoản.',
   };
 }
 
@@ -1640,7 +1713,9 @@ export async function subscribeNewsletter({ email }, options = {}) {
  * @returns {Promise<{ notified: number, totalSubscribers: number, failed: number }>}
  */
 export async function notifySubscribersNewPost(blogPost, options = {}) {
-  if (!blogPost || !blogPost.title) {
+  const postId = blogPost?.id || blogPost?._id || blogPost?.slug;
+  if (!blogPost || typeof blogPost.title !== 'string' || !blogPost.title.trim() ||
+      blogPost.title.length > 200 || !postId || String(postId).length > 256) {
     const err = new Error('Thông tin bài blog không hợp lệ để phát thông báo.');
     err.status = 400;
     err.code = 'INVALID_BLOG_DATA';
@@ -1660,12 +1735,13 @@ export async function notifySubscribersNewPost(blogPost, options = {}) {
       notified: 0,
       totalSubscribers: 0,
       failed: 0,
+      suppressed: 0,
       message: 'Hiện chưa có người đăng ký nhận bản tin nào.',
     };
   }
 
   const clientUrl = options.clientUrl || process.env.CLIENT_URL || 'https://think-up-edu.vercel.app';
-  const postUrl = `${clientUrl}/blog/${encodeURIComponent(blogPost.slug || blogPost.id || '')}`;
+  const postUrl = `${clientUrl}/main/blog/article/${encodeURIComponent(String(postId))}`;
   const title = blogPost.title;
   const description = blogPost.description || blogPost.summary || 'Khám phá ngay bài viết mới nhất trên ThinkUp Blog!';
   const category = blogPost.category || 'Công nghệ & Lập trình';
@@ -1684,19 +1760,45 @@ export async function notifySubscribersNewPost(blogPost, options = {}) {
 
   let notifiedCount = 0;
   let failedCount = 0;
+  let suppressedCount = 0;
 
   const emailPromises = subscribers.map(async sub => {
     try {
-      await sendEmail({
-        to: sub.email,
+      const recipient = await newsletterRecipient(db, sub.email, options);
+      if (recipient.user?.email_verified && recipient.user.status === 'active' && recipient.user.is_active !== false) {
+        await createNotificationForEvent(String(recipient.user._id || recipient.user.id), {
+          eventKey: `blog-newsletter:${postId}`, category: 'transactions', kind: 'promotion',
+          title: 'Bản tin ThinkUp', message: title, sourceType: 'blog_post', sourceId: String(postId),
+          href: `/main/blog/article/${encodeURIComponent(String(postId))}`,
+        }, { ...options, db });
+      }
+      if (!recipient.email) { suppressedCount++; return; }
+      const deliveries = db.collection('newsletter_deliveries');
+      const deliveryId = crypto.createHash('sha256').update(JSON.stringify([String(postId), recipient.address])).digest('hex');
+      const timestamp = new Date(options.now ?? Date.now());
+      try {
+        await deliveries.updateOne({ _id: deliveryId }, { $setOnInsert: {
+          post_id: String(postId), status: 'pending', lease_until: null, created_at: timestamp,
+        } }, { upsert: true });
+      } catch (error) { if (error.code !== 11000) throw error; }
+      const lease = crypto.randomUUID();
+      const claimed = await deliveries.findOneAndUpdate({ _id: deliveryId, status: { $ne: 'sent' },
+        $or: [{ lease_until: null }, { lease_until: { $lte: timestamp } }] },
+      { $set: { lease_id: lease, lease_until: new Date(+timestamp + 60_000) } }, { returnDocument: 'after' });
+      if (!claimed) { suppressedCount++; return; }
+      const result = await (options.sendEmail || sendEmail)({
+        to: recipient.address,
         subject: `[ThinkUp Blog] 📢 Bài viết mới: ${title}`,
         html: htmlContent,
         text: `Bài viết mới trên ThinkUp Blog: ${title}\nChủ đề: ${category} | Thời gian đọc: ${readTime}\n${description}\n\nĐọc ngay tại: ${postUrl}`,
       });
+      if (result?.sent === false || !result?.accepted?.length) throw new Error('Newsletter delivery unavailable');
+      await deliveries.updateOne({ _id: deliveryId, lease_id: lease },
+        { $set: { status: 'sent', sent_at: timestamp, lease_until: null } });
       notifiedCount += 1;
-    } catch (err) {
+    } catch {
       failedCount += 1;
-      console.warn(`[Newsletter] Gửi email thất bại tới ${sub.email}:`, err.message);
+      console.warn('[Newsletter] Có bản tin chưa gửi được; có thể thử lại sau khi khóa xử lý hết hạn.');
     }
   });
 
@@ -1706,6 +1808,7 @@ export async function notifySubscribersNewPost(blogPost, options = {}) {
     notified: notifiedCount,
     totalSubscribers: subscribers.length,
     failed: failedCount,
+    suppressed: suppressedCount,
   };
 }
 
@@ -1731,13 +1834,6 @@ export async function uploadBlogImage(payload = {}) {
   const maxBytes = isThumbnail ? 2 * 1024 * 1024 : 5 * 1024 * 1024; // 2MB cho thumbnail, 5MB cho ảnh nội dung
   const sizeLimitLabel = isThumbnail ? '2MB' : '5MB';
 
-  if (payload.sizeBytes && payload.sizeBytes > maxBytes) {
-    const err = new Error(`Dung lượng hình ảnh vượt quá giới hạn cho phép (${sizeLimitLabel}).`);
-    err.status = 400;
-    err.code = 'IMAGE_TOO_LARGE';
-    throw err;
-  }
-
   // 2. Kiểm tra định dạng tệp (.jpg, .jpeg, .png, .webp)
   if (payload.fileName && typeof payload.fileName === 'string') {
     const validExtensions = /\.(jpe?g|png|webp)$/i;
@@ -1749,59 +1845,65 @@ export async function uploadBlogImage(payload = {}) {
     }
   }
 
-  // 3. Xử lý đường dẫn
-  if (payload.url && typeof payload.url === 'string' && payload.url.trim().startsWith('http')) {
-    return {
-      url: payload.url.trim(),
-      message: 'Liên kết ảnh hợp lệ',
-    };
+  const dataUriMatch = typeof payload.base64 === 'string'
+    ? payload.base64.match(/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/i)
+    : null;
+  if (!dataUriMatch) {
+    const err = new Error('Ảnh phải được gửi dưới dạng data URI base64 với MIME image/jpeg, image/png hoặc image/webp.');
+    err.status = 400;
+    err.code = 'INVALID_IMAGE_DATA';
+    throw err;
+  }
+  const imageBytes = Buffer.from(dataUriMatch[2], 'base64');
+  if (!imageBytes.length || imageBytes.length > maxBytes) {
+    const err = new Error(`Dung lượng hình ảnh phải lớn hơn 0 và không vượt quá ${sizeLimitLabel}.`);
+    err.status = 400;
+    err.code = imageBytes.length ? 'IMAGE_TOO_LARGE' : 'INVALID_IMAGE_DATA';
+    throw err;
   }
 
-  if (payload.base64 && typeof payload.base64 === 'string') {
-    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-    const apiKey = process.env.CLOUDINARY_API_KEY;
-    const apiSecret = process.env.CLOUDINARY_API_SECRET;
-
-    if (cloudName && apiKey && apiSecret) {
-      try {
-        const timestamp = Math.round(new Date().getTime() / 1000);
-        const folder = 'thinkup_blog_uploads';
-        const strToSign = `folder=${folder}&timestamp=${timestamp}${apiSecret}`;
-        const signature = crypto.createHash('sha1').update(strToSign).digest('hex');
-
-        const formData = new URLSearchParams();
-        formData.append('file', payload.base64);
-        formData.append('api_key', apiKey);
-        formData.append('timestamp', timestamp.toString());
-        formData.append('folder', folder);
-        formData.append('signature', signature);
-
-        const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-          method: 'POST',
-          body: formData,
-        });
-        const uploadData = await uploadRes.json();
-        if (uploadData.secure_url) {
-          return {
-            url: uploadData.secure_url,
-            message: 'Tải ảnh lên Cloudinary thành công',
-          };
-        }
-      } catch (uploadErr) {
-        console.warn('[uploadBlogImage] Cloudinary upload fallback to raw base64:', uploadErr?.message);
-      }
-    }
-
-    return {
-      url: payload.base64,
-      message: 'Tải ảnh lên thành công',
-    };
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+  if (!cloudName || !apiKey || !apiSecret) {
+    const err = new Error('Dịch vụ lưu trữ ảnh chưa được cấu hình.');
+    err.status = 503;
+    err.code = 'IMAGE_STORAGE_UNAVAILABLE';
+    throw err;
   }
 
-  return {
-    url: 'https://res.cloudinary.com/x7v2ofnh/image/upload/v1792947084/thinkup_blog_covers/cover_html_css_js.jpg',
-    message: 'Tải ảnh lên thành công',
-  };
+  const timestamp = Math.round(Date.now() / 1000);
+  const folder = 'thinkup_blog_uploads';
+  const strToSign = `folder=${folder}&timestamp=${timestamp}${apiSecret}`;
+  const signature = crypto.createHash('sha1').update(strToSign).digest('hex');
+  const formData = new URLSearchParams();
+  formData.append('file', payload.base64);
+  formData.append('api_key', apiKey);
+  formData.append('timestamp', timestamp.toString());
+  formData.append('folder', folder);
+  formData.append('signature', signature);
+
+  let uploadRes;
+  let uploadData;
+  try {
+    uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+    uploadData = await uploadRes.json();
+  } catch {
+    const err = new Error('Không thể kết nối dịch vụ lưu trữ ảnh.');
+    err.status = 502;
+    err.code = 'IMAGE_STORAGE_REQUEST_FAILED';
+    throw err;
+  }
+  if (!uploadRes.ok || !uploadData.secure_url) {
+    const err = new Error('Dịch vụ lưu trữ ảnh từ chối tải tệp lên.');
+    err.status = 502;
+    err.code = 'IMAGE_STORAGE_UPLOAD_FAILED';
+    throw err;
+  }
+  return { url: uploadData.secure_url, message: 'Tải ảnh lên Cloudinary thành công' };
 }
 
 // ─── 11. Bộ Định Tuyến Express Độc Lập (createBlogRouter) ───────────────────
@@ -1815,13 +1917,49 @@ export async function uploadBlogImage(payload = {}) {
  * @param {object} expressModule
  * @returns {import('express').Router}
  */
-export function createBlogRouter(expressModule) {
+export function createBlogRouter(expressModule, requireAuthMiddleware, requireAdminAuthMiddleware, requireDeleteAuthMiddleware, optionalAuthMiddleware) {
   const express = expressModule;
   if (!express || !express.Router) {
     throw new Error('Cần truyền module express vào createBlogRouter(express).');
   }
 
   const router = express.Router();
+
+  const passThrough = (req, res, next) => next();
+  router.use(optionalAuthMiddleware || passThrough);
+  router.use(async (req, res, next) => {
+    const isManageList = req.method === 'GET' && (
+      req.path === '/manage/posts' || req.path === '/my-posts' ||
+      (req.path === '/' && (req.query.manage === 'true' || req.query.tab))
+    );
+    const isUserWrite = (
+      req.method === 'POST' && ['/draft', '/', '/upload'].includes(req.path)
+    ) || (req.method === 'PUT' && /^\/[A-Za-z0-9_-]+$/.test(req.path));
+    const isAdminNotification = req.method === 'POST' && req.path === '/notify-subscribers';
+    const isDelete = req.method === 'DELETE' && /^\/[A-Za-z0-9_-]+$/.test(req.path);
+    const isBlogDetail = req.method === 'GET' && /^\/[^/]+$/.test(req.path) && req.path !== '/sidebar';
+    const authMiddleware = isAdminNotification
+      ? requireAdminAuthMiddleware
+      : isDelete
+        ? requireDeleteAuthMiddleware
+        : (isManageList || isUserWrite ? requireAuthMiddleware : null);
+
+    if (!authMiddleware) return next();
+    if (typeof authMiddleware !== 'function') {
+      return res.status(500).json({ message: 'Middleware xác thực Blog chưa được cấu hình.', code: 'BLOG_AUTH_NOT_CONFIGURED' });
+    }
+    return authMiddleware(req, res, async (authError) => {
+      if (authError) return next(authError);
+      try {
+        if (req.userId && (isManageList || isUserWrite || isDelete || isBlogDetail)) {
+          req.blogOwner = await resolveBlogOwner(req.userId);
+        }
+        next();
+      } catch (error) {
+        next(error);
+      }
+    });
+  });
 
   // Tự động kiểm tra và chuẩn hóa SEO & trường views trong DB ở chế độ chạy nền
   getMongoDb()
@@ -1831,7 +1969,7 @@ export function createBlogRouter(expressModule) {
   // 1. Quản lý bài viết cá nhân (/account/posts): Lọc theo 4 tab trạng thái, tìm kiếm
   router.get('/manage/posts', async (req, res, next) => {
     try {
-      const result = await getManageBlogList(req.query);
+      const result = await getManageBlogList(req.query, req.blogOwner);
       res.json(result);
     } catch (err) {
       next(err);
@@ -1841,7 +1979,7 @@ export function createBlogRouter(expressModule) {
   // Alias tương thích: /my-posts
   router.get('/my-posts', async (req, res, next) => {
     try {
-      const result = await getManageBlogList(req.query);
+      const result = await getManageBlogList(req.query, req.blogOwner);
       res.json(result);
     } catch (err) {
       next(err);
@@ -1853,7 +1991,7 @@ export function createBlogRouter(expressModule) {
   router.get('/', async (req, res, next) => {
     try {
       if (req.query.manage === 'true' || req.query.tab) {
-        const result = await getManageBlogList(req.query);
+        const result = await getManageBlogList(req.query, req.blogOwner);
         return res.json(result);
       }
       const result = await getBlogList(req.query);
@@ -1898,7 +2036,7 @@ export function createBlogRouter(expressModule) {
   // 6. Lưu bản nháp (Save Draft Flow - D1 & D2): POST /draft hoặc POST /posts/draft
   router.post('/draft', async (req, res, next) => {
     try {
-      const result = await saveDraftPost(req.body);
+      const result = await saveDraftPost(req.body, req.blogOwner);
       res.status(201).json(result);
     } catch (err) {
       next(err);
@@ -1938,7 +2076,7 @@ export function createBlogRouter(expressModule) {
   router.post('/', async (req, res, next) => {
     try {
       const isDraft = String(req.body.status).toLowerCase() === 'draft';
-      const result = await saveBlogPost(req.body, { isDraft });
+      const result = await saveBlogPost({ ...req.body, author: req.blogOwner.name, authorAvatar: req.blogOwner.avatar }, { ...req.blogOwner, isDraft });
       res.status(201).json(result);
     } catch (err) {
       next(err);
@@ -1958,7 +2096,7 @@ export function createBlogRouter(expressModule) {
   // 11. Cập nhật bài viết hiện có
   router.put('/:id', async (req, res, next) => {
     try {
-      const result = await saveBlogPost({ ...req.body, id: req.params.id });
+      const result = await saveBlogPost({ ...req.body, id: req.params.id, author: req.blogOwner.name, authorAvatar: req.blogOwner.avatar }, req.blogOwner);
       res.json(result);
     } catch (err) {
       next(err);
@@ -1968,7 +2106,9 @@ export function createBlogRouter(expressModule) {
   // 12. Xóa bài viết
   router.delete('/:id', async (req, res, next) => {
     try {
-      const result = await deleteBlogPost(req.params.id, { ownerEmail: req.query.ownerEmail });
+      const result = await deleteBlogPost(req.params.id, req.adminId
+        ? { isAdmin: true }
+        : req.blogOwner);
       res.json(result);
     } catch (err) {
       next(err);
@@ -2016,14 +2156,11 @@ export function createBlogRouter(expressModule) {
   // 17. Lấy chi tiết bài blog theo ID hoặc slug (kèm trạng thái tương tác, shareLinks, và bình luận)
   router.get('/:id', async (req, res, next) => {
     try {
-      const allowDraft = req.query.preview === 'true' || req.query.allowDraft === 'true';
-      const userEmail = req.query.userEmail || req.query.ownerEmail;
-      const userId = req.query.userId;
       const result = await getBlogDetail(req.params.id, {
-        allowDraft,
-        ownerEmail: req.query.ownerEmail,
-        userEmail,
-        userId,
+        ownerEmail: req.blogOwner?.email,
+        ownerUserId: req.blogOwner?.userId,
+        userEmail: req.blogOwner?.email,
+        userId: req.blogOwner?.userId,
       });
       res.json(result);
     } catch (err) {

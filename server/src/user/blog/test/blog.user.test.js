@@ -36,6 +36,103 @@ import {
   createBlogRouter,
 } from '../blog.user.js';
 
+function newsletterNotificationFixture() {
+  const tables = new Map();
+  const copy = value => value instanceof ObjectId ? new ObjectId(String(value)) : value instanceof Date ? new Date(value)
+    : Array.isArray(value) ? value.map(copy) : value && typeof value === 'object'
+      ? Object.fromEntries(Object.entries(value).map(([k,v]) => [k,copy(v)])) : value;
+  const equal = (a,b) => a instanceof ObjectId || b instanceof ObjectId ? String(a) === String(b)
+    : a instanceof Date || b instanceof Date ? +new Date(a) === +new Date(b) : b === null ? a == null : a === b;
+  const match = (row,query) => Object.entries(query).every(([key,value]) => {
+    if (key === '$or') return value.some(item => match(row,item));
+    if (value && typeof value === 'object' && !(value instanceof ObjectId) && !(value instanceof Date)) {
+      return Object.entries(value).every(([op,wanted]) => {
+        if (op === '$ne') return !equal(row[key],wanted);
+        if (op === '$lte') return row[key] <= wanted;
+        throw new Error(`Unsupported query ${op}`);
+      });
+    }
+    return equal(row[key],value);
+  });
+  const db = { tables,failPreferences:false,collection(name) {
+    if (db.failPreferences && name === 'notification_preferences') throw new Error('Preferences offline');
+    if (!tables.has(name)) tables.set(name,[]);
+    const rows = tables.get(name);
+    return {
+      async findOne(query) { return copy(rows.find(row => match(row,query)) ?? null); },
+      find(query) { return { project() { return this; },async toArray() { return copy(rows.filter(row => match(row,query))); } }; },
+      async insertOne(doc) {
+        const row = copy(doc);row._id ??= new ObjectId();
+        if (rows.some(item => equal(item._id,row._id))) throw Object.assign(new Error('Duplicate'),{ code:11000 });
+        rows.push(row);return { insertedId:row._id };
+      },
+      async updateOne(query,update,options = {}) {
+        let row = rows.find(row => match(row,query));
+        if (!row && options.upsert) { row = { ...copy(query),...copy(update.$setOnInsert || {}) };rows.push(row); }
+        if (!row) return { matchedCount:0 };
+        Object.assign(row,copy(update.$set || {}));return { matchedCount:1 };
+      },
+      async findOneAndUpdate(query,update) {
+        const row = rows.find(row => match(row,query));if (!row) return null;
+        Object.assign(row,copy(update.$set || {}));return copy(row);
+      },
+    };
+  } };
+  const uid = new ObjectId(),mails = [];
+  tables.set('users',[{ _id:uid,email:'member@example.test',email_verified:true,status:'active',is_active:true }]);
+  tables.set('newsletter_subscribers',[{ _id:'sub',email:'member@example.test',status:'active' }]);
+  tables.set('notification_preferences',[{ _id:String(uid),marketingOptIn:true }]);
+  const options = { db,now:Date.parse('2026-10-31T08:00:00Z'),
+    sendEmail:async message => { mails.push(message);return { accepted:[message.to] }; } };
+  const post = { id:'post-1',title:'Bài viết mới',slug:'bai-viet-moi',description:'Thông tin bài viết' };
+  return { db,options,post,mails,uid:String(uid) };
+}
+
+describe('Notification integration: Blog isolated', () => {
+  it('checks marketing/email/DND before sending while preserving one registered-user inbox entry', async () => {
+    for (const patch of [{ marketingOptIn:false },{ email:false },{ dnd:{ mode:'indefinite' } }]) {
+      const f = newsletterNotificationFixture();Object.assign(f.db.tables.get('notification_preferences')[0],patch);
+      const result = await notifySubscribersNewPost(f.post,f.options);
+      assert.equal(result.notified,0);assert.equal(result.suppressed,1);assert.equal(f.mails.length,0);
+      assert.equal(f.db.tables.get('notifications').length,1);
+    }
+  });
+  it('deduplicates inbox and actual email across repeated or concurrent publication notifications', async () => {
+    const f = newsletterNotificationFixture();
+    f.db.tables.get('newsletter_subscribers').push({ _id:'uppercase',email:'MEMBER@example.test',status:'active' });
+    await Promise.all([notifySubscribersNewPost(f.post,f.options),notifySubscribersNewPost(f.post,f.options)]);
+    await notifySubscribersNewPost(f.post,f.options);
+    assert.equal(f.mails.length,1);assert.equal(f.db.tables.get('notifications').length,1);
+    assert.equal(f.mails[0].text.includes('/main/blog/article/post-1'),true);
+  });
+  it('preserves guest subscription delivery, but never silently changes registered-user consent via a public subscribe', async () => {
+    const f = newsletterNotificationFixture();f.db.tables.get('notification_preferences')[0].marketingOptIn = false;
+    f.db.tables.set('newsletter_subscribers',[]);
+    await subscribeNewsletter({ email:'member@example.test' },f.options);
+    assert.equal(f.mails.length,0);assert.equal(f.db.tables.get('notification_preferences')[0].marketingOptIn,false);
+    await subscribeNewsletter({ email:'guest@example.test' },f.options);
+    assert.equal(f.mails.length,1);assert.equal(f.mails[0].to,'guest@example.test');
+  });
+  it('fails closed on preference errors, tracks delivery failures and allows retry after lease expiry', async () => {
+    const f = newsletterNotificationFixture();f.db.failPreferences = true;
+    assert.equal((await notifySubscribersNewPost(f.post,f.options)).failed,1);assert.equal(f.mails.length,0);
+    f.db.failPreferences = false;f.options.sendEmail = async () => ({ sent:false });
+    assert.equal((await notifySubscribersNewPost(f.post,f.options)).failed,1);
+    f.options.now += 60_001;
+    f.options.sendEmail = async message => { f.mails.push(message);return { accepted:[message.to] }; };
+    assert.equal((await notifySubscribersNewPost(f.post,f.options)).notified,1);
+    assert.equal(f.mails.length,1);assert.equal(f.db.tables.get('notifications').length,1);
+  });
+  it('does not send campaign mail or create inbox entries for unverified or suspended accounts', async () => {
+    for (const patch of [{ email_verified:false },{ status:'locked' },{ is_active:false }]) {
+      const f = newsletterNotificationFixture();Object.assign(f.db.tables.get('users')[0],patch);
+      const result = await notifySubscribersNewPost(f.post,f.options);
+      assert.equal(result.notified,0);assert.equal(f.mails.length,0);
+      assert.equal(f.db.tables.get('notifications')?.length || 0,0);
+    }
+  });
+});
+
 describe('Chức Năng Blog User (Kiểm thử đơn vị & tích hợp CSDL)', () => {
   let db;
   const testCategoryA = 'Lập trình Web Test';
@@ -43,6 +140,8 @@ describe('Chức Năng Blog User (Kiểm thử đơn vị & tích hợp CSDL)', 
   const testSubEmail1 = 'tester_newsletter_1@thinkup.vn';
   const testSubEmail2 = 'tester_newsletter_2@thinkup.vn';
   const testOwnerEmail = 'author_tester@thinkup.vn';
+  const testOwnerId = 'test_blog_owner_authenticated';
+  const otherOwnerId = 'test_blog_other_authenticated';
   const insertedBlogIds = [];
 
   before(async () => {
@@ -52,6 +151,12 @@ describe('Chức Năng Blog User (Kiểm thử đơn vị & tích hợp CSDL)', 
     // Dọn dẹp dữ liệu kiểm thử cũ nếu có
     await collection.deleteMany({ category: { $in: [testCategoryA, testCategoryB] } });
     await collection.deleteMany({ owner_email: testOwnerEmail });
+    await collection.deleteMany({ owner_user_id: { $in: [testOwnerId, otherOwnerId] } });
+    await db.collection('users').deleteMany({ id: { $in: [testOwnerId, otherOwnerId] } });
+    await db.collection('users').insertMany([
+      { id: testOwnerId, email: testOwnerEmail, full_name: 'Blog Owner' },
+      { id: otherOwnerId, email: 'other_author_tester@thinkup.vn', full_name: 'Other Owner' },
+    ]);
     await db.collection('newsletter_subscribers').deleteMany({ email: { $in: [testSubEmail1, testSubEmail2] } });
 
     // Tạo các bài viết blog mẫu cho bộ kiểm thử
@@ -123,6 +228,8 @@ describe('Chức Năng Blog User (Kiểm thử đơn vị & tích hợp CSDL)', 
       }
       await collection.deleteMany({ category: { $in: [testCategoryA, testCategoryB] } });
       await collection.deleteMany({ owner_email: testOwnerEmail });
+    await collection.deleteMany({ owner_user_id: { $in: [testOwnerId, otherOwnerId] } });
+    await db.collection('users').deleteMany({ id: { $in: [testOwnerId, otherOwnerId] } });
       await db.collection('newsletter_subscribers').deleteMany({ email: { $in: [testSubEmail1, testSubEmail2] } });
     }
     await closeMongoDb();
@@ -246,23 +353,22 @@ describe('Chức Năng Blog User (Kiểm thử đơn vị & tích hợp CSDL)', 
     });
 
     it('TC-UTIL-11: uploadBlogImage validate dung lượng và định dạng ảnh (AC-BLG-10)', async () => {
-      // 1. Thành công với ảnh hợp lệ
-      const result = await uploadBlogImage({
-        fileName: 'avatar.png',
-        sizeBytes: 1.5 * 1024 * 1024,
-        url: 'https://cdn.thinkup.vn/avatar.png',
-      });
-      assert.ok(result.url);
-
-      // 2. Báo lỗi khi ảnh thumbnail vượt quá 2MB (AC-BLG-10)
+      // URL/base64 giả không còn được trả về như thể đã lưu trữ thành công.
       await assert.rejects(
-        () => uploadBlogImage({ fileName: 'large.jpg', sizeBytes: 3 * 1024 * 1024, type: 'thumbnail' }),
-        err => err.code === 'IMAGE_TOO_LARGE'
+        () => uploadBlogImage({ url: 'https://cdn.thinkup.vn/avatar.png', fileName: 'avatar.png' }),
+        err => err.code === 'INVALID_IMAGE_DATA',
       );
 
-      // 3. Báo lỗi khi sai định dạng file (không phải jpg, png, webp)
+      // Kích thước được tính từ byte ảnh, bỏ qua sizeBytes client khai báo.
+      const oversizedImage = `data:image/jpeg;base64,${Buffer.alloc(2 * 1024 * 1024 + 1).toString('base64')}`;
       await assert.rejects(
-        () => uploadBlogImage({ fileName: 'document.pdf', sizeBytes: 500 * 1024 }),
+        () => uploadBlogImage({ fileName: 'large.jpg', sizeBytes: 1, base64: oversizedImage, type: 'thumbnail' }),
+        err => err.code === 'IMAGE_TOO_LARGE',
+      );
+
+      // Báo lỗi khi sai định dạng file (không phải jpg, png, webp).
+      await assert.rejects(
+        () => uploadBlogImage({ fileName: 'document.pdf' }),
         err => err.code === 'INVALID_IMAGE_FORMAT'
       );
     });
@@ -310,6 +416,37 @@ describe('Chức Năng Blog User (Kiểm thử đơn vị & tích hợp CSDL)', 
       assert.strictEqual(detail.post.id, savedDraftId);
       assert.strictEqual(detail.post.status, 'draft');
       assert.strictEqual(detail.post.robots, 'noindex, nofollow');
+    });
+
+    it('TC-DRAFT-AUTH-01: Chủ bài lấy từ tài khoản DB; không thể giả owner khi tạo, sửa hoặc xem draft', async () => {
+      const created = await saveDraftPost({
+        title: 'Bản nháp thuộc tài khoản đã xác thực',
+        ownerEmail: 'victim@example.com',
+        owner_email: 'victim@example.com',
+      }, { db, ownerUserId: testOwnerId, ownerEmail: testOwnerEmail });
+      insertedBlogIds.push(new ObjectId(created.id));
+      const saved = await getBlogCollection(db).findOne({ _id: new ObjectId(created.id) });
+      assert.equal(saved.owner_user_id, testOwnerId);
+      assert.equal(saved.owner_email, testOwnerEmail);
+
+      await assert.rejects(
+        () => saveBlogPost({ id: created.id, title: 'Bản nháp bị sửa bởi người khác', status: 'draft' }, {
+          db,
+          ownerUserId: otherOwnerId,
+          ownerEmail: 'other_author_tester@thinkup.vn',
+        }),
+        error => error.status === 404 && error.code === 'BLOG_NOT_FOUND',
+      );
+      await assert.rejects(
+        () => getBlogDetail(created.id, { db, allowDraft: true, ownerEmail: 'victim@example.com' }),
+        error => error.status === 404 && error.code === 'DRAFT_NOT_PUBLIC',
+      );
+      const ownerView = await getBlogDetail(created.id, {
+        db,
+        ownerUserId: testOwnerId,
+        ownerEmail: testOwnerEmail,
+      });
+      assert.equal(ownerView.post.id, created.id);
     });
   });
 

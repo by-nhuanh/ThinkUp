@@ -1,3 +1,4 @@
+import { getLearningPreferences, learningDateParts, learningUtcDate, learningDateRange } from '../learning-settings/learning-settings.user.js';
 import { getMongoDb } from '../db.js';
 import { getTransactionBillingDetail } from './billing.user.js';
 
@@ -13,7 +14,7 @@ const COLLECTION_TRANSACTIONS = 'payment_transactions';
 /**
  * Trạng thái giao dịch hợp lệ trong hệ thống.
  */
-const VALID_STATUSES = ['success', 'pending', 'failed', 'cancelled'];
+const VALID_STATUSES = ['success', 'paid', 'pending', 'failed', 'cancelled', 'expired', 'needs_review'];
 
 /**
  * Trạng thái được coi là "thành công" theo nghiệp vụ.
@@ -40,81 +41,13 @@ function parseOrderSummary(raw) {
 }
 
 /**
- * Chuyển chuỗi ngày "YYYY-MM-DD HH:MM:SS" hoặc ISO sang Date object.
+ * Chuẩn hóa ngày MongoDB Date, timestamp hoặc chuỗi ngày sang Date object.
  * Trả về null nếu không hợp lệ.
  *
- * @param {string} dateStr
+ * @param {Date|string|number} dateValue
  * @returns {Date|null}
  */
-function parseTransactionDate(dateStr) {
-  if (!dateStr) return null;
-  // "2026-07-13 19:50:53" → chuyển dấu cách thành T để Date hiểu
-  const iso = dateStr.replace(' ', 'T');
-  const d = new Date(iso);
-  return isNaN(d.getTime()) ? null : d;
-}
-
-/**
- * Tính khoảng thời gian theo tên preset (VN timezone UTC+7).
- *
- * @param {'today'|'yesterday'|'last7days'|'last30days'|'thismonth'|'lastmonth'} preset
- * @returns {{ from: Date, to: Date }}
- */
-function resolveDatePreset(preset) {
-  const now = new Date();
-  // Offset VN: UTC+7 = 7 * 60 * 60 * 1000 ms
-  const VN_OFFSET_MS = 7 * 60 * 60 * 1000;
-  // Thời điểm hiện tại theo VN
-  const vnNow = new Date(now.getTime() + VN_OFFSET_MS);
-
-  const vnYear = vnNow.getUTCFullYear();
-  const vnMonth = vnNow.getUTCMonth(); // 0-based
-  const vnDay = vnNow.getUTCDate();
-
-  // Đầu ngày hôm nay theo VN → quy đổi về UTC
-  const todayStartVN = new Date(Date.UTC(vnYear, vnMonth, vnDay, 0, 0, 0) - VN_OFFSET_MS);
-  const todayEndVN = new Date(Date.UTC(vnYear, vnMonth, vnDay, 23, 59, 59, 999) - VN_OFFSET_MS);
-
-  switch (preset) {
-    case 'today':
-      return { from: todayStartVN, to: todayEndVN };
-
-    case 'yesterday': {
-      const yStart = new Date(todayStartVN); yStart.setDate(yStart.getDate() - 1);
-      const yEnd = new Date(todayEndVN); yEnd.setDate(yEnd.getDate() - 1);
-      return { from: yStart, to: yEnd };
-    }
-
-    case 'last7days': {
-      const sevenDaysAgo = new Date(todayStartVN);
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-      return { from: sevenDaysAgo, to: todayEndVN };
-    }
-
-    case 'last30days': {
-      const thirtyDaysAgo = new Date(todayStartVN);
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
-      return { from: thirtyDaysAgo, to: todayEndVN };
-    }
-
-    case 'thismonth': {
-      const monthStart = new Date(Date.UTC(vnYear, vnMonth, 1, 0, 0, 0) - VN_OFFSET_MS);
-      const monthEnd = new Date(Date.UTC(vnYear, vnMonth + 1, 0, 23, 59, 59, 999) - VN_OFFSET_MS);
-      return { from: monthStart, to: monthEnd };
-    }
-
-    case 'lastmonth': {
-      const prevMonth = vnMonth === 0 ? 11 : vnMonth - 1;
-      const prevYear = vnMonth === 0 ? vnYear - 1 : vnYear;
-      const lastMonthStart = new Date(Date.UTC(prevYear, prevMonth, 1, 0, 0, 0) - VN_OFFSET_MS);
-      const lastMonthEnd = new Date(Date.UTC(prevYear, prevMonth + 1, 0, 23, 59, 59, 999) - VN_OFFSET_MS);
-      return { from: lastMonthStart, to: lastMonthEnd };
-    }
-
-    default:
-      return null;
-  }
-}
+function parseTransactionDate(dateValue) { return learningUtcDate(dateValue); }
 
 /**
  * Định dạng một document giao dịch thô thành object chuẩn trả về API.
@@ -164,8 +97,8 @@ function formatTransaction(doc) {
  * @param {string} userId - ID người dùng hiện tại (lấy từ JWT).
  * @returns {Promise<object[]>} Mảng transaction đã được định dạng.
  */
-async function fetchUserTransactions(userId) {
-  const db = await getMongoDb();
+async function fetchUserTransactions(userId, options = {}) {
+  const db = options.db || await getMongoDb();
   const col = db.collection(COLLECTION_TRANSACTIONS);
 
   // Lấy các định danh khả dĩ của user (hỗ trợ cả ObjectId và integer id dạng chuỗi)
@@ -239,14 +172,14 @@ export async function getPurchaseSummary(userId) {
  *
  * @param {string} userId
  * @param {object} filters
- * @param {string} [filters.status] - 'success' | 'pending' | 'failed' | 'cancelled' | '' (tất cả)
+ * @param {string} [filters.status] - 'success' | 'paid' | 'pending' | 'failed' | 'cancelled' | 'expired' | 'needs_review' | '' (tất cả)
  * @param {string} [filters.keyword] - Từ khóa tìm kiếm: khớp **mã đơn hàng (DH...)**, **mã giao dịch (GD/TXN...)** hoặc **tên khóa học**
  * @param {string} [filters.datePreset] - 'today'|'yesterday'|'last7days'|'last30days'|'thismonth'|'lastmonth'
  * @param {string} [filters.dateFrom] - Ngày bắt đầu tùy chọn (ISO string hoặc 'YYYY-MM-DD')
  * @param {string} [filters.dateTo] - Ngày kết thúc tùy chọn (ISO string hoặc 'YYYY-MM-DD')
  * @returns {Promise<{ transactions: object[], total: number }>}
  */
-export async function getPurchaseHistory(userId, filters = {}) {
+export async function getPurchaseHistory(userId, filters = {}, options = {}) {
   if (!userId) {
     const err = new Error('Yêu cầu đăng nhập để xem lịch sử mua hàng.');
     err.status = 401;
@@ -262,7 +195,9 @@ export async function getPurchaseHistory(userId, filters = {}) {
   }
 
   // Lấy toàn bộ giao dịch của user
-  let transactions = await fetchUserTransactions(userId);
+  const db = options.db || await getMongoDb();
+  const { timezone } = await getLearningPreferences(String(userId), { db });
+  let transactions = await fetchUserTransactions(userId, { db });
 
   // ── Bộ lọc 1: Trạng thái ──────────────────────────────────────────────────
   if (status) {
@@ -285,45 +220,7 @@ export async function getPurchaseHistory(userId, filters = {}) {
   }
 
   // ── Bộ lọc 3: Khoảng thời gian ───────────────────────────────────────────
-  let rangeFrom = null;
-  let rangeTo = null;
-
-  if (datePreset) {
-    const resolved = resolveDatePreset(datePreset);
-    if (resolved) {
-      rangeFrom = resolved.from;
-      rangeTo = resolved.to;
-    }
-  } else if (dateFrom || dateTo) {
-    // Khoảng thời gian tùy chọn do người dùng chọn
-    if (dateFrom) {
-      const d = new Date(dateFrom);
-      if (isNaN(d.getTime())) {
-        const err = new Error('Ngày bắt đầu không hợp lệ.');
-        err.status = 400;
-        throw err;
-      }
-      // Đầu ngày 00:00:00
-      d.setHours(0, 0, 0, 0);
-      rangeFrom = d;
-    }
-    if (dateTo) {
-      const d = new Date(dateTo);
-      if (isNaN(d.getTime())) {
-        const err = new Error('Ngày kết thúc không hợp lệ.');
-        err.status = 400;
-        throw err;
-      }
-      // Cuối ngày 23:59:59
-      d.setHours(23, 59, 59, 999);
-      rangeTo = d;
-    }
-    if (rangeFrom && rangeTo && rangeFrom > rangeTo) {
-      const err = new Error('Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.');
-      err.status = 400;
-      throw err;
-    }
-  }
+  const { from: rangeFrom, to: rangeTo } = learningDateRange({ datePreset, dateFrom, dateTo }, timezone, options.now || new Date());
 
   if (rangeFrom || rangeTo) {
     transactions = transactions.filter(t => {
@@ -336,7 +233,8 @@ export async function getPurchaseHistory(userId, filters = {}) {
   }
 
   return {
-    transactions,
+    timezone,
+    transactions: transactions.map(tx => ({ ...tx, created_at_local: learningDateParts(tx.created_at, timezone), paid_at_local: learningDateParts(tx.paid_at, timezone) })),
     total: transactions.length,
   };
 }

@@ -1,3 +1,4 @@
+import { getLearningPreferences, DEFAULT_LEARNING_PREFERENCES, learningDateParts } from '../learning-settings/learning-settings.user.js';
 /**
  * Module xử lý truy xuất chi tiết giao dịch, thông tin đơn hàng, thanh toán
  * và hóa đơn điện tử (Billing & Transaction Detail).
@@ -55,45 +56,12 @@ export function formatVND(value) {
  * @param {string|Date|null} rawDate
  * @returns {{ dateOnly: string, timeOnly: string, full: string, text: string, iso: string }|null}
  */
-export function formatDateTimeParts(rawDate) {
-  if (!rawDate) return null;
-
-  // Nếu là dạng chuỗi "YYYY-MM-DD HH:MM:SS" (đã là giờ VN trong DB)
-  const match = String(rawDate).match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
-  if (match) {
-    const [, y, m, d, hh, mm, ss] = match;
-    const dateOnly = `${d}/${m}/${y}`;
-    const timeOnly = `${hh}:${mm}:${ss}`;
-    return {
-      dateOnly,
-      timeOnly,
-      full: `${dateOnly} ${timeOnly}`,
-      text: `Ngày ${d} tháng ${m} năm ${y}, ${timeOnly}`,
-      iso: `${y}-${m}-${d}T${hh}:${mm}:${ss}+07:00`,
-    };
-  }
-
-  const dateObj = new Date(rawDate);
-  if (isNaN(dateObj.getTime())) return null;
-
-  const pad = (n) => String(n).padStart(2, '0');
-  const d = pad(dateObj.getDate());
-  const m = pad(dateObj.getMonth() + 1);
-  const y = dateObj.getFullYear();
-  const hh = pad(dateObj.getHours());
-  const mm = pad(dateObj.getMinutes());
-  const ss = pad(dateObj.getSeconds());
-
-  const dateOnly = `${d}/${m}/${y}`;
-  const timeOnly = `${hh}:${mm}:${ss}`;
-
-  return {
-    dateOnly,
-    timeOnly,
-    full: `${dateOnly} ${timeOnly}`,
-    text: `Ngày ${d} tháng ${m} năm ${y}, ${timeOnly}`,
-    iso: dateObj.toISOString(),
-  };
+export function formatDateTimeParts(rawDate, timezone = DEFAULT_LEARNING_PREFERENCES.timezone) {
+  const parts = learningDateParts(rawDate, timezone);
+  if (!parts) return null;
+  const [d, m, y] = parts.dateOnly.split('/');
+  return { dateOnly: parts.dateOnly, timeOnly: parts.timeOnly,
+    full: `${parts.dateOnly} ${parts.timeOnly}`, text: `Ngày ${d} tháng ${m} năm ${y}, ${parts.timeOnly}`, iso: parts.iso };
 }
 
 /**
@@ -110,6 +78,19 @@ function parseOrderSummary(raw) {
   } catch {
     return { courses: [], subtotal: 0, total: 0 };
   }
+}
+
+function requireSnapshotAmount(value, fieldName) {
+  const amount = Number(value);
+  if (!['number', 'string'].includes(typeof value)
+      || typeof value === 'string' && value.trim() === ''
+      || !Number.isSafeInteger(amount) || amount < 0) {
+    const error = new Error(`Snapshot đơn hàng thiếu hoặc sai dữ liệu tiền tệ: ${fieldName}.`);
+    error.status = 409;
+    error.code = 'BILLING_SNAPSHOT_INCOMPLETE';
+    throw error;
+  }
+  return amount;
 }
 
 /**
@@ -172,7 +153,7 @@ function resolveBankName(paymentMethod, customBankName) {
  * @param {string} id - Mã giao dịch (GD...) hoặc mã đơn hàng (DH...) hoặc MongoDB _id.
  * @returns {Promise<object>} Đối tượng chi tiết giao dịch & hóa đơn hoàn chỉnh.
  */
-export async function getTransactionBillingDetail(userId, id) {
+export async function getTransactionBillingDetail(userId, id, options = {}) {
   if (!userId) {
     const err = new Error('Yêu cầu đăng nhập để xem chi tiết giao dịch.');
     err.status = 401;
@@ -186,7 +167,7 @@ export async function getTransactionBillingDetail(userId, id) {
   }
 
   const queryId = String(id).trim();
-  const db = await getMongoDb();
+  const db = options.db || await getMongoDb();
   const txCol = db.collection(COLLECTION_TRANSACTIONS);
   const usersCol = db.collection(COLLECTION_USERS);
   const coursesCol = db.collection(COLLECTION_COURSES);
@@ -237,6 +218,8 @@ export async function getTransactionBillingDetail(userId, id) {
     throw err;
   }
 
+  const { timezone } = await getLearningPreferences(String(userId), { db });
+
   // 2. Truy xuất thông tin người mua (User)
   const buyerUserConditions = [
     { id: String(txDoc.user_id) },
@@ -255,12 +238,32 @@ export async function getTransactionBillingDetail(userId, id) {
   // 3. Phân tích danh sách khóa học và bổ sung thông tin từ collection courses
   const summary = parseOrderSummary(txDoc.order_summary);
   const rawCourses = Array.isArray(summary.courses) ? summary.courses : [];
+  if (rawCourses.length === 0) {
+    const error = new Error('Snapshot đơn hàng không có danh sách khóa học và giá tại thời điểm mua.');
+    error.status = 409;
+    error.code = 'BILLING_SNAPSHOT_INCOMPLETE';
+    throw error;
+  }
+
+  const snapshotSubtotalOriginal = requireSnapshotAmount(summary.subtotal, 'subtotal');
+  const snapshotSubtotalSale = requireSnapshotAmount(summary.sale_subtotal, 'sale_subtotal');
+  const voucherCode = typeof summary.voucher_code === 'string' ? summary.voucher_code : '';
+  const voucherDiscount = requireSnapshotAmount(summary.voucher_discount, 'voucher_discount');
+  const snapshotTotal = requireSnapshotAmount(summary.total, 'total');
+  if (voucherDiscount > 0 && !voucherCode) {
+    const error = new Error('Snapshot có giảm giá nhưng thiếu mã giảm giá đã áp dụng.');
+    error.status = 409;
+    error.code = 'BILLING_SNAPSHOT_INCOMPLETE';
+    throw error;
+  }
 
   const enrichedCourses = [];
-  let subtotalOriginal = 0; // Giá tạm tính theo giá gốc (không giảm giá)
-  let subtotalSale = 0;     // Tổng giá bán của các khóa học
+  let coursesSubtotalOriginal = 0;
+  let coursesSubtotalSale = 0;
 
   for (const c of rawCourses) {
+    const salePrice = requireSnapshotAmount(c.price, `courses.${c.id || 'unknown'}.price`);
+    const originalPrice = requireSnapshotAmount(c.original_price, `courses.${c.id || 'unknown'}.original_price`);
     const rawCourseId = String(c.id || '');
     const cleanId = rawCourseId.replace(/^course-/, '');
 
@@ -295,14 +298,8 @@ export async function getTransactionBillingDetail(userId, id) {
       instructorName = 'Giảng viên ThinkUp';
     }
 
-    // Giá bán thực tế (giá giảm nếu có khuyến mãi)
-    const salePrice = parseFloat(c.price ?? courseDoc?.price ?? 0) || 0;
-
-    // Giá gốc (giá niêm yết ban đầu)
-    const originalPrice = parseFloat(courseDoc?.original_price ?? courseDoc?.price ?? c.original_price ?? salePrice) || salePrice;
-
-    subtotalOriginal += originalPrice;
-    subtotalSale += salePrice;
+    coursesSubtotalOriginal += originalPrice;
+    coursesSubtotalSale += salePrice;
 
     // Ảnh bìa ưu tiên từ order_summary hoặc courseDoc
     const thumbUrl = c.thumbnail_url || c.thumbnail || courseDoc?.thumbnail_url || '';
@@ -310,7 +307,7 @@ export async function getTransactionBillingDetail(userId, id) {
     enrichedCourses.push({
       id: rawCourseId || (courseDoc ? `course-${courseDoc.course_id}` : ''),
       course_id: courseDoc?.course_id || cleanId,
-      title: courseDoc?.title || c.title || 'Khóa học ThinkUp',
+      title: c.title || courseDoc?.title || 'Khóa học ThinkUp',
       instructor: instructorName,
       price: formatVND(salePrice),
       price_number: salePrice,
@@ -323,11 +320,15 @@ export async function getTransactionBillingDetail(userId, id) {
     });
   }
 
-  // Nếu không có khóa học cụ thể nào trong order_summary nhưng có amount
-  const actualAmount = parseFloat(txDoc.amount) || 0;
-  if (enrichedCourses.length === 0 && actualAmount > 0) {
-    subtotalOriginal = actualAmount;
-    subtotalSale = actualAmount;
+  const subtotalOriginal = snapshotSubtotalOriginal;
+  const subtotalSale = snapshotSubtotalSale;
+  const actualAmount = requireSnapshotAmount(txDoc.amount, 'transaction.amount');
+  if (coursesSubtotalOriginal !== subtotalOriginal || coursesSubtotalSale !== subtotalSale
+      || Math.max(0, subtotalSale - voucherDiscount) !== snapshotTotal || actualAmount !== snapshotTotal) {
+    const error = new Error('Các khoản tiền trong snapshot không khớp với chi tiết khóa học và giao dịch.');
+    error.status = 409;
+    error.code = 'BILLING_SNAPSHOT_INCONSISTENT';
+    throw error;
   }
 
   // 4. Tính toán các khoản tiền theo yêu cầu bóc tách
@@ -335,19 +336,13 @@ export async function getTransactionBillingDetail(userId, id) {
   const courseDiscount = Math.max(0, subtotalOriginal - subtotalSale);
 
   // Mã giảm giá và số tiền giảm giá
-  const voucherCode = txDoc.voucher_code || orderDoc?.voucher_code || summary.voucher_code || '';
-  const voucherDiscount = parseFloat(txDoc.voucher_discount || orderDoc?.voucher_discount || summary.voucher_discount) || 0;
-
-  // Tổng thanh toán đơn hàng (số tiền người dùng thực sự trả sau khi trừ hết mọi khoản)
-  const totalPayment = actualAmount > 0
-    ? actualAmount
-    : Math.max(0, subtotalSale - voucherDiscount);
+  const totalPayment = snapshotTotal;
 
   // 5. Xử lý thời gian và trạng thái
   const isSuccess = txDoc.status === 'success';
-  const createdDateParts = formatDateTimeParts(txDoc.created_at);
-  const paidDateParts = formatDateTimeParts(txDoc.paid_at || (isSuccess ? txDoc.updated_at : null));
-  const completedDateParts = formatDateTimeParts(txDoc.paid_at || (isSuccess ? txDoc.updated_at : txDoc.created_at));
+  const createdDateParts = formatDateTimeParts(txDoc.created_at, timezone);
+  const paidDateParts = formatDateTimeParts(txDoc.paid_at || (isSuccess ? txDoc.updated_at : null), timezone);
+  const completedDateParts = formatDateTimeParts(txDoc.paid_at || (isSuccess ? txDoc.updated_at : txDoc.created_at), timezone);
 
   // Mã định danh
   const orderId = txDoc.order_id || txDoc.transaction_id;
@@ -482,7 +477,7 @@ export async function getTransactionBillingDetail(userId, id) {
     },
   };
 
-  return detail;
+  return { ...detail, timezone };
 }
 
 // ─── 3. Router Express Cho Module Billing ────────────────────────────────────

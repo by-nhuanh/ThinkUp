@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { readAuthToken, verifyAccessToken, setAuthCookie, clearAuthCookie, createCsrfToken } from '../../user/auth/auth.user.js';
 import bcrypt from 'bcryptjs';
 import { ObjectId } from 'mongodb';
 import { getMongoDb, signJwt, verifyJwt, sendEmail } from '../../user/db.js';
@@ -588,6 +589,25 @@ export async function loginAdminCredentials({ email, password }, options = {}) {
 /**
  * LUỒNG 2 - BƯỚC 2: Xác thực 2FA (Bằng TOTP 6 số hoặc Backup Code)
  */
+async function rejectAdmin2FAAttempt(db, admin, code, message) {
+  await db.collection('admins').updateOne(
+    { _id: admin._id },
+    { $inc: { failed_login_attempts: 1 }, $set: { updated_at: new Date() } },
+  );
+  const current = await db.collection('admins').findOne({ _id: admin._id });
+  const locked = (current?.failed_login_attempts || 0) >= MAX_LOGIN_ATTEMPTS;
+  if (locked) {
+    await db.collection('admins').updateOne(
+      { _id: admin._id },
+      { $set: { locked_until: new Date(Date.now() + LOCKOUT_DURATION_MS), updated_at: new Date() } },
+    );
+  }
+  const err = new Error(locked ? 'Bạn đã xác thực sai 5 lần. Tài khoản bị tạm khóa 15 phút.' : message);
+  err.status = locked ? 423 : 400;
+  err.code = locked ? 'ACCOUNT_TEMPORARILY_LOCKED' : code;
+  throw err;
+}
+
 export async function verifyAdmin2FA({ twoFactorToken, otp, backupCode }, options = {}) {
   const db = options.db || (await getMongoDb());
 
@@ -622,6 +642,12 @@ export async function verifyAdmin2FA({ twoFactorToken, otp, backupCode }, option
     err.code = 'ADMIN_NOT_FOUND';
     throw err;
   }
+  if (admin.locked_until && new Date(admin.locked_until).getTime() > Date.now()) {
+    const err = new Error('Tài khoản tạm thời bị khóa do xác thực sai nhiều lần.');
+    err.status = 423;
+    err.code = 'ACCOUNT_TEMPORARILY_LOCKED';
+    throw err;
+  }
 
   let isVerified = false;
   let verificationMethod = 'TOTP';
@@ -631,42 +657,66 @@ export async function verifyAdmin2FA({ twoFactorToken, otp, backupCode }, option
     const rawBackupCode = String(backupCode).trim().toUpperCase();
     const compactInput = rawBackupCode.replace(/[^A-Z0-9]/g, '');
     const backupList = admin.backup_codes || [];
-    let matchedIndex = -1;
+    let matchedCode = null;
+    let matchedHashField = null;
 
     for (let i = 0; i < backupList.length; i++) {
       if (backupList[i].is_used) continue;
       // Thử compare chuỗi gốc hoặc chuỗi compact
-      const isMatch =
-        (await bcrypt.compare(rawBackupCode, backupList[i].code_hash)) ||
-        (backupList[i].compact_hash && (await bcrypt.compare(compactInput, backupList[i].compact_hash))) ||
-        (await bcrypt.compare(compactInput, backupList[i].code_hash));
-
-      if (isMatch) {
-        matchedIndex = i;
+      if (await bcrypt.compare(rawBackupCode, backupList[i].code_hash)) {
+        matchedCode = backupList[i];
+        matchedHashField = 'code_hash';
+        break;
+      }
+      if (backupList[i].compact_hash && await bcrypt.compare(compactInput, backupList[i].compact_hash)) {
+        matchedCode = backupList[i];
+        matchedHashField = 'compact_hash';
+        break;
+      }
+      if (await bcrypt.compare(compactInput, backupList[i].code_hash)) {
+        matchedCode = backupList[i];
+        matchedHashField = 'code_hash';
         break;
       }
     }
 
-    if (matchedIndex === -1) {
-      const err = new Error('Mã dự phòng không chính xác hoặc đã được sử dụng.');
-      err.status = 400;
-      err.code = 'INVALID_BACKUP_CODE';
-      throw err;
+    if (!matchedCode) {
+      await rejectAdmin2FAAttempt(db, admin, 'INVALID_BACKUP_CODE', 'Mã dự phòng không chính xác hoặc đã được sử dụng.');
     }
 
-    // Đốt mã dự phòng (tiêu hủy)
-    backupList[matchedIndex].is_used = true;
-    backupList[matchedIndex].used_at = new Date();
-
-    await db.collection('admins').updateOne(
-      { _id: admin._id },
+    // Conditional positional update makes each backup code single-use under concurrent requests.
+    const backupCodeFilter = matchedHashField === 'compact_hash'
+      ? {
+          _id: admin._id,
+          backup_codes: {
+            $elemMatch: {
+              compact_hash: matchedCode.compact_hash,
+              is_used: { $ne: true },
+            },
+          },
+        }
+      : {
+          _id: admin._id,
+          backup_codes: {
+            $elemMatch: {
+              code_hash: matchedCode.code_hash,
+              is_used: { $ne: true },
+            },
+          },
+        };
+    const consumed = await db.collection('admins').updateOne(
+      backupCodeFilter,
       {
         $set: {
-          backup_codes: backupList,
+          'backup_codes.$.is_used': true,
+          'backup_codes.$.used_at': new Date(),
           updated_at: new Date(),
         },
       }
     );
+    if (!consumed.modifiedCount) {
+      await rejectAdmin2FAAttempt(db, admin, 'INVALID_BACKUP_CODE', 'Mã dự phòng không chính xác hoặc đã được sử dụng.');
+    }
 
     isVerified = true;
     verificationMethod = 'BACKUP_CODE';
@@ -674,10 +724,7 @@ export async function verifyAdmin2FA({ twoFactorToken, otp, backupCode }, option
     // 2. Trường hợp sử dụng OTP 6 số
     isVerified = verifyTOTP(otp, admin.two_factor_secret);
     if (!isVerified) {
-      const err = new Error('Mã xác thực không đúng hoặc đã hết hạn. Vui lòng thử lại.');
-      err.status = 400;
-      err.code = 'INVALID_OTP';
-      throw err;
+      await rejectAdmin2FAAttempt(db, admin, 'INVALID_OTP', 'Mã xác thực không đúng hoặc đã hết hạn. Vui lòng thử lại.');
     }
   } else {
     const err = new Error('Vui lòng cung cấp mã OTP 6 số hoặc mã dự phòng.');
@@ -945,6 +992,38 @@ export async function getAdminProfile(adminId, options = {}) {
 /**
  * Khởi tạo Router Express cho Admin Auth
  */
+export function createAdminAuthMiddleware() {
+  return async (req, res, next) => {
+    const token = readAuthToken(req, 'admin');
+    if (!token) {
+      return res.status(401).json({ message: 'Yêu cầu đăng nhập quản trị viên.', code: 'UNAUTHORIZED' });
+    }
+    try {
+      const payload = verifyAccessToken(token, 'admin');
+      if (!payload || !payload.adminId) {
+        return res.status(401).json({ message: 'Token không hợp lệ.', code: 'TOKEN_INVALID' });
+      }
+      const db = await getMongoDb();
+      const admin = await db.collection('admins').findOne({
+        _id: new ObjectId(payload.adminId),
+        status: 'ACTIVE',
+        is_active: { $ne: false },
+      }, { projection: { _id: 1 } });
+      if (!admin) {
+        return res.status(403).json({ message: 'Tài khoản quản trị đã bị vô hiệu hóa.', code: 'ADMIN_ACCOUNT_INACTIVE' });
+      }
+      req.adminId = payload.adminId;
+      req.adminPayload = payload;
+      next();
+    } catch (err) {
+      if (err?.name === 'JsonWebTokenError' || err?.name === 'TokenExpiredError') {
+        return res.status(401).json({ message: 'Phiên quản trị viên đã hết hạn.', code: 'TOKEN_EXPIRED' });
+      }
+      next(err);
+    }
+  };
+}
+
 export function createAdminAuthRouter(express) {
   const router = express.Router();
 
@@ -952,25 +1031,7 @@ export function createAdminAuthRouter(express) {
   const getClientIp = (req) =>
     req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket?.remoteAddress || '127.0.0.1';
 
-  // Middleware bảo vệ Admin Auth
-  const requireAdminAuth = (req, res, next) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ message: 'Yêu cầu đăng nhập quản trị viên.', code: 'UNAUTHORIZED' });
-    }
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : authHeader.trim();
-    try {
-      const payload = verifyJwt(token);
-      if (!payload || !payload.adminId) {
-        return res.status(401).json({ message: 'Token không hợp lệ.', code: 'TOKEN_INVALID' });
-      }
-      req.adminId = payload.adminId;
-      req.adminPayload = payload;
-      next();
-    } catch (err) {
-      return res.status(401).json({ message: 'Phiên quản trị viên đã hết hạn.', code: 'TOKEN_EXPIRED' });
-    }
-  };
+  const requireAdminAuth = createAdminAuthMiddleware();
 
   // Middleware kiểm tra Hard Block mật khẩu hết hạn 90 ngày (BR-SPEC-03)
   const checkPasswordHardBlock = (req, res, next) => {
@@ -1014,6 +1075,7 @@ export function createAdminAuthRouter(express) {
         ip: getClientIp(req),
         userAgent: req.headers['user-agent'],
       });
+      setAuthCookie(res, result, 'admin', req.body.rememberMe);
       res.json(result);
     } catch (err) {
       next(err);
@@ -1027,6 +1089,7 @@ export function createAdminAuthRouter(express) {
         ip: getClientIp(req),
         userAgent: req.headers['user-agent'],
       });
+      setAuthCookie(res, result, 'admin', req.body.rememberMe);
       res.json(result);
     } catch (err) {
       next(err);
@@ -1039,6 +1102,7 @@ export function createAdminAuthRouter(express) {
         ip: getClientIp(req),
         userAgent: req.headers['user-agent'],
       });
+      setAuthCookie(res, result, 'admin', req.body.rememberMe);
       res.json(result);
     } catch (err) {
       next(err);
@@ -1068,6 +1132,7 @@ export function createAdminAuthRouter(express) {
           userAgent: req.headers['user-agent'],
         }
       );
+      setAuthCookie(res, result, 'admin', req.body.rememberMe);
       res.json(result);
     } catch (err) {
       next(err);
@@ -1077,10 +1142,21 @@ export function createAdminAuthRouter(express) {
   router.get('/me', requireAdminAuth, checkPasswordHardBlock, async (req, res, next) => {
     try {
       const result = await getAdminProfile(req.adminId);
+      res.set('Cache-Control', 'no-store');
       res.json(result);
     } catch (err) {
       next(err);
     }
+  });
+
+  router.get('/csrf', requireAdminAuth, (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.json({ csrfToken: createCsrfToken(readAuthToken(req, 'admin'), 'admin') });
+  });
+
+  router.post('/logout', (req, res) => {
+    clearAuthCookie(res, 'admin');
+    res.json({ success: true, message: 'Đăng xuất thành công' });
   });
 
   return router;

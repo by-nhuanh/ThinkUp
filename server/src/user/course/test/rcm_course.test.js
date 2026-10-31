@@ -133,6 +133,7 @@ describe('Kiểm thử Module Gợi ý Khóa Học (rcm_course)', () => {
       assert.ok(res.recommendations.length <= 4);
       assert.equal(res.budget.source, null);
       for (const r of res.recommendations) assert.equal(r.score_breakdown.budget, 0);
+      for (const r of res.recommendations) assert.equal(r.recommendation_method, 'rules');
       const scores = res.recommendations.map((r) => r.recommend_score);
       assert.deepEqual(scores, [...scores].sort((a, b) => b - a));
     });

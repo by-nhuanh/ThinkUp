@@ -1,3 +1,5 @@
+import { getLearningPreferences, DEFAULT_LEARNING_PREFERENCES } from '../learning-settings/learning-settings.user.js';
+import { hasCourseEnrollment } from '../course/course.user.js';
 import { ObjectId } from 'mongodb';
 import { getMongoDb } from '../db.js';
 
@@ -12,6 +14,7 @@ export const COLLECTION_USER_LESSON_PROGRESS = 'user_lesson_progress';
 export const COLLECTION_USER_COURSE_PROGRESS = 'user_course_progress';
 export const COLLECTION_REVIEWS = 'course_reviews';
 export const COLLECTION_ENROLLMENTS = 'user_enrollments';
+export const COLLECTION_USER_COURSES = 'user_courses';
 export const COLLECTION_DISCUSSIONS = 'course_discussions';
 export const COLLECTION_DISCUSSION_LIKES = 'course_discussion_likes';
 export const COLLECTION_DISCUSSION_REPORTS = 'course_discussion_reports';
@@ -188,14 +191,14 @@ export function formatFileSize(bytes) {
  * @param {string|null} userId
  * @returns {Promise<Object>}
  */
-export async function getCourseStudyCurriculum(courseIdOrSlug, userId = null) {
+export async function getCourseStudyCurriculum(courseIdOrSlug, userId = null, options = {}) {
   if (!courseIdOrSlug) {
     const error = new Error('Mã định danh hoặc đường dẫn khóa học (courseIdOrSlug) là bắt buộc.');
     error.status = 400;
     throw error;
   }
 
-  const db = await getMongoDb();
+  const db = options.db || await getMongoDb();
   const cleanParam = String(courseIdOrSlug).trim();
 
   // 1. Tìm thông tin khóa học
@@ -478,6 +481,7 @@ export async function getCourseStudyCurriculum(courseIdOrSlug, userId = null) {
 
   // 10. Tập hợp đầy đủ 5 khối theo yêu cầu
   return {
+    learning_preferences: userId ? await getLearningPreferences(String(userId), { db }) : { ...DEFAULT_LEARNING_PREFERENCES, revision: 0 },
     // ── Khối 1: Thông tin khóa học & Giảng viên ──
     course: {
       course_id: targetCourseId,
@@ -583,36 +587,94 @@ export async function updateLessonProgress(userId, courseId, lessonId, payload =
 
   const db = await getMongoDb();
   const uid = String(userId);
-  const cid = String(courseId);
+  const requestedCourseId = String(courseId).trim();
   const lid = String(lessonId);
 
-  const status = payload.status || 'completed'; // 'completed' | 'in_progress'
-  const timeSpent = Math.max(0, parseInt(payload.time_spent_seconds, 10) || 0);
+  if (!requestedCourseId || !lid) {
+    const error = new Error('courseId và lessonId phải có giá trị hợp lệ.');
+    error.status = 400;
+    throw error;
+  }
+
+  const status = payload.status === undefined ? 'in_progress' : payload.status;
+  if (!['completed', 'in_progress'].includes(status)) {
+    const error = new Error('status chỉ được là completed hoặc in_progress.');
+    error.status = 400;
+    throw error;
+  }
+
+  const timeSpent = payload.time_spent_seconds === undefined ? 0 : payload.time_spent_seconds;
+  if (!Number.isSafeInteger(timeSpent) || timeSpent < 0) {
+    const error = new Error('time_spent_seconds phải là số nguyên không âm.');
+    error.status = 400;
+    throw error;
+  }
+
+  const courseConditions = [
+    { course_id: requestedCourseId },
+    { slug: requestedCourseId },
+  ];
+  if (ObjectId.isValid(requestedCourseId)) {
+    courseConditions.push({ _id: new ObjectId(requestedCourseId) });
+  }
+  const courseDoc = await db.collection(COLLECTION_COURSES).findOne({ $or: courseConditions });
+  if (!courseDoc) {
+    const error = new Error('Khóa học không tồn tại.');
+    error.status = 404;
+    throw error;
+  }
+
+  const courseIds = [...new Set([
+    courseDoc.course_id,
+    courseDoc.id,
+    courseDoc._id ? String(courseDoc._id) : null,
+  ].filter(value => value !== undefined && value !== null).map(String))];
+  const cid = String(courseDoc.course_id || courseDoc._id);
+
+  const lesson = await db.collection(COLLECTION_LESSONS).findOne({
+    lesson_id: lid,
+    course_id: { $in: courseIds },
+  });
+  if (!lesson) {
+    const error = new Error('Bài học không tồn tại trong khóa học này.');
+    error.status = 404;
+    throw error;
+  }
+
+  const ownershipFilter = {
+    $and: [
+      { $or: [{ user_id: uid }, { userId: uid }] },
+      { course_id: { $in: courseIds } },
+    ],
+  };
+  const [enrollment, userCourse] = await Promise.all([
+    db.collection(COLLECTION_ENROLLMENTS).findOne(ownershipFilter),
+    db.collection(COLLECTION_USER_COURSES).findOne(ownershipFilter),
+  ]);
+  if (!enrollment && !userCourse) {
+    const error = new Error('Bạn chưa được ghi danh khóa học này.');
+    error.status = 403;
+    error.code = 'COURSE_ENROLLMENT_REQUIRED';
+    throw error;
+  }
+
+  if (status === 'completed') {
+    const error = new Error('Backend chưa có bằng chứng độc lập để xác minh bài học đã hoàn thành.');
+    error.status = 409;
+    error.code = 'LESSON_COMPLETION_UNVERIFIED';
+    throw error;
+  }
 
   const updateDoc = {
     user_id: uid,
     course_id: cid,
     lesson_id: lid,
     status: status,
+    is_completed: false,
     updated_at: new Date(),
   };
 
-  if (status === 'completed') {
-    updateDoc.is_completed = true;
-    updateDoc.completed_at = new Date();
-  }
-
-  if (timeSpent > 0) {
-    updateDoc.time_spent_seconds = timeSpent;
-  }
-
-  if (payload.quiz_result) {
-    updateDoc.quiz_result = payload.quiz_result;
-  }
-
-  if (payload.lab_result) {
-    updateDoc.lab_result = payload.lab_result;
-  }
+  updateDoc.time_spent_seconds = timeSpent;
 
   // 1. Upsert tiến độ bài học
   await db.collection(COLLECTION_USER_LESSON_PROGRESS).updateOne(
@@ -622,9 +684,7 @@ export async function updateLessonProgress(userId, courseId, lessonId, payload =
   );
 
   // 2. Tính lại tiến độ toàn khóa
-  const totalLessons = await db.collection(COLLECTION_LESSONS).countDocuments({
-    course_id: cid,
-  });
+  const totalLessons = await db.collection(COLLECTION_LESSONS).countDocuments({ course_id: { $in: courseIds } });
 
   const completedCount = await db.collection(COLLECTION_USER_LESSON_PROGRESS).countDocuments({
     user_id: uid,
@@ -1562,17 +1622,39 @@ export async function replyQnaQuestion({ qnaId, userId, content }) {
     $or: [{ _id: ObjectId.isValid(qnaId) ? new ObjectId(qnaId) : null }, { _id: String(qnaId) }].filter(Boolean),
   };
 
-  const parentDoc = await db.collection(COLLECTION_QNA).findOne(qidQuery);
-  if (!parentDoc) {
+  const requestedDoc = await db.collection(COLLECTION_QNA).findOne(qidQuery);
+  if (!requestedDoc) {
     const error = new Error('Câu hỏi gốc không tồn tại.');
     error.status = 404;
     throw error;
   }
 
-  // Luôn gắn vào câu hỏi gốc (duy trì 2 tầng)
-  const targetParentId = parentDoc.parent_id ? String(parentDoc.parent_id) : String(parentDoc._id);
+  const rootId = requestedDoc.parent_id ? String(requestedDoc.parent_id) : String(requestedDoc._id);
+  const parentDoc = requestedDoc.parent_id
+    ? await db.collection(COLLECTION_QNA).findOne({
+        $or: [
+          { _id: ObjectId.isValid(rootId) ? new ObjectId(rootId) : null },
+          { _id: rootId },
+        ].filter(Boolean),
+      })
+    : requestedDoc;
+  if (!parentDoc || parentDoc.parent_id) {
+    const error = new Error('Không tìm thấy câu hỏi gốc hợp lệ.');
+    error.status = 404;
+    throw error;
+  }
 
-  // Lấy thông tin user đăng
+  const courseConditions = [{ course_id: String(parentDoc.course_id) }];
+  if (ObjectId.isValid(String(parentDoc.course_id))) {
+    courseConditions.push({ _id: new ObjectId(String(parentDoc.course_id)) });
+  }
+  const courseDoc = await db.collection(COLLECTION_COURSES).findOne({ $or: courseConditions });
+  if (!courseDoc) {
+    const error = new Error('Khóa học của câu hỏi không còn tồn tại.');
+    error.status = 404;
+    throw error;
+  }
+
   const [userDoc, instDoc] = await Promise.all([
     db.collection(COLLECTION_USERS).findOne({
       $or: [{ id: uid }, { _id: ObjectId.isValid(uid) ? new ObjectId(uid) : null }].filter(Boolean),
@@ -1582,7 +1664,27 @@ export async function replyQnaQuestion({ qnaId, userId, content }) {
     }),
   ]);
 
-  const isInstructor = !!instDoc || userDoc?.role === 'instructor' || userDoc?.role === 'admin';
+  const courseInstructorId = String(courseDoc.instructor_id || '');
+  const instructorIds = new Set([
+    uid,
+    instDoc?.instructor_id ? String(instDoc.instructor_id) : null,
+    instDoc?.user_id ? String(instDoc.user_id) : null,
+    userDoc?.instructor_id ? String(userDoc.instructor_id) : null,
+  ].filter(Boolean));
+  const isAssignedInstructor = Boolean(courseInstructorId && instructorIds.has(courseInstructorId))
+    && (Boolean(instDoc) || userDoc?.role === 'instructor');
+  const isQuestionOwner = String(parentDoc.student_id || '') === uid;
+
+  if (!isQuestionOwner && !isAssignedInstructor) {
+    const error = new Error('Bạn không có quyền phản hồi cuộc hỏi đáp này.');
+    error.status = 403;
+    error.code = 'QNA_REPLY_FORBIDDEN';
+    throw error;
+  }
+
+  // Luôn gắn vào câu hỏi gốc (duy trì 2 tầng)
+  const targetParentId = String(parentDoc._id);
+  const isInstructor = isAssignedInstructor;
   const newReply = {
     course_id: parentDoc.course_id,
     student_id: parentDoc.student_id, // Kế thừa để giữ nguyên phiên 1-1
@@ -1675,14 +1777,14 @@ export async function updateQnaContent({ qnaId, userId, content }) {
  * @param {string} courseIdOrSlug
  * @returns {Promise<Object>}
  */
-export async function getCourseDocuments(courseIdOrSlug) {
+export async function getCourseDocuments(courseIdOrSlug, userId = null, options = {}) {
   if (!courseIdOrSlug) {
     const error = new Error('courseIdOrSlug là bắt buộc.');
     error.status = 400;
     throw error;
   }
 
-  const db = await getMongoDb();
+  const db = options.db || await getMongoDb();
   const cleanParam = String(courseIdOrSlug).trim();
 
   const courseDoc = await db.collection(COLLECTION_COURSES).findOne({
@@ -1693,83 +1795,17 @@ export async function getCourseDocuments(courseIdOrSlug) {
     ],
   });
 
+  if (!courseDoc) throw Object.assign(new Error('Khóa học không tồn tại.'), { status: 404 });
+  const enrolled = await hasCourseEnrollment(courseDoc, userId, { db });
+
   const targetCourseId = courseDoc ? String(courseDoc.course_id || courseDoc._id) : cleanParam;
 
-  let docList = await db.collection(COLLECTION_DOCUMENTS).find({
+  const docList = await db.collection(COLLECTION_DOCUMENTS).find({
     $or: [
       { course_id: targetCourseId },
       ...(courseDoc ? [{ course_id: courseDoc.course_id }, { course_id: String(courseDoc._id) }] : []),
     ],
   }).sort({ category: 1, created_at: -1 }).toArray();
-
-  // Nếu trong CSDL chưa có tài liệu nào, tự động tạo bộ mock data chuẩn 3 mục theo đúng BA
-  if (docList.length === 0) {
-    docList = [
-      // 1. Tài liệu bài giảng
-      {
-        _id: 'doc_slide_01',
-        course_id: targetCourseId,
-        category: 'lecture_slides',
-        title: 'Slide bài giảng: Cấu trúc điều khiển và Vòng lặp Python',
-        file_name: 'Python_Control_Flow_Slides_v2.pdf',
-        file_type: 'pdf',
-        file_size_bytes: 4823449,
-        file_url: 'https://example.com/docs/slides_control_flow.pdf',
-        download_count: 142,
-        updated_at: new Date(Date.now() - 2 * 86400000),
-      },
-      {
-        _id: 'doc_slide_02',
-        course_id: targetCourseId,
-        category: 'lecture_slides',
-        title: 'Tóm tắt lý thuyết: Hàm và Cấu trúc dữ liệu trong Python',
-        file_name: 'Python_Functions_Data_Structures_Cheatsheet.pdf',
-        file_type: 'pdf',
-        file_size_bytes: 2516582,
-        file_url: 'https://example.com/docs/cheatsheet.pdf',
-        download_count: 98,
-        updated_at: new Date(Date.now() - 5 * 86400000),
-      },
-      // 2. Mã nguồn bài tập
-      {
-        _id: 'doc_code_01',
-        course_id: targetCourseId,
-        category: 'source_code',
-        title: 'Mã nguồn mẫu: Toàn bộ bài tập thực hành Chương 1 - 4',
-        file_name: 'Python_Basic_Exercises_SourceCode.zip',
-        file_type: 'zip',
-        file_size_bytes: 12582912,
-        file_url: 'https://example.com/docs/source_code.zip',
-        download_count: 215,
-        updated_at: new Date(Date.now() - 86400000),
-      },
-      {
-        _id: 'doc_code_02',
-        course_id: targetCourseId,
-        category: 'source_code',
-        title: 'Jupyter Notebook: Phân tích dữ liệu mẫu với Python',
-        file_name: 'Python_Data_Analysis_Lab.ipynb',
-        file_type: 'ipynb',
-        file_size_bytes: 1843200,
-        file_url: 'https://example.com/docs/lab.ipynb',
-        download_count: 76,
-        updated_at: new Date(Date.now() - 3 * 86400000),
-      },
-      // 3. Dữ liệu thực hành
-      {
-        _id: 'doc_data_01',
-        course_id: targetCourseId,
-        category: 'exercises_data',
-        title: 'Tập dữ liệu thực hành: Danh sách khách hàng và đơn hàng mẫu',
-        file_name: 'Customer_Orders_Dataset_2026.csv',
-        file_type: 'csv',
-        file_size_bytes: 3565158,
-        file_url: 'https://example.com/docs/customers.csv',
-        download_count: 180,
-        updated_at: new Date(Date.now() - 4 * 86400000),
-      },
-    ];
-  }
 
   // Chuẩn hóa và gom nhóm theo 3 mục
   const categorized = {
@@ -1796,8 +1832,9 @@ export async function getCourseDocuments(courseIdOrSlug) {
       file_size_formatted: doc.file_size_formatted || formatFileSize(doc.file_size_bytes || 0),
       download_count: parseInt(doc.download_count, 10) || 0,
       download_url: `/api/user/lessons/documents/${String(doc.document_id || doc._id)}/download`,
-      file_url: doc.file_url || '',
-      updated_at: doc.updated_at || new Date(),
+      can_download: Boolean(userId && (enrolled || doc.is_free === true || String(doc.is_free) === '1' || doc.is_preview === true) && doc.file_url),
+      file_url: userId && (enrolled || doc.is_free === true || String(doc.is_free) === '1' || doc.is_preview === true) ? doc.file_url || '' : '',
+      updated_at: doc.updated_at || null,
       updated_at_formatted: formatRelativeTime(doc.updated_at),
     };
 
@@ -1841,14 +1878,15 @@ export async function getCourseDocuments(courseIdOrSlug) {
  * @param {string} documentId
  * @returns {Promise<Object>}
  */
-export async function downloadCourseDocument(documentId) {
+export async function downloadCourseDocument(documentId, userId, options = {}) {
   if (!documentId) {
     const error = new Error('documentId là bắt buộc.');
     error.status = 400;
     throw error;
   }
 
-  const db = await getMongoDb();
+  if (!userId) throw Object.assign(new Error('Yêu cầu đăng nhập để tải tài liệu.'), { status: 401 });
+  const db = options.db || await getMongoDb();
   const docQuery = {
     $or: [
       { _id: ObjectId.isValid(documentId) ? new ObjectId(documentId) : null },
@@ -1859,13 +1897,29 @@ export async function downloadCourseDocument(documentId) {
 
   const doc = await db.collection(COLLECTION_DOCUMENTS).findOne(docQuery);
   if (!doc) {
-    return {
-      success: true,
-      document_id: String(documentId),
-      download_url: 'https://example.com/demo-download-file.pdf',
-      message: 'Lấy link tải tài liệu thành công (môi trường Demo).',
-    };
+    const error = new Error('Không tìm thấy tài liệu khóa học.');
+    error.status = 404;
+    error.code = 'COURSE_DOCUMENT_NOT_FOUND';
+    throw error;
   }
+
+  const courseId = String(doc.course_id || '');
+  const course = await db.collection(COLLECTION_COURSES).findOne({ $or: [{ course_id: courseId }, { id: courseId },
+    ...(ObjectId.isValid(courseId) ? [{ _id: new ObjectId(courseId) }] : [])] });
+  if (!course) throw Object.assign(new Error('Khóa học không tồn tại.'), { status: 404 });
+  if (!(doc.is_free === true || String(doc.is_free) === '1' || doc.is_preview === true) &&
+      !await hasCourseEnrollment(course, userId, { db }))
+    throw Object.assign(new Error('Bạn cần đăng ký khóa học để tải tài liệu.'), { status: 403, code: 'REQUIRE_ENROLLMENT' });
+  const preferences = await getLearningPreferences(String(userId), { db });
+  if (typeof doc.file_url !== 'string' || !doc.file_url.trim()) {
+    const error = new Error('Tài liệu chưa có đường dẫn lưu trữ để tải.');
+    error.status = 409;
+    error.code = 'COURSE_DOCUMENT_FILE_UNAVAILABLE';
+    throw error;
+  }
+
+  if (!/^https?:\/\/[^\s\\]+$/i.test(doc.file_url) && !/^\/(?!\/)[^\s\\]*$/.test(doc.file_url))
+    throw Object.assign(new Error('Đường dẫn tải tài liệu chưa hợp lệ.'), { status: 409, code: 'COURSE_DOCUMENT_FILE_UNAVAILABLE' });
 
   // Tăng download_count
   await db.collection(COLLECTION_DOCUMENTS).updateOne(docQuery, {
@@ -1876,7 +1930,8 @@ export async function downloadCourseDocument(documentId) {
     success: true,
     document_id: String(doc._id),
     file_name: doc.file_name,
-    download_url: doc.file_url || 'https://example.com/download.pdf',
+    download_url: doc.file_url,
+    download: { quality: 'original', location: 'browser', requestedQuality: preferences.downloadQuality, requestedLocation: preferences.downloadLocation },
     download_count: (parseInt(doc.download_count, 10) || 0) + 1,
   };
 }
@@ -1913,6 +1968,7 @@ export function createLessonRouter(express, requireAuth, optionalAuth) {
   // GET /api/user/lessons/study/:courseId - Truy xuất toàn bộ 5 khối dữ liệu màn hình học tập
   router.get('/study/:courseId', extractAuth, async (req, res, next) => {
     try {
+      res.set('Cache-Control', 'no-store');
       const { courseId } = req.params;
       const userId = req.userId || null;
       const data = await getCourseStudyCurriculum(courseId, userId);
@@ -2117,8 +2173,9 @@ export function createLessonRouter(express, requireAuth, optionalAuth) {
   // GET /api/user/lessons/documents/:courseId - Lấy danh mục tài liệu phân 3 mục
   router.get('/documents/:courseId', extractAuth, async (req, res, next) => {
     try {
+      res.set('Cache-Control', 'no-store');
       const { courseId } = req.params;
-      const result = await getCourseDocuments(courseId);
+      const result = await getCourseDocuments(courseId, req.userId || null);
       res.json({
         success: true,
         data: result,
@@ -2129,10 +2186,11 @@ export function createLessonRouter(express, requireAuth, optionalAuth) {
   });
 
   // GET /api/user/lessons/documents/:id/download - Tải tài liệu & Tăng lượt tải
-  router.get('/documents/:id/download', extractAuth, async (req, res, next) => {
+  router.get('/documents/:id/download', enforceAuth, async (req, res, next) => {
     try {
+      res.set('Cache-Control', 'no-store');
       const { id } = req.params;
-      const result = await downloadCourseDocument(id);
+      const result = await downloadCourseDocument(id, req.userId);
       res.json({
         success: true,
         data: result,

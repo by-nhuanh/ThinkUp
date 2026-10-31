@@ -1,132 +1,54 @@
-/**
- * Cổng Thanh Toán Stripe Sandbox (Quốc tế: Visa, MasterCard, Apple Pay, Google Pay, PayPal)
- *
- * Nhiệm vụ:
- * 1. Khởi tạo Stripe Checkout Session hoặc PaymentIntent.
- * 2. Xử lý Stripe Webhook:
- *    - Xác thực signature Stripe `stripe-signature` với `STRIPE_WEBHOOK_SECRET`.
- *    - Lắng nghe event `checkout.session.completed` hoặc `payment_intent.succeeded`.
- *    - Gọi fulfillPaymentSuccess() để tự động kích hoạt khóa học & dọn giỏ hàng & gửi hóa đơn.
- */
+import { createHmac, timingSafeEqual } from 'node:crypto';
+import { getMongoDb } from '../../db.js';
+import { configured, paymentMoney, paymentError, fulfillPaymentSuccess } from '../payment.service.js';
 
-import { fulfillPaymentSuccess, checkPaymentStatus } from '../payment.service.js';
-
-/**
- * Khởi tạo Stripe Checkout Session thông qua Stripe REST API trực tiếp
- * (Không bắt buộc cài thêm thư viện npm nặng, dùng trực tiếp REST API của Stripe)
- *
- * @param {object} params
- * @param {string} params.transactionId
- * @param {string} params.orderId
- * @param {number} params.amount - Số tiền VND
- * @param {Array<{title: string, price: number}>} params.courses
- * @param {string} [params.customerEmail]
- * @returns {Promise<{ sessionId: string, url: string }>}
- */
-export async function createStripeCheckoutSession({
-  transactionId,
-  orderId,
-  amount,
-  courses = [],
-  customerEmail = '',
-}) {
-  const secretKey = process.env.STRIPE_SECRET_KEY;
-  if (!secretKey) {
-    throw new Error('Chưa cấu hình STRIPE_SECRET_KEY trong file .env');
-  }
-
-  const clientUrl = process.env.CLIENT_URL || 'http://localhost:4200';
-  const successUrl = `${clientUrl}/main/checkout/result?session_id={CHECKOUT_SESSION_ID}&transaction_id=${transactionId}&status=success`;
-  const cancelUrl = `${clientUrl}/main/checkout/result?transaction_id=${transactionId}&status=cancelled`;
-
-  // Chuẩn bị line items cho Stripe
-  const params = new URLSearchParams();
-  params.append('payment_method_types[0]', 'card');
-  params.append('payment_method_types[1]', 'paypal'); // Bật cả PayPal qua Stripe
-  params.append('mode', 'payment');
-  params.append('success_url', successUrl);
-  params.append('cancel_url', cancelUrl);
-  params.append('client_reference_id', transactionId);
-  params.append('metadata[orderId]', orderId);
-  params.append('metadata[transactionId]', transactionId);
-
-  if (customerEmail) {
-    params.append('customer_email', customerEmail);
-  }
-
-  // Stripe VND là zero-decimal (không nhân 100)
-  if (courses.length > 0) {
-    courses.forEach((course, index) => {
-      params.append(`line_items[${index}][price_data][currency]`, 'vnd');
-      params.append(`line_items[${index}][price_data][product_data][name]`, course.title || 'Khóa học ThinkUp');
-      params.append(`line_items[${index}][price_data][unit_amount]`, String(Math.round(course.price || course.salePrice || amount)));
-      params.append(`line_items[${index}][quantity]`, '1');
-    });
-  } else {
-    params.append('line_items[0][price_data][currency]', 'vnd');
-    params.append('line_items[0][price_data][product_data][name]', `Đơn hàng ThinkUp #${orderId}`);
-    params.append('line_items[0][price_data][unit_amount]', String(Math.round(amount)));
-    params.append('line_items[0][quantity]', '1');
-  }
-
-  const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${secretKey}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: params.toString(),
-  });
-
-  const session = await response.json();
-  if (!response.ok) {
-    throw new Error(session.error?.message || 'Không thể tạo phiên thanh toán Stripe');
-  }
-
-  return {
-    sessionId: session.id,
-    url: session.url,
-  };
+export async function stripeRequest(path, {method='GET',params,idempotencyKey}={}, options={}) {
+  const secret=configured('STRIPE_SECRET_KEY');
+  let response;
+  try{response=await (options.fetch || fetch)(`https://api.stripe.com/v1/${path}`,{method,
+    headers:{Authorization:`Bearer ${secret}`,...(params?{'Content-Type':'application/x-www-form-urlencoded'}:{}),...(idempotencyKey?{'Idempotency-Key':idempotencyKey}:{})},
+    ...(params?{body:params.toString()}:{}),signal:AbortSignal.timeout(10000)});}catch{throw paymentError('Không kết nối được Stripe.',503,'GATEWAY_UNAVAILABLE');}
+  if(!response.ok)throw paymentError('Stripe chưa xử lý được yêu cầu.',503,'GATEWAY_UNAVAILABLE');
+  try{return await response.json();}catch{throw paymentError('Phản hồi Stripe không hợp lệ.',503,'GATEWAY_UNAVAILABLE');}
 }
-
-/**
- * Xử lý webhook từ Stripe khi thanh toán quốc tế thành công
- *
- * @param {object} event - Stripe Event Object
- * @returns {Promise<{ success: boolean, message: string }>}
- */
-export async function handleStripeWebhookEvent(event) {
-  const eventType = event.type;
-
-  if (eventType === 'checkout.session.completed' || eventType === 'payment_intent.succeeded') {
-    const object = event.data?.object || {};
-    const transactionId = object.client_reference_id || object.metadata?.transactionId;
-
-    if (!transactionId) {
-      return { success: false, message: 'Không tìm thấy transactionId trong metadata Stripe event' };
-    }
-
-    // Kiểm tra hết hạn
-    const currentTx = await checkPaymentStatus(transactionId);
-    if (currentTx.status === 'expired') {
-      return { success: false, message: `Giao dịch ${transactionId} đã quá hạn 15 phút` };
-    }
-
-    const paidAmount = Number(object.amount_total || object.amount || 0);
-
-    const result = await fulfillPaymentSuccess({
-      transactionId,
-      gatewayTransactionNo: object.id,
-      paidAmount: paidAmount > 0 ? paidAmount : currentTx.amount,
-      gatewayPayload: event,
-    });
-
-    return {
-      success: true,
-      message: 'Kích hoạt đơn hàng thành công từ Stripe Webhook',
-      orderId: result.orderId,
-    };
-  }
-
-  return { success: true, message: `Bỏ qua sự kiện Stripe: ${eventType}` };
+export async function createStripeCheckoutSession({transactionId,orderId,amount},options={}){
+  configured('STRIPE_WEBHOOK_SECRET');
+  const client=new URL(configured('CLIENT_URL').split(',')[0]);
+  const success=new URL('/main/checkout/result',client);success.searchParams.set('transaction_id',transactionId);
+  const cancel=new URL(success);cancel.searchParams.set('status','cancelled');
+  const params=new URLSearchParams({mode:'payment',success_url:success.toString(),cancel_url:cancel.toString(),client_reference_id:transactionId,
+    'metadata[transactionId]':transactionId,'metadata[orderId]':orderId,
+    'line_items[0][price_data][currency]':'vnd','line_items[0][price_data][product_data][name]':`Đơn hàng ThinkUp ${orderId}`,
+    'line_items[0][price_data][unit_amount]':String(paymentMoney(amount)),'line_items[0][quantity]':'1'});
+  const result=await stripeRequest('checkout/sessions',{method:'POST',params,idempotencyKey:`thinkup-${transactionId}`},options);
+  if(typeof result.id!=='string'||typeof result.url!=='string'||new URL(result.url).protocol!=='https:')throw paymentError('Phiên Stripe không hợp lệ.',503,'GATEWAY_UNAVAILABLE');
+  return {sessionId:result.id,url:result.url};
+}
+export function verifyStripeEvent(rawBody,signature,now=Date.now()){
+  const secret=configured('STRIPE_WEBHOOK_SECRET');
+  if(!Buffer.isBuffer(rawBody)||typeof signature!=='string')throw paymentError('Thiếu chữ ký Stripe.',400,'WEBHOOK_SIGNATURE_INVALID');
+  const parts=signature.split(',').map(s=>s.trim().split('='));
+  const timestamp=parts.find(([key])=>key==='t')?.[1];
+  if(!/^\d+$/.test(timestamp || '')||Math.abs(now/1000-Number(timestamp))>300)throw paymentError('Chữ ký Stripe hết hiệu lực.',400,'WEBHOOK_SIGNATURE_INVALID');
+  const expected=createHmac('sha256',secret).update(`${timestamp}.`).update(rawBody).digest();
+  const valid=parts.some(([key,value])=>key==='v1'&&/^[a-f0-9]{64}$/i.test(value || '')&&timingSafeEqual(expected,Buffer.from(value,'hex')));
+  if(!valid)throw paymentError('Chữ ký Stripe không hợp lệ.',400,'WEBHOOK_SIGNATURE_INVALID');
+  try{return JSON.parse(rawBody.toString('utf8'));}catch{throw paymentError('Sự kiện Stripe không hợp lệ.');}
+}
+export async function handleStripeWebhookEvent(rawBody,signature,options={}){
+  const event=verifyStripeEvent(rawBody,signature);
+  if(!['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(event.type))return {success:true,ignored:true};
+  if(typeof event.id!=='string'||!Number.isFinite(event.created))throw paymentError('Thiếu định danh sự kiện Stripe.');
+  const object=event.data?.object;
+  if(typeof object?.id!=='string'||!/^cs_[A-Za-z0-9_]+$/.test(object.id))throw paymentError('Thiếu Checkout Session.');
+  const checkout=await stripeRequest(`checkout/sessions/${encodeURIComponent(object.id)}`,{},options);
+  if(checkout.id!==object.id||checkout.payment_status!=='paid'||checkout.status!=='complete')return {success:true,ignored:true};
+  const transactionId=checkout.client_reference_id;
+  const db=options.db || await getMongoDb();
+  const tx=await db.collection('payment_transactions').findOne({transaction_id:transactionId});
+  if(!tx||tx.payment_method!=='stripe')throw paymentError('Sai tham chiếu Stripe.',409,'GATEWAY_MISMATCH');
+  if(tx.gateway_session_id!==checkout.id)throw paymentError('Phiên Stripe chưa được lưu hoặc không khớp.',503,'GATEWAY_SESSION_MISMATCH');
+  if(checkout.metadata?.transactionId!==transactionId||checkout.metadata?.orderId!==tx.order_id)throw paymentError('Metadata Stripe không khớp.',409,'GATEWAY_MISMATCH');
+  return fulfillPaymentSuccess({transactionId,gateway:'stripe',gatewayTransactionNo:checkout.id,gatewayEventId:event.id,
+    paidAmount:checkout.amount_total,currency:String(checkout.currency).toUpperCase(),paidAt:new Date(event.created*1000)},options);
 }

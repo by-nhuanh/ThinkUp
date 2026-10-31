@@ -141,8 +141,10 @@ export async function checkFavoriteStatus(userId, courseId, dbInstance = null) {
   const cleanCourseId = String(courseId).trim();
 
   const record = await db.collection(COLLECTION_FAVORITES).findOne({
-    $or: [{ user_id: cleanUserId }, { userId: cleanUserId }],
-    $or: [{ course_id: cleanCourseId }, { courseId: cleanCourseId }],
+    $and: [
+      { $or: [{ user_id: cleanUserId }, { userId: cleanUserId }] },
+      { $or: [{ course_id: cleanCourseId }, { courseId: cleanCourseId }] },
+    ],
   });
 
   return Boolean(record);
@@ -192,8 +194,10 @@ export async function addFavoriteCourse(userId, courseId, dbInstance = null) {
 
   // 2. Kiểm tra xem người dùng đã yêu thích khóa học này chưa (Idempotency)
   const existing = await db.collection(COLLECTION_FAVORITES).findOne({
-    $or: [{ user_id: cleanUserId }, { userId: cleanUserId }],
-    $or: [{ course_id: canonicalCourseId }, { courseId: canonicalCourseId }, { course_id: cleanCourseId }],
+    $and: [
+      { $or: [{ user_id: cleanUserId }, { userId: cleanUserId }] },
+      { $or: [{ course_id: canonicalCourseId }, { courseId: canonicalCourseId }, { course_id: cleanCourseId }] },
+    ],
   });
 
   if (existing) {
@@ -248,10 +252,9 @@ export async function removeFavoriteCourse(userId, courseId, dbInstance = null) 
   const cleanUserId = String(userId).trim();
 
   await db.collection(COLLECTION_FAVORITES).deleteMany({
-    $or: [{ user_id: cleanUserId }, { userId: cleanUserId }],
-    $or: [
-      { course_id: cleanCourseId },
-      { courseId: cleanCourseId },
+    $and: [
+      { $or: [{ user_id: cleanUserId }, { userId: cleanUserId }] },
+      { $or: [{ course_id: cleanCourseId }, { courseId: cleanCourseId }] },
     ],
   });
 
@@ -290,8 +293,10 @@ export async function toggleFavoriteCourse(userId, courseId, dbInstance = null) 
 
   // Kiểm tra trạng thái hiện tại
   const existing = await db.collection(COLLECTION_FAVORITES).findOne({
-    $or: [{ user_id: cleanUserId }, { userId: cleanUserId }],
-    $or: [{ course_id: cleanCourseId }, { courseId: cleanCourseId }],
+    $and: [
+      { $or: [{ user_id: cleanUserId }, { userId: cleanUserId }] },
+      { $or: [{ course_id: cleanCourseId }, { courseId: cleanCourseId }] },
+    ],
   });
 
   if (existing) {
@@ -388,8 +393,7 @@ export async function syncFavoritesLogic(userId, clientCourseIds = [], dbInstanc
     const now = new Date();
 
     for (const cid of idsToInsert) {
-      // Chấp nhận nếu khóa học tồn tại trong courses hoặc giữ an toàn theo dữ liệu gửi lên
-      if (validIdSet.has(cid) || validCourses.length === 0) {
+      if (validIdSet.has(cid)) {
         docsToInsert.push({
           user_id: cleanUserId,
           course_id: cid,

@@ -1,6 +1,8 @@
 import bcrypt from 'bcryptjs';
+import { authenticateSocialUser, credentialVersion, authError } from './signup.user.js';
 import { ObjectId } from 'mongodb';
-import { getMongoDb, signJwt, verifyJwt } from '../db.js';
+import { getMongoDb, verifyJwt } from '../db.js';
+import { issueUserSession, validateUserSession } from '../account-security/account-security.user.js';
 
 const MAX_FAILED_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 phút (BR-AUTH-03)
@@ -13,14 +15,17 @@ const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 phút (BR-AUTH-03)
  * @param {boolean} [params.rememberMe]
  * @param {object} [options]
  */
-export async function loginWithCredentials({ email, password, rememberMe = false }, options = {}) {
+export async function loginWithCredentials({ email, password, rememberMe = false } = {}, options = {}) {
+  if (typeof email !== 'string' || typeof password !== 'string' || typeof rememberMe !== 'boolean') {
+    throw authError('Email, mật khẩu hoặc lựa chọn ghi nhớ không hợp lệ.');
+  }
   const db = options.db || await getMongoDb();
 
   const normalizedEmail = (email || '').trim().toLowerCase();
-  const trimmedPassword = (password || '').trim();
+  const suppliedPassword = password;
 
   // BR-AUTH-01: Yêu cầu điều kiện cần cơ bản
-  if (!normalizedEmail || !trimmedPassword) {
+  if (!normalizedEmail || !suppliedPassword) {
     const err = new Error('Vui lòng nhập đầy đủ email và mật khẩu.');
     err.status = 400;
     throw err;
@@ -48,7 +53,7 @@ export async function loginWithCredentials({ email, password, rememberMe = false
   }
 
   // Kiểm tra mật khẩu (nếu user không tồn tại hoặc không phải tài khoản mật khẩu local)
-  const isPasswordMatch = user && user.password_hash ? await bcrypt.compare(trimmedPassword, user.password_hash) : false;
+  const isPasswordMatch = user && user.password_hash ? await bcrypt.compare(suppliedPassword, user.password_hash) : false;
 
   if (!user || !isPasswordMatch) {
     if (user) {
@@ -101,22 +106,8 @@ export async function loginWithCredentials({ email, password, rememberMe = false
     }
   );
 
-  // BR-AUTH-04: Thời hạn phiên đăng nhập theo Remember Me (24h vs 30 ngày)
-  const tokenDuration = rememberMe ? '30d' : '24h';
-  const accessToken = signJwt(
-    {
-      sub: user._id.toString(),
-      email: user.email,
-      role: user.role,
-      name: user.full_name,
-    },
-    tokenDuration
-  );
-
-  const refreshToken = signJwt(
-    { sub: user._id.toString(), type: 'refresh' },
-    rememberMe ? '30d' : '7d'
-  );
+  const { accessToken, refreshToken } = await issueUserSession(user,
+    { rememberMe, ip: options.ip, userAgent: options.userAgent }, { ...options, db });
 
   return {
     message: 'Đăng nhập thành công!',
@@ -140,200 +131,12 @@ export async function loginWithCredentials({ email, password, rememberMe = false
 /**
  * Đăng nhập qua Google (BR-AUTH-06, BR-AUTH-07: Identity Linking & Just-In-Time Provisioning).
  */
-export async function loginWithGoogle({ email, name, avatar, providerId }, options = {}) {
-  const db = options.db || await getMongoDb();
-
-  if (!email?.trim() || !providerId) {
-    const err = new Error('Thông tin xác thực Google không đầy đủ.');
-    err.status = 400;
-    throw err;
-  }
-
-  const normalizedEmail = email.trim().toLowerCase();
-  let user = await db.collection('users').findOne({
-    $or: [{ provider: 'google', provider_id: providerId }, { email: normalizedEmail }],
-  });
-
-  if (user) {
-    // BR-AUTH-08: Kiểm tra nếu bị admin khóa
-    if (user.status === 'locked' || (user.is_active === false && user.email_verified === true)) {
-      const err = new Error('Tài khoản của bạn đang bị tạm khóa. Vui lòng liên hệ support@thinkup.vn để được hỗ trợ');
-      err.status = 403;
-      throw err;
-    }
-
-    // BR-AUTH-07: Đồng bộ định danh (Identity Linking) - gộp tài khoản gốc
-    // Nếu người dùng đã tự upload ảnh đại diện (is_custom_avatar = true), giữ nguyên avatar đó.
-    // Nếu chưa từng upload ảnh đại diện riêng, cập nhật avatar từ Google OAuth.
-    const resolvedAvatar = user.is_custom_avatar ? user.avatar_url : (avatar || user.avatar_url);
-
-    await db.collection('users').updateOne(
-      { _id: user._id },
-      {
-        $set: {
-          google_id: providerId,
-          avatar_url: resolvedAvatar,
-          email_verified: true,
-          status: 'active',
-          is_active: true,
-          last_login_at: new Date(),
-          updated_at: new Date(),
-        },
-      }
-    );
-  } else {
-    // BR-AUTH-06: Tự động cấp tài khoản học viên mới (Just-In-Time Provisioning)
-    const initialChar = encodeURIComponent((name || email || 'G').trim().charAt(0).toUpperCase());
-    const defaultGoogleAvatar = avatar || `https://ui-avatars.com/api/?name=${initialChar}&background=EA4335&color=fff&size=200&bold=true`;
-
-    const newUser = {
-      full_name: name || 'Học viên Google',
-      phone: null,
-      email: normalizedEmail,
-      password_hash: null,
-      provider: 'google',
-      provider_id: providerId,
-      google_id: providerId,
-      avatar_url: defaultGoogleAvatar,
-      is_custom_avatar: false,
-      role: 'student',
-      status: 'active',
-      is_active: true,
-      email_verified: true,
-      email_verified_at: new Date(),
-      onboarding_completed: false,
-      failed_login_attempts: 0,
-      locked_until: null,
-      created_at: new Date(),
-      updated_at: new Date(),
-    };
-    const insertResult = await db.collection('users').insertOne(newUser);
-    user = { ...newUser, _id: insertResult.insertedId };
-  }
-
-  const accessToken = signJwt(
-    { sub: user._id.toString(), email: user.email, role: user.role, name: user.full_name },
-    '24h'
-  );
-
-  return {
-    message: 'Đăng nhập Google thành công!',
-    accessToken,
-    token: accessToken,
-    user: {
-      id: user._id.toString(),
-      studentId: user.student_id || null,
-      name: user.full_name,
-      email: user.email,
-      phone: user.phone || null,
-      role: user.role,
-      avatar: user.avatar_url,
-      onboarding_completed: Boolean(user.onboarding_completed),
-      email_verified: true,
-    },
-  };
+export async function loginWithGoogle(params = {}, options = {}) {
+  return authenticateSocialUser('google', params, options);
 }
 
-/**
- * Đăng nhập qua Facebook (BR-AUTH-06, BR-AUTH-07, EX-AUTH-04).
- */
-export async function loginWithFacebook({ providerId, email, name, avatar }, options = {}) {
-  const db = options.db || await getMongoDb();
-
-  if (!providerId) {
-    const err = new Error('Thiếu ID định danh Facebook.');
-    err.status = 400;
-    throw err;
-  }
-
-  // EX-AUTH-04: Facebook không trả email
-  if (!email?.trim()) {
-    const err = new Error('Vui lòng nhập Email của bạn để hoàn tất đăng ký tài khoản ThinkUp');
-    err.status = 400;
-    err.code = 'MISSING_EMAIL';
-    err.providerId = providerId;
-    throw err;
-  }
-
-  const normalizedEmail = email.trim().toLowerCase();
-  let user = await db.collection('users').findOne({
-    $or: [{ provider: 'facebook', provider_id: providerId }, { email: normalizedEmail }],
-  });
-
-  if (user) {
-    if (user.status === 'locked' || (user.is_active === false && user.email_verified === true)) {
-      const err = new Error('Tài khoản của bạn đang bị tạm khóa. Vui lòng liên hệ support@thinkup.vn để được hỗ trợ');
-      err.status = 403;
-      throw err;
-    }
-
-    // BR-AUTH-07: Identity Linking
-    const resolvedAvatar = user.is_custom_avatar ? user.avatar_url : (avatar || user.avatar_url);
-
-    await db.collection('users').updateOne(
-      { _id: user._id },
-      {
-        $set: {
-          facebook_id: providerId,
-          avatar_url: resolvedAvatar,
-          email_verified: true,
-          status: 'active',
-          is_active: true,
-          last_login_at: new Date(),
-          updated_at: new Date(),
-        },
-      }
-    );
-  } else {
-    const initialChar = encodeURIComponent((name || email || 'F').trim().charAt(0).toUpperCase());
-    const defaultFbAvatar = avatar || `https://ui-avatars.com/api/?name=${initialChar}&background=1877F2&color=fff&size=200&bold=true`;
-
-    const newUser = {
-      full_name: name || 'Học viên Facebook',
-      phone: null,
-      email: normalizedEmail,
-      password_hash: null,
-      provider: 'facebook',
-      provider_id: providerId,
-      facebook_id: providerId,
-      avatar_url: defaultFbAvatar,
-      is_custom_avatar: false,
-      role: 'student',
-      status: 'active',
-      is_active: true,
-      email_verified: true,
-      email_verified_at: new Date(),
-      onboarding_completed: false,
-      failed_login_attempts: 0,
-      locked_until: null,
-      created_at: new Date(),
-      updated_at: new Date(),
-    };
-    const insertResult = await db.collection('users').insertOne(newUser);
-    user = { ...newUser, _id: insertResult.insertedId };
-  }
-
-  const accessToken = signJwt(
-    { sub: user._id.toString(), email: user.email, role: user.role, name: user.full_name },
-    '24h'
-  );
-
-  return {
-    message: 'Đăng nhập Facebook thành công!',
-    accessToken,
-    token: accessToken,
-    user: {
-      id: user._id.toString(),
-      studentId: user.student_id || null,
-      name: user.full_name,
-      email: user.email,
-      phone: user.phone || null,
-      role: user.role,
-      avatar: user.avatar_url,
-      onboarding_completed: Boolean(user.onboarding_completed),
-      email_verified: true,
-    },
-  };
+export async function loginWithFacebook(params = {}, options = {}) {
+  return authenticateSocialUser('facebook', params, options);
 }
 
 /**
@@ -401,6 +204,7 @@ export async function verifyAuthSession(token, options = {}) {
   let payload;
   try {
     payload = verifyJwt(cleanToken);
+    if (payload.type || payload.purpose || payload.adminId || payload.step || payload.authStep) throw new Error('Invalid access token');
   } catch (err) {
     return { isAuthenticated: false, user: null, reason: err.code || 'TOKEN_INVALID' };
   }
@@ -416,8 +220,17 @@ export async function verifyAuthSession(token, options = {}) {
   const user = await db.collection('users').findOne({ _id: objId });
 
   // Kiểm tra tài khoản không tồn tại hoặc bị khóa chính sách
-  if (!user || user.status === 'locked' || (user.is_active === false && user.email_verified === true)) {
+  if (!user || user.status !== 'active' || user.is_active === false || !user.email_verified || user.role !== 'student') {
     return { isAuthenticated: false, user: null, reason: 'ACCOUNT_SUSPENDED' };
+  }
+
+  if (!payload.credentialVersion || payload.credentialVersion !== credentialVersion(user)) {
+    return { isAuthenticated: false, user: null, reason: 'SESSION_REVOKED' };
+  }
+
+  if (!payload.sid) return { isAuthenticated: false, user: null, reason: 'SESSION_UPGRADE_REQUIRED' };
+  if (!await validateUserSession(payload, { ...options, db })) {
+    return { isAuthenticated: false, user: null, reason: 'SESSION_REVOKED' };
   }
 
   return {

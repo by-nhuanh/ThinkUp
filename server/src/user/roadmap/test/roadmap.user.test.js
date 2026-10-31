@@ -4,6 +4,7 @@ import {
   COLLECTION_USER_ROADMAPS,
   COLLECTION_ROADMAP_QUESTIONS,
   COLLECTION_ROADMAP_SUBMISSIONS,
+  SEED_STAGE_QUESTIONS,
   STATUS_NOT_STARTED,
   STATUS_IN_PROGRESS,
   STATUS_REVIEW,
@@ -28,18 +29,77 @@ test('Roadmap Backend Service Test Suite', async (t) => {
   const roadmapsColl = db.collection(COLLECTION_USER_ROADMAPS);
   const submissionsColl = db.collection(COLLECTION_ROADMAP_SUBMISSIONS);
   const questionsColl = db.collection(COLLECTION_ROADMAP_QUESTIONS);
+  const preexistingQuestionIds = new Set((await questionsColl.find({}, { projection: { question_id: 1 } }).toArray())
+    .map(question => question.question_id));
 
   // Tạo ID test giả lập cô lập
   const testUserId = 'test_user_roadmap_9999';
+  const testTailwindCourseId = 'roadmap-test-course-tailwind';
+  const testNodeCourseId = 'roadmap-test-course-node';
+  const testReactCourseId = 'roadmap-test-course-react';
+  const testTagIds = ['roadmap-test-tag-tailwind', 'roadmap-test-tag-node', 'roadmap-test-tag-react'];
+  let ownsFrontendCategoryFixture = false;
 
   // Dọn dẹp dữ liệu test trước khi chạy
   await roadmapsColl.deleteMany({ user_id: testUserId });
   await submissionsColl.deleteMany({ user_id: testUserId });
+  await db.collection('user_course_progress').deleteMany({ user_id: testUserId });
+  await db.collection('user_enrollments').deleteMany({ user_id: testUserId });
+  await db.collection('courses').deleteMany({
+    course_id: { $in: [testTailwindCourseId, testNodeCourseId, testReactCourseId] },
+  });
+  await db.collection('course_tags').deleteMany({
+    course_id: { $in: [testTailwindCourseId, testNodeCourseId, testReactCourseId] },
+  });
+  await db.collection('tags').deleteMany({ tag_id: { $in: testTagIds } });
+  if (!await db.collection('course_categories').findOne({ category_id: 1 })) {
+    const categoryFixture = await db.collection('course_categories').insertOne({
+      category_id: 1,
+      name: 'Frontend Developer',
+      test_fixture_id: 'roadmap-user-test-frontend-category',
+    });
+    ownsFrontendCategoryFixture = Boolean(categoryFixture.insertedId);
+  }
+  await db.collection('courses').insertMany([
+    { course_id: testTailwindCourseId, title: 'TailwindCSS test course', status: 'published', price: 100 },
+    { course_id: testNodeCourseId, title: 'Node.js test course', status: 'published', price: 100 },
+    { course_id: testReactCourseId, title: 'ReactJS test course', status: 'published', price: 100 },
+  ]);
+  await db.collection('course_tags').insertMany([
+    { course_id: testTailwindCourseId, tag_id: testTagIds[0] },
+    { course_id: testNodeCourseId, tag_id: testTagIds[1] },
+    { course_id: testReactCourseId, tag_id: testTagIds[2] },
+  ]);
+  await db.collection('tags').insertMany([
+    { tag_id: testTagIds[0], name: 'TailwindCSS' },
+    { tag_id: testTagIds[1], name: 'Node.js' },
+    { tag_id: testTagIds[2], name: 'ReactJS' },
+  ]);
 
   t.after(async () => {
     // Dọn dẹp sau khi kiểm thử kết thúc
     await roadmapsColl.deleteMany({ user_id: testUserId });
     await submissionsColl.deleteMany({ user_id: testUserId });
+    const testInsertedQuestionIds = SEED_STAGE_QUESTIONS
+      .map(question => question.question_id)
+      .filter(questionId => !preexistingQuestionIds.has(questionId));
+    if (testInsertedQuestionIds.length > 0) {
+      await questionsColl.deleteMany({ question_id: { $in: testInsertedQuestionIds } });
+    }
+    await db.collection('user_course_progress').deleteMany({ user_id: testUserId });
+    await db.collection('user_enrollments').deleteMany({ user_id: testUserId });
+    await db.collection('courses').deleteMany({
+      course_id: { $in: [testTailwindCourseId, testNodeCourseId, testReactCourseId] },
+    });
+    await db.collection('course_tags').deleteMany({
+      course_id: { $in: [testTailwindCourseId, testNodeCourseId, testReactCourseId] },
+    });
+    await db.collection('tags').deleteMany({ tag_id: { $in: testTagIds } });
+    if (ownsFrontendCategoryFixture) {
+      await db.collection('course_categories').deleteOne({
+        test_fixture_id: 'roadmap-user-test-frontend-category',
+      });
+    }
     await closeMongoDb();
   });
 
@@ -124,7 +184,12 @@ test('Roadmap Backend Service Test Suite', async (t) => {
   await t.test('4. Lấy bộ câu hỏi bài test giai đoạn (ẩn đáp án đúng)', async () => {
     const stageQuestions = await getStageTestQuestions('fe-stage-1');
     assert.equal(stageQuestions.stage_id, 'fe-stage-1');
-    assert.ok(stageQuestions.questions.length >= 5);
+    assert.equal(stageQuestions.questions.length, 20);
+    const perTagCounts = stageQuestions.questions.reduce((counts, question) => {
+      counts[question.skill_tag] = (counts[question.skill_tag] || 0) + 1;
+      return counts;
+    }, {});
+    for (const tag of ['HTML', 'CSS', 'JavaScript', 'Git']) assert.ok(perTagCounts[tag] >= 5, `${tag} phải có ít nhất 5 câu`);
 
     // Đảm bảo không để lộ đáp án đúng hay lời giải
     stageQuestions.questions.forEach(q => {
@@ -132,44 +197,61 @@ test('Roadmap Backend Service Test Suite', async (t) => {
       assert.equal(q.explanation, undefined, 'Phải ẩn explanation');
       assert.ok(q.question_id);
       assert.ok(q.node_id);
+      assert.ok(q.skill_tag);
       assert.ok(Array.isArray(q.options));
       assert.equal(q.options.length, 4);
     });
   });
 
-  await t.test('5. Nộp bài test, phân rã điểm theo node và cập nhật EWMA', async () => {
-    // Chuẩn bị câu trả lời: 3 câu đúng cho fe-node-html, fe-node-css, fe-node-js và 1 câu sai
-    const answers = [
-      { question_id: 'fe-s1-q1', selected_option: 'B' }, // Đúng (fe-node-html)
-      { question_id: 'fe-s1-q2', selected_option: 'B' }, // Đúng (fe-node-html)
-      { question_id: 'fe-s1-q3', selected_option: 'B' }, // Đúng (fe-node-css)
-      { question_id: 'fe-s1-q4', selected_option: 'B' }, // Đúng (fe-node-css)
-      { question_id: 'fe-s1-q5', selected_option: 'B' }, // Đúng (fe-node-js)
-      { question_id: 'fe-s1-q6', selected_option: 'C' }, // Đúng (fe-node-js)
-      { question_id: 'fe-s1-q7', selected_option: 'A' }, // Đúng (fe-node-js)
-      { question_id: 'fe-s1-q8', selected_option: 'A' }, // Sai (Đáp án đúng là B) (fe-node-git)
-      { question_id: 'fe-s1-q9', selected_option: 'A' }, // Sai (Đáp án đúng là B) (fe-node-git)
-      { question_id: 'fe-s1-q10', selected_option: 'A' } // Đúng (fe-node-html)
+  await t.test('4.1 Ngân hàng mỗi tag có tối thiểu 5 câu ở các stage đã gieo seed', async () => {
+    const expectations = [
+      ['fe-stage-1', ['HTML', 'CSS', 'JavaScript', 'Git']],
+      ['fe-stage-2', ['TailwindCSS', 'ReactJS', 'TypeScript', 'REST API']],
+      ['be-stage-1', ['Node.js', 'JavaScript', 'SQL', 'MongoDB']],
     ];
+    for (const [stageId, tags] of expectations) {
+      const result = await getStageTestQuestions(stageId);
+      const counts = result.questions.reduce((acc, question) => {
+        acc[question.skill_tag] = (acc[question.skill_tag] || 0) + 1;
+        return acc;
+      }, {});
+      for (const tag of tags) assert.ok(counts[tag] >= 5, `${stageId}/${tag} có ${counts[tag] || 0} câu`);
+      assert.equal(result.total_questions, result.questions.length);
+    }
+  });
+
+  await t.test('5. Nộp bài test, phân rã điểm theo node và cập nhật EWMA', async () => {
+    const answers = SEED_STAGE_QUESTIONS.filter(question => question.stage_id === 'fe-stage-1').map(question => ({
+      question_id: question.question_id,
+      selected_option: question.skill_tag === 'Git'
+        ? (question.correct_option === 'A' ? 'B' : 'A')
+        : question.correct_option,
+    }));
 
     const result = await submitStageTest(testUserId, 'fe-stage-1', answers);
     assert.ok(result.submission_id);
-    assert.equal(result.total_questions, 10);
-    assert.equal(result.correct_count, 8);
-    assert.equal(result.score_percentage, 80);
+    assert.equal(result.total_questions, 20);
+    assert.equal(result.correct_count, 15);
+    assert.equal(result.score_percentage, 75);
+    assert.equal(result.detailed_results.length, 20);
+    result.detailed_results.forEach(detail => {
+      assert.equal(detail.correct_option, undefined);
+      assert.equal(detail.explanation, undefined);
+      assert.equal(detail.is_correct, undefined);
+    });
 
-    // Kiểm tra phân rã node: fe-node-html đạt 3/3 = 100%
+    // Kiểm tra phân rã node: fe-node-html đạt 5/5 = 100%
     const breakdown = result.node_breakdown;
     assert.ok(breakdown['fe-node-html']);
-    assert.equal(breakdown['fe-node-html'].correct, 3);
-    assert.equal(breakdown['fe-node-html'].total, 3);
+    assert.equal(breakdown['fe-node-html'].correct, 5);
+    assert.equal(breakdown['fe-node-html'].total, 5);
     assert.equal(breakdown['fe-node-html'].quiz_score, 100);
     assert.equal(breakdown['fe-node-html'].new_status, STATUS_COMPLETED);
 
-    // Kiểm tra phân rã node: fe-node-git sai cả 2 câu = 0%
+    // Kiểm tra phân rã node: fe-node-git sai cả 5 câu = 0%
     assert.ok(breakdown['fe-node-git']);
     assert.equal(breakdown['fe-node-git'].correct, 0);
-    assert.equal(breakdown['fe-node-git'].total, 2);
+    assert.equal(breakdown['fe-node-git'].total, 5);
     assert.equal(breakdown['fe-node-git'].quiz_score, 0);
 
     // Kiểm tra trạng thái trong DB sau bài test
@@ -181,16 +263,61 @@ test('Roadmap Backend Service Test Suite', async (t) => {
     // Kiểm tra lịch sử làm bài test
     const history = await getUserSubmissionHistory(testUserId, 'fe-stage-1');
     assert.ok(history.length >= 1);
-    assert.equal(history[0].score_percentage, 80);
+    assert.equal(history[0].score_percentage, 75);
+  });
+
+  await t.test('5.1 Từ chối bài nộp thiếu câu, trùng câu, sai stage hoặc option', async () => {
+    const validQuestions = await getStageTestQuestions('fe-stage-1');
+    const completeAnswers = validQuestions.questions.map(question => ({
+      question_id: question.question_id,
+      selected_option: 'A',
+    }));
+    const beforeCount = await submissionsColl.countDocuments({ user_id: testUserId, stage_id: 'fe-stage-1' });
+
+    await assert.rejects(
+      () => submitStageTest(testUserId, 'fe-stage-1', completeAnswers.slice(0, -1)),
+      error => error.status === 400 && error.code === 'STAGE_ANSWER_SET_INVALID',
+    );
+    const duplicateAnswers = [...completeAnswers];
+    duplicateAnswers[duplicateAnswers.length - 1] = { ...duplicateAnswers[0] };
+    await assert.rejects(
+      () => submitStageTest(testUserId, 'fe-stage-1', duplicateAnswers),
+      error => error.status === 400 && error.code === 'STAGE_ANSWER_SET_INVALID',
+    );
+    const crossStageAnswers = [...completeAnswers];
+    crossStageAnswers[0] = { question_id: 'fe-s2-q1', selected_option: 'A' };
+    await assert.rejects(
+      () => submitStageTest(testUserId, 'fe-stage-1', crossStageAnswers),
+      error => error.status === 400 && error.code === 'STAGE_ANSWER_SET_INVALID',
+    );
+    const invalidOptionAnswers = [...completeAnswers];
+    invalidOptionAnswers[0] = { ...invalidOptionAnswers[0], selected_option: 'Z' };
+    await assert.rejects(
+      () => submitStageTest(testUserId, 'fe-stage-1', invalidOptionAnswers),
+      error => error.status === 400 && error.code === 'STAGE_ANSWER_INVALID',
+    );
+
+    assert.equal(await submissionsColl.countDocuments({ user_id: testUserId, stage_id: 'fe-stage-1' }), beforeCount);
+  });
+
+  await t.test('5.2 Không sinh bộ câu hỏi fallback không có ngân hàng đã duyệt', async () => {
+    await assert.rejects(
+      () => getStageTestQuestions('stage-without-approved-question-bank'),
+      error => error.status === 404 && error.code === 'STAGE_QUESTION_BANK_EMPTY',
+    );
+    assert.equal(await questionsColl.countDocuments({ stage_id: 'stage-without-approved-question-bank' }), 0);
   });
 
   await t.test('6. Đánh dấu trạng thái REVIEW khi làm rớt bài test và kiểm tra bất biến', async () => {
     // Làm lại bài test nhưng cố tình làm sai toàn bộ câu hỏi của fe-node-html (trước đó đang là completed)
-    const failAnswers = [
-      { question_id: 'fe-s1-q1', selected_option: 'C' }, // Sai
-      { question_id: 'fe-s1-q2', selected_option: 'C' }, // Sai
-      { question_id: 'fe-s1-q10', selected_option: 'C' }  // Sai
-    ];
+    const stageQuestions = await getStageTestQuestions('fe-stage-1');
+    const seedCorrectOptions = new Map(SEED_STAGE_QUESTIONS.map(question => [question.question_id, question.correct_option]));
+    const failAnswers = stageQuestions.questions.map(question => ({
+      question_id: question.question_id,
+      selected_option: question.skill_tag === 'HTML'
+        ? (question.options.find(option => option.key !== seedCorrectOptions.get(question.question_id))?.key || 'A')
+        : 'D',
+    }));
 
     const failResult = await submitStageTest(testUserId, 'fe-stage-1', failAnswers);
     const htmlBreakdown = failResult.node_breakdown['fe-node-html'];
@@ -206,11 +333,13 @@ test('Roadmap Backend Service Test Suite', async (t) => {
     assert.equal(htmlBreakdown.is_review, true);
 
     // Giờ nộp bài lại 100% đúng cho fe-node-html để kiểm tra tính bất biến của REVIEW
-    const retryAnswers = [
-      { question_id: 'fe-s1-q1', selected_option: 'B' },
-      { question_id: 'fe-s1-q2', selected_option: 'B' },
-      { question_id: 'fe-s1-q10', selected_option: 'A' }
-    ];
+    const htmlCorrectOptions = new Map(SEED_STAGE_QUESTIONS
+      .filter(question => question.stage_id === 'fe-stage-1' && question.skill_tag === 'HTML')
+      .map(question => [question.question_id, question.correct_option]));
+    const retryAnswers = stageQuestions.questions.map(question => ({
+      question_id: question.question_id,
+      selected_option: htmlCorrectOptions.get(question.question_id) || 'D',
+    }));
     const retryResult = await submitStageTest(testUserId, 'fe-stage-1', retryAnswers);
     const retryBreakdown = retryResult.node_breakdown['fe-node-html'];
 
@@ -227,9 +356,14 @@ test('Roadmap Backend Service Test Suite', async (t) => {
     await enrollmentsColl.insertOne({
       enrollment_id: 'test_enroll_1',
       user_id: testUserId,
-      course_id: '35', // Khóa học 35 có tag TailwindCSS
-      progress_percentage: '90',
+      course_id: testTailwindCourseId,
+      progress_percentage: '0',
       enrolled_at: new Date()
+    });
+    await db.collection('user_course_progress').insertOne({
+      user_id: testUserId,
+      course_id: testTailwindCourseId,
+      progress_percentage: 90,
     });
 
     try {
@@ -249,6 +383,7 @@ test('Roadmap Backend Service Test Suite', async (t) => {
       assert.equal(htmlNode.status, STATUS_REVIEW, 'fe-node-html vẫn phải giữ trạng thái review sau khi đồng bộ khóa học');
     } finally {
       await enrollmentsColl.deleteMany({ user_id: testUserId });
+      await db.collection('user_course_progress').deleteMany({ user_id: testUserId });
     }
   });
 
@@ -296,7 +431,7 @@ test('Roadmap Backend Service Test Suite', async (t) => {
     await enrollmentsColl.insertOne({
       enrollment_id: 'test_enroll_multi_1',
       user_id: testUserId,
-      course_id: '3', // Khóa 3: Node.js & Express: Xây Dựng RESTful API (100% hoàn thành)
+      course_id: testNodeCourseId,
       progress_percentage: '100',
       enrolled_at: new Date()
     });

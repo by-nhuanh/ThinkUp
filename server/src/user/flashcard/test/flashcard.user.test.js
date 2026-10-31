@@ -11,6 +11,7 @@ import {
   LEARNING_MODE_RESTART,
   ROADMAP_STATUS_REVIEW,
   ROADMAP_STATUS_COMPLETED,
+  ROADMAP_STATUS_IN_PROGRESS,
   formatDateDDMMYYYY,
   cycleCardStatus,
   normalizeCardStatusAction,
@@ -226,6 +227,25 @@ test('Flashcard User Backend Service Test Suite', async (t) => {
     // Click lần 3 -> 'chưa học'
     const step3 = await updateCardStatus(listId, cardId, testUserId, 'cycle');
     assert.equal(step3.new_status, CARD_STATUS_NOT_LEARNED);
+  });
+
+  await t.test('5.1 Cập nhật đồng thời nhiều thẻ không làm mất trạng thái đã ghi', async () => {
+    const cards = Array.from({ length: 8 }, (_, index) => ({
+      knowledge: `Concurrent card ${index + 1}`,
+      description: '',
+      code: '',
+      note: '',
+    }));
+    const list = await createFlashcardList(testUserId, { title: 'Concurrent updates', cards });
+
+    await Promise.all(list.cards.map(card =>
+      updateCardStatus(list.id, card.card_id, testUserId, 'đã học'),
+    ));
+
+    const savedList = await getFlashcardsInList(list.id, testUserId);
+    assert.equal(savedList.learned_cards, cards.length);
+    assert.equal(savedList.progress_percentage, 100);
+    assert.ok(savedList.cards.every(card => card.status === CARD_STATUS_LEARNED));
   });
 
   await t.test('6. 3 Chế độ học (order, random, restart) và lọc thẻ áp dụng (chỉ thẻ cần ôn tập & chưa học):', async (sub) => {
@@ -455,6 +475,42 @@ test('Flashcard User Backend Service Test Suite', async (t) => {
       assert.equal(nodeInDb.is_review, false, 'Cờ is_review phải được gỡ bỏ');
       assert.equal(roadmapInDb.completed_nodes, 1);
       assert.equal(roadmapInDb.progress_percentage, 100);
+    });
+
+    await sub.test('8.4 Response trả đúng trạng thái phục hồi theo điểm node', async () => {
+      const lowScoreNodeId = 'fe-node-low-score-review-test';
+      await roadmapsColl.updateOne(
+        { user_id: testUserId },
+        { $push: { nodes: {
+          node_id: lowScoreNodeId,
+          title: 'Low score review node',
+          status: ROADMAP_STATUS_REVIEW,
+          is_review: true,
+          score: 50,
+        } } },
+      );
+      const completeCards = Array.from({ length: 5 }, (_, index) => ({
+        knowledge: `Completed review ${index + 1}`,
+        description: '',
+        code: '',
+        note: '',
+      }));
+      const reviewList = await createFlashcardList(testUserId, {
+        title: 'Low score review node',
+        node_id: lowScoreNodeId,
+        cards: completeCards,
+      });
+      for (const card of reviewList.cards) {
+        await updateCardStatus(reviewList.id, card.card_id, testUserId, 'đã học');
+      }
+
+      const syncResult = await checkAndUpdateRoadmapFromFlashcard(testUserId, lowScoreNodeId, reviewList.id);
+      assert.equal(syncResult.updated, true);
+      assert.equal(syncResult.new_status, ROADMAP_STATUS_IN_PROGRESS);
+      const roadmap = await roadmapsColl.findOne({ user_id: testUserId });
+      const savedNode = roadmap.nodes.find(node => node.node_id === lowScoreNodeId);
+      assert.equal(savedNode.status, ROADMAP_STATUS_IN_PROGRESS);
+      assert.equal(savedNode.is_review, false);
     });
   });
 
