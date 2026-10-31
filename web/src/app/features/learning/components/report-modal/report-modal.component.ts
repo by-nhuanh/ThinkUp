@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, EventEmitter, HostListener, Input, Output, ViewChild, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   LucideCircleAlert,
@@ -26,7 +26,9 @@ import { ReportReason } from '../../models/learning.model';
   ],
   templateUrl: './report-modal.component.html',
 })
-export class ReportModalComponent {
+export class ReportModalComponent implements AfterViewInit {
+  @ViewChild('closeButton') private closeButton?: ElementRef<HTMLButtonElement>;
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   @Input() author = '';
   @Input() content = '';
   @Input({ required: true }) reasons: ReportReason[] = [];
@@ -37,6 +39,42 @@ export class ReportModalComponent {
   detail = '';
   error = '';
   submitting = false;
+  private readonly previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+  ngAfterViewInit(): void {
+    this.closeButton?.nativeElement.focus();
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    this.close();
+  }
+
+  @HostListener('document:keydown.tab', ['$event'])
+  onTab(event: Event): void {
+    const keyboardEvent = event as KeyboardEvent;
+    const focusable = Array.from(
+      this.host.nativeElement.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), a[href]'
+      )
+    ).filter((element) => element.getClientRects().length > 0);
+    if (!focusable.length) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (keyboardEvent.shiftKey && document.activeElement === first) {
+      keyboardEvent.preventDefault();
+      last.focus();
+    } else if (!keyboardEvent.shiftKey && document.activeElement === last) {
+      keyboardEvent.preventDefault();
+      first.focus();
+    }
+  }
+
+  close(): void {
+    this.closed.emit();
+    window.setTimeout(() => this.previousFocus?.focus());
+  }
 
   selectReason(id: string): void {
     this.selectedReasonId = id;

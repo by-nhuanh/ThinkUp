@@ -1,0 +1,454 @@
+:host {
+  display: block;
+  height: 100%;
+  min-height: 0;
+}
+
+.outline {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  flex: none;
+}
+
+/* ---------- shared pieces ---------- */
+
+.outline__card {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  background: linear-gradient(163deg, #0072f8 0%, #2351de 100%);
+  color: #fff;
+}
+
+.outline__card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.outline__card-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.outline__card-icon svg {
+  display: block;
+}
+
+.outline__card-titles {
+  min-width: 0;
+}
+
+.outline__card-titles h2 {
+  margin: 0;
+  color: #fff;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.outline__card-titles p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.outline__card-progress {
+  display: flex;
+  flex-direction: column;
+}
+
+.outline__progress-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.outline__progress-meta strong {
+  font-weight: 600;
+}
+
+.outline__progress-track {
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.outline__progress-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #fff;
+  transition: width 0.4s ease;
+}
+
+.outline__label {
+  margin: 0;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.0833em;
+}
+
+.outline__chapters {
+  display: flex;
+  flex-direction: column;
+}
+
+.chapter {
+  flex: none;
+}
+
+.chapter__button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #edf2f8;
+  text-align: left;
+}
+
+.chapter__title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.chapter__chevron {
+  flex: none;
+  transition: transform 0.2s ease;
+}
+
+.chapter--open .chapter__chevron {
+  transform: rotate(180deg);
+}
+
+.lesson {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  text-align: left;
+}
+
+.lesson__status,
+.lesson__type {
+  display: grid;
+  flex: none;
+  place-items: center;
+}
+
+.lesson__status svg,
+.lesson__type svg {
+  display: block;
+}
+
+.lesson__type svg {
+  width: 14px;
+  height: 14px;
+}
+
+.lesson__status svg {
+  width: 16px;
+  height: 16px;
+}
+
+.lesson__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.lesson__duration {
+  flex: none;
+  text-align: right;
+}
+
+.lesson__status[data-status='done'] {
+  color: #00c490;
+}
+
+.lesson__status[data-status='failed'] {
+  color: #f97316;
+}
+
+.lesson__status[data-status='todo'] {
+  color: #94a3b8;
+}
+
+.lesson__type[data-type='video'],
+.lesson__type[data-type='reading'] {
+  color: #4387f7;
+}
+
+.lesson__type[data-type='lab'] {
+  color: #0766ee;
+}
+
+.lesson__type[data-type='lab'] svg {
+  width: 16px;
+  height: 16px;
+}
+
+.lesson__type[data-type='quiz'] {
+  color: #8b5cf6;
+}
+
+/* ---------- lab variant (320px) ---------- */
+
+.outline--lab {
+  width: clamp(280px, 21vw, 320px);
+  padding: 16px;
+  gap: 8px;
+  background: #0d1321;
+}
+
+.outline--lab .outline__card {
+  gap: 16px;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.outline--lab .outline__card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+}
+
+.outline--lab .outline__card-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.outline--lab .outline__card-titles h2 {
+  font-size: 15px;
+  line-height: 19px;
+}
+
+.outline--lab .outline__card-titles p {
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.outline--lab .outline__card-progress {
+  gap: 8px;
+}
+
+.outline--lab .outline__progress-meta {
+  font-size: 14.4px;
+  line-height: 16px;
+}
+
+.outline--lab .outline__progress-meta strong {
+  font-size: 12px;
+}
+
+.outline--lab .outline__progress-track {
+  height: 6px;
+}
+
+.outline--lab .outline__label {
+  padding: 12px 4px;
+  color: #7a8798;
+  font-size: 13.2px;
+  line-height: 17px;
+}
+
+.outline--lab .outline__chapters {
+  gap: 8px;
+}
+
+.outline--lab .chapter {
+  overflow: hidden;
+  border-radius: 8px;
+  background: #131a2b;
+}
+
+.outline--lab .chapter__button {
+  min-height: 40px;
+  padding: 10px 12px;
+}
+
+.outline--lab .chapter__title {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+
+.outline--lab .chapter__chevron {
+  width: 16px;
+  height: 16px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.outline--lab .chapter__lessons {
+  padding: 0 4px 4px;
+}
+
+.outline--lab .lesson {
+  min-height: 36px;
+  gap: 10px;
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.outline--lab .lesson--active {
+  background: rgba(0, 114, 248, 0.14);
+}
+
+.outline--lab .lesson__status,
+.outline--lab .lesson__type {
+  width: 16px;
+  height: 16px;
+}
+
+.outline--lab .lesson__type {
+  width: 14px;
+}
+
+.outline--lab .lesson__title {
+  color: #7a8798;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.outline--lab .lesson--active .lesson__title {
+  color: #fff;
+}
+
+.outline--lab .lesson__duration {
+  color: #7a8798;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+/* ---------- study variant (368px) ---------- */
+
+.outline--default {
+  width: clamp(300px, 21vw, 368px);
+  padding: 32px 0 24px;
+  background: #061543;
+}
+
+.outline--default .outline__card {
+  width: calc(100% - 32px);
+  max-width: 301px;
+  min-height: 120px;
+  margin: 0 16px;
+  gap: 16px;
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.outline--default .outline__card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+}
+
+.outline--default .outline__card-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.outline--default .outline__card-titles h2 {
+  font-size: 16px;
+  line-height: 20px;
+}
+
+.outline--default .outline__card-titles p {
+  font-size: 13px;
+  line-height: 16px;
+}
+
+.outline--default .outline__card-progress {
+  gap: 4px;
+}
+
+.outline--default .outline__progress-meta {
+  font-size: 14.4px;
+  line-height: 16px;
+}
+
+.outline--default .outline__progress-meta strong {
+  font-size: 12px;
+}
+
+.outline--default .outline__progress-track {
+  height: 4px;
+}
+
+.outline--default .outline__label {
+  margin: 24px 16px 8px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+  line-height: 17px;
+}
+
+.outline--default .chapter {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.outline--default .chapter:last-child {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.outline--default .chapter__button {
+  min-height: 60px;
+  padding: 0 20px;
+}
+
+.outline--default .chapter__title {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+}
+
+.outline--default .chapter__chevron {
+  width: 16px;
+  height: 16px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.outline--default .chapter__lessons {
+  padding-bottom: 8px;
+}
+
+.outline--default .lesson {
+  min-height: 40px;
+  gap: 12px;
+  border-left: 2px solid transparent;
+  padding: 10px 20px;
+}
+
+.outline--default .lesson--active {
+  border-left-color: #0072f8;
+  background: rgba(0, 114, 248, 0.15);
+}
+
+.outline--default .lesson__status,
+.outline--default .lesson__type {
+  width: 16px;
+  height: 16px;
+}
+
+.outline--default .lesson__title {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.outline--default .lesson--active .lesson__title {
+  color: #fff;
+}
+
+.outline--default .lesson__duration {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 12px;
+  line-height: 16px;
+}

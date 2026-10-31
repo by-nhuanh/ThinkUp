@@ -19,6 +19,9 @@
         [lesson]="lesson"
         [course]="currentCourse"
         [chapter]="chapter"
+        [qaPosts]="qaPosts"
+        [discussionPosts]="discussionPosts"
+        [reportReasons]="reportReasons"
         (lessonSelected)="selectLesson($event)"
         (completed)="completeLesson()"
         (backToCourse)="selectLesson(currentCourse.chapters[0].lessons[0])"
@@ -33,7 +36,7 @@
         (backToCourse)="selectLesson(currentCourse.chapters[0].lessons[0])"
       />
     } @else {
-      <div class="flex min-h-[calc(100vh-82px)] bg-[#F9F9FF]">
+      <div class="flex min-h-[calc(100dvh-83px)] bg-[#F9F9FF]">
         <app-study-sidebar
           class="block shrink-0 self-stretch"
           [course]="currentCourse"
@@ -64,12 +67,12 @@
               <h1 class="text-[24px] font-bold leading-8 tracking-[-0.025em] text-[#08152C]">{{ lesson.title }}</h1>
             </div>
 
-            <div class="flex shrink-0 items-center gap-3">
+            <div class="flex flex-wrap items-center gap-3">
               <button
                 type="button"
                 (click)="selectLesson(previousLesson()!)"
                 [disabled]="!previousLesson()"
-                class="inline-flex h-11 items-center gap-2 rounded-xl border border-[#E0E5EB] bg-white px-5 text-[14px] font-medium leading-5 text-[#0E1624] transition hover:bg-[#F8FAFC] disabled:cursor-not-allowed"
+                class="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl border border-[#E0E5EB] bg-white px-5 text-[14px] font-medium leading-5 text-[#0E1624] transition hover:bg-[#F8FAFC] disabled:cursor-not-allowed"
               >
                 <svg lucideChevronLeft class="h-4 w-4" aria-hidden="true"></svg>
                 Bài trước
@@ -78,7 +81,7 @@
                 type="button"
                 (click)="selectLesson(nextLesson()!)"
                 [disabled]="!nextLesson()"
-                class="inline-flex h-11 items-center gap-2 rounded-xl bg-[#2076FF] px-5 text-[14px] font-semibold leading-5 text-white transition hover:bg-[#155DFC] disabled:cursor-not-allowed"
+                class="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-[#2076FF] px-5 text-[14px] font-semibold leading-5 text-white transition hover:bg-[#155DFC] disabled:cursor-not-allowed"
               >
                 Bài tiếp theo
                 <svg lucideChevronRight class="h-4 w-4" aria-hidden="true"></svg>
@@ -88,7 +91,7 @@
                 (click)="markCompleted()"
                 [attr.aria-pressed]="lesson.completed ?? false"
                 [attr.title]="lesson.completed ? 'Bỏ đánh dấu hoàn thành' : 'Đánh dấu hoàn thành'"
-                class="inline-flex h-9 items-center gap-2 rounded-xl border border-[#0072F8] bg-white px-4 text-[14px] font-bold leading-5 text-[#0072F8] transition hover:bg-[#F0F6FF]"
+                class="inline-flex h-9 shrink-0 items-center gap-2 rounded-xl border border-[#0072F8] bg-white px-4 text-[14px] font-bold leading-5 text-[#0072F8] transition hover:bg-[#F0F6FF]"
               >
                 <svg lucideCircleCheck class="h-4 w-4" aria-hidden="true"></svg>
                 Đánh dấu hoàn thành

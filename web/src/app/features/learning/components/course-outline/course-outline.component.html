@@ -1,0 +1,133 @@
+<aside class="outline" [class.outline--lab]="variant === 'lab'" [class.outline--default]="variant === 'default'" aria-label="Nội dung khóa học">
+  <div class="outline__card">
+    <div class="outline__card-head">
+      <span class="outline__card-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="7" rx="1" />
+          <rect x="3" y="14" width="9" height="7" rx="1" />
+          <rect x="16" y="14" width="5" height="7" rx="1" />
+        </svg>
+      </span>
+      <div class="outline__card-titles">
+        <h2>{{ course.title }}</h2>
+        <p>Bởi {{ course.instructor }}</p>
+      </div>
+    </div>
+
+    <div class="outline__card-progress">
+      <div class="outline__progress-meta">
+        <span>Tiến độ khóa học</span>
+        <strong>{{ progress }}%</strong>
+      </div>
+      <div
+        class="outline__progress-track"
+        role="progressbar"
+        [attr.aria-valuenow]="progress"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        [attr.aria-label]="'Tiến độ khóa học ' + progress + '%'"
+      >
+        <span [style.width.%]="progress"></span>
+      </div>
+    </div>
+  </div>
+
+  <p class="outline__label">Nội dung khóa học</p>
+
+  <nav class="outline__chapters">
+    @for (chapter of course.chapters; track chapter.id) {
+      <section class="chapter" [class.chapter--open]="isOpen(chapter)">
+        <button
+          type="button"
+          class="chapter__button"
+          (click)="chapterToggled.emit(chapter.id)"
+          [attr.aria-expanded]="isOpen(chapter)"
+        >
+          <span class="chapter__title">{{ chapter.title }}</span>
+          <svg
+            class="chapter__chevron"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.333"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M4 6L8 10L12 6" />
+          </svg>
+        </button>
+
+        @if (isOpen(chapter)) {
+          <div class="chapter__lessons">
+            @for (lesson of chapter.lessons; track lesson.id) {
+              <button
+                type="button"
+                class="lesson"
+                [class.lesson--active]="lesson.id === activeLessonId"
+                (click)="lessonSelected.emit(lesson)"
+                [attr.aria-current]="lesson.id === activeLessonId ? 'step' : null"
+              >
+                <span class="lesson__status" [attr.data-status]="lessonStatus(lesson)" aria-hidden="true">
+                  @switch (lessonStatus(lesson)) {
+                    @case ('done') {
+                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35">
+                        <circle cx="8" cy="8" r="6.25" />
+                        <path d="M4.7 8.1L6.8 10.2L11.3 5.7" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    }
+                    @case ('failed') {
+                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35">
+                        <circle cx="8" cy="8" r="6.25" />
+                        <path d="M8 4.7V8.8" stroke-width="1.5" stroke-linecap="round" />
+                        <circle cx="8" cy="11.35" r="0.8" fill="currentColor" stroke="none" />
+                      </svg>
+                    }
+                    @default {
+                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35">
+                        <circle cx="8" cy="8" r="6.25" />
+                      </svg>
+                    }
+                  }
+                </span>
+
+                <span class="lesson__type" [attr.data-type]="lesson.type" aria-hidden="true">
+                  @switch (lesson.type) {
+                    @case ('video') {
+                      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2">
+                        <circle cx="7" cy="7" r="5.6" />
+                        <path d="M6 4.7L9.3 7L6 9.3V4.7Z" fill="currentColor" stroke="none" />
+                      </svg>
+                    }
+                    @case ('reading') {
+                      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.1">
+                        <path d="M3 1.7H8L11 4.7V12.3H3V1.7Z" stroke-linejoin="round" />
+                        <path d="M8 1.9V4.9H10.8M5 7.4H9M5 9.5H9" stroke-linecap="round" />
+                      </svg>
+                    }
+                    @case ('quiz') {
+                      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2">
+                        <circle cx="7" cy="7" r="5.7" stroke-width="1.1" />
+                        <path d="M5.5 5.2C5.51 4.94 5.58 4.68 5.71 4.45C5.84 4.22 6.02 4.03 6.24 3.89C6.47 3.75 6.72 3.66 6.98 3.64C7.25 3.62 7.51 3.67 7.75 3.78C7.99 3.88 8.2 4.05 8.36 4.26C8.52 4.46 8.63 4.71 8.68 4.97C8.72 5.23 8.7 5.49 8.62 5.74C8.53 5.99 8.39 6.22 8.2 6.4C7.5 7 7 7.2 7 8.2M7 10.2H7.01" stroke-linecap="round" />
+                      </svg>
+                    }
+                    @default {
+                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.333" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 10.667L14.667 8L12 5.333" />
+                        <path d="M4 5.333L1.333 8L4 10.667" />
+                        <path d="M9.667 2.667L6.333 13.333" />
+                      </svg>
+                    }
+                  }
+                </span>
+
+                <span class="lesson__title">{{ lesson.title }}</span>
+                <span class="lesson__duration">{{ lesson.duration }}</span>
+              </button>
+            }
+          </div>
+        }
+      </section>
+    }
+  </nav>
+</aside>
