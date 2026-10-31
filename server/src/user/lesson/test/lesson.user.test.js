@@ -2,10 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   COLLECTION_COURSES,
+  COLLECTION_INSTRUCTORS,
   COLLECTION_SECTIONS,
   COLLECTION_LESSONS,
   COLLECTION_USER_LESSON_PROGRESS,
   COLLECTION_USER_COURSE_PROGRESS,
+  COLLECTION_ENROLLMENTS,
   COLLECTION_REVIEWS,
   COLLECTION_DISCUSSIONS,
   COLLECTION_DISCUSSION_LIKES,
@@ -42,7 +44,7 @@ import { getMongoDb, closeMongoDb } from '../../db.js';
 test('Lesson Module Backend Service Test Suite', async (t) => {
   const db = await getMongoDb();
 
-  // Test IDs giả lập cô lập
+  // ID fixture dành riêng cho database kiểm thử cô lập.
   const testCourseId = 'test_python_basic_9999';
   const testUserId = 'test_student_user_8888';
   const testUserId2 = 'test_student_user_7777';
@@ -51,10 +53,17 @@ test('Lesson Module Backend Service Test Suite', async (t) => {
 
   const cleanAll = async () => {
     await db.collection(COLLECTION_COURSES).deleteMany({ course_id: testCourseId });
+    await db.collection(COLLECTION_INSTRUCTORS).deleteMany({
+      $or: [
+        { instructor_id: 'inst_tran_minh_hieu' },
+        { user_id: 'inst_other_test_user' },
+      ],
+    });
     await db.collection(COLLECTION_SECTIONS).deleteMany({ course_id: testCourseId });
     await db.collection(COLLECTION_LESSONS).deleteMany({ course_id: testCourseId });
     await db.collection(COLLECTION_USER_LESSON_PROGRESS).deleteMany({ course_id: testCourseId });
     await db.collection(COLLECTION_USER_COURSE_PROGRESS).deleteMany({ course_id: testCourseId });
+    await db.collection(COLLECTION_ENROLLMENTS).deleteMany({ course_id: testCourseId });
     await db.collection(COLLECTION_REVIEWS).deleteMany({ course_id: testCourseId });
     await db.collection(COLLECTION_DISCUSSIONS).deleteMany({ course_id: testCourseId });
     await db.collection(COLLECTION_DISCUSSION_LIKES).deleteMany({});
@@ -69,6 +78,10 @@ test('Lesson Module Backend Service Test Suite', async (t) => {
   // Dọn dẹp sau khi kiểm thử kết thúc
   t.after(async () => {
     await cleanAll();
+    assert.equal(await db.collection(COLLECTION_DOCUMENTS).countDocuments({ course_id: testCourseId }), 0,
+      'Tài liệu fixture phải được xóa khỏi MongoDB sau kiểm thử');
+    assert.equal(await db.collection(COLLECTION_QNA).countDocuments({ course_id: testCourseId }), 0,
+      'Q&A fixture phải được xóa khỏi MongoDB sau kiểm thử');
     await closeMongoDb();
   });
 
@@ -115,7 +128,7 @@ test('Lesson Module Backend Service Test Suite', async (t) => {
   });
 
   // ─── 3. Tạo dữ liệu mẫu khớp với hình ảnh giao diện ThinkUp ─────────────────
-  await t.test('3. Chuẩn bị Mock Data cho Khóa học Python Cơ Bản', async () => {
+  await t.test('3. Chuẩn bị dữ liệu fixture trong MongoDB kiểm thử', async () => {
     // 3.1 Tạo khóa học
     await db.collection(COLLECTION_COURSES).insertOne({
       course_id: testCourseId,
@@ -245,6 +258,12 @@ test('Lesson Module Backend Service Test Suite', async (t) => {
       updated_at: new Date(),
     });
 
+    await db.collection(COLLECTION_ENROLLMENTS).insertOne({
+      user_id: testUserId,
+      course_id: testCourseId,
+      enrolled_at: new Date(),
+    });
+
     // Người dùng đã đánh giá khóa học
     await db.collection(COLLECTION_REVIEWS).insertOne({
       user_id: testUserId,
@@ -334,22 +353,91 @@ test('Lesson Module Backend Service Test Suite', async (t) => {
   });
 
   // ─── 5. Kiểm thử hàm cập nhật tiến độ updateLessonProgress ─────────────────
-  await t.test('5. Cập nhật tiến độ bài học và kiểm tra tự động cập nhật tiến độ khóa học', async () => {
-    // Hoàn thành thêm Bài 2 và Bài 3
+  await t.test('5. Cập nhật tiến độ đang học mà không tự đánh dấu hoàn thành', async () => {
     await updateLessonProgress(testUserId, testCourseId, 'les_02', {
-      status: 'completed',
+      status: 'in_progress',
       time_spent_seconds: 312,
     });
 
     await updateLessonProgress(testUserId, testCourseId, 'les_03', {
-      status: 'completed',
+      status: 'in_progress',
       time_spent_seconds: 630,
     });
 
     const updated = await getCourseStudyCurriculum(testCourseId, testUserId);
-    assert.equal(updated.learning_progress.completed_lessons, 3);
-    assert.equal(updated.learning_progress.progress_percentage, 60); // 3/5 = 60%
-    assert.equal(updated.learning_progress.remaining_lessons, 2);
+    assert.equal(updated.learning_progress.completed_lessons, 1);
+    assert.equal(updated.learning_progress.progress_percentage, 20); // Chỉ Bài 1 có tiến độ completed đã tồn tại.
+    assert.equal(updated.learning_progress.remaining_lessons, 4);
+  });
+
+  await t.test('5.1 Chỉ học viên đã ghi danh và lesson thuộc course mới được cập nhật tiến độ', async () => {
+    await assert.rejects(
+      () => updateLessonProgress(testUserId2, testCourseId, 'les_02', { status: 'completed' }),
+      error => error.status === 403 && error.code === 'COURSE_ENROLLMENT_REQUIRED',
+    );
+
+    const unrelatedCourseId = `unrelated-course-${Date.now()}`;
+    const unrelatedLessonId = `unrelated-lesson-${Date.now()}`;
+    try {
+      await db.collection(COLLECTION_COURSES).insertOne({ course_id: unrelatedCourseId, title: 'Unrelated course' });
+      await db.collection(COLLECTION_LESSONS).insertOne({
+        course_id: unrelatedCourseId,
+        lesson_id: unrelatedLessonId,
+        lesson_type: 'video',
+      });
+      await assert.rejects(
+        () => updateLessonProgress(testUserId, testCourseId, unrelatedLessonId, { status: 'completed' }),
+        error => error.status === 404,
+      );
+    } finally {
+      await db.collection(COLLECTION_COURSES).deleteMany({ course_id: unrelatedCourseId });
+      await db.collection(COLLECTION_LESSONS).deleteMany({ lesson_id: unrelatedLessonId });
+    }
+  });
+
+  await t.test('5.2 Từ chối status/time sai kiểu và không lưu quiz/lab result do client tự gửi', async () => {
+    await assert.rejects(
+      () => updateLessonProgress(testUserId, testCourseId, 'les_02', { status: 'approved' }),
+      error => error.status === 400,
+    );
+    await assert.rejects(
+      () => updateLessonProgress(testUserId, testCourseId, 'les_02', { time_spent_seconds: -1 }),
+      error => error.status === 400,
+    );
+    await assert.rejects(
+      () => updateLessonProgress(testUserId, testCourseId, 'les_02', { time_spent_seconds: '30' }),
+      error => error.status === 400,
+    );
+    await assert.rejects(
+      () => updateLessonProgress(testUserId, testCourseId, 'les_02', {
+        status: 'completed',
+        time_spent_seconds: 99999,
+      }),
+      error => error.status === 409 && error.code === 'LESSON_COMPLETION_UNVERIFIED',
+    );
+
+    const progressBeforeAllowedUpdate = await db.collection(COLLECTION_USER_LESSON_PROGRESS).findOne({
+      user_id: testUserId,
+      course_id: testCourseId,
+      lesson_id: 'les_02',
+    });
+    assert.equal(progressBeforeAllowedUpdate.status, 'in_progress');
+    assert.equal(progressBeforeAllowedUpdate.is_completed, false);
+    assert.equal(progressBeforeAllowedUpdate.completed_at, undefined);
+
+    await updateLessonProgress(testUserId, testCourseId, 'les_02', {
+      status: 'in_progress',
+      time_spent_seconds: 30,
+      quiz_result: { score: 100, passed: true },
+      lab_result: { passed: true },
+    });
+    const storedProgress = await db.collection(COLLECTION_USER_LESSON_PROGRESS).findOne({
+      user_id: testUserId,
+      course_id: testCourseId,
+      lesson_id: 'les_02',
+    });
+    assert.equal(storedProgress.quiz_result, undefined);
+    assert.equal(storedProgress.lab_result, undefined);
   });
 
   // ─── 6. Kiểm thử truy vấn Tab Tổng quan khóa học (Course Overview) ─────────
@@ -438,6 +526,7 @@ test('Lesson Module Backend Service Test Suite', async (t) => {
     assert.equal(reply1.success, true);
 
     // 7.5 Kiểm tra BR-DISC-02 Tối đa 2 tầng: Nếu trả lời reply1 (Level 2), hệ thống quy về disc1
+    await new Promise(resolve => setTimeout(resolve, 5100));
     const replyNested = await createDiscussion({
       courseId: testCourseId,
       userId: testUserId,
@@ -502,6 +591,19 @@ test('Lesson Module Backend Service Test Suite', async (t) => {
 
   // ─── 8. Kiểm thử Nghiệp vụ Hỏi đáp 1-1 Với Giảng Viên (Private 1-1 Q&A) ──────
   await t.test('8. Kiểm thử Hỏi đáp 1-1 với Giảng viên (Đặc quyền riêng tư)', async () => {
+    await db.collection(COLLECTION_INSTRUCTORS).insertMany([
+      {
+        instructor_id: 'inst_tran_minh_hieu',
+        user_id: 'inst_tran_minh_hieu',
+        full_name: 'Trần Minh Hiếu',
+      },
+      {
+        instructor_id: 'inst_other_test_profile',
+        user_id: 'inst_other_test_user',
+        full_name: 'Giảng viên khác',
+      },
+    ]);
+
     // 8.1 Học viên 1 đặt câu hỏi kèm lesson_id
     const q1 = await createQnaQuestion({
       courseId: testCourseId,
@@ -511,6 +613,23 @@ test('Lesson Module Backend Service Test Suite', async (t) => {
     });
     assert.equal(q1.success, true);
     assert.ok(q1.qna_id);
+
+    await assert.rejects(
+      () => replyQnaQuestion({
+        qnaId: q1.qna_id,
+        userId: testUserId2,
+        content: 'Người học ngoài hội thoại không được phản hồi.',
+      }),
+      error => error.status === 403 && error.code === 'QNA_REPLY_FORBIDDEN',
+    );
+    await assert.rejects(
+      () => replyQnaQuestion({
+        qnaId: q1.qna_id,
+        userId: 'inst_other_test_user',
+        content: 'Giảng viên không phụ trách không được phản hồi.',
+      }),
+      error => error.status === 403 && error.code === 'QNA_REPLY_FORBIDDEN',
+    );
 
     // 8.2 Giảng viên phản hồi
     const qReply = await replyQnaQuestion({
@@ -556,7 +675,67 @@ test('Lesson Module Backend Service Test Suite', async (t) => {
     assert.equal(detectDocumentIcon('ipynb'), 'file-code');
     assert.equal(detectDocumentIcon('csv'), 'file-spreadsheet');
 
-    // 9.2 Lấy danh mục tài liệu khóa học
+    // 9.2 DB rỗng phải trả danh mục rỗng, không tự dựng tài liệu mẫu.
+    const emptyDocs = await getCourseDocuments(testCourseId);
+    assert.equal(emptyDocs.summary.total_documents, 0);
+    assert.ok(emptyDocs.categories.every(category => category.items.length === 0));
+    await assert.rejects(
+      () => downloadCourseDocument('missing-course-document', testUserId),
+      error => error.status === 404 && error.code === 'COURSE_DOCUMENT_NOT_FOUND',
+    );
+
+    await db.collection(COLLECTION_DOCUMENTS).insertMany([
+      {
+        document_id: 'test-course-slide-document',
+        course_id: testCourseId,
+        category: 'lecture_slides',
+        title: 'Tài liệu fixture kiểm thử',
+        file_name: 'lesson-slides.pdf',
+        file_type: 'pdf',
+        file_size_bytes: 1024,
+        file_url: '/stored-files/lesson-slides.pdf',
+        download_count: 0,
+        updated_at: new Date(),
+      },
+      {
+        document_id: 'test-course-source-document',
+        course_id: testCourseId,
+        category: 'source_code',
+        title: 'Mã nguồn fixture kiểm thử',
+        file_name: 'lesson-source.zip',
+        file_type: 'zip',
+        file_size_bytes: 2048,
+        file_url: '/stored-files/lesson-source.zip',
+        download_count: 0,
+        updated_at: new Date(),
+      },
+      {
+        document_id: 'test-course-data-document',
+        course_id: testCourseId,
+        category: 'exercises_data',
+        title: 'Dữ liệu fixture kiểm thử',
+        file_name: 'lesson-data.csv',
+        file_type: 'csv',
+        file_size_bytes: 512,
+        file_url: '/stored-files/lesson-data.csv',
+        download_count: 0,
+        updated_at: new Date(),
+      },
+    ]);
+    await db.collection(COLLECTION_DOCUMENTS).insertOne({
+      document_id: 'test-course-document-without-storage-url',
+      course_id: testCourseId,
+      category: 'source_code',
+      title: 'Tài liệu chưa có đường dẫn lưu trữ',
+      file_name: 'missing-storage-url.zip',
+      download_count: 0,
+    });
+
+    await assert.rejects(
+      () => downloadCourseDocument('test-course-document-without-storage-url', testUserId),
+      error => error.status === 409 && error.code === 'COURSE_DOCUMENT_FILE_UNAVAILABLE',
+    );
+
     const docs = await getCourseDocuments(testCourseId);
     assert.ok(docs.summary);
     assert.equal(docs.categories.length, 3, 'Phải chia đúng 3 mục');
@@ -579,10 +758,57 @@ test('Lesson Module Backend Service Test Suite', async (t) => {
     assert.ok(sampleDoc.download_url);
 
     // 9.3 Tải tài liệu và kiểm tra tăng download_count
-    const downloadRes = await downloadCourseDocument(sampleDoc.document_id);
+    const downloadRes = await downloadCourseDocument(sampleDoc.document_id, testUserId);
     assert.equal(downloadRes.success, true);
-    assert.ok(downloadRes.download_count >= 1);
+    assert.equal(downloadRes.download_count, 1);
+    assert.equal(await db.collection(COLLECTION_DOCUMENTS).countDocuments({
+      document_id: sampleDoc.document_id,
+      download_count: 1,
+    }), 1);
   });
 });
 
 
+
+test('Learning integration: documents redact storage URLs and deny unauthorized downloads without counting', async () => {
+  let enrolled = false, increments = 0;
+  const doc = { _id: 'document-db', document_id: 'document', course_id: 'course', file_url: '/private.pdf', file_name: 'private.pdf' };
+  const db = { collection(name) { return {
+    async findOne(q) {
+      if (name === 'courses') return { course_id: 'course', _id: 'course-db' };
+      if (name === 'users') return null;
+      if (name === 'user_enrollments') return enrolled ? { user_id: 'learner' } : null;
+      if (name === 'user_courses') return null;
+      if (name === 'learning_preferences') return null;
+      if (name === 'course_documents') return q.$or.some(v => v.document_id === 'document') ? doc : null;
+      throw new Error('Unexpected collection ' + name);
+    },
+    find() { assert.equal(name, 'course_documents'); return { sort() { return this; }, async toArray() { return [doc]; } }; },
+    async updateOne(q, update) { assert.equal(name, 'course_documents');assert.equal(update.$inc.download_count, 1);increments++; },
+  }; } };
+  const guest = await getCourseDocuments('course', null, { db });
+  assert.equal(guest.categories[0].items[0].file_url, '');assert.equal(guest.categories[0].items[0].can_download, false);
+  await assert.rejects(downloadCourseDocument('document', null, { db }), { status: 401 });
+  await assert.rejects(downloadCourseDocument('document', 'learner', { db }), { status: 403 });assert.equal(increments, 0);
+  enrolled = true;
+  assert.equal((await getCourseDocuments('course', 'learner', { db })).categories[0].items[0].file_url, '/private.pdf');
+  const downloaded = await downloadCourseDocument('document', 'learner', { db });
+  assert.equal(downloaded.download_url, '/private.pdf');assert.equal(downloaded.download.quality, 'original');assert.equal(increments, 1);
+  doc.file_url = '';
+  await assert.rejects(downloadCourseDocument('document', 'learner', { db }), { status: 409 });assert.equal(increments, 1);
+});
+
+test('Learning integration: curriculum carries saved playback options without changing progress', async () => {
+  const db = { collection(name) { return {
+    async findOne() {
+      if (name === 'courses') return { course_id: 'course', _id: 'course-db' };
+      if (name === 'learning_preferences') return { playbackSpeed: '1.75', autoNext: false };
+      if (['user_course_progress', 'course_reviews'].includes(name)) return null;
+      throw new Error('Unexpected collection ' + name);
+    },
+    find() { return { sort() { return this; }, async toArray() { return []; } }; },
+  }; } };
+  const result = await getCourseStudyCurriculum('course', 'learner', { db });
+  assert.equal(result.learning_preferences.playbackSpeed, '1.75');assert.equal(result.learning_preferences.autoNext, false);
+  assert.equal(result.learning_progress.completed_lessons, 0);assert.equal(result.learning_progress.progress_percentage, 0);
+});

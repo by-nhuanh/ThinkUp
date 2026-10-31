@@ -1,5 +1,6 @@
 import { ObjectId } from 'mongodb';
 import { getMongoDb } from '../db.js';
+import { createNotificationForEvent } from '../notification/notification.user.js';
 
 // ─── Dữ liệu tham chiếu (lấy từ database thật) ──────────────────────────────
 
@@ -8,26 +9,6 @@ import { getMongoDb } from '../db.js';
  * Dùng cho validation câu hỏi "Bạn muốn trở thành?".
  * Nếu cần cập nhật, truy vấn: db.course_categories.find({}, { category_id: 1, name: 1 })
  */
-const VALID_CATEGORY_IDS = [
-  '1',  // Frontend Developer
-  '2',  // Backend Developer
-  '3',  // Fullstack Developer
-  '4',  // Mobile Developer
-  '5',  // Software Testing & QA
-  '6',  // Business Analysis
-  '7',  // Project Management
-  '8',  // Product Management
-  '9',  // DevOps Engineering
-  '10', // Cloud Engineering
-  '11', // Data Analysis
-  '12', // Data Engineering
-  '13', // AI & Machine Learning
-  '14', // UI/UX Design
-  '15', // ERP Consulting
-  '16', // System Analysis
-  '17', // Security Engineering
-];
-
 /**
  * Giá trị level hợp lệ từ collection courses (distinct('level')).
  * Chuẩn hoá toàn bộ về chữ thường trước khi so sánh.
@@ -94,7 +75,7 @@ const TECH_SLUG_TO_TAG_ID = {
  * @param {object} raw - Body thô từ req.body
  * @returns {{ categoryId: string, selectedTagIds: string[], level: string }}
  */
-function normalizeOnboardingInput(raw) {
+function normalizeOnboardingInput(raw = {}) {
   // ── 1. Resolve categoryId (hỗ trợ cả targetRole và categoryId) ──────────
   const rawRole = raw.categoryId ?? raw.targetRole ?? '';
   const roleLower = String(rawRole).trim().toLowerCase();
@@ -109,7 +90,7 @@ function normalizeOnboardingInput(raw) {
   });
 
   // ── 3. Resolve level (hỗ trợ cả currentLevel và level) ──────────────────
-  const level = (raw.level ?? raw.currentLevel ?? '').trim().toLowerCase();
+  const level = String(raw.level ?? raw.currentLevel ?? '').trim().toLowerCase();
 
   return { categoryId: String(categoryId).trim(), selectedTagIds, level };
 }
@@ -242,12 +223,16 @@ export async function skipOnboarding(userId, options = {}) {
   const objId = parseUserId(userId);
   await findUserById(db, objId);
 
-  await db.collection('users').updateOne(
-    { _id: objId },
-    { $set: { onboarding_completed: true, updated_at: new Date() } }
-  );
-
   const courses = await fetchPublishedCoursesWithTags(db);
+  const session = db.client.startSession();
+  try {
+    await session.withTransaction(async () => {
+      const updated = await db.collection('users').updateOne({ _id: objId },
+        { $set: { onboarding_completed: true, updated_at: new Date() } }, { session });
+      if (updated.matchedCount !== 1) throw Object.assign(new Error('Tài khoản không tồn tại.'), { status: 404 });
+      await createOnboardingNotification(String(objId), db, session, options);
+    });
+  } finally { await session.endSession(); }
 
   return {
     message: 'Bạn đã bỏ qua khảo sát. Hiển thị toàn bộ khóa học.',
@@ -279,6 +264,13 @@ export async function submitOnboarding(userId, surveyAnswers = {}, options = {})
   const objId = parseUserId(userId);
   await findUserById(db, objId);
 
+  if (!surveyAnswers || typeof surveyAnswers !== 'object' || Array.isArray(surveyAnswers)) {
+    const err = new Error('Dữ liệu khảo sát không hợp lệ.');
+    err.status = 400;
+    err.code = 'INVALID_ONBOARDING_INPUT';
+    throw err;
+  }
+
   // Chuẩn hóa đầu vào: chấp nhận cả format FE (slug) lẫn format DB (id)
   const { categoryId, selectedTagIds, level } = normalizeOnboardingInput(surveyAnswers);
 
@@ -289,10 +281,16 @@ export async function submitOnboarding(userId, surveyAnswers = {}, options = {})
     err.field = 'categoryId';
     throw err;
   }
-  if (!VALID_CATEGORY_IDS.includes(categoryId)) {
+  const categoryIdVariants = [categoryId];
+  if (/^\d+$/.test(categoryId)) categoryIdVariants.push(Number(categoryId));
+  const categoryExists = await db.collection('course_categories').findOne({
+    category_id: { $in: categoryIdVariants },
+  }, { projection: { _id: 1 } });
+  if (!categoryExists) {
     const err = new Error('Nghề nghiệp mục tiêu không hợp lệ.');
     err.status = 400;
     err.field = 'categoryId';
+    err.code = 'INVALID_ONBOARDING_CATEGORY';
     throw err;
   }
 
@@ -309,11 +307,31 @@ export async function submitOnboarding(userId, surveyAnswers = {}, options = {})
     err.field = 'selectedTagIds';
     throw err;
   }
-  const cleanedTagIds = [...new Set(selectedTagIds.filter((t) => t && typeof t === 'string' && t.trim()))];
+  const cleanedTagIds = [...new Set(selectedTagIds
+    .filter((tagId) => typeof tagId === 'string' && tagId.trim())
+    .map(tagId => tagId.trim()))];
   if (cleanedTagIds.length === 0) {
     const err = new Error('Kỹ năng quan tâm không hợp lệ.');
     err.status = 400;
     err.field = 'selectedTagIds';
+    throw err;
+  }
+
+  const tagIdVariants = [...new Set(cleanedTagIds.flatMap(tagId =>
+    /^\d+$/.test(tagId) ? [tagId, Number(tagId)] : [tagId],
+  ))];
+  const existingTags = await db.collection('tags').find(
+    { tag_id: { $in: tagIdVariants } },
+    { projection: { tag_id: 1 } },
+  ).toArray();
+  const existingTagIds = new Set(existingTags.map(tag => String(tag.tag_id)));
+  const missingTagIds = cleanedTagIds.filter(tagId => !existingTagIds.has(tagId));
+  if (missingTagIds.length > 0) {
+    const err = new Error('Một hoặc nhiều kỹ năng đã chọn không tồn tại.');
+    err.status = 400;
+    err.field = 'selectedTagIds';
+    err.code = 'INVALID_ONBOARDING_TAGS';
+    err.details = { invalid_tag_ids: missingTagIds };
     throw err;
   }
 
@@ -341,18 +359,6 @@ export async function submitOnboarding(userId, surveyAnswers = {}, options = {})
     submitted_at: new Date(),
   };
 
-  await db.collection('student_onboarding_answers').updateOne(
-    { user_id: objId },
-    { $set: onboardingAnswer },
-    { upsert: true }
-  );
-
-  // Cập nhật onboarding_completed = true
-  await db.collection('users').updateOne(
-    { _id: objId },
-    { $set: { onboarding_completed: true, updated_at: new Date() } }
-  );
-
   // Lấy toàn bộ khóa học published kèm tags và sắp xếp ưu tiên
   const allCourses = await fetchPublishedCoursesWithTags(db);
   const sortedCourses = sortCoursesByPreferences(allCourses, {
@@ -360,6 +366,32 @@ export async function submitOnboarding(userId, surveyAnswers = {}, options = {})
     selectedTagIds: cleanedTagIds,
     level: normalizedLevel,
   });
+
+  // Hai thay đổi trạng thái phải cùng thành công hoặc cùng được rollback.
+  const session = db.client.startSession();
+  try {
+    await session.withTransaction(async () => {
+      await db.collection('student_onboarding_answers').updateOne(
+        { user_id: objId },
+        { $set: onboardingAnswer },
+        { upsert: true, session },
+      );
+
+      const userUpdate = await db.collection('users').updateOne(
+        { _id: objId },
+        { $set: { onboarding_completed: true, updated_at: new Date() } },
+        { session },
+      );
+      if (userUpdate.matchedCount !== 1) {
+        const err = new Error('Tài khoản không tồn tại.');
+        err.status = 404;
+        throw err;
+      }
+      await createOnboardingNotification(String(objId), db, session, options);
+    });
+  } finally {
+    await session.endSession();
+  }
 
   return {
     message: 'Hoàn tất khảo sát! Đây là danh sách khóa học được gợi ý cho bạn.',
@@ -370,6 +402,14 @@ export async function submitOnboarding(userId, surveyAnswers = {}, options = {})
     },
     courses: sortedCourses.map(formatCourse),
   };
+}
+
+async function createOnboardingNotification(userId, db, session, options) {
+  return createNotificationForEvent(userId, {
+    eventKey: `onboarding-completed:${userId}`, category: 'learning', kind: 'achievement',
+    title: 'Chào mừng bạn đến ThinkUp', message: 'Bạn đã hoàn tất bước bắt đầu. Hãy khám phá khóa học và lộ trình học tập của mình.',
+    sourceType: 'onboarding', sourceId: userId, href: '/main/home',
+  }, { ...options, db, session });
 }
 
 /**

@@ -2,6 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   COLLECTION_CERTIFICATES,
+  COLLECTION_COURSES,
+  COLLECTION_USERS,
+  COLLECTION_USER_PROGRESS,
+  COLLECTION_USER_LESSON_PROGRESS,
+  COLLECTION_ENROLLMENTS,
+  COLLECTION_USER_COURSES,
+  COLLECTION_LESSONS,
   formatVietnamVerificationTime,
   formatVietnamIssuedDate,
   formatEnglishIssuedDate,
@@ -10,6 +17,7 @@ import {
   generateCertificateCode,
   formatCertificateDto,
   verifyCertificateByCode,
+  getCertificateDownload,
   getUserCertificates,
   issueCertificateForUser,
 } from '../certificate.user.js';
@@ -21,26 +29,34 @@ test('Certificate Backend Service Test Suite (SPEC-CERT-MNG-01 & SPEC-CERT-VERIF
 
   const testUserId = 'test_user_cert_123456';
   const testCourseId = 'test_course_react_pro';
+  const claimCourseId = 'course_ai_prompt_engineering';
+  const ineligibleUserId = 'test_user_cert_ineligible';
+  const unownedUserId = 'test_user_cert_unowned';
+  const revokedUserId = 'test_user_cert_revoked';
+  const newClaimUserId = 'test_user_cert_new_claim';
   const testCodeValid = 'TEST-CERT-2026';
 
+  const cleanTestData = async () => {
+    await Promise.all([
+      certColl.deleteMany({ user_id: { $in: [testUserId, ineligibleUserId, unownedUserId, revokedUserId, newClaimUserId] } }),
+      db.collection(COLLECTION_USERS).deleteMany({ id: { $in: [testUserId, ineligibleUserId, unownedUserId, revokedUserId, newClaimUserId] } }),
+      db.collection(COLLECTION_COURSES).deleteMany({ course_id: claimCourseId }),
+      db.collection(COLLECTION_LESSONS).deleteMany({ course_id: claimCourseId }),
+      db.collection(COLLECTION_USER_LESSON_PROGRESS).deleteMany({ course_id: claimCourseId }),
+      db.collection(COLLECTION_USER_PROGRESS).deleteMany({ course_id: claimCourseId }),
+      db.collection(COLLECTION_ENROLLMENTS).deleteMany({ course_id: claimCourseId }),
+      db.collection(COLLECTION_USER_COURSES).deleteMany({ course_id: claimCourseId }),
+    ]);
+  };
+
   // Dọn dẹp dữ liệu test trước khi thực hiện
-  await certColl.deleteMany({
-    $or: [
-      { user_id: testUserId },
-      { code: testCodeValid },
-      { code: 'MOCK-INVALID-CODE' },
-    ],
-  });
+  await cleanTestData();
+  await certColl.deleteMany({ $or: [{ code: testCodeValid }, { code: 'MOCK-INVALID-CODE' }] });
 
   t.after(async () => {
     // Dọn dẹp dữ liệu test sau khi hoàn tất
-    await certColl.deleteMany({
-      $or: [
-        { user_id: testUserId },
-        { code: testCodeValid },
-        { code: 'MOCK-INVALID-CODE' },
-      ],
-    });
+    await cleanTestData();
+    await certColl.deleteMany({ $or: [{ code: testCodeValid }, { code: 'MOCK-INVALID-CODE' }] });
     await closeMongoDb();
   });
 
@@ -110,6 +126,11 @@ test('Certificate Backend Service Test Suite (SPEC-CERT-MNG-01 & SPEC-CERT-VERIF
     assert.equal(result.certificate.certificateName, 'Nguyễn Văn Minh');
     assert.ok(result.verifiedAt, 'Phải có trường verifiedAt trả về cho UI');
 
+    await assert.rejects(
+      () => getCertificateDownload(testCodeValid),
+      error => error.status === 501 && error.code === 'CERTIFICATE_PDF_UNAVAILABLE',
+    );
+
     // 3.3 Tra cứu mã không tồn tại (TC-VRF-04)
     await assert.rejects(
       async () => {
@@ -120,6 +141,10 @@ test('Certificate Backend Service Test Suite (SPEC-CERT-MNG-01 & SPEC-CERT-VERIF
         assert.equal(err.code, 'CERTIFICATE_NOT_FOUND');
         return true;
       }
+    );
+    await assert.rejects(
+      () => getCertificateDownload('KHONG-TON-TAI-999'),
+      error => error.status === 404 && error.code === 'CERTIFICATE_NOT_FOUND',
     );
 
     // 3.4 Tra cứu để trống mã
@@ -159,22 +184,79 @@ test('Certificate Backend Service Test Suite (SPEC-CERT-MNG-01 & SPEC-CERT-VERIF
   });
 
   await t.test('5. Cấp chứng chỉ mới (Claim Certificate)', async () => {
-    const newCourseId = 'course_ai_prompt_engineering';
-    const cert = await issueCertificateForUser({
-      userId: testUserId,
-      courseId: newCourseId,
+    await db.collection(COLLECTION_USERS).insertMany([
+      { id: testUserId, full_name: 'Nguyễn Văn Chứng Chỉ' },
+      { id: ineligibleUserId, full_name: 'Học viên chưa đủ điều kiện' },
+      { id: unownedUserId, full_name: 'Học viên chưa ghi danh' },
+      { id: revokedUserId, full_name: 'Học viên có chứng chỉ đã thu hồi' },
+      { id: newClaimUserId, full_name: 'Học viên yêu cầu cấp mới' },
+    ]);
+    await db.collection(COLLECTION_COURSES).insertOne({
+      course_id: claimCourseId,
+      title: 'AI Prompt Engineering',
     });
+    await db.collection(COLLECTION_ENROLLMENTS).insertMany([
+      { user_id: testUserId, course_id: claimCourseId },
+      { user_id: ineligibleUserId, course_id: claimCourseId },
+      { user_id: revokedUserId, course_id: claimCourseId },
+      { user_id: newClaimUserId, course_id: claimCourseId },
+    ]);
+    const lessons = [
+      { lesson_id: 'claim-lesson-1', lesson_type: 'video' },
+      { lesson_id: 'claim-lesson-2', lesson_type: 'article' },
+      { lesson_id: 'claim-lesson-3', lesson_type: 'quiz' },
+      { lesson_id: 'claim-lesson-4', lesson_type: 'video' },
+      { lesson_id: 'claim-lesson-5', lesson_type: 'video' },
+    ].map(lesson => ({ ...lesson, course_id: claimCourseId }));
+    await db.collection(COLLECTION_LESSONS).insertMany(lessons);
+    await certColl.insertMany([
+      { code: 'CERT-ALREADY-VALID', user_id: testUserId, course_id: claimCourseId, student_name: 'Nguyễn Văn Chứng Chỉ', course_title: 'AI Prompt Engineering', status: 'valid' },
+      { code: 'CERT-ALREADY-REVOKED', user_id: revokedUserId, course_id: claimCourseId, student_name: 'Học viên có chứng chỉ đã thu hồi', course_title: 'AI Prompt Engineering', status: 'revoked' },
+    ]);
+    await db.collection(COLLECTION_USER_LESSON_PROGRESS).insertMany([
+      ...lessons.slice(0, 4).map(lesson => ({
+        user_id: testUserId,
+        course_id: claimCourseId,
+        lesson_id: lesson.lesson_id,
+        status: 'completed',
+        is_completed: true,
+      })),
+      ...lessons.slice(0, 4).map(lesson => ({
+        user_id: newClaimUserId,
+        course_id: claimCourseId,
+        lesson_id: lesson.lesson_id,
+        status: 'completed',
+        is_completed: true,
+      })),
+    ]);
 
-    assert.ok(cert);
-    assert.ok(cert.code);
-    assert.equal(cert.studentName, cert.certificateName);
-    assert.ok(cert.qrUrl.includes(cert.code));
 
-    // Thử claim lại cùng 1 khóa học -> Phải trả về chứng chỉ đã có, không tạo trùng
-    const reCert = await issueCertificateForUser({
-      userId: testUserId,
-      courseId: newCourseId,
-    });
-    assert.equal(reCert.code, cert.code, 'Không được tạo mã trùng lặp khi claim lại');
+    await assert.rejects(
+      () => issueCertificateForUser({ userId: unownedUserId, courseId: claimCourseId }),
+      error => error.status === 403 && error.code === 'COURSE_ENROLLMENT_REQUIRED',
+    );
+    await assert.rejects(
+      () => issueCertificateForUser({ userId: ineligibleUserId, courseId: claimCourseId }),
+      error => error.status === 403 && error.code === 'CERTIFICATE_NOT_ELIGIBLE',
+    );
+
+    // Các progress legacy có vẻ đạt ngưỡng vẫn không đủ bằng chứng để cấp chứng chỉ mới.
+    await assert.rejects(
+      () => issueCertificateForUser({ userId: newClaimUserId, courseId: claimCourseId }),
+      error => error.status === 409 && error.code === 'CERTIFICATE_ELIGIBILITY_UNVERIFIED',
+    );
+    assert.equal(await certColl.countDocuments({ user_id: newClaimUserId, course_id: claimCourseId }), 0);
+
+    // Chứng chỉ hợp lệ đã phát hành được giữ nguyên, không tính lại điều kiện.
+    const existingValid = await issueCertificateForUser({ userId: testUserId, courseId: claimCourseId });
+    assert.equal(existingValid.code, 'CERT-ALREADY-VALID');
+    assert.equal(existingValid.status, 'valid');
+
+    // Chứng chỉ bị thu hồi không được claim lại hoặc hồi sinh.
+    await assert.rejects(
+      () => issueCertificateForUser({ userId: revokedUserId, courseId: claimCourseId }),
+      error => error.status === 410 && error.code === 'CERTIFICATE_REVOKED',
+    );
+    assert.equal(await certColl.countDocuments({ user_id: revokedUserId, course_id: claimCourseId }), 1);
   });
 });

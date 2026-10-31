@@ -337,6 +337,26 @@ describe('Chức Năng Khóa Học Yêu Thích & Đồng Bộ Đa Thiết Bị (
       assert.equal(isFav, false);
     });
 
+    it('TC-ISOLATION-01: Xóa favorite của user này không ảnh hưởng user khác', async () => {
+      const targetCid = String(validCourse1.course_id || validCourse1._id);
+      const otherUserId = `${testUserId}-other`;
+      await db.collection(COLLECTION_FAVORITES).insertMany([
+        { user_id: testUserId, course_id: targetCid },
+        { user_id: otherUserId, course_id: targetCid },
+      ]);
+
+      await removeFavoriteCourse(testUserId, targetCid, db);
+
+      assert.equal(await db.collection(COLLECTION_FAVORITES).countDocuments({ user_id: otherUserId, course_id: targetCid }), 1);
+      await db.collection(COLLECTION_FAVORITES).deleteMany({ user_id: otherUserId });
+    });
+
+    it('TC-SYNC-INVALID-01: Bỏ qua ID khóa học không tồn tại khi đồng bộ', async () => {
+      const invalidId = 'missing-course-for-favorites';
+      const result = await syncFavoritesLogic(testUserId, [invalidId], db);
+      assert.equal(result.course_ids.includes(invalidId), false);
+    });
+
     it('TC-DEL-02: Xóa sạch toàn bộ danh sách yêu thích của người dùng', async () => {
       const res = await clearUserFavorites(testUserId, db);
       assert.equal(res.success, true);

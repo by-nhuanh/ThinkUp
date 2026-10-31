@@ -112,6 +112,19 @@ describe('Chức Năng Giỏ Hàng User & Guest (Unit & Integration Tests)', () 
       });
       assert.equal(cartCountInDb, 0, 'Khóa học phải được xóa sạch khỏi DB');
     });
+
+    it('TC-CART-ISOLATION-01: Xóa khóa học của user này không xóa cùng course của user khác', async () => {
+      const otherUserId = `${testUserId}-other`;
+      await db.collection(COLLECTION_CARTS).insertMany([
+        { user_id: testUserId, course_id: testCourseId1 },
+        { user_id: otherUserId, course_id: testCourseId1 },
+      ]);
+
+      await removeFromCartLogic(testUserId, testCourseId1);
+
+      assert.equal(await db.collection(COLLECTION_CARTS).countDocuments({ user_id: otherUserId, course_id: testCourseId1 }), 1);
+      await db.collection(COLLECTION_CARTS).deleteMany({ user_id: otherUserId });
+    });
   });
 
   // ─── 4. Cắm cờ Khóa học đã sở hữu & Trạng thái Nút bấm ─────────────────────

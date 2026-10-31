@@ -704,63 +704,93 @@ export async function updateCardStatus(listId, cardId, userId, action) {
 
   const queryId = toObjectId(listId);
   const db = await getMongoDb();
-  const listDoc = await db.collection(COLLECTION_FLASHCARD_LISTS).findOne({
-    _id: queryId,
-    user_id: userId,
-  });
+  const session = db.client.startSession();
+  const flashcardsColl = db.collection(COLLECTION_FLASHCARD_LISTS);
+  let newStatus;
+  let updatedList;
+  let updated = false;
 
-  if (!listDoc) {
-    const err = new Error('Không tìm thấy bộ flashcard.');
-    err.status = 404;
-    throw err;
+  try {
+    return await session.withTransaction(async () => {
+      // Keep the flashcard write and linked roadmap update in one MongoDB transaction.
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const listDoc = await flashcardsColl.findOne({ _id: queryId, user_id: userId }, { session });
+        if (!listDoc) {
+          const err = new Error('Không tìm thấy bộ flashcard.');
+          err.status = 404;
+          throw err;
+        }
+
+        const cards = listDoc.cards || [];
+        const targetCardIndex = cards.findIndex(
+          card => String(card.card_id) === String(cardId) || String(card.id) === String(cardId),
+        );
+        if (targetCardIndex === -1) {
+          const err = new Error('Không tìm thấy thẻ flashcard trong danh sách.');
+          err.status = 404;
+          err.field = 'cardId';
+          throw err;
+        }
+
+        const currentCard = cards[targetCardIndex];
+        newStatus = normalizeCardStatusAction(action, currentCard.status);
+        const writeResult = await flashcardsColl.updateOne(
+          {
+            _id: queryId,
+            user_id: userId,
+            cards: {
+              $elemMatch: {
+                status: currentCard.status,
+                $or: [{ card_id: String(cardId) }, { id: String(cardId) }],
+              },
+            },
+          },
+          { $set: { 'cards.$.status': newStatus, updated_at: new Date() } },
+          { session },
+        );
+
+        if (writeResult.matchedCount === 1) {
+          updated = true;
+          break;
+        }
+      }
+
+      if (!updated) {
+        const err = new Error('Không thể cập nhật thẻ do có thay đổi đồng thời. Vui lòng thử lại.');
+        err.status = 409;
+        err.code = 'FLASHCARD_UPDATE_CONFLICT';
+        throw err;
+      }
+
+      updatedList = await flashcardsColl.findOne({ _id: queryId, user_id: userId }, { session });
+      const cards = updatedList?.cards || [];
+      const updatedCard = cards.find(
+        card => String(card.card_id) === String(cardId) || String(card.id) === String(cardId),
+      );
+      const stats = calculateFlashcardStats(cards);
+
+      let roadmapSyncResult = null;
+      if (updatedList?.node_id) {
+        roadmapSyncResult = await checkAndUpdateRoadmapFromFlashcard(
+          userId,
+          updatedList.node_id,
+          updatedList._id,
+          { db, session },
+        );
+      }
+
+      return {
+        success: true,
+        card_id: cardId,
+        new_status: updatedCard?.status || newStatus,
+        updated_card: updatedCard,
+        stats,
+        roadmap_sync: roadmapSyncResult,
+      };
+    });
+  } finally {
+    await session.endSession();
   }
-
-  const cards = listDoc.cards || [];
-  const targetCardIndex = cards.findIndex(
-    (c) => String(c.card_id) === String(cardId) || String(c.id) === String(cardId)
-  );
-
-  if (targetCardIndex === -1) {
-    const err = new Error('Không tìm thấy thẻ flashcard trong danh sách.');
-    err.status = 404;
-    err.field = 'cardId';
-    throw err;
-  }
-
-  const currentCard = cards[targetCardIndex];
-  const newStatus = normalizeCardStatusAction(action, currentCard.status);
-  cards[targetCardIndex].status = newStatus;
-
-  await db.collection(COLLECTION_FLASHCARD_LISTS).updateOne(
-    { _id: queryId, user_id: userId },
-    {
-      $set: {
-        cards,
-        updated_at: new Date(),
-      },
-    }
-  );
-
-  const stats = calculateFlashcardStats(cards);
-
-  let roadmapSyncResult = null;
-  if (listDoc.node_id) {
-    // Tự động kiểm tra và cập nhật node trên roadmap nếu đủ điều kiện
-    roadmapSyncResult = await checkAndUpdateRoadmapFromFlashcard(
-      userId,
-      listDoc.node_id,
-      listDoc._id
-    );
-  }
-
-  return {
-    success: true,
-    card_id: cardId,
-    new_status: newStatus,
-    updated_card: cards[targetCardIndex],
-    stats,
-    roadmap_sync: roadmapSyncResult,
-  };
 }
 
 /**
@@ -866,7 +896,7 @@ export async function createReviewFlashcardListFromRoadmapNode(userId, payload =
  * @param {string|ObjectId} [listId]
  * @returns {Promise<object>}
  */
-export async function checkAndUpdateRoadmapFromFlashcard(userId, nodeId, listId = null) {
+export async function checkAndUpdateRoadmapFromFlashcard(userId, nodeId, listId = null, options = {}) {
   if (!userId || !nodeId) {
     return {
       updated: false,
@@ -875,7 +905,8 @@ export async function checkAndUpdateRoadmapFromFlashcard(userId, nodeId, listId 
     };
   }
 
-  const db = await getMongoDb();
+  const db = options.db || await getMongoDb();
+  const sessionOptions = options.session ? { session: options.session } : {};
 
   // Tìm bộ flashcard liên kết với node của người dùng
   const query = { user_id: userId, node_id: nodeId };
@@ -883,7 +914,7 @@ export async function checkAndUpdateRoadmapFromFlashcard(userId, nodeId, listId 
     query._id = toObjectId(listId);
   }
 
-  const flashcardList = await db.collection(COLLECTION_FLASHCARD_LISTS).findOne(query);
+  const flashcardList = await db.collection(COLLECTION_FLASHCARD_LISTS).findOne(query, sessionOptions);
 
   // Điều kiện 1: Nếu người dùng không tạo list flashcard hoặc chưa có tối thiểu 5 thẻ
   if (!flashcardList || !Array.isArray(flashcardList.cards) || flashcardList.cards.length < 5) {
@@ -915,7 +946,7 @@ export async function checkAndUpdateRoadmapFromFlashcard(userId, nodeId, listId 
   const userRoadmap = await db.collection(COLLECTION_USER_ROADMAPS).findOne({
     user_id: userId,
     'nodes.node_id': nodeId,
-  });
+  }, sessionOptions);
 
   if (!userRoadmap) {
     return {
@@ -928,11 +959,12 @@ export async function checkAndUpdateRoadmapFromFlashcard(userId, nodeId, listId 
 
   // Tìm node cụ thể để cập nhật
   let targetNodeTitle = '';
+  let restoredStatus = ROADMAP_STATUS_COMPLETED;
   const updatedNodes = (userRoadmap.nodes || []).map((node) => {
     if (node.node_id === nodeId) {
       targetNodeTitle = node.title || '';
       // Phục hồi trạng thái: Nếu điểm số >= 80 là completed, ngược lại là in_progress
-      const restoredStatus = (node.score >= 80 || node.score === undefined)
+      restoredStatus = (node.score >= 80 || node.score === undefined)
         ? ROADMAP_STATUS_COMPLETED
         : ROADMAP_STATUS_IN_PROGRESS;
 
@@ -964,14 +996,15 @@ export async function checkAndUpdateRoadmapFromFlashcard(userId, nodeId, listId 
         progress_percentage: overallProgress,
         updated_at: new Date(),
       },
-    }
+    },
+    sessionOptions,
   );
 
   return {
     updated: true,
     node_id: nodeId,
     node_title: targetNodeTitle,
-    new_status: ROADMAP_STATUS_COMPLETED,
+    new_status: restoredStatus,
     is_review: false,
     progress_percentage: stats.progress_percentage,
     roadmap_progress: overallProgress,

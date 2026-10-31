@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import express from 'express';
+import { ObjectId } from 'mongodb';
 import {
   createStudyRoom,
   getRandomAvailablePublicRoom,
@@ -28,16 +30,126 @@ import {
   getRoomSessionMessages,
   cleanupExpiredEmptyRooms,
   getRoomParticipants,
-  updateParticipantCanvasPosition
+  updateParticipantCanvasPosition,
+  createStudyRoomRouter
 } from '../studyroom.user.js';
 import { getMongoDb, closeMongoDb } from '../../db.js';
+import { getNotificationDeliveryPolicy } from '../../notification/notification.user.js';
+
+function inviteNotificationFixture() {
+  const copy = value => value instanceof Date ? new Date(value) : value instanceof ObjectId ? new ObjectId(String(value))
+    : value instanceof Map ? new Map([...value].map(([k,v]) => [k,copy(v)])) : Array.isArray(value) ? value.map(copy)
+      : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).map(([k,v]) => [k,copy(v)])) : value;
+  const match = (row,query) => Object.entries(query).every(([key,value]) => {
+    if (key === '$or') return value.some(item => match(row,item));
+    if (value && typeof value === 'object') {
+      return Object.entries(value).every(([op,wanted]) => {
+        if (op === '$ne') return row[key] !== wanted;
+        throw new Error(`Unsupported query ${op}`);
+      });
+    }
+    return row[key] === value;
+  });
+  let tables = new Map(),queue = Promise.resolve();
+  const db = { get tables() { return tables; },fail:false,client:{ startSession() { return {
+    async withTransaction(work) {
+      let release;const previous = queue;queue = new Promise(resolve => { release = resolve; });await previous;
+      const snapshot = copy(tables);
+      try { return await work(); } catch (error) { tables = snapshot;throw error; } finally { release(); }
+    },async endSession() {},
+  }; } },collection(name) {
+    if (!tables.has(name)) tables.set(name,[]);
+    const rows = () => tables.get(name);
+    return {
+      async findOne(query) { return copy(rows().find(row => match(row,query)) ?? null); },
+      async updateOne(query,update,options = {}) {
+        if (db.fail && name === 'notifications') throw new Error('Inbox offline');
+        let row = rows().find(row => match(row,query));
+        if (!row && options.upsert) { row = { ...copy(query),...copy(update.$setOnInsert || {}) };rows().push(row); }
+        if (!row) return { matchedCount:0 };
+        Object.assign(row,copy(update.$set || {}));return { matchedCount:1 };
+      },
+    };
+  } };
+  tables.set('users',[
+    { _id:'owner',id:'owner',full_name:'Room Owner' },
+    { _id:'recipient',id:'recipient',email:'member@example.test',email_verified:true,phone:'0901234567',status:'active' },
+  ]);
+  tables.set('study_rooms',[{ _id:'room',roomId:'abcd12',roomCode:'ABCD12',name:'Room Test',creatorId:'owner',isActive:true,participants:[],roomLink:'/room/abcd12' }]);
+  return { db,invite: (target = 'member@example.test',actor = 'owner') => inviteUserToRoom('abcd12',target,actor,'Forged Name',{ db }) };
+}
+
+test('Notification integration: Studyroom resolves verified recipient, ignores spoofed name and deduplicates invitations', async () => {
+  const f = inviteNotificationFixture();
+  await f.invite();await f.invite('MEMBER@example.test');
+  await Promise.all([f.invite(),f.invite()]);
+  assert.equal(f.db.tables.get('study_room_invites').length,1);
+  const rows = f.db.tables.get('notifications');
+  assert.equal(rows.length,1);assert.equal(rows[0].user_id,'recipient');
+  assert.equal(rows[0].category,'community');assert.equal(rows[0].kind,'invitation');
+  assert.equal(rows[0].message.includes('Room Owner'),true);
+  assert.equal(rows[0].message.includes('Forged Name'),false);
+});
+
+test('Notification integration: Studyroom blocks unauthorized actors and keeps invite/inbox atomic on failures', async () => {
+  const f = inviteNotificationFixture();
+  await assert.rejects(f.invite('member@example.test','stranger'),error => error.status === 403);
+  assert.equal(f.db.tables.get('study_room_invites')?.length || 0,0);
+  f.db.fail = true;await assert.rejects(f.invite(),/Inbox offline/);
+  assert.equal(f.db.tables.get('study_room_invites')?.length || 0,0);
+  f.db.fail = false;await f.invite();assert.equal(f.db.tables.get('notifications').length,1);
+});
+
+test('Notification integration: Studyroom does not leak inbox details to unresolved or unverified targets', async () => {
+  const f = inviteNotificationFixture();
+  f.db.tables.get('users')[1].email_verified = false;
+  await f.invite();await f.invite('guest@example.test');await f.invite('0901234567');
+  assert.equal(f.db.tables.get('notifications')?.length || 0,0);
+  assert.equal(f.db.tables.get('study_room_invites').length,3);
+  f.db.tables.get('users')[1].phone_verified = true;
+  await f.invite('0901234567');
+  assert.equal(f.db.tables.get('notifications').length,1);
+  assert.equal(f.db.tables.get('notifications')[0].user_id,'recipient');
+});
+
+test('Notification integration: Studyroom inbox remains available while DND/community preferences mute active delivery', async () => {
+  const f = inviteNotificationFixture();
+  f.db.tables.set('notification_preferences',[{ _id:'recipient',community:false,dnd:{ mode:'indefinite' } }]);
+  await f.invite();
+  assert.equal(f.db.tables.get('notifications').length,1);
+  const policy = await getNotificationDeliveryPolicy('recipient','community',{ db:f.db });
+  assert.equal(policy.inbox,true);assert.equal(policy.email,false);assert.equal(policy.web,false);
+});
 
 test('Study Room Backend Service Test Suite', async (t) => {
   const db = await getMongoDb();
   const roomsColl = db.collection('study_rooms');
+  const testRunId = `studyroom_test_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const testRoomIds = new Set();
+  const markRoomForTest = async room => {
+    testRoomIds.add(room.roomId);
+    await roomsColl.updateOne({ _id: room._id }, { $set: { studyroomTestRunId: testRunId } });
+  };
 
-  // Dọn dẹp data test trước
-  await roomsColl.deleteMany({ testRun: true });
+  t.after(async () => {
+    const roomIds = [...testRoomIds];
+    try {
+      await roomsColl.deleteMany({ studyroomTestRunId: testRunId });
+      if (roomIds.length) {
+        await db.collection('study_room_messages').deleteMany({ roomId: { $in: roomIds } });
+        await db.collection('study_room_invites').deleteMany({ roomId: { $in: roomIds } });
+      }
+      await db.collection('users').deleteMany({ studyroomTestRunId: testRunId });
+      assert.equal(await roomsColl.countDocuments({ studyroomTestRunId: testRunId }), 0);
+      assert.equal(await db.collection('users').countDocuments({ studyroomTestRunId: testRunId }), 0);
+      if (roomIds.length) {
+        assert.equal(await db.collection('study_room_messages').countDocuments({ roomId: { $in: roomIds } }), 0);
+        assert.equal(await db.collection('study_room_invites').countDocuments({ roomId: { $in: roomIds } }), 0);
+      }
+    } finally {
+      await closeMongoDb();
+    }
+  });
 
   await t.test('1. Validation tạo phòng học', async () => {
     // Tên phòng dưới 5 ký tự
@@ -93,6 +205,7 @@ test('Study Room Backend Service Test Suite', async (t) => {
     };
 
     createdPublicRoom = await createStudyRoom('user_test_1', payload);
+    await markRoomForTest(createdPublicRoom);
 
     assert.ok(createdPublicRoom._id);
     assert.ok(createdPublicRoom.roomCode);
@@ -103,8 +216,6 @@ test('Study Room Backend Service Test Suite', async (t) => {
     assert.equal(createdPublicRoom.hasPassword, false);
     assert.equal(createdPublicRoom.password, undefined); // Không leak password
 
-    // Đánh dấu để dọn dẹp sau test
-    await roomsColl.updateOne({ _id: createdPublicRoom._id }, { $set: { testRun: true } });
   });
 
   await t.test('3. Tạo thành công phòng học riêng tư (Private Room có Password)', async () => {
@@ -121,14 +232,13 @@ test('Study Room Backend Service Test Suite', async (t) => {
     };
 
     createdPrivateRoom = await createStudyRoom('user_test_2', payload);
+    await markRoomForTest(createdPrivateRoom);
 
     assert.ok(createdPrivateRoom._id);
     assert.equal(createdPrivateRoom.type, 'private');
     assert.equal(createdPrivateRoom.hasPassword, true);
     assert.equal(createdPrivateRoom.password, undefined); // Không leak password ra client
 
-    // Đánh dấu để dọn dẹp sau test
-    await roomsColl.updateOne({ _id: createdPrivateRoom._id }, { $set: { testRun: true } });
   });
 
   await t.test('4. Tìm phòng công khai còn chỗ để spawn ngẫu nhiên (Random Spawn)', async () => {
@@ -150,19 +260,38 @@ test('Study Room Backend Service Test Suite', async (t) => {
 
   await t.test('6. Tìm kiếm phòng bằng mã phòng hoặc link và xác thực mật khẩu', async () => {
     // 6a. Vào phòng công khai bằng mã phòng
-    const publicJoinByCode = await searchAndJoinRoom(createdPublicRoom.roomCode);
+    const publicJoinByCode = await searchAndJoinRoom(createdPublicRoom.roomCode, '', 'user_test_1');
     assert.equal(publicJoinByCode.success, true);
     assert.equal(publicJoinByCode.room.roomId, createdPublicRoom.roomId);
 
     // 6b. Vào phòng công khai bằng link phòng
-    const publicJoinByLink = await searchAndJoinRoom(createdPublicRoom.roomLink);
+    const publicJoinByLink = await searchAndJoinRoom(createdPublicRoom.roomLink, '', 'user_test_1');
     assert.equal(publicJoinByLink.success, true);
     assert.equal(publicJoinByLink.room.roomId, createdPublicRoom.roomId);
 
-    // 6c. Vào phòng riêng tư nhưng không nhập mật khẩu -> Lỗi 401 PASSWORD_REQUIRED
+    const invitedUserId = `studyroom_invited_${testRunId}`;
+    await db.collection('users').insertOne({
+      id: invitedUserId,
+      email: `invite_${testRunId}@example.test`,
+      studyroomTestRunId: testRunId
+    });
+    const uninvitedUserId = `uninvited_${testRunId}`;
+    await db.collection('users').insertOne({
+      id: uninvitedUserId,
+      email: `other_${testRunId}@example.test`,
+      studyroomTestRunId: testRunId
+    });
+    await inviteUserToRoom(createdPrivateRoom.roomId, `invite_${testRunId}@example.test`, 'user_test_2');
+
+    await assert.rejects(
+      () => searchAndJoinRoom(createdPrivateRoom.roomCode, 'mypassword123', uninvitedUserId),
+      { code: 'INVITATION_REQUIRED' }
+    );
+
+    // Lời mời hợp lệ vẫn phải kèm mật khẩu phòng.
     await assert.rejects(
       async () => {
-        await searchAndJoinRoom(createdPrivateRoom.roomCode, '');
+        await searchAndJoinRoom(createdPrivateRoom.roomCode, '', invitedUserId);
       },
       { code: 'PASSWORD_REQUIRED' }
     );
@@ -170,16 +299,22 @@ test('Study Room Backend Service Test Suite', async (t) => {
     // 6d. Vào phòng riêng tư nhập sai mật khẩu -> Lỗi 403 INVALID_PASSWORD
     await assert.rejects(
       async () => {
-        await searchAndJoinRoom(createdPrivateRoom.roomCode, 'sai_mat_khau');
+        await searchAndJoinRoom(createdPrivateRoom.roomCode, 'sai_mat_khau', invitedUserId);
       },
       { code: 'INVALID_PASSWORD' }
     );
 
     // 6e. Vào phòng riêng tư nhập đúng mật khẩu -> Thành công
-    const privateJoinSuccess = await searchAndJoinRoom(createdPrivateRoom.roomCode, 'mypassword123');
+    const privateJoinSuccess = await searchAndJoinRoom(createdPrivateRoom.roomCode, 'mypassword123', invitedUserId);
     assert.equal(privateJoinSuccess.success, true);
     assert.equal(privateJoinSuccess.room.roomId, createdPrivateRoom.roomId);
     assert.equal(privateJoinSuccess.room.theme, createdPrivateRoom.theme);
+    const privateToken = await generateLiveKitToken({ roomId: createdPrivateRoom.roomId, userId: invitedUserId });
+    assert.equal(privateToken.role, 'member');
+    await assert.rejects(
+      () => generateLiveKitToken({ roomId: createdPrivateRoom.roomId, userId: uninvitedUserId }),
+      { code: 'INVITATION_REQUIRED' }
+    );
   });
 
   await t.test('7. Tìm kiếm phòng theo chủ đề và tên phòng', async () => {
@@ -269,13 +404,113 @@ test('Study Room Backend Service Test Suite', async (t) => {
       roomId: createdPublicRoom.roomId,
       userId: 'user_livekit_test',
       userName: 'Văn Test',
-      role: 'member'
+      role: 'moderator'
     });
     assert.ok(tokenResult.token);
     assert.ok(typeof tokenResult.token === 'string');
     assert.equal(tokenResult.roomId, createdPublicRoom.roomId);
     assert.ok(tokenResult.position);
     assert.ok(tokenResult.livekitUrl);
+    assert.equal(tokenResult.role, 'member');
+    const memberClaims = JSON.parse(Buffer.from(tokenResult.token.split('.')[1], 'base64url').toString());
+    assert.deepEqual(memberClaims.video.canPublishSources.sort(), ['camera', 'microphone']);
+
+    await roomsColl.updateOne({ _id: createdPublicRoom._id }, {
+      $set: { 'permissions.voiceEnabled': false, 'permissions.cameraEnabled': true, 'permissions.participantShareScreen': false }
+    });
+    const cameraOnlyToken = await generateLiveKitToken({ roomId: createdPublicRoom.roomId, userId: 'user_livekit_test' });
+    const cameraOnlyClaims = JSON.parse(Buffer.from(cameraOnlyToken.token.split('.')[1], 'base64url').toString());
+    assert.deepEqual(cameraOnlyClaims.video.canPublishSources, ['camera']);
+    await roomsColl.updateOne({ _id: createdPublicRoom._id }, {
+      $set: { 'permissions.voiceEnabled': true, 'permissions.cameraEnabled': true }
+    });
+
+    const ownerToken = await generateLiveKitToken({ roomId: createdPublicRoom.roomId, userId: 'user_test_1' });
+    const ownerClaims = JSON.parse(Buffer.from(ownerToken.token.split('.')[1], 'base64url').toString());
+    assert.deepEqual(ownerClaims.video.canPublishSources.sort(), ['camera', 'microphone', 'screen_share', 'screen_share_audio']);
+
+    const firstRoomState = await roomsColl.findOne({ roomId: createdPublicRoom.roomId });
+    const firstParticipant = firstRoomState.participants.find(p => p.userId === 'user_livekit_test');
+    await Promise.all([
+      generateLiveKitToken({ roomId: createdPublicRoom.roomId, userId: 'user_livekit_test', userName: 'Văn Test' }),
+      generateLiveKitToken({ roomId: createdPublicRoom.roomId, userId: 'user_livekit_test', userName: 'Văn Test' })
+    ]);
+    const reconnectedRoom = await roomsColl.findOne({ roomId: createdPublicRoom.roomId });
+    assert.equal(reconnectedRoom.currentUsers, firstRoomState.currentUsers);
+    assert.equal(reconnectedRoom.participants.filter(p => p.userId === 'user_livekit_test').length, 1);
+    assert.equal(reconnectedRoom.participants.find(p => p.userId === 'user_livekit_test').joinedAt.getTime(), firstParticipant.joinedAt.getTime());
+    await leaveStudyRoom(createdPublicRoom.roomId, 'user_livekit_test');
+  });
+
+  await t.test('13a. Route token bắt buộc xác thực và bỏ qua userId/role từ body', async () => {
+    const routeRoom = await createStudyRoom(`owner_${testRunId}`, { name: 'Phòng test route token', type: 'public' });
+    await markRoomForTest(routeRoom);
+
+    const app = express();
+    app.use(express.json());
+    app.use('/api/study-room', createStudyRoomRouter(express, (req, res, next) => {
+      const authenticatedUserId = req.get('x-test-user-id');
+      if (!authenticatedUserId) return res.status(401).json({ success: false });
+      req.userId = authenticatedUserId;
+      next();
+    }));
+    const server = app.listen(0);
+    await new Promise(resolve => server.once('listening', resolve));
+
+    try {
+      const baseUrl = `http://127.0.0.1:${server.address().port}/api/study-room/token`;
+      const unauthenticated = await fetch(baseUrl, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ roomId: routeRoom.roomId })
+      });
+      assert.equal(unauthenticated.status, 401);
+      const unauthenticatedJoin = await fetch(baseUrl.replace('/token', '/join'), {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ codeOrLink: routeRoom.roomCode })
+      });
+      assert.equal(unauthenticatedJoin.status, 401);
+
+      const response = await fetch(baseUrl, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-test-user-id': `member_${testRunId}` },
+        body: JSON.stringify({ roomId: routeRoom.roomId, userId: routeRoom.creatorId, role: 'owner' })
+      });
+      assert.equal(response.status, 200);
+      const result = await response.json();
+      assert.equal(result.data.role, 'member');
+      const roomAfterToken = await roomsColl.findOne({ roomId: routeRoom.roomId });
+      assert.ok(roomAfterToken.participants.some(p => p.userId === `member_${testRunId}`));
+      assert.equal(roomAfterToken.participants.filter(p => p.userId === routeRoom.creatorId).length, 1);
+
+      const messageResponse = await fetch(`${baseUrl.replace('/token', `/${routeRoom.roomId}/messages`)}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-test-user-id': `member_${testRunId}` },
+        body: JSON.stringify({ userId: routeRoom.creatorId, senderName: 'Giả danh', content: 'Test authenticated sender' })
+      });
+      assert.equal(messageResponse.status, 201);
+      const messageResult = await messageResponse.json();
+      assert.equal(messageResult.data.senderId, `member_${testRunId}`);
+      assert.equal(messageResult.data.senderName, 'Học viên');
+    } finally {
+      await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+    }
+  });
+
+  await t.test('13b. Cấp token đồng thời không vượt sức chứa phòng', async () => {
+    const limitedRoom = await createStudyRoom(`limited_owner_${testRunId}`, {
+      name: 'Phòng test giới hạn chỗ', type: 'public', capacity: 2
+    });
+    await markRoomForTest(limitedRoom);
+    const results = await Promise.allSettled([
+      generateLiveKitToken({ roomId: limitedRoom.roomId, userId: `limited_a_${testRunId}` }),
+      generateLiveKitToken({ roomId: limitedRoom.roomId, userId: `limited_b_${testRunId}` })
+    ]);
+    assert.equal(results.filter(result => result.status === 'fulfilled').length, 1);
+    const rejected = results.find(result => result.status === 'rejected');
+    assert.equal(rejected.reason.code, 'ROOM_FULL');
+    const roomAfterRace = await roomsColl.findOne({ roomId: limitedRoom.roomId });
+    assert.equal(roomAfterRace.currentUsers, 2);
+    assert.equal(roomAfterRace.participants.length, 2);
   });
 
   await t.test('14. Tra cứu Permission Matrix & Quyền thực tế thành viên', async () => {
@@ -317,9 +552,13 @@ test('Study Room Backend Service Test Suite', async (t) => {
 
   await t.test('17. Mời người dùng vào phòng & Duyệt yêu cầu vào phòng', async () => {
     // Mời qua Email / SĐT
-    const inviteRes = await inviteUserToRoom(createdPublicRoom.roomId, 'friend@thinkup.vn', 'Anh Dev');
+    const inviteRes = await inviteUserToRoom(createdPublicRoom.roomId, 'friend@thinkup.vn', 'user_test_1', 'Anh Dev');
     assert.equal(inviteRes.success, true);
     assert.ok(inviteRes.inviteLink);
+    await assert.rejects(
+      () => inviteUserToRoom(createdPublicRoom.roomId, 'blocked@example.test', 'stranger_user'),
+      { code: 'INVITE_PERMISSION_REQUIRED' }
+    );
 
     // Gửi yêu cầu xin vào phòng
     const reqRes = await requestJoinApproval(createdPublicRoom.roomId, 'joiner_123', 'Người xin vào');
@@ -338,7 +577,7 @@ test('Study Room Backend Service Test Suite', async (t) => {
     await generateLiveKitToken({ roomId: createdPublicRoom.roomId, userId: 'user_charlie', userName: 'Charlie' });
 
     const roomAfterJoin = await roomsColl.findOne({ roomId: createdPublicRoom.roomId });
-    assert.ok(roomAfterJoin.currentUsers >= 3);
+    assert.equal(roomAfterJoin.currentUsers, 4);
     assert.ok(roomAfterJoin.participants.some(p => p.userId === 'user_alice'));
     assert.ok(roomAfterJoin.participants.some(p => p.userId === 'user_bob'));
     assert.ok(roomAfterJoin.participants.some(p => p.userId === 'user_charlie'));
@@ -349,6 +588,10 @@ test('Study Room Backend Service Test Suite', async (t) => {
 
     const roomAfterLeave = await roomsColl.findOne({ roomId: createdPublicRoom.roomId });
     assert.ok(!roomAfterLeave.participants.some(p => p.userId === 'user_alice'));
+    assert.equal(roomAfterLeave.currentUsers, 3);
+    assert.equal((await leaveStudyRoom(createdPublicRoom.roomId, 'user_alice')).currentUsers, 3);
+    await leaveStudyRoom(createdPublicRoom.roomId, 'user_bob');
+    await leaveStudyRoom(createdPublicRoom.roomId, 'user_charlie');
   });
 
   await t.test('19. Bảo mật phiên Chat: Người mới vào chỉ thấy tin nhắn KỂ TỪ KHI VÀO PHÒNG', async () => {
@@ -402,6 +645,7 @@ test('Study Room Backend Service Test Suite', async (t) => {
       type: 'public',
       topic: 'Test Auto Cleanup'
     });
+    await markRoomForTest(idleRoom);
 
     // Giả lập tất cả mọi người rời phòng -> phòng trống
     await leaveStudyRoom(idleRoom.roomId, 'user_test_idle');
@@ -431,6 +675,15 @@ test('Study Room Backend Service Test Suite', async (t) => {
       creatorName: 'Minh Khoa',
       creatorAvatar: 'https://cdn.thinkup.edu.vn/avatars/minh-khoa.png'
     });
+    await markRoomForTest(avatarRoom);
+
+    await roomsColl.updateOne({ _id: avatarRoom._id }, {
+      $push: { participants: {
+        userId: 'user_mod_2', name: 'Hoàng Long', avatar: 'https://cdn.thinkup.edu.vn/avatars/hoang-long.png',
+        role: 'moderator', position: { x: 500, y: 300 }, joinedAt: new Date()
+      } },
+      $inc: { currentUsers: 1 }
+    });
 
     // Thêm một Moderator vào phòng
     await generateLiveKitToken({
@@ -438,16 +691,18 @@ test('Study Room Backend Service Test Suite', async (t) => {
       userId: 'user_mod_2',
       userName: 'Hoàng Long',
       userAvatar: 'https://cdn.thinkup.edu.vn/avatars/hoang-long.png',
-      role: 'moderator'
+      role: 'member'
     });
+    assert.equal((await generateLiveKitToken({ roomId: avatarRoom.roomId, userId: 'user_mod_2', role: 'member' })).role, 'moderator');
 
     // Thêm một Thành viên thường vào phòng
     await generateLiveKitToken({
       roomId: avatarRoom.roomId,
       userId: 'user_member_3',
       userName: 'Thùy Chi',
-      role: 'member'
+      role: 'moderator'
     });
+    assert.equal((await roomsColl.findOne({ roomId: avatarRoom.roomId })).participants.find(p => p.userId === 'user_member_3').role, 'member');
 
     // Case 1: Người dùng hiện tại là 'user_host_1' (Chủ phòng)
     const hostView = await getRoomParticipants(avatarRoom.roomId, 'user_host_1');
@@ -495,6 +750,7 @@ test('Study Room Backend Service Test Suite', async (t) => {
       name: 'Phòng học test di chuyển avatar',
       type: 'public'
     });
+    await markRoomForTest(moveRoom);
 
     const moveRes = await updateParticipantCanvasPosition(moveRoom.roomId, 'user_mover', { x: 520, y: 380 });
     assert.equal(moveRes.success, true);
@@ -519,7 +775,7 @@ test('Study Room Backend Service Test Suite', async (t) => {
       full_name: 'Nguyễn Khoa',
       avatar_url: cloudinaryAvatarUrl,
       role: 'student',
-      testRun: true
+      studyroomTestRunId: testRunId
     });
 
     // 1. Khi tạo phòng mà không truyền creatorAvatar
@@ -527,6 +783,7 @@ test('Study Room Backend Service Test Suite', async (t) => {
       name: 'Phòng học tự động nhận Cloudinary Avatar',
       type: 'public'
     });
+    await markRoomForTest(autoRoom);
 
     // Xác nhận avatar chủ phòng được tự động gán URL từ Cloudinary
     const participantsList = await getRoomParticipants(autoRoom.roomId, cloudinaryUserId);
@@ -536,10 +793,5 @@ test('Study Room Backend Service Test Suite', async (t) => {
     assert.equal(selfUser.name, 'Nguyễn Khoa');
     assert.equal(selfUser.displayName, 'Nguyễn Khoa (Bạn)');
 
-    // Dọn dẹp user mẫu
-    await usersColl.deleteMany({ testRun: true });
   });
-
-  // Dọn dẹp dữ liệu test
-  await roomsColl.deleteMany({ testRun: true });
 });

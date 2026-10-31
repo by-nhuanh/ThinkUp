@@ -14,24 +14,124 @@ import {
   getPurchaseHistory,
   createPurchaseRouter,
 } from '../purchase.user.js';
-import { closeMongoDb } from '../../db.js';
+import { getMongoDb, closeMongoDb } from '../../db.js';
 
 // ─── Hằng số kiểm thử ────────────────────────────────────────────────────────
 
 /**
- * user_id = '1' là tài khoản mẫu có 14 giao dịch trong DB hiện tại.
- * Đây là user_id duy nhất có dữ liệu trong payment_transactions (môi trường dev).
+ * ID fixture riêng, chỉ dùng trong database test tách biệt.
  */
-const TEST_USER_ID = '1';
+const TEST_USER_ID = 'purchase-history-test-user';
 
 /**
- * user_id không tồn tại trong bất kỳ giao dịch nào.
+ * user_id không tồn tại trong bộ fixture.
  */
 const UNKNOWN_USER_ID = 'nonexistent-user-xyz-9999';
+
+const TEST_TRANSACTION_FIXTURES = [
+  {
+    order_id: 'DH2026071300000001',
+    transaction_id: 'TXN-CLOUD-20260713-01',
+    user_id: TEST_USER_ID,
+    payment_method: 'vnpay',
+    provider: 'vnpay',
+    amount: 120000,
+    currency: 'VND',
+    status: 'success',
+    course_count: 1,
+    order_summary: { courses: [{ id: 'course-cloud-test', title: 'Cloud Security', price: 120000 }] },
+    created_at: new Date('2026-07-13T10:00:00.000Z'),
+    paid_at: new Date('2026-07-13T10:05:00.000Z'),
+  },
+  {
+    order_id: 'DH2026071400000002',
+    transaction_id: 'TXN-WEB-20260714-02',
+    user_id: TEST_USER_ID,
+    payment_method: 'bank_transfer',
+    provider: 'sepay',
+    amount: 80000,
+    currency: 'VND',
+    status: 'pending',
+    course_count: 1,
+    order_summary: { courses: [{ id: 'course-web-test', title: 'Web Development', price: 80000 }] },
+    created_at: '2026-07-14 10:30:00',
+  },
+  {
+    order_id: 'DH2026071500000003',
+    transaction_id: 'TXN-FAILED-20260715-03',
+    user_id: TEST_USER_ID,
+    payment_method: 'stripe',
+    provider: 'stripe',
+    amount: 90000,
+    currency: 'VND',
+    status: 'failed',
+    course_count: 1,
+    order_summary: { courses: [{ id: 'course-failed-test', title: 'Failed Purchase', price: 90000 }] },
+    created_at: '2026-07-15T09:00:00.000Z',
+  },
+  {
+    order_id: 'DH2026071600000004',
+    transaction_id: 'TXN-CANCEL-20260716-04',
+    user_id: TEST_USER_ID,
+    payment_method: 'vnpay',
+    provider: 'vnpay',
+    amount: 50000,
+    currency: 'VND',
+    status: 'cancelled',
+    course_count: 1,
+    order_summary: { courses: [{ id: 'course-cancel-test', title: 'Cancelled Purchase', price: 50000 }] },
+    created_at: new Date('2026-07-16T12:00:00.000Z'),
+  },
+  {
+    order_id: 'DH2026071700000005',
+    transaction_id: 'TXN-PAID-20260717-05',
+    user_id: TEST_USER_ID,
+    payment_method: 'free',
+    provider: 'free',
+    amount: 0,
+    currency: 'VND',
+    status: 'paid',
+    order_summary: { courses: [{ id: 'course-paid-test', title: 'Paid Awaiting Fulfillment', price: 0 }] },
+    created_at: new Date('2026-07-17T10:00:00.000Z'),
+  },
+  {
+    order_id: 'DH2026071800000006',
+    transaction_id: 'TXN-EXPIRED-20260718-06',
+    user_id: TEST_USER_ID,
+    payment_method: 'vnpay',
+    provider: 'vnpay',
+    amount: 70000,
+    currency: 'VND',
+    status: 'expired',
+    order_summary: { courses: [{ id: 'course-expired-test', title: 'Expired Order', price: 70000 }] },
+    created_at: new Date('2026-07-18T10:00:00.000Z'),
+  },
+  {
+    order_id: 'DH2026071900000007',
+    transaction_id: 'TXN-REVIEW-20260719-07',
+    user_id: TEST_USER_ID,
+    payment_method: 'sepay',
+    provider: 'sepay',
+    amount: 95000,
+    currency: 'VND',
+    status: 'needs_review',
+    order_summary: { courses: [{ id: 'course-review-test', title: 'Payment Under Review', price: 95000 }] },
+    created_at: new Date('2026-07-19T10:00:00.000Z'),
+  },
+];
 
 // ─── 1. Kiểm thử getPurchaseSummary ──────────────────────────────────────────
 
 describe('Chức Năng Lịch Sử Mua Hàng User (Unit & Integration)', () => {
+
+  let db;
+
+  before(async () => {
+    db = await getMongoDb();
+    const transactions = db.collection('payment_transactions');
+    await transactions.deleteMany({ user_id: TEST_USER_ID });
+    await transactions.insertMany(TEST_TRANSACTION_FIXTURES);
+  });
 
   describe('1. getPurchaseSummary – Thống kê tổng hợp', () => {
 
@@ -48,8 +148,7 @@ describe('Chức Năng Lịch Sử Mua Hàng User (Unit & Integration)', () => {
       assert.equal(typeof result.totalSpent, 'number');
       assert.equal(typeof result.totalCoursesPurchased, 'number');
 
-      // Tổng GD phải > 0 (user '1' có 14 giao dịch)
-      assert.ok(result.totalTransactions > 0, 'Phải có ít nhất 1 giao dịch');
+      assert.equal(result.totalTransactions, TEST_TRANSACTION_FIXTURES.length);
 
       // Tổng tiền và số KH phải không âm
       assert.ok(result.totalSpent >= 0, 'totalSpent không được âm');
@@ -161,6 +260,14 @@ describe('Chức Năng Lịch Sử Mua Hàng User (Unit & Integration)', () => {
         'Tất cả giao dịch phải có status=pending');
     });
 
+    for (const status of ['paid', 'expired', 'needs_review']) {
+      it(`TC-STATUS-${status}: Lọc trạng thái ${status} do payment backend phát sinh`, async () => {
+        const result = await getPurchaseHistory(TEST_USER_ID, { status });
+        assert.equal(result.total, 1);
+        assert.equal(result.transactions[0].status, status);
+      });
+    }
+
     it('TC-STATUS-03: Không có bộ lọc status → trả về tất cả trạng thái', async () => {
       const all = await getPurchaseHistory(TEST_USER_ID, {});
       const success = await getPurchaseHistory(TEST_USER_ID, { status: 'success' });
@@ -205,7 +312,7 @@ describe('Chức Năng Lịch Sử Mua Hàng User (Unit & Integration)', () => {
     });
 
     it('TC-SEARCH-03: Tìm kiếm theo tên khóa học', async () => {
-      // Tất cả giao dịch đều có khóa "Cloud Security" hoặc tương tự
+      // Từ khóa khớp mã giao dịch hoặc tên khóa học.
       const result = await getPurchaseHistory(TEST_USER_ID, { keyword: 'Cloud' });
 
       if (result.total > 0) {
@@ -238,8 +345,6 @@ describe('Chức Năng Lịch Sử Mua Hàng User (Unit & Integration)', () => {
 
     it('TC-DATE-01: Preset "today" chỉ trả về giao dịch của ngày hôm nay', async () => {
       const result = await getPurchaseHistory(TEST_USER_ID, { datePreset: 'today' });
-      // Dữ liệu mẫu là từ 2026-07-13 → không có trong ngày hôm nay (2026-10-15)
-      // Expect: 0 hoặc bất kỳ số nào, nhưng phải không lỗi
       assert.equal(typeof result.total, 'number');
       assert.ok(Array.isArray(result.transactions));
     });
@@ -274,7 +379,6 @@ describe('Chức Năng Lịch Sử Mua Hàng User (Unit & Integration)', () => {
         dateFrom: '2026-07-01',
         dateTo: '2026-07-31',
       });
-      // Dữ liệu mẫu có ngày 2026-07-13 và 2026-07-14
       assert.ok(result.total > 0, 'Phải tìm thấy giao dịch trong tháng 7/2026');
     });
 
@@ -317,6 +421,22 @@ describe('Chức Năng Lịch Sử Mua Hàng User (Unit & Integration)', () => {
         dateTo: '2020-12-31',
       });
       assert.equal(typeof result.total, 'number');
+    });
+
+    it('TC-DATE-12: Lọc khoảng ngày xử lý created_at kiểu Date của MongoDB', async () => {
+      const result = await getPurchaseHistory(TEST_USER_ID, {
+        dateFrom: '2026-07-13',
+        dateTo: '2026-07-13',
+      });
+      assert.deepEqual(result.transactions.map(transaction => transaction.transaction_id), ['TXN-CLOUD-20260713-01']);
+    });
+
+    it('TC-DATE-13: Vẫn hỗ trợ created_at dạng chuỗi legacy', async () => {
+      const result = await getPurchaseHistory(TEST_USER_ID, {
+        dateFrom: '2026-07-14',
+        dateTo: '2026-07-14',
+      });
+      assert.deepEqual(result.transactions.map(transaction => transaction.transaction_id), ['TXN-WEB-20260714-02']);
     });
 
   });
@@ -376,7 +496,29 @@ describe('Chức Năng Lịch Sử Mua Hàng User (Unit & Integration)', () => {
   });
 
   after(async () => {
+    if (db) {
+      const transactions = db.collection('payment_transactions');
+      await transactions.deleteMany({ user_id: TEST_USER_ID });
+      assert.equal(await transactions.countDocuments({ user_id: TEST_USER_ID }), 0,
+        'Fixture giao dịch phải được xóa khỏi MongoDB sau kiểm thử');
+    }
     await closeMongoDb();
   });
 
+});
+
+it('Learning integration: purchase filters use saved timezone without changing money or original timestamps', async () => {
+  const transactions = [
+    { transaction_id: 'included', user_id: 'learner', created_at: '2026-10-30T16:00:00Z', amount: 12345, status: 'success' },
+    { transaction_id: 'excluded', user_id: 'learner', created_at: '2026-10-30T14:00:00Z', amount: 100, status: 'success' },
+  ];
+  const db = { collection(name) { return {
+    async findOne() { if (name === 'learning_preferences') return { timezone: 'Asia/Tokyo' };if (name === 'users') return null;throw new Error(name); },
+    find(q) { assert.equal(name, 'payment_transactions');assert.deepEqual(q.user_id.$in, ['learner']);return { sort() { return this; }, async toArray() { return transactions; } }; },
+  }; } };
+  const result = await getPurchaseHistory('learner', { dateFrom: '2026-10-31', dateTo: '2026-10-31' }, { db });
+  assert.equal(result.total, 1);assert.equal(result.transactions[0].transaction_id, 'included');
+  assert.equal(result.transactions[0].amount, 12345);assert.equal(result.transactions[0].created_at, '2026-10-30T16:00:00Z');
+  assert.equal(result.transactions[0].created_at_local.dateOnly, '31/10/2026');
+  await assert.rejects(getPurchaseHistory('learner', { dateFrom: '2026-02-30' }, { db }), { status: 400 });
 });

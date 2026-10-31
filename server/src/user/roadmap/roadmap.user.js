@@ -222,10 +222,10 @@ export const CAREER_ROADMAP_TEMPLATES = {
   }
 };
 
-// ─── 2. Ngân Hàng Câu Hỏi Mẫu Cho Bài Test Giai Đoạn (~10 câu/stage) ────────
+// ─── 2. Ngân Hàng Câu Hỏi Mẫu Cho Bài Test Giai Đoạn (tối thiểu 5/tag) ─────
 
 /**
- * Bộ câu hỏi mẫu ~10 câu cho các giai đoạn (Stage Quiz), liên kết trực tiếp tới từng Node kỹ năng.
+ * Bộ câu hỏi mẫu cho các giai đoạn (Stage Quiz), liên kết trực tiếp tới từng Node/tag kỹ năng.
  */
 export const SEED_STAGE_QUESTIONS = [
   // ── Frontend Stage 1: Nền tảng Web & Lập trình cơ sở (10 câu) ──
@@ -655,6 +655,65 @@ export const SEED_STAGE_QUESTIONS = [
   }
 ];
 
+// Gắn tag cụ thể cho dữ liệu mẫu hiện có. Node backend có nhiều tag nên câu
+// hỏi được phân loại riêng theo nội dung, không đếm chung cho mọi tag của node.
+const seedQuestionTags = {
+  'fe-node-html': 'HTML', 'fe-node-css': 'CSS', 'fe-node-js': 'JavaScript', 'fe-node-git': 'Git',
+  'fe-node-tailwind': 'TailwindCSS', 'fe-node-react': 'ReactJS',
+  'fe-node-typescript': 'TypeScript', 'fe-node-api': 'REST API',
+  'be-node-sql': 'SQL', 'be-node-nosql': 'MongoDB',
+};
+for (const question of SEED_STAGE_QUESTIONS) {
+  question.skill_tag = question.question_id === 'be-s1-q7'
+    ? 'JavaScript'
+    : (question.stage_id === 'be-stage-1' && question.node_id === 'be-node-nodejs'
+      ? 'Node.js'
+      : seedQuestionTags[question.node_id]);
+}
+
+// Câu bổ sung để từng tag trong các stage đã có ngân hàng đạt ít nhất 5 câu.
+const additionalSeedQuestions = [
+  ['fe-s1-html-11','fe-stage-1','fe-node-html','HTML','Phần tử nào liên kết nhãn với ô nhập liệu bằng id?',['<label for="email">','<legend>','<caption>','<title>'],'A','Thuộc tính for của label phải khớp id của input.'],
+  ['fe-s1-html-12','fe-stage-1','fe-node-html','HTML','Thuộc tính nào xác định ngôn ngữ chính của tài liệu HTML?',['lang trên thẻ html','charset trên body','hreflang trên html','dir trên head'],'A','Thuộc tính lang trên phần tử html khai báo ngôn ngữ tài liệu.'],
+  ['fe-s1-css-13','fe-stage-1','fe-node-css','CSS','Trong CSS Grid, thuộc tính nào khai báo số và kích thước cột?',['grid-template-columns','grid-auto-flow','align-content','column-span'],'A','grid-template-columns định nghĩa tracks cột của lưới.'],
+  ['fe-s1-css-14','fe-stage-1','fe-node-css','CSS','Selector nào có độ ưu tiên cao nhất trong các lựa chọn?',['.card','main','#app','*'],'C','ID selector có specificity cao hơn class và type selector.'],
+  ['fe-s1-css-15','fe-stage-1','fe-node-css','CSS','Media query nào áp dụng khi viewport rộng tối đa 600px?',['@media (max-width: 600px)','@media (min-width: 600px)','@screen 600px','@viewport (width: 600px)'],'A','max-width giới hạn điều kiện áp dụng ở 600px trở xuống.'],
+  ['fe-s1-js-18','fe-stage-1','fe-node-js','JavaScript','Promise nào được gọi khi promise trước đó hoàn tất thành công?',['then()','catch()','finally()','reject()'],'A','then() nhận kết quả fulfilled của promise.'],
+  ['fe-s1-js-19','fe-stage-1','fe-node-js','JavaScript','Kết quả của typeof null trong JavaScript là gì?',['"null"','"object"','"undefined"','"boolean"'],'B','Đây là đặc điểm lịch sử của JavaScript: typeof null trả về object.'],
+  ['fe-s1-git-20','fe-stage-1','fe-node-git','Git','Lệnh nào đưa commit mới nhất của nhánh hiện tại lên remote?',['git push','git fetch','git status','git stash'],'A','git push gửi commit từ local branch lên remote.'],
+  ['fe-s1-git-21','fe-stage-1','fe-node-git','Git','Lệnh nào tải thông tin remote mà không tự merge vào nhánh hiện tại?',['git fetch','git pull','git merge','git commit'],'A','git fetch cập nhật remote-tracking refs mà không tích hợp vào working branch.'],
+  ['fe-s1-git-22','fe-stage-1','fe-node-git','Git','File nào thường dùng để loại trừ file sinh ra khỏi Git?',['.gitignore','.gitconfig','.gitattributes','README.md'],'A','.gitignore khai báo các đường dẫn Git cần bỏ qua khi chưa được track.'],
+  ['fe-s2-react-11','fe-stage-2','fe-node-react','ReactJS','Prop nào giúp React nhận diện ổn định từng phần tử trong danh sách?',['key','ref','name','index'],'A','key ổn định giúp React đối chiếu phần tử giữa các lần render.'],
+  ['fe-s2-react-12','fe-stage-2','fe-node-react','ReactJS','Hook nào lưu trạng thái cục bộ trong function component?',['useState','useEffect','useRef','useMemo'],'A','useState tạo state và hàm cập nhật cho function component.'],
+  ['fe-s2-tailwind-13','fe-stage-2','fe-node-tailwind','TailwindCSS','Class nào đặt display flex trong Tailwind mặc định?',['flex','block-flex','display-flex','d-flex'],'A','Class flex áp dụng display: flex.'],
+  ['fe-s2-tailwind-14','fe-stage-2','fe-node-tailwind','TailwindCSS','Class nào tạo khoảng cách padding 1rem theo mặc định?',['p-4','m-4','px-4','gap-4'],'A','Thang spacing mặc định ánh xạ p-4 thành 1rem padding.'],
+  ['fe-s2-tailwind-15','fe-stage-2','fe-node-tailwind','TailwindCSS','Class nào đổi màu chữ sang trắng?',['text-white','bg-white','font-white','color-white'],'A','text-white thiết lập màu văn bản trắng.'],
+  ['fe-s2-ts-13','fe-stage-2','fe-node-typescript','TypeScript','Kiểu nào biểu diễn chuỗi hoặc số?',['string | number','string & number','string / number','Union<string, number>'],'A','Dấu | tạo union type cho một trong các kiểu được liệt kê.'],
+  ['fe-s2-ts-14','fe-stage-2','fe-node-typescript','TypeScript','Từ khóa nào giúp compiler suy luận biến không thể bị gán lại?',['const','let','var','readonly'],'A','const ngăn gán lại biến; readonly dùng cho thuộc tính/collection theo ngữ cảnh.'],
+  ['fe-s2-api-11','fe-stage-2','fe-node-api','REST API','Mã HTTP nào thường trả về khi tạo tài nguyên thành công?',['201 Created','200 OK','204 No Content','304 Not Modified'],'A','201 Created biểu thị request đã tạo tài nguyên.'],
+  ['fe-s2-api-12','fe-stage-2','fe-node-api','REST API','Phương thức HTTP nào an toàn và thường dùng để đọc tài nguyên?',['GET','POST','PATCH','DELETE'],'A','GET được thiết kế để truy xuất dữ liệu mà không thay đổi trạng thái tài nguyên.'],
+  ['fe-s2-api-13','fe-stage-2','fe-node-api','REST API','Header nào thường mang loại nội dung JSON của request?',['Content-Type: application/json','Accept-Language: json','Authorization: json','Cache-Control: application/json'],'A','Content-Type mô tả định dạng phần body gửi lên.'],
+  ['be-s1-node-11','be-stage-1','be-node-nodejs','Node.js','Trong Express, middleware chuyển tiếp request thường gọi hàm nào?',['next()','return()','await()','continue()'],'A','next() chuyển quyền xử lý sang middleware tiếp theo.'],
+  ['be-s1-node-12','be-stage-1','be-node-nodejs','Node.js','API nào đọc biến môi trường trong Node.js?',['process.env','process.argv.env','node.config','global.env'],'A','process.env chứa các biến môi trường của tiến trình.'],
+  ['be-s1-js-13','be-stage-1','be-node-nodejs','JavaScript','Từ khóa nào khai báo hàm bất đồng bộ có thể dùng await?',['async','defer','promise','yield'],'A','Hàm async cho phép dùng await và luôn trả về Promise.'],
+  ['be-s1-js-14','be-stage-1','be-node-nodejs','JavaScript','Phương thức nào chuyển JSON text thành object JavaScript?',['JSON.parse()','JSON.stringify()','Object.assign()','String()'],'A','JSON.parse phân tích chuỗi JSON thành giá trị JavaScript.'],
+  ['be-s1-js-15','be-stage-1','be-node-nodejs','JavaScript','Phạm vi của biến khai báo bằng const trong block là gì?',['Block scope','Global scope luôn luôn','Function scope','Module scope'],'A','const có block scope như let.'],
+  ['be-s1-js-16','be-stage-1','be-node-nodejs','JavaScript','Promise.all() xử lý thế nào nếu một promise bị reject?',['Promise tổng bị reject','Bỏ qua promise lỗi','Tự retry promise lỗi','Chuyển lỗi thành null'],'A','Promise.all reject ngay khi một promise đầu vào reject.'],
+  ['be-s1-sql-11','be-stage-1','be-node-sql','SQL','Mệnh đề nào lọc các hàng trước khi nhóm dữ liệu?',['WHERE','HAVING','ORDER BY','LIMIT'],'A','WHERE lọc hàng trước bước GROUP BY.'],
+  ['be-s1-sql-12','be-stage-1','be-node-sql','SQL','Ràng buộc nào đảm bảo giá trị cột không bị trùng?',['UNIQUE','DEFAULT','CHECK','NOT NULL'],'A','UNIQUE yêu cầu giá trị trong cột hoặc tổ hợp cột không trùng.'],
+  ['be-s1-mongo-13','be-stage-1','be-node-nosql','MongoDB','Toán tử nào tìm document có trường age lớn hơn 18?',['{ age: { $gt: 18 } }','{ age: { $lt: 18 } }','{ age: { $eq: 18 } }','{ age: { $in: 18 } }'],'A','$gt là toán tử so sánh lớn hơn trong MongoDB.'],
+  ['be-s1-mongo-14','be-stage-1','be-node-nosql','MongoDB','Phương thức nào truy vấn một document đầu tiên khớp điều kiện?',['findOne()','findMany()','aggregateOne()','getDocument()'],'A','findOne trả về một document khớp đầu tiên hoặc null.'],
+  ['be-s1-mongo-15','be-stage-1','be-node-nosql','MongoDB','Stage nào trong aggregation sắp xếp kết quả?',['$sort','$match','$lookup','$limit'],'A','$sort sắp xếp document theo các trường chỉ định.'],
+];
+
+for (const [question_id, stage_id, node_id, skill_tag, question_text, texts, correct_option, explanation] of additionalSeedQuestions) {
+  SEED_STAGE_QUESTIONS.push({
+    question_id, stage_id, node_id, skill_tag, question_text,
+    options: texts.map((text, index) => ({ key: String.fromCharCode(65 + index), text })),
+    correct_option, explanation,
+  });
+}
+
 // ─── 3. Các Hàm Tiện Ích Nghiệp Vụ Roadmap ───────────────────────────────────
 
 /**
@@ -777,13 +836,21 @@ export async function ensureSeedQuestions() {
   const db = await getMongoDb();
   const questionsColl = db.collection(COLLECTION_ROADMAP_QUESTIONS);
 
-  const count = await questionsColl.countDocuments();
-  if (count === 0) {
-    await questionsColl.insertMany(SEED_STAGE_QUESTIONS.map(q => ({
-      ...q,
-      created_at: new Date()
-    })));
-  }
+  const existingIds = new Set((await questionsColl.find(
+    { question_id: { $in: SEED_STAGE_QUESTIONS.map(question => question.question_id) } },
+    { projection: { question_id: 1 } },
+  ).toArray()).map(question => question.question_id));
+  const missingQuestions = SEED_STAGE_QUESTIONS
+    .filter(question => !existingIds.has(question.question_id))
+    .map(question => ({ ...question, created_at: new Date() }));
+  if (missingQuestions.length > 0) await questionsColl.insertMany(missingQuestions);
+  // Bổ sung nhãn cho các câu seed cũ mà không ghi đè nội dung đã có trong DB.
+  await questionsColl.bulkWrite(SEED_STAGE_QUESTIONS.map(question => ({
+    updateOne: {
+      filter: { question_id: question.question_id },
+      update: { $set: { skill_tag: question.skill_tag } },
+    },
+  })), { ordered: false });
 }
 
 /**
@@ -1057,49 +1124,37 @@ export async function getStageTestQuestions(stageId) {
   const db = await getMongoDb();
   const questionsColl = db.collection(COLLECTION_ROADMAP_QUESTIONS);
 
-  let questions = await questionsColl.find({ stage_id: String(stageId) }).toArray();
-
-  // Nếu stage này chưa có câu hỏi trong database, tạo 10 câu hỏi suy luận dựa trên node của stage
+  const questions = await questionsColl.find({ stage_id: String(stageId) }).sort({ question_id: 1 }).toArray();
   if (questions.length === 0) {
-    // Tìm stage trong các template
-    let foundStage = null;
-    for (const key of Object.keys(CAREER_ROADMAP_TEMPLATES)) {
-      const t = CAREER_ROADMAP_TEMPLATES[key];
-      const s = t.stages.find(st => st.stage_id === stageId);
-      if (s) { foundStage = s; break; }
-    }
-
-    if (foundStage && foundStage.nodes?.length > 0) {
-      const generated = [];
-      const nodes = foundStage.nodes;
-      for (let i = 0; i < 10; i++) {
-        const node = nodes[i % nodes.length];
-        generated.push({
-          question_id: `${stageId}-gen-q${i + 1}`,
-          stage_id: stageId,
-          node_id: node.node_id,
-          question_text: `Câu hỏi đánh giá năng lực ${i + 1}: Hãy xác định kỹ thuật chính xác nhất liên quan đến "${node.title}"?`,
-          options: [
-            { key: 'A', text: `Áp dụng chuẩn phương pháp cho ${node.title}` },
-            { key: 'B', text: `Thực hiện cấu hình sai phạm vi của ${node.title}` },
-            { key: 'C', text: `Bỏ qua kiểm tra ràng buộc của ${node.title}` },
-            { key: 'D', text: `Không khuyến nghị sử dụng ${node.title}` }
-          ],
-          correct_option: 'A',
-          explanation: `Lựa chọn A là thực hành chuẩn mực cho kỹ năng ${node.title}.`,
-          created_at: new Date()
-        });
-      }
-      await questionsColl.insertMany(generated);
-      questions = generated;
-    }
+    const err = new Error('Giai đoạn hiện chưa có ngân hàng câu hỏi đã được duyệt.');
+    err.status = 404;
+    err.code = 'STAGE_QUESTION_BANK_EMPTY';
+    throw err;
   }
 
-  // Giới hạn khoảng 10 câu hỏi và ẩn đáp án
-  const safeQuestions = questions.slice(0, 10).map(q => ({
+  const stageTemplate = Object.values(CAREER_ROADMAP_TEMPLATES)
+    .flatMap(template => template.stages)
+    .find(stage => stage.stage_id === String(stageId));
+  const expectedTags = [...new Set((stageTemplate?.nodes || []).flatMap(node => node.tags || []))];
+  const questionCounts = Object.fromEntries(expectedTags.map(tag => [tag, 0]));
+  for (const question of questions) {
+    if (Object.hasOwn(questionCounts, question.skill_tag)) questionCounts[question.skill_tag]++;
+  }
+  const missingTags = expectedTags.filter(tag => questionCounts[tag] < 5);
+  if (missingTags.length > 0) {
+    const err = new Error(`Ngân hàng câu hỏi chưa đủ tối thiểu 5 câu cho tag: ${missingTags.join(', ')}.`);
+    err.status = 409;
+    err.code = 'STAGE_QUESTION_BANK_INCOMPLETE';
+    err.details = Object.fromEntries(missingTags.map(tag => [tag, { required: 5, available: questionCounts[tag] }]));
+    throw err;
+  }
+
+  // Trả toàn bộ câu hỏi đã gắn tag; không cắt ngắn theo số câu của stage.
+  const safeQuestions = questions.map(q => ({
     question_id: q.question_id,
     stage_id: q.stage_id,
     node_id: q.node_id,
+    skill_tag: q.skill_tag,
     question_text: q.question_text,
     options: q.options
   }));
@@ -1128,9 +1183,14 @@ export async function submitStageTest(userId, stageId, answers = []) {
     throw err;
   }
 
-  if (!Array.isArray(answers) || answers.length === 0) {
+  if (!Array.isArray(answers) || answers.length === 0 || answers.some(answer =>
+    !answer || typeof answer !== 'object' || Array.isArray(answer)
+      || typeof answer.question_id !== 'string' || !answer.question_id.trim()
+      || typeof answer.selected_option !== 'string' || !answer.selected_option.trim()
+  )) {
     const err = new Error('Danh sách câu trả lời không hợp lệ hoặc đang rỗng.');
     err.status = 400;
+    err.code = 'INVALID_STAGE_ANSWERS';
     throw err;
   }
 
@@ -1140,11 +1200,95 @@ export async function submitStageTest(userId, stageId, answers = []) {
   const roadmapsColl = db.collection(COLLECTION_USER_ROADMAPS);
   const submissionsColl = db.collection(COLLECTION_ROADMAP_SUBMISSIONS);
 
-  // Tìm các câu hỏi gốc trong DB có đáp án đúng
-  const questionIds = answers.map(a => a.question_id);
-  const rawQuestions = await questionsColl.find({ question_id: { $in: questionIds } }).toArray();
+  const userRoadmap = await roadmapsColl.findOne({
+    user_id: String(userId),
+    is_active: true,
+  });
+  if (!userRoadmap) {
+    const err = new Error('Người dùng chưa kích hoạt lộ trình học nào.');
+    err.status = 404;
+    err.code = 'ACTIVE_ROADMAP_NOT_FOUND';
+    throw err;
+  }
+
+  const stageNodeIds = new Set((userRoadmap.nodes || [])
+    .filter(node => String(node.stage_id) === String(stageId))
+    .map(node => String(node.node_id)));
+  if (stageNodeIds.size === 0) {
+    const err = new Error('Giai đoạn không thuộc lộ trình đang hoạt động.');
+    err.status = 404;
+    err.code = 'STAGE_NOT_FOUND';
+    throw err;
+  }
+
+  const expectedQuestions = await questionsColl.find({ stage_id: String(stageId) }).sort({ question_id: 1 }).toArray();
+  if (expectedQuestions.length === 0) {
+    const err = new Error('Giai đoạn hiện chưa có ngân hàng câu hỏi đã được duyệt.');
+    err.status = 404;
+    err.code = 'STAGE_QUESTION_BANK_EMPTY';
+    throw err;
+  }
+
+  const stageTemplate = Object.values(CAREER_ROADMAP_TEMPLATES)
+    .flatMap(template => template.stages)
+    .find(stage => stage.stage_id === String(stageId));
+  const expectedTags = [...new Set((stageTemplate?.nodes || []).flatMap(node => node.tags || []))];
+  const tagCounts = Object.fromEntries(expectedTags.map(tag => [tag, 0]));
+  for (const question of expectedQuestions) {
+    if (Object.hasOwn(tagCounts, question.skill_tag)) tagCounts[question.skill_tag]++;
+  }
+  if (expectedTags.some(tag => tagCounts[tag] < 5)) {
+    const err = new Error('Ngân hàng câu hỏi của giai đoạn chưa đủ tối thiểu 5 câu cho mỗi tag kỹ năng.');
+    err.status = 409;
+    err.code = 'STAGE_QUESTION_BANK_INCOMPLETE';
+    throw err;
+  }
+
+  const questionIds = answers.map(answer => answer.question_id.trim());
+  if (new Set(questionIds).size !== questionIds.length
+    || questionIds.length !== expectedQuestions.length
+    || expectedQuestions.some(question => !questionIds.includes(String(question.question_id)))) {
+    const err = new Error('Phải trả lời đúng một lần cho toàn bộ câu hỏi của giai đoạn.');
+    err.status = 400;
+    err.code = 'STAGE_ANSWER_SET_INVALID';
+    throw err;
+  }
+
+  if (expectedQuestions.some(question => !stageNodeIds.has(String(question.node_id)))) {
+    const err = new Error('Ngân hàng câu hỏi không khớp các node của lộ trình đang hoạt động.');
+    err.status = 409;
+    err.code = 'STAGE_QUESTION_CONFIGURATION_INVALID';
+    throw err;
+  }
+
+  const nodeTags = new Map((stageTemplate?.nodes || [])
+    .map(node => [String(node.node_id), new Set(node.tags || [])]));
+  if (expectedQuestions.some(question => !nodeTags.get(String(question.node_id))?.has(question.skill_tag))) {
+    const err = new Error('Tag câu hỏi không khớp tag kỹ năng trong lộ trình đang hoạt động.');
+    err.status = 409;
+    err.code = 'STAGE_QUESTION_CONFIGURATION_INVALID';
+    throw err;
+  }
+
+  // Chỉ lấy câu trong đúng stage đã cung cấp cho học viên.
+  const rawQuestions = await questionsColl.find({
+    stage_id: String(stageId),
+    question_id: { $in: questionIds },
+  }).toArray();
   const questionMap = {};
   rawQuestions.forEach(q => { questionMap[q.question_id] = q; });
+
+  for (const answer of answers) {
+    const question = questionMap[answer.question_id.trim()];
+    const selected = answer.selected_option.trim().toUpperCase();
+    const validOption = question?.options?.some(option => String(option.key).toUpperCase() === selected);
+    if (!question || !validOption) {
+      const err = new Error('Câu hỏi hoặc phương án trả lời không hợp lệ.');
+      err.status = 400;
+      err.code = 'STAGE_ANSWER_INVALID';
+      throw err;
+    }
+  }
 
   let totalCorrect = 0;
   const detailedAnswers = [];
@@ -1152,7 +1296,7 @@ export async function submitStageTest(userId, stageId, answers = []) {
   const nodeBreakdown = {};
 
   answers.forEach(userAns => {
-    const original = questionMap[userAns.question_id];
+    const original = questionMap[String(userAns.question_id).trim()];
     if (!original) return;
 
     const isCorrect = String(userAns.selected_option).trim().toUpperCase() === String(original.correct_option).trim().toUpperCase();
@@ -1181,11 +1325,6 @@ export async function submitStageTest(userId, stageId, answers = []) {
   const overallPercentage = totalGraded > 0 ? Math.round((totalCorrect / totalGraded) * 100) : 0;
 
   // Lấy roadmap của user để cập nhật Node
-  const userRoadmap = await roadmapsColl.findOne({
-    user_id: String(userId),
-    is_active: true
-  });
-
   const nodeResults = {};
 
   if (userRoadmap && Array.isArray(userRoadmap.nodes)) {
@@ -1271,7 +1410,11 @@ export async function submitStageTest(userId, stageId, answers = []) {
     score_percentage: overallPercentage,
     passed: overallPercentage >= 70,
     node_breakdown: nodeResults,
-    detailed_results: detailedAnswers
+    detailed_results: detailedAnswers.map(answer => ({
+      question_id: answer.question_id,
+      node_id: answer.node_id,
+      selected_option: answer.selected_option,
+    })),
   };
 }
 
@@ -1301,8 +1444,11 @@ export async function syncCourseProgressToRoadmap(userId) {
   }
 
   // 1. Tìm các khóa học người dùng đã ghi danh (enrollments)
+  const userIds = [String(userId)];
+  const numericUserId = Number(userId);
+  if (Number.isSafeInteger(numericUserId) && !userIds.includes(numericUserId)) userIds.push(numericUserId);
   const enrollments = await db.collection('user_enrollments').find({
-    $or: [{ user_id: String(userId) }, { user_id: Number(userId) }]
+    $or: [{ user_id: { $in: userIds } }, { userId: { $in: userIds } }],
   }).toArray();
 
   if (enrollments.length === 0) {
@@ -1314,7 +1460,7 @@ export async function syncCourseProgressToRoadmap(userId) {
   }
 
   // 2. Lấy tags của từng khóa học đã mua
-  const courseIds = enrollments.map(e => e.course_id);
+  const courseIds = [...new Set(enrollments.map(e => e.course_id).filter(id => id !== undefined && id !== null))];
   const courseTags = await db.collection('course_tags').find({
     $or: [
       { course_id: { $in: courseIds } },
@@ -1338,10 +1484,21 @@ export async function syncCourseProgressToRoadmap(userId) {
 
   // Map: course_id -> progress percentage (0 - 100)
   const courseProgressMap = {};
+  const storedProgressDocs = await db.collection('user_course_progress').find({
+    $and: [
+      { $or: [{ user_id: { $in: userIds } }, { userId: { $in: userIds } }] },
+      { course_id: { $in: [...courseIds, ...courseIds.map(String)] } },
+    ],
+  }).toArray();
+  storedProgressDocs.forEach(doc => {
+    const rawProgress = Number(doc.progress_percentage);
+    if (!Number.isFinite(rawProgress)) return;
+    courseProgressMap[String(doc.course_id)] = Math.min(100, Math.max(0, rawProgress));
+  });
   enrollments.forEach(e => {
     const cId = String(e.course_id);
     const progress = Math.min(100, Math.max(0, Number(e.progress_percentage) || 0));
-    courseProgressMap[cId] = progress;
+    if (!Object.hasOwn(courseProgressMap, cId)) courseProgressMap[cId] = progress;
   });
 
   // 3. Duyệt qua tất cả các roadmap của người dùng để cập nhật tiến độ theo tag

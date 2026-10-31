@@ -1,184 +1,75 @@
-/**
- * Router API Thanh Toán Toàn Diện (Payment API Router)
- *
- * Hỗ trợ các endpoints:
- * 1. POST /create-session    : Khởi tạo phiên thanh toán (Order TTL 15 phút, sinh VietQR hoặc URL thanh toán)
- * 2. GET  /status/:id        : Kiểm tra trạng thái giao dịch (Front-end polling / countdown 15 phút)
- * 3. POST /webhook/sepay     : Hứng tín hiệu biến động số dư VietQR từ SePay (tự động kích hoạt)
- * 4. GET  /vnpay/callback    : Hứng kết quả Return URL từ VNPay
- * 5. GET  /vnpay/ipn         : Hứng Webhook IPN từ máy chủ VNPay
- * 6. POST /webhook/stripe    : Hứng Stripe Webhook thanh toán quốc tế
- */
-
-import {
-  createPaymentSession,
-  checkPaymentStatus,
-  fulfillPaymentSuccess,
-} from './payment.service.js';
+import { getMongoDb } from '../db.js';
+import { createPaymentSession, retryPaymentSession, checkPaymentStatus, paymentError } from './payment.service.js';
 import { handleSepayWebhook } from './gateways/sepay.service.js';
 import { createVnpayPaymentUrl, verifyVnpayCallback } from './gateways/vnpay.service.js';
 import { createStripeCheckoutSession, handleStripeWebhookEvent } from './gateways/stripe.service.js';
 
-/**
- * Khởi tạo Payment Router
- *
- * @param {import('express')} express
- * @param {Function} requireAuth
- * @returns {import('express').Router}
- */
-export function createPaymentRouter(express, requireAuth) {
-  const router = express.Router();
-
-  // ─── 1. Khởi Tạo Phiên Thanh Toán (Checkout) ───────────────────────────────
-  // Yêu cầu đăng nhập tài khoản học viên (JWT)
-  router.post('/create-session', requireAuth, async (req, res, next) => {
-    try {
-      const { courses, paymentMethod, bankCode, voucherCode, voucherDiscount } = req.body;
-      const userId = req.userId;
-
-      // Tạo session nội bộ (Order + Transaction TTL 15 phút)
-      const session = await createPaymentSession({
-        userId,
-        courses,
-        paymentMethod: paymentMethod || 'bank-transfer',
-        voucherCode,
-        voucherDiscount,
-      });
-
-      // Tùy từng cổng mà tạo thêm paymentUrl chuyển hướng:
-      if (paymentMethod === 'vnpay' || paymentMethod === 'atm') {
-        const ipAddr = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1';
-        const vnpUrl = createVnpayPaymentUrl({
-          transactionId: session.transactionId,
-          amount: session.amount,
-          orderInfo: `Thanh toan don hang ${session.orderId}`,
-          ipAddr: Array.isArray(ipAddr) ? ipAddr[0] : ipAddr.split(',')[0],
-          bankCode,
-        });
-        session.paymentUrl = vnpUrl;
-      } else if (paymentMethod === 'stripe' || paymentMethod === 'international') {
-        try {
-          const stripeSession = await createStripeCheckoutSession({
-            transactionId: session.transactionId,
-            orderId: session.orderId,
-            amount: session.amount,
-            courses,
-          });
-          session.paymentUrl = stripeSession.url;
-        } catch (stErr) {
-          console.warn('[Stripe] Warning create session:', stErr.message);
-          // Vẫn trả về session để client biết lỗi hoặc fallback
-        }
-      }
-
-      res.status(201).json({
-        success: true,
-        message: 'Khởi tạo phiên thanh toán thành công (Hết hạn sau 15 phút)',
-        data: session,
-      });
-    } catch (err) {
-      next(err);
+export function createPaymentRouter(express,requireAuth,options={}){
+  const router=express.Router();
+  async function initialize(session,req){
+    if(session.status!=='pending')return session;
+    const db=options.db || await getMongoDb();
+    if(session.paymentMethod==='vnpay')session.paymentUrl=createVnpayPaymentUrl({transactionId:session.transactionId,amount:session.amount,
+      orderInfo:`Thanh toan don hang ${session.orderId}`,ipAddr:req.ip || req.socket?.remoteAddress || '127.0.0.1',bankCode:req.body.bankCode,expiresAt:session.expiresAt});
+    else if(session.paymentMethod==='stripe'&&!session.paymentUrl){
+      const checkout=await createStripeCheckoutSession(session,options);
+      const saved=await db.collection('payment_transactions').updateOne({transaction_id:session.transactionId,status:'pending'},
+        {$set:{payment_url:checkout.url,gateway_session_id:checkout.sessionId,updated_at:new Date()}});
+      if(saved.matchedCount!==1)throw paymentError('Phiên thanh toán đã thay đổi.',409,'ORDER_NOT_PAYABLE');
+      session.paymentUrl=checkout.url;
     }
+    return session;
+  }
+  router.post('/create-session',requireAuth,async(req,res,next)=>{
+    try{
+      const session=await createPaymentSession({userId:req.userId,courseIds:req.body.courseIds,courses:req.body.courses,
+        paymentMethod:req.body.paymentMethod,voucherCode:req.body.voucherCode,idempotencyKey:req.get('Idempotency-Key')},options);
+      res.set('Cache-Control','no-store');
+      res.status(201).json({success:true,message:'Đã tạo đơn thanh toán.',data:await initialize(session,req)});
+    }catch(error){next(error);}
   });
-
-  // ─── 2. Kiểm Tra Trạng Thái Đơn Hàng (Polling/Status check) ─────────────────
-  router.get('/status/:id', async (req, res, next) => {
-    try {
-      const transactionId = req.params.id;
-      const tx = await checkPaymentStatus(transactionId);
-
-      const now = new Date();
-      const expiresAt = tx.expires_at ? new Date(tx.expires_at) : null;
-      const remainingSeconds = expiresAt ? Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / 1000)) : 0;
-
-      res.json({
-        success: true,
-        transactionId: tx.transaction_id,
-        orderId: tx.order_id,
-        status: tx.status, // 'pending' | 'success' | 'expired' | 'failed'
-        amount: tx.amount,
-        paidAt: tx.paid_at,
-        expiresAt: tx.expires_at,
-        remainingSeconds,
-      });
-    } catch (err) {
-      next(err);
-    }
+  router.post('/retry/:orderId',requireAuth,async(req,res,next)=>{
+    try{
+      const session=await retryPaymentSession({userId:req.userId,orderId:req.params.orderId,paymentMethod:req.body.paymentMethod,
+        idempotencyKey:req.get('Idempotency-Key')},options);
+      res.set('Cache-Control','no-store');
+      res.status(201).json({success:true,data:await initialize(session,req)});
+    }catch(error){next(error);}
   });
-
-  // ─── 3. Webhook SePay (VietQR Chuyển Khoản Tự Động) ─────────────────────────
-  // SePay gọi sang khi có tiền chuyển vào tài khoản
-  router.post('/webhook/sepay', async (req, res, next) => {
-    try {
-      const authHeader = req.headers['authorization'] || '';
-      const payload = req.body;
-
-      const result = await handleSepayWebhook(payload, authHeader);
-      res.json(result);
-    } catch (err) {
-      next(err);
-    }
+  router.get('/status/:id',requireAuth,async(req,res,next)=>{
+    try{
+      const tx=await checkPaymentStatus(req.params.id,req.userId,options);
+      res.set('Cache-Control','no-store');
+      res.json({success:true,transactionId:tx.transaction_id,orderId:tx.order_id,status:tx.status,fulfillmentStatus:tx.fulfillment_status,
+        amount:tx.amount,currency:tx.currency,paidAt:tx.paid_at,expiresAt:tx.expires_at,
+        remainingSeconds:Math.max(0,Math.floor((new Date(tx.expires_at)-Date.now())/1000))});
+    }catch(error){next(error);}
   });
-
-  // ─── 4. VNPay Callbacks & IPN ──────────────────────────────────────────────
-  // VNPay Return URL (trình duyệt redirect về)
-  router.get('/vnpay/callback', async (req, res, next) => {
-    try {
-      const result = await verifyVnpayCallback(req.query);
-      const clientUrl = process.env.CLIENT_URL || 'http://localhost:4200';
-      const redirectUrl = `${clientUrl}/main/checkout/result?transaction_id=${req.query.vnp_TxnRef}&status=${result.isSuccess ? 'success' : 'failed'}&code=${result.code}`;
-      res.redirect(redirectUrl);
-    } catch (err) {
-      next(err);
-    }
+  router.post('/webhook/sepay',async(req,res,next)=>{
+    try{res.json(await handleSepayWebhook(req.body,req.get('authorization') || '',options));}catch(error){next(error);}
   });
-
-  // VNPay IPN (Server to Server Webhook)
-  router.get('/vnpay/ipn', async (req, res) => {
-    try {
-      const result = await verifyVnpayCallback(req.query);
-      if (result.isSuccess) {
-        res.status(200).json({ RspCode: '00', Message: 'Confirm Success' });
-      } else {
-        res.status(200).json({ RspCode: result.code || '99', Message: result.message });
-      }
-    } catch (err) {
-      res.status(200).json({ RspCode: '99', Message: err.message || 'Unknown error' });
-    }
+  router.post('/webhook/stripe',async(req,res,next)=>{
+    try{res.json(await handleStripeWebhookEvent(req.rawBody,req.get('stripe-signature'),options));}catch(error){next(error);}
   });
-
-  // ─── 5. Stripe Webhook (Quốc Tế, Apple Pay, Google Pay, PayPal) ────────────
-  router.post('/webhook/stripe', async (req, res, next) => {
-    try {
-      const event = req.body;
-      const result = await handleStripeWebhookEvent(event);
-      res.json(result);
-    } catch (err) {
-      next(err);
-    }
+  router.get('/vnpay/callback',async(req,res,next)=>{
+    try{
+      const result=await verifyVnpayCallback(req.query,{...options,settle:false});
+      const client=new URL((process.env.CLIENT_URL || 'http://localhost:4200').split(',')[0]);
+      const target=new URL('/main/checkout/result',client);
+      if(typeof req.query.vnp_TxnRef==='string')target.searchParams.set('transaction_id',req.query.vnp_TxnRef);
+      target.searchParams.set('status',result.isSuccess?'pending':'failed');
+      res.redirect(target.toString());
+    }catch(error){next(error);}
   });
-
-  // ─── 6. Endpoint Mô Phỏng Thanh Toán Nhanh Cho Demo / Đồ Án ────────────────
-  // Yêu cầu đăng nhập xác thực học viên
-  router.post('/simulate-success', requireAuth, async (req, res, next) => {
-    try {
-      const { transactionId } = req.body;
-      if (!transactionId) {
-        return res.status(400).json({ message: 'Thiếu transactionId' });
-      }
-      const result = await fulfillPaymentSuccess({
-        transactionId,
-        gatewayTransactionNo: `SIMULATED_${Date.now()}`,
-      });
-      res.json({
-        success: true,
-        message: 'Mô phỏng thanh toán thành công và đã kích hoạt toàn bộ dịch vụ',
-        data: result,
-      });
-    } catch (err) {
-      next(err);
-    }
+  router.get('/vnpay/ipn',async(req,res)=>{
+    try{const result=await verifyVnpayCallback(req.query,{...options,settle:true});res.json({RspCode:result.code || '99',Message:result.message});}
+    catch(error){res.json({RspCode:error.code==='PAYMENT_NOT_FOUND'?'01':error.code==='GATEWAY_REPLAY'?'02':'99',Message:'Chưa xác nhận được giao dịch.'});}
   });
-
+  // Removed the public simulation route: there is no HTTP path that can mark an unpaid order as paid.
+  router.use((error,req,res,next)=>{
+    const status=error.status || 500;
+    if(status>=500 && !error.status)return res.status(500).json({message:'Không xử lý được thanh toán. Vui lòng thử lại.',code:'PAYMENT_INTERNAL_ERROR'});
+    res.status(status).json({message:error.message,code:error.code || 'PAYMENT_INVALID'});
+  });
   return router;
 }
