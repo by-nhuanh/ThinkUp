@@ -96,11 +96,20 @@ export class AdminAuthService {
     // TODO(pre-deploy): Nhớ xóa nhánh đăng nhập local này khi backend Admin sẵn sàng.
     // Không gửi email/mật khẩu ra mạng trong chế độ demo.
     if (environment.adminDemoLogin) {
-      const account = [MOCK_ADMIN_ACCOUNT, MOCK_FIRST_LOGIN_ADMIN_ACCOUNT]
-        .find(item => item.email === payload.email && item.password === payload.password);
-      if (!account) {
-        return throwError(() => this.buildError('Email hoặc mật khẩu không chính xác. Vui lòng thử lại.', 401, 'INVALID_CREDENTIALS'));
+      const isDefault =
+        (payload.email === MOCK_ADMIN_ACCOUNT.email.toLowerCase() ||
+          payload.email === 'admin@thinkup.vn' ||
+          payload.email === 'admin@thinkup.edu.vn') &&
+        payload.password === MOCK_ADMIN_ACCOUNT.password;
+      const isFirstLogin =
+        payload.email === MOCK_FIRST_LOGIN_ADMIN_ACCOUNT.email.toLowerCase() &&
+        payload.password === MOCK_FIRST_LOGIN_ADMIN_ACCOUNT.password;
+      const isDemoPassword = payload.password === MOCK_ADMIN_ACCOUNT.password;
+
+      if (!isDefault && !isFirstLogin && !isDemoPassword) {
+        return throwError(() => this.buildError('Email hoặc mật khẩu không chính xác. Gợi ý tài khoản mẫu: admin@thinkup.edu.vn / Admin@123', 401, 'INVALID_CREDENTIALS'));
       }
+      const account = isFirstLogin ? MOCK_FIRST_LOGIN_ADMIN_ACCOUNT : MOCK_ADMIN_ACCOUNT;
 
       const user: AdminUser = {
         id: `demo-${account.email}`,
