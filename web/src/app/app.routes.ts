@@ -67,8 +67,6 @@ export const routes: Routes = [
       { path: 'settings/learning-options', loadComponent: () => import('./features/settings/learning-options/learning-options.component').then(m => m.LearningOptionsComponent) },
       { path: 'settings/notifications', loadComponent: () => import('./features/settings/notifications/notifications.component').then(m => m.NotificationsComponent) },
       { path: 'settings/payment', loadComponent: () => import('./features/settings/payment/payment.component').then(m => m.PaymentComponent) },
-      { path: 'notifications', loadComponent: () => import('./features/notifications/notification-center/notification-center.component').then(m => m.NotificationCenterComponent) },
-      { path: 'notifications/:tab', loadComponent: () => import('./features/notifications/notification-center/notification-center.component').then(m => m.NotificationCenterComponent) },
       { path: 'my-courses/:courseId/review', loadComponent: () => import('./features/my-courses/review-form/review-form.component').then(m => m.ReviewFormComponent) },
       { path: 'my-courses/:courseId', loadComponent: () => import('./features/my-courses/course-dashboard/course-dashboard.component').then(m => m.CourseDashboardComponent) },
       { path: 'my-courses', loadComponent: () => import('./features/my-courses/my-courses.component').then(m => m.MyCoursesComponent) },
@@ -89,9 +87,14 @@ export const routes: Routes = [
         ]
       },
       { path: 'contact', loadComponent: () => import('./features/support/contact/contact.component').then(m => m.ContactComponent) },
-      { path: 'help-center', loadComponent: () => import('./features/support/help-center/help-center.component').then(m => m.HelpCenterComponent) },
-      { path: 'instructors', loadComponent: () => import('./features/instructors/instructor-landing/instructor-landing.component').then(m => m.InstructorLandingComponent) },
-      { path: '', canActivate: [guestHomeGuard], loadComponent: () => import('./features/landing/landing.component').then(m => m.LandingComponent), pathMatch: 'full' },
+      { path: 'help-center', loadComponent: () => import('./features/support/contact/contact.component').then(m => m.ContactComponent) },
+      { path: 'instructors', loadComponent: () => import('./features/support/contact/contact.component').then(m => m.ContactComponent) },
+      {
+        path: '',
+        pathMatch: 'full',
+        canActivate: [guestHomeGuard],
+        loadComponent: () => import('./features/landing/landing.component').then(m => m.LandingComponent)
+      },
     ]
   },
   // Learning feature routes
@@ -99,7 +102,7 @@ export const routes: Routes = [
     path: 'learning',
     canActivateChild: [onboardingRequiredGuard],
     children: [
-      { path: 'learn/:courseId', loadComponent: () => import('./features/learning/lesson-player/lesson-player.component').then(m => m.LessonPlayerComponent) },
+      { path: 'learn/:courseId', data: { hideFooter: true }, loadComponent: () => import('./features/learning/lesson-player/lesson-player.component').then(m => m.LessonPlayerComponent) },
       { path: 'study-room', loadComponent: () => import('./features/study-room/study-room-lobby/study-room-lobby.component').then(m => m.StudyRoomLobbyComponent) },
       { path: 'study-room/:roomId', data: { hideShell: true }, loadComponent: () => import('./features/study-room/study-room-view/study-room-view.component').then(m => m.StudyRoomViewComponent) },
       { path: 'roadmap', loadComponent: () => import('./features/roadmap/roadmap-list/roadmap-list.component').then(m => m.RoadmapListComponent) },
@@ -144,11 +147,7 @@ export const routes: Routes = [
     path: 'chung-chi/:code',
     redirectTo: route => `/tra-cuu?code=${encodeURIComponent(route.params['code'] ?? '')}`
   },
-  // Default fallbacks: khách chưa đăng nhập xem Landing page chuẩn
+  // Default fallback: /main phân luồng landing guest và dashboard member trong nhóm route phía trên.
   { path: '', redirectTo: 'main', pathMatch: 'full' },
-  {
-    path: '**',
-    data: { hideFooter: true },
-    loadComponent: () => import('./features/not-found/not-found/not-found.component').then(m => m.NotFoundComponent)
-  },
+  { path: '**', redirectTo: 'main' },
 ];

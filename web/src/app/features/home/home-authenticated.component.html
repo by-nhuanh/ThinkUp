@@ -1,0 +1,50 @@
+<main class="bg-[#F8F9FD] px-6 py-6 font-sans text-[#111827] lg:px-[5vw]">
+  @if (toastMessage()) { <div class="fixed bottom-6 right-6 z-50 rounded-xl bg-[#0D1C2D] px-5 py-3 text-sm font-medium text-white shadow-xl" role="status">{{ toastMessage() }}</div> }
+  <div class="mx-auto max-w-[1728px] space-y-8">
+    <section class="relative min-h-[550px] overflow-hidden rounded-[20px] bg-[#0759E8] bg-cover bg-center shadow-sm" style="background-image: url('/assets/home/hero-bg.png')">
+      <div class="relative z-10 flex min-h-[550px] max-w-[760px] flex-col justify-center px-10 text-white lg:px-[100px]">
+        <p class="text-[17px] text-blue-100">{{ greeting() }}</p><h1 class="mt-1 text-[34px] font-extrabold leading-tight lg:text-[42px]">{{ userName() }}</h1>
+        <p class="mt-6 text-[17px] text-blue-50">Sẵn sàng học tập hôm nay?</p><p class="mt-2 text-[16px] italic text-blue-200">“Học hôm nay, vững tương lai!”</p>
+        <a routerLink="/learning/study-room" class="mt-7 inline-flex h-12 w-fit items-center gap-2 rounded-xl bg-white px-6 text-[15px] font-bold text-[#1763E8] shadow-lg transition hover:-translate-y-0.5">Vào phòng học ảo <span aria-hidden="true">→</span></a>
+      </div>
+    </section>
+
+    <section>
+      <div class="mb-4 flex items-center justify-between"><h2 class="text-[20px] font-bold">Khóa học của tôi đang học</h2><a routerLink="/main/my-courses" class="text-[15px] font-semibold text-[#1769FF]">Xem tất cả (12) →</a></div>
+      <div class="grid gap-4 md:grid-cols-3 xl:grid-cols-5">
+        @for (item of myLearning(); track item.id) {
+          <article class="overflow-hidden rounded-xl border border-[#DDE3ED] bg-white shadow-sm">
+            <div class="relative h-[130px] p-4 text-white" [style.background]="item.color"><span class="absolute right-3 top-3 rounded bg-white/20 px-2 py-0.5 text-[9px] font-bold">{{ item.category }}</span><div class="text-[30px] font-black" [class]="item.iconClass || ''">{{ item.icon }}</div><h3 class="mt-1 text-[18px] font-extrabold">{{ item.title }}</h3><p class="text-[11px] text-slate-300">{{ item.subtitle }}</p></div>
+            <div class="p-4"><p class="text-[11px] font-bold">{{ item.progress }}% hoàn thành</p><div class="mt-2 h-1.5 overflow-hidden rounded-full bg-[#E9EEF5]"><div class="h-full rounded-full bg-[#12C99B]" [style.width.%]="item.progress"></div></div><p class="mt-3 min-h-9 text-[11px] leading-4 text-[#7A879A]">{{ item.nextLesson }}</p><a [routerLink]="item.href" class="mt-3 flex h-9 items-center justify-center gap-2 rounded-md bg-[#1769FF] text-[12px] font-bold text-white"><span aria-hidden="true">▶</span> Tiếp tục học</a></div>
+          </article>
+        }
+      </div>
+      <div class="mt-4 flex justify-center gap-1.5" aria-hidden="true"><span class="h-1.5 w-5 rounded-full bg-[#1769FF]"></span><span class="h-1.5 w-1.5 rounded-full bg-slate-300"></span><span class="h-1.5 w-1.5 rounded-full bg-slate-300"></span><span class="h-1.5 w-1.5 rounded-full bg-slate-300"></span></div>
+    </section>
+
+    <section class="relative min-h-[208px] overflow-hidden rounded-[20px] bg-gradient-to-r from-[#071D5C] via-[#0A3CB6] to-[#3157E8] px-10 py-6 text-white shadow-lg">
+      <img src="/assets/home/roadmap-glow.svg" alt="" class="pointer-events-none absolute inset-y-0 right-0 h-full" /><img src="/assets/home/learning-journey.svg" alt="" class="pointer-events-none absolute bottom-0 right-5 hidden h-[208px] w-auto lg:block" />
+      <div class="relative z-10 max-w-[950px]"><span class="rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold">{{ roadmap().badge }}</span><h2 class="mt-4 text-[26px] font-bold">Mỗi chặng học, một bước gần hơn tới mục tiêu</h2><p class="mt-2 text-[13px] text-blue-100">Bạn đã hoàn thành 60% lộ trình Frontend Developer. Tiếp tục chặng JavaScript để duy trì đà học tập.</p><div class="mt-4 flex flex-wrap items-center gap-4"><a [routerLink]="roadmap().href" class="rounded-lg bg-white px-8 py-3 text-[13px] font-bold text-[#1763E8]">Tiếp tục lộ trình của bạn →</a><span class="rounded-full bg-white/10 px-4 py-2 text-[12px]"><span class="mr-2 text-emerald-400">●</span>60% hoàn thành • Chuỗi 7 ngày</span></div></div>
+    </section>
+
+    <section>
+      <div class="mb-4 flex items-center justify-between"><h2 class="text-[20px] font-bold">Đề xuất theo sở thích của bạn</h2><a routerLink="/main/courses" class="text-[15px] font-semibold text-[#1769FF]">Xem tất cả →</a></div>
+      @if (featuredLoading()) { <p class="py-8 text-sm text-slate-500">Đang tải khóa học gợi ý...</p> } @else if (featuredError()) { <p role="alert" class="py-8 text-sm text-red-600">{{ featuredError() }} <button type="button" (click)="retryCourses()" class="underline">Thử lại</button></p> }
+      <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        @for (c of featuredCourses(); track c.id) {
+          <article class="flex min-h-[410px] flex-col overflow-hidden rounded-xl border border-[#DDE3ED] bg-white"><div class="relative flex h-[160px] items-center p-6 text-white" [style.background]="c.bgGradient || '#0A1535'">@if (c.badge) { <span class="absolute left-3 top-3 rounded bg-[#FF3347] px-2 py-1 text-[9px] font-bold">{{ c.badge }}</span> }<button type="button" (click)="toggleWishlist(c)" class="absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-full bg-white/90 text-slate-500" [attr.aria-label]="isFav(c.id) ? 'Bỏ yêu thích' : 'Thêm yêu thích'">♡</button><strong class="text-[22px] leading-tight">{{ c.displayTitle || c.title }}</strong></div>
+            <div class="flex flex-1 flex-col p-4"><a [routerLink]="['/main/courses', c.id]" class="line-clamp-2 min-h-10 text-[13px] font-bold leading-5">{{ c.title }}</a><p class="mt-3 text-[11px] text-slate-500">◉ {{ c.instructor }} <span class="float-right rounded bg-slate-100 px-2">{{ c.level }}</span></p><p class="mt-2 text-[11px] text-slate-500"><span class="text-amber-500">★</span> {{ c.rating }} ({{ c.ratingCount }}) &nbsp; ♙ {{ c.students }}</p><p class="mt-2 text-[11px] text-slate-500">◷ {{ c.duration }}</p><div class="mt-3 flex flex-wrap gap-1">@for (tag of (c.tags || []).slice(0, 3); track tag) { <span class="rounded bg-blue-50 px-2 py-1 text-[9px] text-blue-500">{{ tag }}</span> }</div><div class="mt-auto flex items-end justify-between border-t border-slate-100 pt-4"><div><strong class="text-[16px] text-[#FF3347]">{{ formatPrice(c.salePrice) }}</strong><small class="ml-2 text-[10px] text-slate-400 line-through">{{ formatPrice(c.originalPrice) }}</small></div><button type="button" (click)="addToCart(c)" class="grid h-8 w-8 place-items-center rounded border border-blue-200 text-blue-600" aria-label="Thêm vào giỏ">🛒</button></div></div>
+          </article>
+        }
+      </div>
+    </section>
+
+    <section class="grid gap-5 lg:grid-cols-[0.82fr_1.18fr]">
+      <article class="rounded-xl border border-[#DDE3ED] bg-white p-6"><h2 class="text-[20px] font-bold">Chuỗi học tập</h2><div class="mt-5 flex items-center gap-6 rounded-xl bg-[#FFF8F1] p-7"><span class="text-[58px]">🔥</span><div><strong class="text-[48px] text-[#F47A19]">7</strong><span class="ml-2 font-semibold text-[#A65A20]">ngày liên tiếp</span><p class="mt-2 text-[12px] text-[#92715E]">Bạn đang thuộc top 12% học viên chăm chỉ nhất.</p></div></div><div class="mt-5 flex justify-between">@for (d of streakDays(); track d.label) { <div class="text-center"><span class="grid h-8 w-8 place-items-center rounded-full bg-[#FFF1E5] text-[#F47A19]">✓</span><small class="mt-2 block text-slate-500">{{ d.label }}</small></div> }</div></article>
+      <article class="rounded-xl border border-[#DDE3ED] bg-white p-6"><div class="flex items-center justify-between"><h2 class="text-[20px] font-bold">Nhịp độ học tập</h2><span class="rounded-lg bg-slate-50 px-3 py-2 text-[11px] text-slate-500">12 tuần gần nhất</span></div><div class="mt-7 grid grid-cols-[repeat(20,minmax(6px,1fr))] gap-2">@for (cell of heatmapCells; track $index) { <span class="aspect-square rounded-[3px]" [class.bg-blue-600]="cell === 3" [class.bg-blue-400]="cell === 2" [class.bg-blue-200]="cell === 1" [class.bg-slate-100]="cell === 0"></span> }</div><div class="mt-7 flex gap-10">@for (stat of stats().slice(0, 2); track stat.label) { <div><strong class="text-[22px]">{{ stat.value }}</strong><small class="block text-slate-500">{{ stat.label }}</small></div> }</div></article>
+    </section>
+
+    <section class="relative min-h-[214px] overflow-hidden rounded-[20px] bg-[#121B80] px-10 py-8 text-white"><img src="/assets/home/rewards-bg.png" alt="" class="absolute inset-0 h-full w-full object-cover" /><div class="relative z-10 ml-[120px] mt-5"><h2 class="text-[25px] font-bold">Học nhiều – Nhận quà lớn!</h2><p class="mt-2 text-[13px] text-blue-100">Tham gia sự kiện học tập nhận ngay những phần quà hấp dẫn.</p><a routerLink="/main/courses" class="mt-4 inline-flex rounded-lg bg-[#258BFF] px-5 py-3 text-[13px] font-bold">Tham gia ngay</a></div></section>
+    <section class="grid gap-5 rounded-xl border border-[#DDE3ED] bg-white px-8 py-5 sm:grid-cols-2 lg:grid-cols-4">@for (b of benefits(); track b.id) { <div class="flex items-center gap-4"><span class="text-[26px] text-[#1769FF]">{{ b.id === 'devices' ? '▣' : b.id === 'instructors' ? '♢' : b.id === 'community' ? '♧' : '♙' }}</span><div><h3 class="text-[13px] font-bold">{{ b.title }}</h3><p class="text-[11px] text-slate-500">{{ b.subtitle }}</p></div></div> }</section>
+  </div>
+</main>
