@@ -1,7 +1,6 @@
 <main class="hc-page">
   <section class="hc-hero">
     <div class="hc-hero__inner">
-      <h1 class="hc-h1">Trung tâm trợ giúp</h1>
       <p class="hc-text hc-sub">Tìm kiếm câu trả lời và hướng dẫn chi tiết để sử dụng ThinkUp hiệu quả nhất.</p>
 
       <form class="hc-search" (submit)="$event.preventDefault(); search(searchInput.value)">
@@ -27,8 +26,11 @@
   <div class="hc-shell hc-body">
     <div class="hc-columns">
       <aside class="hc-aside">
-        <nav class="hc-card hc-nav" aria-label="Danh mục câu hỏi">
-          <h2 class="hc-nav__title">Danh mục câu hỏi</h2>
+        <nav class="hc-card hc-nav" aria-label="Bộ lọc chủ đề FAQ">
+          <div class="hc-nav__head">
+            <h2 class="hc-nav__title">Lọc theo chủ đề</h2>
+            <span class="hc-nav__count">{{ categories.length }} mục</span>
+          </div>
           <div class="hc-nav__list">
             @for (category of categories; track category.id) {
               <button
@@ -40,6 +42,7 @@
               >
                 <app-icon [name]="category.icon" class="hc-icon-16" />
                 <span>{{ category.label }}</span>
+                <span class="hc-nav__item-count">{{ category.items.length }}</span>
               </button>
             }
           </div>
@@ -75,13 +78,16 @@
                 type="button"
                 class="hc-item__question"
                 [attr.aria-expanded]="openQuestion() === i"
+                [attr.aria-controls]="questionId(i)"
                 (click)="toggleQuestion(i)"
               >
-                <span>{{ i + 1 }}. {{ item.question }}</span>
-                <app-icon [name]="openQuestion() === i ? 'chevron-up' : 'chevron-down'" class="hc-icon-16" />
+                <span class="hc-item__question-text"><span class="hc-item__number">{{ i + 1 }}</span>{{ item.question }}</span>
+                <span class="hc-item__toggle" aria-hidden="true">
+                  <app-icon [name]="openQuestion() === i ? 'chevron-up' : 'chevron-down'" class="hc-icon-16" />
+                </span>
               </button>
               @if (openQuestion() === i) {
-                <p class="hc-item__answer">{{ item.answer }}</p>
+                <p class="hc-item__answer" [id]="questionId(i)">{{ item.answer }}</p>
               }
             </article>
           } @empty {
