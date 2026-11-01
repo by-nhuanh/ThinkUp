@@ -351,6 +351,7 @@ export class CourseService {
       shortDescription: dto.short_description,
       description: dto.description,
       instructor: instructor?.full_name || 'Giảng viên ThinkUp',
+      instructorId: instructor?.instructor_id,
       instructorInitial: (instructor?.full_name || 'G').charAt(0).toUpperCase(),
       category: dto.category?.name,
       level: dto.levels?.[0] || dto.level,
@@ -387,6 +388,7 @@ export class CourseService {
       })),
       instructorProfile: instructor
         ? {
+            id: instructor.instructor_id,
             name: instructor.full_name || 'Giảng viên ThinkUp',
             title: instructor.title || 'Senior Instructor',
             bio: instructor.bio || '',

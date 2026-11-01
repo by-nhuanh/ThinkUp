@@ -14,11 +14,12 @@ import {
   CourseReviewSortOption,
   ReviewBreakdownRow,
 } from '../../../core/models/course.model';
+import { InstructorTriggerDirective } from '../../../shared/directives/instructor-trigger.directive';
 
 @Component({
   selector: 'app-course-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule],
+  imports: [CommonModule, RouterLink, FormsModule, InstructorTriggerDirective],
   templateUrl: './course-detail.component.html',
   styleUrl: './course-detail.component.css'
 })

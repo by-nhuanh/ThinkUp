@@ -16,6 +16,7 @@ import {
   PaymentStatusValue,
 } from '../../../core/models/payment.model';
 import { DEMO_BANK_TRANSFER, DEMO_SWIFT_INFO } from '../../../core/data/mock/mock-payment';
+import { InstructorTriggerDirective } from '../../../shared/directives/instructor-trigger.directive';
 
 type CheckoutTab = 'domestic' | 'international';
 
@@ -147,7 +148,7 @@ const BANK_FULL_NAMES: Record<string, string> = {
 @Component({
   selector: 'app-checkout',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, InstructorTriggerDirective],
   templateUrl: './checkout.component.html',
   styleUrls: [
     '../../payment-ui.css',

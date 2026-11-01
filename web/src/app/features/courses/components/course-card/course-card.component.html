@@ -76,7 +76,7 @@
           <circle cx="12" cy="7" r="4" />
         </svg>
       </span>
-      <span class="min-w-0 flex-1 truncate text-[12px] leading-4 text-[#45556C]">{{ course.instructor }}</span>
+      <span class="min-w-0 flex-1 truncate text-[12px] leading-4 text-[#45556C]" [appInstructorTrigger]="instructorRef">{{ course.instructor }}</span>
       @if (course.level) {
         <span class="shrink-0 rounded-[4px] bg-[#F1F5F9] px-2 py-[4px] text-[10px] font-normal leading-[15px] text-[#45556C]">
           {{ course.level }}

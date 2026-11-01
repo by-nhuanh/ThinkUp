@@ -41,6 +41,11 @@ export const routes: Routes = [
       { path: 'onboarding', redirectTo: '/onboarding', pathMatch: 'full' },
     ]
   },
+  // Hồ sơ giảng viên công khai: học viên và khách đều xem được.
+  {
+    path: 'instructors/:slug',
+    loadComponent: () => import('./features/instructors/instructor-profile/instructor-profile.component').then(m => m.InstructorProfileComponent)
+  },
   // Main customer routes: chặn mọi trang con cho học viên chưa hoàn thành onboarding.
   {
     path: 'main',
@@ -88,6 +93,7 @@ export const routes: Routes = [
       },
       { path: 'contact', loadComponent: () => import('./features/support/contact/contact.component').then(m => m.ContactComponent) },
       { path: 'help-center', loadComponent: () => import('./features/support/contact/contact.component').then(m => m.ContactComponent) },
+      { path: 'instructors/:slug', loadComponent: () => import('./features/instructors/instructor-profile/instructor-profile.component').then(m => m.InstructorProfileComponent) },
       { path: 'instructors', loadComponent: () => import('./features/support/contact/contact.component').then(m => m.ContactComponent) },
       {
         path: '',

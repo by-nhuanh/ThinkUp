@@ -1,13 +1,14 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { LearningChapter, LearningCourse, LearningLesson } from '../../models/learning.model';
+import { InstructorTriggerDirective } from '../../../../shared/directives/instructor-trigger.directive';
 
 export type CourseOutlineVariant = 'default' | 'lab';
 
 @Component({
   selector: 'app-course-outline',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, InstructorTriggerDirective],
   templateUrl: './course-outline.component.html',
   styleUrls: ['./course-outline.component.css'],
 })

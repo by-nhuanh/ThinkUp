@@ -5,7 +5,7 @@ export const MOCK_ENROLLED_COURSES: EnrolledCourse[] = [
   {
     id: 'reactjs',
     title: 'ReactJS - Từ cơ bản đến nâng cao',
-    instructor: 'Nguyễn Văn A',
+    instructor: 'Đặng Văn Anh Tài',
     totalLessons: 45,
     completedLessons: 20,
     coverTitle: 'ReactJS',
@@ -40,7 +40,7 @@ export const MOCK_ENROLLED_COURSES: EnrolledCourse[] = [
   {
     id: 'javascript-es6',
     title: 'JavaScript ES6+ - Nâng cao kỹ năng lập trình',
-    instructor: 'Trần Thị B',
+    instructor: 'Đặng Văn Anh Tài',
     totalLessons: 32,
     completedLessons: 32,
     coverTitle: 'JS ES6+',

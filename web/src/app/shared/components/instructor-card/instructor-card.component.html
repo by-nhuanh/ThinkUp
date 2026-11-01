@@ -1,0 +1,79 @@
+@if (state(); as current) {
+  <div
+    #card
+    class="instructor-popover"
+    [class.instructor-popover--ready]="positioned()"
+    [style.left.px]="position().left"
+    [style.top.px]="position().top"
+    role="dialog"
+    aria-modal="false"
+    [attr.aria-label]="'Thông tin giảng viên ' + current.instructor.name"
+    (mouseenter)="onMouseEnter()"
+    (mouseleave)="onMouseLeave()"
+  >
+    <div class="instructor-popover__head">
+      <span class="instructor-popover__avatar" aria-hidden="true">
+        @if (current.instructor.avatar) {
+          <img [src]="current.instructor.avatar" [alt]="''" loading="lazy" />
+        } @else {
+          {{ current.instructor.initials }}
+        }
+      </span>
+
+      <div class="instructor-popover__identity">
+        <p class="instructor-popover__name">{{ current.instructor.name }}</p>
+        <p class="instructor-popover__title">{{ current.instructor.title }}</p>
+        <p class="instructor-popover__meta">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+            <circle cx="12" cy="10" r="3" />
+          </svg>
+          <span>{{ current.instructor.location }}</span>
+        </p>
+      </div>
+    </div>
+
+    <div class="instructor-popover__stats">
+      <div class="instructor-popover__stat">
+        <strong>{{ formatCount(current.instructor.studentsCount) }}</strong>
+        <span>Học viên</span>
+      </div>
+      <div class="instructor-popover__stat">
+        <strong>{{ current.instructor.coursesCount }}</strong>
+        <span>Khóa học</span>
+      </div>
+      <div class="instructor-popover__stat">
+        <strong class="instructor-popover__rating">
+          {{ formatRating(current.instructor.rating) }}
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+          </svg>
+        </strong>
+        <span>Đánh giá</span>
+      </div>
+    </div>
+
+    <p class="instructor-popover__bio">{{ current.instructor.bio }}</p>
+
+    @if (current.instructor.expertise.length) {
+      <ul class="instructor-popover__tags" aria-label="Chuyên môn">
+        @for (tag of current.instructor.expertise.slice(0, 4); track tag) {
+          <li>{{ tag }}</li>
+        }
+      </ul>
+    }
+
+    <a
+      class="instructor-popover__cta"
+      [routerLink]="['/instructors', current.instructor.id]"
+      data-popover-cta
+      (click)="close()"
+    >
+      <span>Xem thông tin giảng viên</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M5 12h14" />
+        <path d="m12 5 7 7-7 7" />
+      </svg>
+    </a>
+  </div>
+}
