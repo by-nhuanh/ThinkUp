@@ -4,31 +4,30 @@
       <nav class="breadcrumb" aria-label="Đường dẫn trang"><span class="breadcrumb-parent">Quản lý hỗ trợ</span><span class="breadcrumb-separator" aria-hidden="true">/</span><span class="breadcrumb-current" aria-current="page">Ticket hỗ trợ</span></nav>
       <h1>Hàng đợi Ticket</h1>
     </div>
-    <button class="ghost-button" type="button" (click)="reset()">
-      Đặt lại bộ lọc
-    </button>
   </header>
   <section class="metric-grid five" aria-label="Tổng quan ticket">
-    <article class="metric-card">
+    <button class="metric-card actionable" type="button" [class.is-active]="appliedFilters().quick === 'unassigned'" [attr.aria-pressed]="appliedFilters().quick === 'unassigned'" (click)="applyQuickFilter('unassigned')">
       <span class="metric-icon blue"
         ><svg lucideClock aria-hidden="true"></svg
       ></span>
       <div>
         <small>Chờ tiếp nhận</small><strong>{{ unassigned() }}</strong>
       </div>
-    </article>
-    <article class="metric-card">
+    </button>
+    <button class="metric-card actionable" type="button" [class.is-active]="appliedFilters().quick === 'processing'" [attr.aria-pressed]="appliedFilters().quick === 'processing'" (click)="applyQuickFilter('processing')">
       <span class="metric-icon cyan"
         ><svg lucideRefreshCw aria-hidden="true"></svg
       ></span>
       <div>
         <small>Đang xử lý</small><strong>{{ processing() }}</strong>
       </div>
-    </article>
+    </button>
     <button
       class="metric-card danger actionable"
       type="button"
-      (click)="status.set('overdue'); page.set(1)"
+      [class.is-active]="appliedFilters().quick === 'overdue'"
+      [attr.aria-pressed]="appliedFilters().quick === 'overdue'"
+      (click)="applyQuickFilter('overdue')"
     >
       <span class="metric-icon red"
         ><svg lucideTriangleAlert aria-hidden="true"></svg></span
@@ -36,7 +35,7 @@
         ><small>Quá hạn SLA</small><strong>{{ overdue() }}</strong>
       </span>
     </button>
-    <article class="metric-card">
+    <button class="metric-card actionable" type="button" [class.is-active]="appliedFilters().quick === 'resolvedToday'" [attr.aria-pressed]="appliedFilters().quick === 'resolvedToday'" (click)="applyQuickFilter('resolvedToday')">
       <span class="metric-icon green"
         ><svg lucideCircleCheck aria-hidden="true"></svg
       ></span>
@@ -44,74 +43,58 @@
         <small>Đã giải quyết hôm nay</small
         ><strong>{{ resolvedToday() }}</strong>
       </div>
-    </article>
-    <article class="metric-card">
+    </button>
+    <button class="metric-card actionable" type="button" [class.is-active]="appliedFilters().quick === 'onTime'" [attr.aria-pressed]="appliedFilters().quick === 'onTime'" (click)="applyQuickFilter('onTime')">
       <span class="metric-icon violet"
         ><svg lucideGauge aria-hidden="true"></svg
       ></span>
       <div>
         <small>Đúng hạn SLA</small><strong>{{ onTime() }}%</strong>
       </div>
-    </article>
+    </button>
   </section>
   <section class="workspace-panel">
-    <div class="filter-bar">
+    <div class="filter-bar advanced-filter-toolbar">
       <label class="search-control"
         ><svg lucideSearch class="search-icon" aria-hidden="true"></svg
         ><input
           type="search"
           [ngModel]="queryInput()"
           (ngModelChange)="setSearch($event)"
-          placeholder="Tìm mã ticket, học viên, email hoặc nội dung..."
+          placeholder="Tìm mã ticket, người gửi, email hoặc nội dung..."
       /></label>
-      <div class="filter-control date-filter"><span class="filter-label">Thời gian</span><button class="date-trigger ticket-date-trigger" type="button" [attr.aria-expanded]="dateOpen()" aria-controls="ticket-date-options" (click)="toggleDatePopover()"><img src="/assets/business/orders/calendar-days.svg" alt=""><span>{{ dateLabel() }}</span></button>
-        @if (dateOpen()) { <div class="date-popover" id="ticket-date-options" [style.left.px]="datePopoverPosition()?.left" [style.top.px]="datePopoverPosition()?.top" [style.max-height.px]="datePopoverPosition()?.maxHeight" [style.visibility]="datePopoverPosition() ? 'visible' : 'hidden'"><p>Chọn nhanh</p><div class="quick-dates"><button type="button" [class.active]="periodDraft() === 'all'" (click)="selectPeriod('all')">Tất cả</button><button type="button" [class.active]="periodDraft() === 'today'" (click)="selectPeriod('today')">Hôm nay</button><button type="button" [class.active]="periodDraft() === 'week'" (click)="selectPeriod('week')">7 ngày</button><button type="button" [class.active]="periodDraft() === 'month'" (click)="selectPeriod('month')">Tháng này</button><button type="button" [class.active]="periodDraft() === 'quarter'" (click)="selectPeriod('quarter')">Quý này</button><button type="button" [class.active]="periodDraft() === 'year'" (click)="selectPeriod('year')">Năm này</button></div><div class="date-fields"><div><span>Từ ngày</span><app-date-time-picker [value]="fromDraft()" label="Chọn ngày bắt đầu" (valueChange)="selectFrom($event)"></app-date-time-picker></div><div><span>Đến ngày</span><app-date-time-picker [value]="toDraft()" label="Chọn ngày kết thúc" (valueChange)="selectTo($event)"></app-date-time-picker></div></div><div class="date-popover-actions"><button class="date-clear-button" type="button" aria-label="Xoá khoảng thời gian" [disabled]="!canClearDateRange()" (click)="clearDateRange()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg></button><button class="date-apply-button" type="button" (click)="applyDateRange()">Áp dụng</button></div></div> }
-      </div>
-      <div class="filter-control custom-select-control wide"><label id="ticket-topic-label">Chủ đề</label><app-custom-select controlId="ticket-topic" labelId="ticket-topic-label" [value]="topic()" [options]="topicOptions" [menuWidth]="300" [menuMaxHeight]="330" (valueChange)="setFilter('topic', $event)"></app-custom-select></div>
-      <div class="filter-control custom-select-control"><label id="ticket-priority-label">Ưu tiên</label><app-custom-select controlId="ticket-priority" labelId="ticket-priority-label" [value]="priority()" [options]="priorityOptions" (valueChange)="setFilter('priority', $event)"></app-custom-select></div>
-      <div class="filter-control custom-select-control"><label id="ticket-status-label">Trạng thái</label><app-custom-select controlId="ticket-status" labelId="ticket-status-label" [value]="status()" [options]="statusOptions" (valueChange)="setFilter('status', $event)"></app-custom-select></div>
-      <div class="filter-control custom-select-control"><label id="ticket-assignee-label">Phụ trách</label><app-custom-select controlId="ticket-assignee" labelId="ticket-assignee-label" [value]="assignee()" [options]="assigneeOptions" (valueChange)="setFilter('assignee', $event)"></app-custom-select></div>
+      <button class="filter-trigger" type="button" [attr.aria-expanded]="filterOpen()" (click)="openFilters()"><svg lucideFilter aria-hidden="true"></svg><span>Lọc</span>@if (activeFilterCount()) { <span class="filter-count">{{ activeFilterCount() }}</span> }</button>
+      <app-column-visibility tableId="support-ticket-table" storageKey="thinkup-admin-ticket-columns" [columns]="tableColumns"></app-column-visibility>
     </div>
+    @if (filterChips().length) { <div class="applied-filter-chips" aria-label="Bộ lọc đang áp dụng">@for (chip of filterChips(); track chip.key) { <span class="filter-chip">{{ chip.label }}<button type="button" [attr.aria-label]="'Xóa ' + chip.label" (click)="removeFilterChip(chip.key)"><svg lucideX aria-hidden="true"></svg></button></span> }</div> }
     <div class="table-scroll">
-      <table>
+      <table id="support-ticket-table" class="support-centered-table" appResizableColumns="support-ticket-queue">
         <thead>
           <tr>
-            <th>Mã ticket</th>
-            <th>Học viên</th>
-            <th>Chủ đề</th>
-            <th>Nội dung</th>
-            <th>Minh chứng</th>
-            <th>Ưu tiên</th>
-            <th>SLA</th>
-            <th>Phụ trách</th>
-            <th>Xử lý</th>
+            <th data-column="id">Mã ticket</th><th data-column="sender">Người gửi</th><th data-column="topic">Chủ đề</th><th data-column="content">Nội dung</th><th data-column="evidence">Minh chứng</th><th data-column="priority">Ưu tiên</th><th data-column="time">Thời gian</th><th data-column="status">Trạng thái</th><th data-column="sla">SLA</th><th data-column="assignee">Phụ trách</th><th data-column="action" data-fixed-column>Xử lý</th>
           </tr>
         </thead>
         <tbody>
           @for (ticket of visible(); track ticket.id) {
             <tr [class.urgent-row]="slaMs(ticket) < 0">
-              <td>
+              <td data-column="id">
                 <div class="ticket-code-cell"><button class="ticket-code-link" type="button" (click)="open(ticket)">{{ ticket.id }}</button>@if (ticket.status === 'reopened') { <span class="reopened-badge">Cần xử lý tiếp</span> }</div>
               </td>
-              <td class="learner-cell">
-                <div class="learner-name"><strong>{{ ticket.learner }}</strong><button class="learner-view" type="button" [attr.aria-label]="'Xem thông tin học viên ' + ticket.learner" [attr.title]="'Xem thông tin học viên ' + ticket.learner" (click)="learnerPreview.set(ticket)"><svg lucideEye aria-hidden="true"></svg></button></div><small [title]="ticket.email">{{ ticket.email }}</small>
+              <td data-column="sender" class="learner-cell">
+                <div class="learner-name"><strong>{{ ticket.learner }}</strong><button class="learner-view" type="button" [attr.aria-label]="'Xem thông tin người gửi ' + ticket.learner" [attr.title]="'Xem thông tin người gửi ' + ticket.learner" (click)="learnerPreview.set(ticket)"><svg lucideEye aria-hidden="true"></svg></button></div><small [title]="ticket.email">{{ ticket.email }}</small><small>{{ ticket.phone }}</small>
               </td>
-              <td>
+              <td data-column="topic">
                 <span class="topic-chip">{{ ticket.topic }}</span>
               </td>
-              <td>
+              <td data-column="content">
                 <p class="clamp-2" [title]="ticket.summary">
                   {{ ticket.summary }}
                 </p>
               </td>
-              <td>
+              <td data-column="evidence">
                 <span
                   class="inline-icon-label"
-                  [title]="
-                    ticket.attachments.length
-                      ? ticket.attachments[0].name
-                      : 'Không có tệp'
-                  "
+                  [title]="attachmentTitle(ticket)"
                 >
                   @if (ticket.attachments.length) {
                     <svg lucidePaperclip aria-hidden="true"></svg
@@ -121,7 +104,7 @@
                   }
                 </span>
               </td>
-              <td>
+              <td data-column="priority">
                 <span
                   class="status-badge"
                   [class]="'status-badge priority-' + ticket.priority"
@@ -134,15 +117,18 @@
                   }}</span
                 >
               </td>
-              <td>
+              <td data-column="time" class="ticket-time"><strong>{{ ticket.createdAt | date: 'dd/MM/yyyy' }}</strong><small>{{ ticket.createdAt | date: 'HH:mm' }}</small></td>
+              <td data-column="status"><span class="status-badge" [class]="'status-badge ticket-status-' + ticket.status">{{ statusLabel(ticket.status) }}</span></td>
+              <td data-column="sla">
                 <strong
                   class="sla"
-                  [class.is-danger]="slaMs(ticket) < 4 * 3600000"
+                  [class.is-danger]="ticket.status !== 'closed' && slaMs(ticket) < 4 * 3600000"
+                  [class.is-urgent]="ticket.status !== 'closed' && slaMs(ticket) >= 0 && slaMs(ticket) < 4 * 3600000"
                   >{{ sla(ticket) }}</strong
-                >
+                ><small>{{ ticket.dueAt | date: 'dd/MM, HH:mm' }}</small>
               </td>
-              <td>{{ ticket.assignee || "Chưa gán" }}</td>
-              <td>
+              <td data-column="assignee"><span class="assignee-name">{{ ticket.assignee || "Chưa gán" }}</span>@if (ticket.assigneeId) { <small>{{ ticket.assigneeId }}</small> }</td>
+              <td data-column="action">
                 <button
                   class="table-action"
                   type="button"
@@ -154,7 +140,7 @@
             </tr>
           } @empty {
             <tr>
-              <td colspan="9">
+              <td colspan="11">
                 <div class="empty-state">
                   <strong>Không có ticket phù hợp</strong
                   ><span>Thử thay đổi từ khóa hoặc bộ lọc.</span>
@@ -168,318 +154,22 @@
     <app-support-pagination [page]="page()" [pages]="pages()" [pageSize]="pageSize" [totalItems]="filtered().length" itemLabel="ticket" (pageChange)="pageTo($event)" />
   </section>
 </main>
+@if (filterOpen()) {
+  <app-support-filter-modal [resultCount]="previewResults().length" (closed)="closeFilters()" (cleared)="clearDraftFilters()" (applied)="applyFilters()">
+    <div class="advanced-filter-grid">
+      <section class="advanced-filter-section full-width"><h3>Thời gian</h3><div class="filter-option-grid">@for (item of [{ value: 'all', label: 'Tất cả' }, { value: 'today', label: 'Hôm nay' }, { value: 'week', label: '7 ngày' }, { value: 'month', label: 'Tháng này' }, { value: 'quarter', label: 'Quý này' }, { value: 'year', label: 'Năm này' }]; track item.value) { <button type="button" [class.active]="draftFilters().period === item.value" (click)="selectDraftPeriod($any(item.value))">{{ item.label }}</button> }</div><div class="modal-date-fields"><label><span>Từ ngày</span><app-date-time-picker [value]="draftFilters().from" label="Chọn ngày bắt đầu" (valueChange)="setDraftDate('from', $event)"></app-date-time-picker></label><label><span>Đến ngày</span><app-date-time-picker [value]="draftFilters().to" label="Chọn ngày kết thúc" (valueChange)="setDraftDate('to', $event)"></app-date-time-picker></label></div></section>
+      <section class="advanced-filter-section"><h3 id="ticket-topic-filter-title">Chủ đề</h3><div class="radio-filter-list" role="radiogroup" aria-labelledby="ticket-topic-filter-title">@for (option of topicOptions; track option.value) { <label class="radio-filter-option" [class.is-selected]="draftFilters().topic === option.value"><input type="radio" name="ticket-topic-filter" [value]="option.value" [checked]="draftFilters().topic === option.value" (change)="setDraft('topic', option.value)"><span class="radio-circle" aria-hidden="true"></span><span>{{ option.label }}</span></label> }</div></section>
+      <section class="advanced-filter-section"><h3 id="ticket-priority-filter-title">Ưu tiên</h3><div class="radio-filter-list" role="radiogroup" aria-labelledby="ticket-priority-filter-title">@for (option of priorityOptions; track option.value) { <label class="radio-filter-option" [class.is-selected]="draftFilters().priority === option.value"><input type="radio" name="ticket-priority-filter" [value]="option.value" [checked]="draftFilters().priority === option.value" (change)="setDraft('priority', option.value)"><span class="radio-circle" aria-hidden="true"></span><span>{{ option.label }}</span></label> }</div></section>
+      <section class="advanced-filter-section"><h3 id="ticket-status-filter-title">Trạng thái</h3><div class="radio-filter-list" role="radiogroup" aria-labelledby="ticket-status-filter-title">@for (option of statusOptions; track option.value) { <label class="radio-filter-option" [class.is-selected]="draftFilters().status === option.value"><input type="radio" name="ticket-status-filter" [value]="option.value" [checked]="draftFilters().status === option.value" (change)="setDraft('status', option.value)"><span class="radio-circle" aria-hidden="true"></span><span>{{ option.label }}</span></label> }</div></section>
+      <section class="advanced-filter-section"><h3 id="ticket-assignee-filter-title">Phụ trách</h3><div class="radio-filter-list" role="radiogroup" aria-labelledby="ticket-assignee-filter-title">@for (option of assigneeOptions; track option.value) { <label class="radio-filter-option" [class.is-selected]="draftFilters().assignee === option.value"><input type="radio" name="ticket-assignee-filter" [value]="option.value" [checked]="draftFilters().assignee === option.value" (change)="setDraft('assignee', option.value)"><span class="radio-circle" aria-hidden="true"></span><span>{{ option.label }}</span></label> }</div></section>
+    </div>
+  </app-support-filter-modal>
+}
 @if (learnerPreview(); as learner) {
   <div class="backdrop learner-backdrop" (click)="learnerPreview.set(null)"></div>
   <section class="learner-dialog" role="dialog" aria-modal="true" aria-labelledby="learner-dialog-title">
-    <header><div><span>Thông tin học viên</span><h2 id="learner-dialog-title">{{ learner.learner }}</h2></div><button class="icon-button" type="button" aria-label="Đóng thông tin học viên" (click)="learnerPreview.set(null)"><svg lucideX aria-hidden="true"></svg></button></header>
-    <dl><div><dt>Email</dt><dd>{{ learner.email }}</dd></div><div><dt>Số điện thoại</dt><dd>{{ learner.phone }}</dd></div><div><dt>Ticket đang xem</dt><dd>{{ learner.id }}</dd></div><div><dt>Chủ đề</dt><dd>{{ learner.topic }}</dd></div></dl>
+    <header><div><span>Thông tin người gửi</span><h2 id="learner-dialog-title">{{ learner.learner }}</h2></div><button class="icon-button" type="button" aria-label="Đóng thông tin người gửi" (click)="learnerPreview.set(null)"><svg lucideX aria-hidden="true"></svg></button></header>
+    <dl><div><dt>Vai trò</dt><dd>{{ learner.requesterRole === 'instructor' ? 'Giảng viên' : 'Học viên' }}</dd></div><div><dt>Email</dt><dd>{{ learner.email }}</dd></div><div><dt>Số điện thoại</dt><dd>{{ learner.phone }}</dd></div><div><dt>Ticket đang xem</dt><dd>{{ learner.id }}</dd></div><div><dt>Chủ đề</dt><dd>{{ learner.topic }}</dd></div></dl>
     <footer><button class="primary-button" type="button" (click)="learnerPreview.set(null); open(learner)">Xem chi tiết ticket</button></footer>
   </section>
-}
-@if (selected(); as ticket) {
-  <div class="backdrop drawer-backdrop" (click)="closeDrawer()"></div>
-  <aside
-    class="support-drawer"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="ticket-title"
-  >
-    <header>
-      <div>
-        <span class="status-badge priority-high">{{
-          ticket.priority === "high" ? "Ưu tiên cao" : "Ticket hỗ trợ"
-        }}</span>
-        <h2 id="ticket-title">{{ ticket.id }} · {{ ticket.learner }}</h2>
-        <p>{{ ticket.topic }}</p>
-      </div>
-      <div class="drawer-head-actions">
-        <button
-          class="danger-outline"
-          type="button"
-          (click)="overlay.set('escalate')"
-        >
-          Thăng cấp khiếu nại</button
-        ><button
-          class="icon-button"
-          type="button"
-          aria-label="Đóng"
-          (click)="closeDrawer()"
-        >
-          <svg lucideX aria-hidden="true"></svg>
-        </button>
-      </div>
-    </header>
-    <div class="drawer-body">
-      <section class="ticket-meta">
-        <span><small>Email</small>{{ ticket.email }}</span
-        ><span><small>Điện thoại</small>{{ ticket.phone }}</span
-        ><span
-          ><small>SLA</small
-          ><strong [class.text-danger]="slaMs(ticket) < 0">{{
-            sla(ticket)
-          }}</strong></span
-        ><span
-          ><small>Phụ trách</small>{{ ticket.assignee || "Chưa gán" }}</span
-        >
-      </section>
-      <section class="thread" aria-label="Lịch sử trao đổi">
-        @for (message of ticket.thread; track message.id) {
-          <article class="message" [class.agent]="message.role === 'agent'">
-            <header>
-              <strong>{{ message.sender }}</strong
-              ><span
-                >{{
-                  message.role === "agent" ? "Nhân viên ThinkUp" : "Học viên"
-                }}
-                · {{ message.sentAt | date: "dd/MM/yyyy, HH:mm" }}</span
-              >
-            </header>
-            <p>{{ message.body }}</p>
-            @if (message.attachments.length) {
-              <div class="attachment-list">
-                @for (file of message.attachments; track file.name) {
-                  <button
-                    type="button"
-                    (click)="
-                      file.kind === 'image'
-                        ? lightbox.set(file.name)
-                        : notify('Tệp demo chưa có URL tải xuống từ backend.')
-                    "
-                  >
-                    @if (file.kind === "image") {
-                      <svg lucideImage aria-hidden="true"></svg>
-                    } @else {
-                      <svg lucideFileText aria-hidden="true"></svg>
-                    }
-                    {{ file.name }}
-                  </button>
-                }
-              </div>
-            }
-          </article>
-        }
-      </section>
-    </div>
-    <footer class="composer">
-      <label
-        ><span class="sr-only">Nội dung phản hồi</span
-        ><textarea
-          rows="4"
-          [ngModel]="reply()"
-          (ngModelChange)="reply.set($event)"
-          maxlength="2000"
-          placeholder="Nhập nội dung phản hồi rõ ràng cho học viên..."
-        ></textarea>
-      </label>
-      <div class="composer-tools">
-        <button
-          type="button"
-          (click)="
-            notify('Tệp sẽ được tải lên sau khi có API upload chính thức.')
-          "
-        >
-          <svg lucidePaperclip aria-hidden="true"></svg>Đính kèm</button
-        ><button type="button" (click)="reply.set(reply() + ' 🙂')">
-          <svg lucideSmile aria-hidden="true"></svg>Emoji</button
-        ><button type="button" (click)="overlay.set('templates')">
-          <svg lucideMessagesSquare aria-hidden="true"></svg>Câu trả lời mẫu</button
-        ><span>{{ reply().length }}/2000</span>
-      </div>
-      <div class="drawer-actions">
-        <button
-          class="ghost-button"
-          type="button"
-          (click)="overlay.set('assign')"
-        >
-          Điều chuyển</button
-        ><button
-          class="secondary-button"
-          type="button"
-          [disabled]="reply().trim().length < 3"
-          (click)="send(false)"
-        >
-          Gửi &amp; giữ mở</button
-        ><button
-          class="primary-button"
-          type="button"
-          [disabled]="reply().trim().length < 3"
-          (click)="send(true)"
-        >
-          Gửi &amp; đóng Ticket
-        </button>
-      </div>
-    </footer>
-  </aside>
-}
-@if (overlay()) {
-  <div class="backdrop modal-backdrop" (click)="overlay.set(null)"></div>
-  <section
-    class="support-modal"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="modal-title"
-    (click)="$event.stopPropagation()"
-  >
-    <header>
-      <div>
-        <p class="eyebrow">Xác nhận nghiệp vụ</p>
-        <h2 id="modal-title">
-          {{
-            overlay() === "assign"
-              ? "Điều chuyển người phụ trách"
-              : overlay() === "escalate"
-                ? "Thăng cấp khiếu nại khẩn"
-                : overlay() === "close"
-                  ? "Đóng Ticket"
-                  : "Thư viện câu trả lời mẫu"
-          }}
-        </h2>
-      </div>
-      <button
-        class="icon-button"
-        type="button"
-        aria-label="Đóng"
-        (click)="overlay.set(null)"
-      >
-        <svg lucideX aria-hidden="true"></svg>
-      </button>
-    </header>
-    <div class="modal-body">
-      @if (overlay() === "assign") {
-        <label class="field"
-          ><span>Nhân viên tiếp nhận *</span
-          ><select
-            [ngModel]="selectedStaff()"
-            (ngModelChange)="selectedStaff.set($event)"
-          >
-            <option value="">Chọn nhân viên</option>
-            @for (person of staff(); track person.id) {
-              <option [value]="person.name">
-                {{ person.name }} · {{ person.openTickets }} ticket đang xử lý
-              </option>
-            }
-          </select></label
-        ><label class="field"
-          ><span>Ghi chú bàn giao nội bộ *</span
-          ><textarea
-            rows="4"
-            [ngModel]="note()"
-            (ngModelChange)="note.set($event)"
-            placeholder="Tóm tắt vấn đề và hướng xử lý tiếp theo..."
-          ></textarea
-          ><small [class.text-danger]="note().trim().length < 10"
-            >{{ note().trim().length }}/10 ký tự tối thiểu</small
-          ></label
-        >
-        <div class="notice warning">
-          SLA gốc được giữ nguyên. Thông báo chỉ được gửi khi backend xác nhận.
-        </div>
-      }
-      @if (overlay() === "escalate") {
-        <div class="notice danger">
-          Hồ sơ mới có SLA 4 giờ và giữ liên kết với toàn bộ lịch sử ticket.
-        </div>
-        <label class="field"
-          ><span>Căn cứ thăng cấp *</span
-          ><textarea
-            rows="5"
-            [ngModel]="grounds()"
-            (ngModelChange)="grounds.set($event)"
-            placeholder="Mô tả dấu hiệu rủi ro hoặc căn cứ cần phân xử..."
-          ></textarea
-          ><small [class.text-danger]="grounds().trim().length < 20"
-            >{{ grounds().trim().length }}/20 ký tự tối thiểu</small
-          ></label
-        >
-      }
-      @if (overlay() === "close") {
-        <label class="field"
-          ><span>Kết quả giải quyết *</span
-          ><textarea
-            rows="5"
-            [ngModel]="closeResult()"
-            (ngModelChange)="closeResult.set($event)"
-          ></textarea
-          ><small [class.text-danger]="closeResult().trim().length < 10"
-            >Tối thiểu 10 ký tự</small
-          ></label
-        >
-      }
-      @if (overlay() === "templates") {
-        <div class="template-list">
-          <button
-            type="button"
-            (click)="
-              useTemplate(
-                'ThinkUp đã tiếp nhận yêu cầu và đang đối chiếu với bộ phận liên quan. Chúng tôi sẽ cập nhật kết quả sớm nhất.'
-              )
-            "
-          >
-            <strong>Đã tiếp nhận</strong
-            ><span>Xác nhận và hẹn cập nhật</span></button
-          ><button
-            type="button"
-            (click)="
-              useTemplate(
-                'Bạn vui lòng bổ sung ảnh chụp toàn màn hình, thời điểm xảy ra lỗi và các bước đã thực hiện để chúng tôi kiểm tra.'
-              )
-            "
-          >
-            <strong>Yêu cầu bổ sung</strong
-            ><span>Thu thập thêm minh chứng</span>
-          </button>
-        </div>
-      }
-    </div>
-    <footer>
-      <button class="ghost-button" type="button" (click)="overlay.set(null)">
-        Hủy
-      </button>
-      @if (overlay() === "assign") {
-        <button
-          class="primary-button"
-          type="button"
-          [disabled]="!selectedStaff() || note().trim().length < 10"
-          (click)="confirmAssign()"
-        >
-          Xác nhận điều chuyển
-        </button>
-      }
-      @if (overlay() === "escalate") {
-        <button
-          class="danger-button"
-          type="button"
-          [disabled]="grounds().trim().length < 20"
-          (click)="confirmEscalate()"
-        >
-          Tạo hồ sơ khiếu nại
-        </button>
-      }
-      @if (overlay() === "close") {
-        <button
-          class="danger-button"
-          type="button"
-          [disabled]="closeResult().trim().length < 10"
-          (click)="confirmClose()"
-        >
-          Xác nhận đóng
-        </button>
-      }
-    </footer>
-  </section>
-}
-@if (lightbox()) {
-  <div class="lightbox" role="dialog" aria-modal="true">
-    <button type="button" aria-label="Đóng ảnh" (click)="lightbox.set(null)">
-      <svg lucideX aria-hidden="true"></svg>
-    </button>
-    <div>
-      <svg lucideImage aria-hidden="true"></svg
-      ><strong>{{ lightbox() }}</strong>
-      <p>Ảnh minh chứng sẽ hiển thị ở đây khi API trả URL tệp hợp lệ.</p>
-    </div>
-  </div>
-}
-@if (toast()) {
-  <div class="toast" role="status">{{ toast() }}</div>
 }

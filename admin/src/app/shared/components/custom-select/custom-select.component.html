@@ -1,12 +1,12 @@
 <div class="custom-select" (click)="$event.stopPropagation()" (window:click)="close()" (window:keydown.escape)="close()">
-  <button class="custom-select-trigger" type="button" [id]="controlId" [disabled]="disabled" [attr.aria-labelledby]="labelId ? labelId + ' ' + valueId : null" [attr.aria-expanded]="open()" [attr.aria-controls]="controlId ? controlId + '-options' : null" (click)="toggle()">
+  <button class="custom-select-trigger" type="button" [id]="controlId" [disabled]="disabled" [attr.aria-labelledby]="labelId ? labelId + ' ' + valueId : null" [attr.aria-expanded]="open()" [attr.aria-controls]="controlId ? controlId + '-options' : null" aria-haspopup="listbox" (click)="toggle()" (keydown)="onTriggerKeydown($event)">
     <span [id]="valueId">{{ displayLabel }}</span>
     <svg class="custom-select-chevron" viewBox="0 0 24 24" aria-hidden="true" [class.is-open]="open()"><path d="m6 9 6 6 6-6"/></svg>
   </button>
   @if (open()) {
-    <div class="custom-select-menu" [id]="controlId ? controlId + '-options' : null" [style.width]="'max(100%, ' + menuWidth + 'px)'" [style.max-height.px]="menuMaxHeight || null" [style.overflow-y]="menuMaxHeight ? 'auto' : 'hidden'" role="listbox" [attr.aria-labelledby]="labelId">
-      @for (option of options; track option.value) {
-        <button type="button" role="option" [disabled]="option.disabled" [attr.aria-selected]="value === option.value" [class.is-selected]="value === option.value" (click)="choose(option.value)">{{ option.label }}</button>
+    <div class="custom-select-menu" popover="manual" [id]="controlId ? controlId + '-options' : null" [style.top.px]="menuPosition()?.top" [style.left.px]="menuPosition()?.left" [style.width.px]="menuPosition()?.width" [style.max-height.px]="menuPosition()?.maxHeight" [style.visibility]="menuPosition() ? 'visible' : 'hidden'" role="listbox" [attr.aria-labelledby]="labelId" (keydown)="onMenuKeydown($event)">
+      @for (option of options; track option.value; let index = $index) {
+        <button type="button" role="option" [attr.data-option-index]="index" [tabindex]="activeIndex() === index ? 0 : -1" [disabled]="option.disabled" [attr.aria-selected]="value === option.value" [class.is-selected]="value === option.value" [class.is-active]="activeIndex() === index" (mouseenter)="activeIndex.set(index)" (click)="choose(option.value)">{{ option.label }}</button>
       }
     </div>
   }
