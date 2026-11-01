@@ -63,6 +63,29 @@
   flex-direction: column;
 }
 
+.outline__card-purchase {
+  display: flex;
+  flex-direction: column;
+}
+
+.outline__purchase-link {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #2077ff;
+  color: #fff;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+  transition: background 0.2s ease;
+}
+
+.outline__purchase-link:hover {
+  background: #3182ff;
+}
+
 .outline__progress-meta {
   display: flex;
   align-items: center;
@@ -123,6 +146,22 @@
 .chapter__chevron {
   flex: none;
   transition: transform 0.2s ease;
+}
+
+.chapter__lock {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: #94a3b8;
+}
+
+.chapter--locked .chapter__button {
+  cursor: not-allowed;
+  color: #9eabbf;
+}
+
+.chapter--locked .chapter__chevron {
+  display: none;
 }
 
 .chapter--open .chapter__chevron {
