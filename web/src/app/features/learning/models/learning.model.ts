@@ -59,6 +59,42 @@ export interface LabInstructionBlock {
   note?: string;
 }
 
+export interface LabLeaderboardEntry {
+  id: string;
+  rank: number;
+  name: string;
+  initials: string;
+  color: string;
+  score: number;
+  attempts: number;
+  execTime: string;
+  submittedAt: string;
+  medal?: 'gold' | 'silver' | 'bronze';
+}
+
+export interface LabSubmission {
+  id: string;
+  submittedAt: string;
+  testsPassed: number;
+  testsTotal: number;
+  status: 'pass' | 'fail';
+  execTime: string;
+}
+
+export interface LabExercise {
+  id: string;
+  order: number;
+  title: string;
+  language: string;
+  knowledge: LabInstructionBlock[];
+  task: LabInstructionBlock[];
+  starterCode: string;
+  tests: LabTestCase[];
+  solutions: LabSolution[];
+  leaderboard: LabLeaderboardEntry[];
+  submissions: LabSubmission[];
+}
+
 export interface LabConfig {
   language: string;
   fileName: string;
@@ -67,6 +103,7 @@ export interface LabConfig {
   starterCode: string;
   tests: LabTestCase[];
   solutions: LabSolution[];
+  exercises?: LabExercise[];
 }
 
 export interface LearningLesson {

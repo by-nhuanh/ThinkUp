@@ -1,0 +1,138 @@
+/* Lab workspace — Figma node 3173:15633 (lab lesson screen) */
+
+:host {
+  display: block;
+}
+
+/* ---------- exercise panel typography ---------- */
+
+.lab-block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lab-block + .lab-block {
+  margin-top: 28px;
+}
+
+.lab-block > h2 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.lab-block > p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.lab-code-block {
+  margin: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: 10px;
+  background: #1e2230;
+  padding: 16px;
+  color: #e2e8f0;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 24px;
+  white-space: pre;
+  tab-size: 2;
+}
+
+.lab-callout {
+  margin: 0;
+  border-radius: 8px;
+  background: #f1f5f9;
+  padding: 12px 16px;
+  color: #1d293d;
+  font-size: 13px;
+  line-height: 22px;
+}
+
+.lab-inline-code {
+  border-radius: 4px;
+  background: #f1f5f9;
+  padding: 1px 5px;
+  color: #ec003f;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.92em;
+  white-space: nowrap;
+}
+
+/* ---------- submission guide ---------- */
+
+.lab-guide-code {
+  margin: 12px 0 0;
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: 8px;
+  background: #030915;
+  padding: 16px 20px;
+  color: #569cd6;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 22px;
+  white-space: pre;
+  tab-size: 2;
+}
+
+/* ---------- editor toolbar ---------- */
+
+@media (max-width: 1180px) {
+  .lab-btn-label {
+    display: none;
+  }
+}
+
+/* ---------- test detail ---------- */
+
+.lab-test-detail-wrap {
+  container-type: inline-size;
+}
+
+.lab-test-detail {
+  grid-template-columns: 160px minmax(0, 1fr);
+}
+
+@container (max-width: 400px) {
+  .lab-test-detail {
+    grid-template-columns: minmax(0, 1fr);
+    gap-y: 2px;
+  }
+
+  .lab-test-detail dt {
+    margin-top: 8px;
+  }
+
+  .lab-test-detail dt:first-of-type {
+    margin-top: 0;
+  }
+}
+
+/* ---------- leaderboard medals ---------- */
+
+.lab-medal-gold {
+  color: #f0b100;
+}
+
+.lab-medal-silver {
+  color: #cbd5e1;
+}
+
+.lab-medal-bronze {
+  color: #fb923c;
+}
+
+.lab-ring-gold {
+  box-shadow: 0 0 0 2px #f0b100;
+}
+
+.lab-ring-silver {
+  box-shadow: 0 0 0 2px #cbd5e1;
+}
+
+.lab-ring-bronze {
+  box-shadow: 0 0 0 2px #fb923c;
+}
