@@ -1,0 +1,377 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+.icard {
+  display: flex;
+  height: 100%;
+  min-height: 296px;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow:
+    0 1px 2px -1px rgba(0, 0, 0, 0.1),
+    0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: box-shadow 180ms ease;
+}
+
+.icard:hover {
+  box-shadow:
+    0 10px 24px -16px rgba(15, 23, 43, 0.35),
+    0 2px 6px -2px rgba(15, 23, 43, 0.12);
+}
+
+.icard:focus-visible {
+  outline: 2px solid #2b7fff;
+  outline-offset: 2px;
+}
+
+.icard__cover {
+  position: relative;
+  height: 140px;
+  flex: 0 0 140px;
+  overflow: hidden;
+  color: #ffffff;
+}
+
+.icard__badge {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  left: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 15px;
+  letter-spacing: 0.2px;
+}
+
+.icard__badge--hot {
+  background: #fb2c36;
+}
+
+.icard__badge--new {
+  background: #00c950;
+}
+
+.icard__badge--sale,
+.icard__badge--best {
+  background: #ff6900;
+}
+
+.icard__badge--default {
+  background: #4b5563;
+}
+
+.icard__fav {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: transform 140ms ease;
+}
+
+.icard__fav:hover {
+  transform: scale(1.06);
+}
+
+.icard__fav:focus-visible {
+  outline: 2px solid #2b7fff;
+  outline-offset: 2px;
+}
+
+.icard__fav svg {
+  width: 16px;
+  height: 16px;
+}
+
+.icard__cover-content {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  gap: 12px;
+  padding: 0 18px;
+  box-sizing: border-box;
+}
+
+.icard__mark-letter {
+  flex: 0 0 auto;
+  color: #00d492;
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 48px;
+}
+
+.icard__mark-ring {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  border: 4px solid #00d3f2;
+  border-radius: 999px;
+  box-sizing: border-box;
+}
+
+.icard__cover-text {
+  min-width: 0;
+  max-width: 180px;
+}
+
+.icard__cover-title {
+  margin: 0;
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 25px;
+  overflow-wrap: break-word;
+}
+
+.icard__cover-subtitle {
+  margin: 2px 0 0;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 15px;
+}
+
+.icard__cover-text--dark .icard__cover-title {
+  color: #172033;
+}
+
+.icard__cover-text--dark .icard__cover-subtitle {
+  color: #314158;
+}
+
+.icard__body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.icard__row {
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  box-sizing: border-box;
+  color: #45556c;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.icard__instructor-row {
+  height: 32px;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.icard__instructor {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.icard__instructor-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icard__level {
+  flex: 0 0 auto;
+  color: #45556c;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.icard__rating-row {
+  height: 24px;
+  gap: 12px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.icard__rating {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+.icard__rating b {
+  color: #45556c;
+  font-weight: 600;
+}
+
+.icard__muted {
+  color: #90a1b9;
+}
+
+.icard__students {
+  min-width: 0;
+  overflow: hidden;
+  color: #45556c;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icard__duration-row {
+  height: 24px;
+  gap: 6px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.icard__icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.icard__icon--muted {
+  color: #90a1b9;
+}
+
+.icard__star {
+  fill: #fcc800;
+  color: #fcc800;
+}
+
+.icard__tags {
+  display: flex;
+  height: 32px;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  padding: 8px 16px;
+  box-sizing: border-box;
+  color: #2077ff;
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.icard__tags span {
+  flex: 0 0 auto;
+}
+
+.icard__price-row {
+  display: flex;
+  height: 44px;
+  flex: 0 0 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid #f1f5f9;
+  padding: 0 16px;
+  box-sizing: border-box;
+}
+
+.icard__price {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.icard__price-sale {
+  color: #e7000b;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 28px;
+}
+
+.icard__price-original {
+  color: #90a1b9;
+  font-size: 12px;
+  line-height: 16px;
+  text-decoration: line-through;
+}
+
+.icard__price-discount {
+  color: #fb2c36;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.icard__actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 6px;
+}
+
+.icard__action {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #d6e0ed;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #2077ff;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.icard__action:hover {
+  border-color: #2077ff;
+  background: #eff6ff;
+}
+
+.icard__action:focus-visible {
+  outline: 2px solid #2b7fff;
+  outline-offset: 2px;
+}
+
+.icard__action svg {
+  width: 16px;
+  height: 16px;
+}
+
+.icard__action--active {
+  border-color: #2077ff;
+  background: #2077ff;
+  color: #ffffff;
+}
+
+/* Giữ hàng giá vừa trong thẻ 4 cột ở laptop 1366–1440px. */
+@media (max-width: 1580px) {
+  .icard__price-sale {
+    font-size: 16px;
+  }
+
+  .icard__price-original,
+  .icard__price-discount {
+    font-size: 11px;
+  }
+
+  .icard__action {
+    width: 36px;
+    height: 36px;
+  }
+
+  .icard__price-row {
+    padding: 0 12px;
+  }
+
+  .icard__price {
+    gap: 4px;
+  }
+}

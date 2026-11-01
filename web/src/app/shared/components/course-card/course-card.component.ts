@@ -2,11 +2,12 @@ import { Component, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { IconComponent } from '../icon/icon.component';
 import { CourseCardView } from './course-card.model';
+import { InstructorTriggerDirective } from '../../directives/instructor-trigger.directive';
 
 @Component({
   selector: 'app-course-card',
   standalone: true,
-  imports: [RouterLink, IconComponent],
+  imports: [RouterLink, IconComponent, InstructorTriggerDirective],
   templateUrl: './course-card.component.html',
   styleUrl: './course-card.component.css',
 })

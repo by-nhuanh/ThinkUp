@@ -2,11 +2,12 @@ import { Component, HostListener, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TransactionDetail } from '../../../core/models/commerce.model';
 import { PurchaseHistoryService } from '../services/purchase-history.service';
+import { InstructorTriggerDirective } from '../../../shared/directives/instructor-trigger.directive';
 
 @Component({
   selector: 'app-purchase-transaction-detail',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, InstructorTriggerDirective],
   templateUrl: './purchase-transaction-detail.component.html',
   styleUrl: './purchase-transaction-detail.component.css',
 })

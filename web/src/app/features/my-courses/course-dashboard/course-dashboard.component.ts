@@ -49,6 +49,7 @@ import {
   LearningLesson,
 } from '../../learning/models/learning.model';
 import { LearningEnrollment, LearningService } from '../../learning/services/learning.service';
+import { InstructorTriggerDirective } from '../../../shared/directives/instructor-trigger.directive';
 
 type DashboardTab = 'content' | 'overview' | 'resources' | 'qa' | 'discussion';
 type DocumentFilter = 'all' | 'lecture' | 'code' | 'exercise';
@@ -62,6 +63,7 @@ type DocumentFilter = 'all' | 'lecture' | 'code' | 'exercise';
     RouterLink,
     ReportModalComponent,
     ReviewModalComponent,
+    InstructorTriggerDirective,
     LucideAward,
     LucideBookOpen,
     LucideChartColumn,

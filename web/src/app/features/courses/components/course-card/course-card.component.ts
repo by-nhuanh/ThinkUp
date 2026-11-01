@@ -4,11 +4,12 @@ import { Router } from '@angular/router';
 import { Course } from '../../../../core/models/course.model';
 import { FavoritesService } from '../../../../core/services/favorites.service';
 import { CommerceService } from '../../../../core/services/commerce.service';
+import { InstructorTriggerDirective } from '../../../../shared/directives/instructor-trigger.directive';
 
 @Component({
   selector: 'app-course-card',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, InstructorTriggerDirective],
   templateUrl: './course-card.component.html',
   styleUrl: './course-card.component.css'
 })
@@ -19,6 +20,10 @@ export class CourseCardComponent {
   private router = inject(Router);
   private favoritesService = inject(FavoritesService);
   private commerceService = inject(CommerceService);
+
+  get instructorRef(): string {
+    return this.course.instructorId || this.course.instructor;
+  }
 
   isWishlisted(): boolean {
     return this.favoritesService.isFavorite(this.course.id);

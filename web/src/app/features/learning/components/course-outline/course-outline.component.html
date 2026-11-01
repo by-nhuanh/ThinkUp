@@ -10,7 +10,7 @@
       </span>
       <div class="outline__card-titles">
         <h2>{{ course.title }}</h2>
-        <p>Bởi {{ course.instructor }}</p>
+        <p>Bởi <span [appInstructorTrigger]="course.instructor">{{ course.instructor }}</span></p>
       </div>
     </div>
 

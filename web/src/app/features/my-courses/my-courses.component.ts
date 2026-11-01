@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CourseService } from '../../core/services/course.service';
 import { EnrolledCourse } from '../../core/models/course.model';
+import { InstructorTriggerDirective } from '../../shared/directives/instructor-trigger.directive';
 
 interface FilterTab {
   value: 'all' | 'learning' | 'completed';
@@ -13,7 +14,7 @@ interface FilterTab {
 @Component({
   selector: 'app-my-courses',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule],
+  imports: [CommonModule, RouterLink, FormsModule, InstructorTriggerDirective],
   templateUrl: './my-courses.component.html',
   styleUrl: './my-courses.component.css'
 })

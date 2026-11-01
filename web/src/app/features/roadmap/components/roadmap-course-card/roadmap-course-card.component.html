@@ -19,7 +19,7 @@
     <a class="course-card__title" [routerLink]="['/main/courses', course().id]">{{ course().title }}</a>
 
     <div class="course-card__meta">
-      <span class="course-card__instructor">
+      <span class="course-card__instructor" [appInstructorTrigger]="course().instructorId || course().instructor">
         <svg lucideUserRound aria-hidden="true" [size]="13" [strokeWidth]="1.7"></svg>
         {{ course().instructor }}
       </span>

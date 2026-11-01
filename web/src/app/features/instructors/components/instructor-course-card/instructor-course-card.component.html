@@ -1,0 +1,125 @@
+<article
+  class="icard"
+  role="link"
+  tabindex="0"
+  [attr.aria-label]="'Xem chi tiết khóa học ' + course.title"
+  (click)="openCourse()"
+  (keydown.enter)="openCourse()"
+>
+  <div class="icard__cover" [style.background]="getCoverColor()">
+    @if (course.badge) {
+      <span class="icard__badge" [ngClass]="getBadgeClass(course.badge)">{{ course.badge }}</span>
+    }
+
+    <button
+      type="button"
+      class="icard__fav"
+      [class.icard__fav--active]="isWishlisted()"
+      [attr.aria-label]="isWishlisted() ? 'Bỏ khỏi khóa học yêu thích' : 'Thêm vào khóa học yêu thích'"
+      (click)="$event.stopPropagation(); toggleWishlist()"
+    >
+      <svg viewBox="0 0 24 24" [attr.fill]="isWishlisted() ? '#FB2C36' : 'none'" [attr.stroke]="isWishlisted() ? '#FB2C36' : '#45556C'" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+      </svg>
+    </button>
+
+    <div class="icard__cover-content">
+      @switch (getCoverMark()) {
+        @case ('letter') {
+          <span class="icard__mark-letter" aria-hidden="true">{{ course.icon }}</span>
+        }
+        @case ('ring') {
+          <span class="icard__mark-ring" aria-hidden="true"></span>
+        }
+      }
+
+      <div class="icard__cover-text" [class.icard__cover-text--dark]="isDarkCover()">
+        <p class="icard__cover-title">{{ getCoverTitle() }}</p>
+        @if (getCoverSubtitle()) {
+          <p class="icard__cover-subtitle">{{ getCoverSubtitle() }}</p>
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="icard__body">
+    <div class="icard__row icard__instructor-row">
+      <span class="icard__instructor">
+        <svg class="icard__icon icard__icon--muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+        <span class="icard__instructor-name" [appInstructorTrigger]="instructorRef">{{ course.instructor }}</span>
+      </span>
+      @if (course.level) {
+        <span class="icard__level">{{ course.level }}</span>
+      }
+    </div>
+
+    <div class="icard__row icard__rating-row">
+      <span class="icard__rating">
+        <svg class="icard__icon icard__star" viewBox="0 0 24 24" aria-hidden="true">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+        </svg>
+        <b>{{ formatRating() }}</b>
+        <span class="icard__muted">({{ formatCompactCount(course.ratingCount) }})</span>
+      </span>
+      <span class="icard__students">{{ formatStudents() }}</span>
+    </div>
+
+    <div class="icard__row icard__duration-row">
+      <svg class="icard__icon icard__icon--muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" />
+        <polyline points="12 6 12 12 16 14" />
+      </svg>
+      <span>{{ course.duration || 'Đang cập nhật' }}</span>
+    </div>
+
+    @if (course.tags?.length) {
+      <div class="icard__tags">
+        @for (tag of course.tags!.slice(0, 3); track tag) {
+          <span>{{ tag }}</span>
+        }
+      </div>
+    }
+  </div>
+
+  <div class="icard__price-row">
+    <div class="icard__price">
+      <span class="icard__price-sale">{{ course.salePrice === 0 ? 'Miễn phí' : formatPrice(course.salePrice) }}</span>
+      @if (course.originalPrice > course.salePrice) {
+        <span class="icard__price-original">{{ formatPrice(course.originalPrice) }}</span>
+      }
+      @if (getDiscountLabel()) {
+        <span class="icard__price-discount">{{ getDiscountLabel() }}</span>
+      }
+    </div>
+
+    <div class="icard__actions">
+      <button
+        type="button"
+        class="icard__action"
+        [class.icard__action--active]="isInCart()"
+        [attr.aria-label]="isInCart() ? 'Đã có trong giỏ hàng' : 'Thêm vào giỏ hàng'"
+        (click)="$event.stopPropagation(); addToCart()"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="8" cy="21" r="1" />
+          <circle cx="19" cy="21" r="1" />
+          <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        class="icard__action"
+        aria-label="Xem chi tiết khóa học"
+        (click)="$event.stopPropagation(); openCourse()"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M5 12h14" />
+          <path d="m12 5 7 7-7 7" />
+        </svg>
+      </button>
+    </div>
+  </div>
+</article>

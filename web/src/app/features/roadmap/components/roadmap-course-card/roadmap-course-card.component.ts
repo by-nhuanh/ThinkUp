@@ -4,11 +4,12 @@ import { LucideBookmark, LucideShoppingCart, LucideStar, LucideUserRound } from 
 import { Course } from '../../../../core/models/course.model';
 import { ToastService } from '../../../../core/services/toast.service';
 import { FavoritesService } from '../../../../core/services/favorites.service';
+import { InstructorTriggerDirective } from '../../../../shared/directives/instructor-trigger.directive';
 
 @Component({
   selector: 'app-roadmap-course-card',
   standalone: true,
-  imports: [RouterLink, LucideBookmark, LucideShoppingCart, LucideStar, LucideUserRound],
+  imports: [RouterLink, LucideBookmark, LucideShoppingCart, LucideStar, LucideUserRound, InstructorTriggerDirective],
   templateUrl: './roadmap-course-card.component.html',
   styleUrls: ['../../styles/roadmap-ui.css', './roadmap-course-card.component.css']
 })

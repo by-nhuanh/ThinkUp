@@ -144,3 +144,21 @@
   }
 }
 
+
+
+/* Vùng giảng viên có thể bấm/hover để mở popup hồ sơ (không đổi layout). */
+.instructor-trigger {
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color 140ms ease;
+}
+
+.instructor-trigger:hover,
+.instructor-trigger--active {
+  color: #155dfc;
+}
+
+.instructor-trigger:focus-visible {
+  outline: 2px solid #2b7fff;
+  outline-offset: 2px;
+}

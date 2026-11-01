@@ -34,7 +34,7 @@
       <span class="cc-card__avatar">
         <app-icon name="user" class="h-[12px] w-[12px]" />
       </span>
-      <span class="cc-card__author-name">{{ card().author }}</span>
+      <span class="cc-card__author-name" [appInstructorTrigger]="card().author">{{ card().author }}</span>
       <span class="cc-card__level">{{ card().level }}</span>
     </div>
 
