@@ -85,39 +85,102 @@
               <span class="w-[88px] text-right text-[11px] text-[#90A1B9]">{{ review.date }}</span>
             </div>
 
-            <p class="mt-2 text-[13px] leading-[21px] text-[#45556C]">{{ review.comment }}</p>
+            @if (editingReviewId === review.id) {
+              <div class="mt-3 rounded-xl border border-[#BFD4FF] bg-white p-4">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <p class="text-[12px] font-semibold text-[#0F172B]">Chỉnh sửa đánh giá của bạn</p>
+                  <span class="text-[11px] text-[#90A1B9]">{{ editComment.length }}/500</span>
+                </div>
 
-            <div class="mt-3 flex items-center justify-between gap-3 text-[11px] text-[#62748E]">
-              @if (review.mine) {
-                <button type="button" (click)="editRequested.emit()" class="inline-flex items-center gap-1.5 text-[#155DFC] hover:underline">
-                  <svg lucidePenLine class="h-3.5 w-3.5" aria-hidden="true"></svg>
-                  Chỉnh sửa
-                </button>
-              } @else {
-                <button
-                  type="button"
-                  (click)="toggleLike(review)"
-                  class="-ml-1.5 inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 transition-colors duration-200"
-                  [class]="
-                    isLiked(review)
-                      ? 'bg-[#EAF2FF] font-semibold text-[#0B73FF]'
-                      : 'text-[#62748E] hover:bg-[#F4F7FB] hover:text-[#0B73FF]'
-                  "
-                  [attr.aria-pressed]="isLiked(review)"
-                  [attr.title]="isLiked(review) ? 'Bỏ đánh dấu hữu ích' : 'Đánh dấu đánh giá này hữu ích'"
-                >
-                  <svg
-                    lucideThumbsUp
-                    class="h-3.5 w-3.5 transition-transform duration-200"
-                    [class.fill-current]="isLiked(review)"
-                    [class.like-pop]="isLiked(review)"
-                    aria-hidden="true"
-                  ></svg>
-                  Hữu ích ({{ review.helpful + (isLiked(review) ? 1 : 0) }})
-                </button>
-                <span></span>
-              }
-            </div>
+                <div class="mt-2 flex flex-wrap items-center gap-1" (mouseleave)="editHoverRating = 0">
+                  @for (star of [1, 2, 3, 4, 5]; track star) {
+                    <button
+                      type="button"
+                      (mouseenter)="editHoverRating = star"
+                      (click)="setEditRating(star)"
+                      class="grid h-8 w-8 place-items-center rounded-md transition hover:bg-[#FFF7E6]"
+                      [attr.aria-label]="star + ' sao'"
+                      [attr.aria-pressed]="editRating === star"
+                    >
+                      <svg
+                        lucideStar
+                        class="h-6 w-6"
+                        [class]="star <= (editHoverRating || editRating) ? 'fill-[#F59E0B] text-[#F59E0B]' : 'fill-[#E2E8F0] text-[#E2E8F0]'"
+                        aria-hidden="true"
+                      ></svg>
+                    </button>
+                  }
+                  <span class="ml-1 text-[12px] font-medium text-[#62748E]">{{ editRatingLabel }}</span>
+                </div>
+
+                <textarea
+                  name="edit-review-{{ review.id }}"
+                  rows="3"
+                  maxlength="500"
+                  [(ngModel)]="editComment"
+                  (ngModelChange)="editError = ''"
+                  placeholder="Chia sẻ cảm nhận của bạn..."
+                  class="mt-2 w-full resize-none rounded-lg border border-[#D5DEE9] px-3 py-2.5 text-[13px] leading-5 text-[#0F172B] outline-none transition placeholder:text-[#90A1B9] focus:border-[#155DFC]"
+                ></textarea>
+
+                @if (editError) {
+                  <p class="mt-1 text-[12px] leading-4 text-[#DC2626]">{{ editError }}</p>
+                }
+
+                <div class="mt-2 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    (click)="cancelEdit()"
+                    [disabled]="editSaving"
+                    class="h-8 rounded-lg border border-[#D5DEE9] bg-white px-3 text-[12px] font-semibold text-[#45556C] transition hover:bg-[#F8FAFC] disabled:opacity-60"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    (click)="saveEdit(review)"
+                    [disabled]="editSaving || editRating < 1"
+                    class="h-8 rounded-lg bg-[#155DFC] px-3 text-[12px] font-semibold text-white transition hover:bg-[#0F4CD1] disabled:cursor-not-allowed disabled:bg-[#BFD4FF]"
+                  >
+                    {{ editSaving ? 'Đang lưu...' : 'Lưu thay đổi' }}
+                  </button>
+                </div>
+              </div>
+            } @else {
+              <p class="mt-2 text-[13px] leading-[21px] text-[#45556C]">{{ review.comment }}</p>
+
+              <div class="mt-3 flex items-center justify-between gap-3 text-[11px] text-[#62748E]">
+                @if (review.mine) {
+                  <button type="button" (click)="startEdit(review)" class="inline-flex items-center gap-1.5 text-[#155DFC] hover:underline">
+                    <svg lucidePenLine class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                    Chỉnh sửa
+                  </button>
+                } @else {
+                  <button
+                    type="button"
+                    (click)="toggleLike(review)"
+                    class="-ml-1.5 inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 transition-colors duration-200"
+                    [class]="
+                      isLiked(review)
+                        ? 'bg-[#EAF2FF] font-semibold text-[#0B73FF]'
+                        : 'text-[#62748E] hover:bg-[#F4F7FB] hover:text-[#0B73FF]'
+                    "
+                    [attr.aria-pressed]="isLiked(review)"
+                    [attr.title]="isLiked(review) ? 'Bỏ đánh dấu hữu ích' : 'Đánh dấu đánh giá này hữu ích'"
+                  >
+                    <svg
+                      lucideThumbsUp
+                      class="h-3.5 w-3.5 transition-transform duration-200"
+                      [class.fill-current]="isLiked(review)"
+                      [class.like-pop]="isLiked(review)"
+                      aria-hidden="true"
+                    ></svg>
+                    Hữu ích ({{ review.helpful + (isLiked(review) ? 1 : 0) }})
+                  </button>
+                  <span></span>
+                }
+              </div>
+            }
           </article>
         }
       </div>

@@ -1,7 +1,8 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import { AccessToken } from 'livekit-server-sdk';
+import { AccessToken, TrackSource } from 'livekit-server-sdk';
 import { getMongoDb } from '../db.js';
+import { createNotificationForEvent } from '../notification/notification.user.js';
 
 /**
  * Collection tên trong MongoDB
@@ -13,6 +14,35 @@ export const COLLECTION_STUDY_ROOM_MESSAGES = 'study_room_messages';
  * Thời gian tối đa phòng không có người trước khi tự động xóa (1 tiếng = 3600 giây = 3.600.000 ms)
  */
 export const ROOM_IDLE_TIMEOUT_MS = 60 * 60 * 1000;
+
+function normalizeInviteTarget(value) {
+  const target = typeof value === 'string' ? value.trim() : '';
+  return target.includes('@') ? target.toLowerCase() : target.replace(/\s+/g, '');
+}
+
+async function getUserAccount(db, userId) {
+  if (!userId) return null;
+  const { ObjectId } = await import('mongodb');
+  const query = ObjectId.isValid(String(userId))
+    ? { $or: [{ _id: new ObjectId(String(userId)) }, { id: String(userId) }] }
+    : { id: String(userId) };
+  return db.collection('users').findOne(query, {
+    projection: { email: 1, phone: 1, full_name: 1, name: 1, avatar_url: 1, avatar: 1 }
+  });
+}
+
+function inviteMatchesAccount(inviteTarget, user) {
+  if (!user) return false;
+  const normalizedTarget = normalizeInviteTarget(inviteTarget);
+  return [user.email, user.phone].some(value => normalizeInviteTarget(value) === normalizedTarget);
+}
+
+function createStudyRoomError(message, status, code) {
+  const error = new Error(message);
+  error.status = status;
+  error.code = code;
+  return error;
+}
 
 /**
  * Sinh mã phòng ngẫu nhiên dễ nhớ và duy nhất (ví dụ: TU-849201 hoặc 6 ký tự viết hoa)
@@ -381,7 +411,10 @@ export async function getStudyRoomCards(options = {}) {
  * @param {string} codeOrLink - Mã phòng hoặc link do người dùng nhập
  * @param {string} [inputPassword] - Mật khẩu người dùng nhập nếu phòng yêu cầu
  */
-export async function searchAndJoinRoom(codeOrLink, inputPassword = '') {
+export async function searchAndJoinRoom(codeOrLink, inputPassword = '', userId) {
+  if (!userId) {
+    throw createStudyRoomError('Yêu cầu đăng nhập để tham gia phòng học.', 401, 'AUTHENTICATION_REQUIRED');
+  }
   const cleanInput = typeof codeOrLink === 'string' ? codeOrLink.trim() : '';
   if (!cleanInput) {
     const error = new Error('Vui lòng nhập mã phòng hoặc link liên kết phòng.');
@@ -433,8 +466,49 @@ export async function searchAndJoinRoom(codeOrLink, inputPassword = '') {
     throw error;
   }
 
-  // Kiểm tra sức chứa
-  if (room.currentUsers >= room.capacity) {
+  // Chủ phòng không cần lời mời; thành viên phòng private phải có lời mời khớp tài khoản.
+  if (room.type === 'private' && String(room.creatorId) !== String(userId)) {
+    const user = await getUserAccount(db, userId);
+    const invites = await db.collection('study_room_invites').find({
+      roomId: room.roomId,
+      status: { $in: ['pending', 'accepted'] }
+    }).toArray();
+    const invite = invites.find(candidate =>
+      ['pending', 'accepted'].includes(candidate.status) && inviteMatchesAccount(candidate.inviteTarget, user)
+    );
+    if (!invite) {
+      throw createStudyRoomError('Bạn cần lời mời hợp lệ để tham gia phòng riêng tư.', 403, 'INVITATION_REQUIRED');
+    }
+
+    if (!inputPassword) {
+      const error = createStudyRoomError('Phòng riêng tư yêu cầu mật khẩu.', 401, 'PASSWORD_REQUIRED');
+      error.requiresPassword = true;
+      throw error;
+    }
+    if (!room.password || !(await bcrypt.compare(inputPassword, room.password))) {
+      throw createStudyRoomError('Mật khẩu phòng học không chính xác.', 403, 'INVALID_PASSWORD');
+    }
+
+    if (invite.status === 'pending') {
+      await db.collection('study_room_invites').updateOne(
+        { _id: invite._id, status: 'pending' },
+        { $set: { status: 'accepted' } }
+      );
+    }
+  } else if (room.password) {
+    if (!inputPassword) {
+      const error = createStudyRoomError('Phòng học yêu cầu mật khẩu.', 401, 'PASSWORD_REQUIRED');
+      error.requiresPassword = true;
+      throw error;
+    }
+    if (!(await bcrypt.compare(inputPassword, room.password))) {
+      throw createStudyRoomError('Mật khẩu phòng học không chính xác.', 403, 'INVALID_PASSWORD');
+    }
+  }
+
+  // Người đang ở trong phòng được vào lại; người mới phải còn slot.
+  const alreadyParticipant = (room.participants || []).some(p => String(p.userId) === String(userId));
+  if (!alreadyParticipant && room.currentUsers >= room.capacity) {
     const error = new Error('Phòng học này hiện tại đã đủ sức chứa (đầy người).');
     error.status = 403;
     error.code = 'ROOM_FULL';
@@ -445,31 +519,6 @@ export async function searchAndJoinRoom(codeOrLink, inputPassword = '') {
       currentUsers: room.currentUsers
     };
     throw error;
-  }
-
-  // Kiểm tra bảo mật nếu là phòng riêng tư hoặc có thiết lập mật khẩu
-  if (room.type === 'private' || room.password) {
-    if (!inputPassword) {
-      const error = new Error('Phòng học này là phòng riêng tư, vui lòng nhập mật khẩu để vào phòng.');
-      error.status = 401;
-      error.code = 'PASSWORD_REQUIRED';
-      error.requiresPassword = true;
-      error.room = {
-        roomId: room.roomId,
-        name: room.name,
-        type: room.type,
-        requiresPassword: true
-      };
-      throw error;
-    }
-
-    const isMatch = await bcrypt.compare(inputPassword, room.password);
-    if (!isMatch) {
-      const error = new Error('Mật khẩu phòng học không chính xác.');
-      error.status = 403;
-      error.code = 'INVALID_PASSWORD';
-      throw error;
-    }
   }
 
   // Trả về dữ liệu chi tiết của phòng học để client set nền và hiển thị giao diện phòng
@@ -897,10 +946,10 @@ export function createStudyRoomRouter(express, requireAuth) {
    * POST /api/study-room/join
    * Tìm kiếm phòng bằng mã/link và xác thực mật khẩu vào phòng
    */
-  router.post('/join', async (req, res, next) => {
+  router.post('/join', requireAuth, async (req, res, next) => {
     try {
       const { codeOrLink, password } = req.body;
-      const result = await searchAndJoinRoom(codeOrLink, password);
+      const result = await searchAndJoinRoom(codeOrLink, password, req.userId);
       res.json(result);
     } catch (err) {
       next(err);
@@ -912,16 +961,14 @@ export function createStudyRoomRouter(express, requireAuth) {
    * Sinh LiveKit token cho người dùng tham gia phòng học (Voice, Video, ScreenShare)
    * Tự động tính tọa độ (x, y) trên canvas để không chèn lên người khác
    */
-  router.post('/token', async (req, res, next) => {
+  router.post('/token', requireAuth, async (req, res, next) => {
     try {
-      const { roomId, userId, userName, role } = req.body;
-      const effectiveUserId = req.userId || userId || ('user_' + Date.now());
+      const { roomId, userName } = req.body;
       const effectiveUserName = userName || 'Học viên';
       const tokenData = await generateLiveKitToken({
         roomId,
-        userId: effectiveUserId,
-        userName: effectiveUserName,
-        role
+        userId: req.userId,
+        userName: effectiveUserName
       });
       res.json({
         success: true,
@@ -937,11 +984,10 @@ export function createStudyRoomRouter(express, requireAuth) {
    * Truy xuất danh sách avatar thành viên kèm tên (tự động gắn "(Bạn)" nếu là người dùng hiện tại),
    * chức danh người dùng (Chủ phòng, Moderator, Thành viên) và tọa độ canvas.
    */
-  router.get('/:roomId/participants', async (req, res, next) => {
+  router.get('/:roomId/participants', requireAuth, async (req, res, next) => {
     try {
       const { roomId } = req.params;
-      const currentUserId = req.userId || req.query.userId;
-      const result = await getRoomParticipants(roomId, currentUserId);
+      const result = await getRoomParticipants(roomId, req.userId);
       res.json({
         success: true,
         data: result
@@ -955,12 +1001,11 @@ export function createStudyRoomRouter(express, requireAuth) {
    * PUT /api/study-room/:roomId/position
    * Cập nhật vị trí kéo thả avatar của người dùng trên canvas
    */
-  router.put('/:roomId/position', async (req, res, next) => {
+  router.put('/:roomId/position', requireAuth, async (req, res, next) => {
     try {
       const { roomId } = req.params;
-      const userId = req.userId || req.body.userId;
       const { x, y } = req.body;
-      const result = await updateParticipantCanvasPosition(roomId, userId, { x, y });
+      const result = await updateParticipantCanvasPosition(roomId, req.userId, { x, y });
       res.json(result);
     } catch (err) {
       next(err);
@@ -971,11 +1016,10 @@ export function createStudyRoomRouter(express, requireAuth) {
    * GET /api/study-room/:roomId/permissions
    * Lấy ma trận quyền (Permission Matrix) và quyền thực tế của người dùng trong phòng
    */
-  router.get('/:roomId/permissions', async (req, res, next) => {
+  router.get('/:roomId/permissions', requireAuth, async (req, res, next) => {
     try {
       const { roomId } = req.params;
-      const userId = req.userId || req.query.userId;
-      const result = await getMemberEffectivePermissions(roomId, userId);
+      const result = await getMemberEffectivePermissions(roomId, req.userId);
       res.json({
         success: true,
         data: result
@@ -1026,11 +1070,11 @@ export function createStudyRoomRouter(express, requireAuth) {
    * POST /api/study-room/:roomId/invite
    * Mời người dùng vào phòng bằng Email hoặc Số điện thoại
    */
-  router.post('/:roomId/invite', async (req, res, next) => {
+  router.post('/:roomId/invite', requireAuth, async (req, res, next) => {
     try {
       const { roomId } = req.params;
       const { emailOrPhone, inviterName } = req.body;
-      const result = await inviteUserToRoom(roomId, emailOrPhone, inviterName || 'Bạn bè');
+      const result = await inviteUserToRoom(roomId, emailOrPhone, req.userId, inviterName || 'Bạn bè');
       res.json(result);
     } catch (err) {
       next(err);
@@ -1041,11 +1085,11 @@ export function createStudyRoomRouter(express, requireAuth) {
    * POST /api/study-room/:roomId/request-join
    * Gửi yêu cầu xin vào phòng (dành cho phòng bật duyệt)
    */
-  router.post('/:roomId/request-join', async (req, res, next) => {
+  router.post('/:roomId/request-join', requireAuth, async (req, res, next) => {
     try {
       const { roomId } = req.params;
-      const { userId, userName } = req.body;
-      const result = await requestJoinApproval(roomId, userId, userName);
+      const { userName } = req.body;
+      const result = await requestJoinApproval(roomId, req.userId, userName);
       res.json(result);
     } catch (err) {
       next(err);
@@ -1072,11 +1116,10 @@ export function createStudyRoomRouter(express, requireAuth) {
    * Rời khỏi phòng học ảo: giảm currentUsers, xóa participant khỏi danh sách.
    * Nếu phòng không còn ai (kể cả chủ phòng) -> kích hoạt emptySince để đếm 1 tiếng.
    */
-  router.post('/:roomId/leave', async (req, res, next) => {
+  router.post('/:roomId/leave', requireAuth, async (req, res, next) => {
     try {
       const { roomId } = req.params;
-      const userId = req.userId || req.body.userId;
-      const result = await leaveStudyRoom(roomId, userId);
+      const result = await leaveStudyRoom(roomId, req.userId);
       res.json(result);
     } catch (err) {
       next(err);
@@ -1088,11 +1131,10 @@ export function createStudyRoomRouter(express, requireAuth) {
    * Lấy tin nhắn phòng: CHỈ hiển thị những tin nhắn được gửi KỂ TỪ LÚC NGƯỜI ĐÓ VÀO PHÒNG (joinedAt).
    * Các tin nhắn trước đó của người khác sẽ hoàn toàn không hiển thị.
    */
-  router.get('/:roomId/messages', async (req, res, next) => {
+  router.get('/:roomId/messages', requireAuth, async (req, res, next) => {
     try {
       const { roomId } = req.params;
-      const userId = req.userId || req.query.userId;
-      const messages = await getRoomSessionMessages(roomId, userId);
+      const messages = await getRoomSessionMessages(roomId, req.userId);
       res.json({
         success: true,
         data: messages,
@@ -1107,13 +1149,12 @@ export function createStudyRoomRouter(express, requireAuth) {
    * POST /api/study-room/:roomId/messages
    * Gửi tin nhắn mới vào phòng học ảo
    */
-  router.post('/:roomId/messages', async (req, res, next) => {
+  router.post('/:roomId/messages', requireAuth, async (req, res, next) => {
     try {
       const { roomId } = req.params;
-      const { userId, senderName, content, senderAvatar } = req.body;
-      const effectiveUserId = req.userId || userId;
+      const { senderName, content, senderAvatar } = req.body;
       const result = await sendRoomMessage(roomId, {
-        userId: effectiveUserId,
+        userId: req.userId,
         senderName,
         content,
         senderAvatar
@@ -1211,13 +1252,15 @@ export function calculateNonOverlappingCanvasPosition(existingParticipants = [],
  * @param {string} [params.userName] - Tên hiển thị người dùng
  * @param {string} [params.userAvatar] - URL ảnh avatar đại diện
  * @param {string} [params.avatar] - URL ảnh avatar (alias)
- * @param {'owner'|'moderator'|'member'} [params.role] - Vai trò
  */
-export async function generateLiveKitToken({ roomId, userId, userName = 'Học viên', userAvatar = '', avatar = '', role = 'member' }) {
+export async function generateLiveKitToken({ roomId, userId, userName = 'Học viên', userAvatar = '', avatar = '' }) {
   if (!roomId) {
     const error = new Error('Thiếu roomId để sinh LiveKit token.');
     error.status = 400;
     throw error;
+  }
+  if (!userId) {
+    throw createStudyRoomError('Yêu cầu đăng nhập để cấp LiveKit token.', 401, 'AUTHENTICATION_REQUIRED');
   }
 
   const apiKey = process.env.LIVEKIT_API_KEY;
@@ -1245,39 +1288,27 @@ export async function generateLiveKitToken({ roomId, userId, userName = 'Học v
     throw error;
   }
 
-  // Xác định vai trò của người dùng
-  let userRole = role;
-  if (room.creatorId && String(room.creatorId) === String(userId)) {
-    userRole = 'owner';
-  } else if (!userRole) {
-    const existingParticipant = (room.participants || []).find(p => String(p.userId) === String(userId));
-    userRole = existingParticipant ? existingParticipant.role : 'member';
+  const existingParticipant = (room.participants || []).find(p => String(p.userId) === String(userId));
+  const isOwner = room.creatorId && String(room.creatorId) === String(userId);
+  const userRole = isOwner ? 'owner' : (existingParticipant?.role === 'moderator' ? 'moderator' : 'member');
+  const account = await getUserAccount(db, userId);
+
+  if (room.type === 'private' && !isOwner) {
+    const acceptedInvites = await db.collection('study_room_invites').find({
+      roomId: room.roomId,
+      status: 'accepted'
+    }).toArray();
+    const acceptedInvite = acceptedInvites.find(invite => inviteMatchesAccount(invite.inviteTarget, account));
+    if (!acceptedInvite) {
+      throw createStudyRoomError('Bạn cần hoàn tất xác thực lời mời và mật khẩu trước khi vào phòng.', 403, 'INVITATION_REQUIRED');
+    }
   }
 
   // Tính toán tọa độ canvas không bị đè lên người khác
   const position = calculateNonOverlappingCanvasPosition(room.participants || []);
 
-  let effectiveAvatar = userAvatar || avatar || '';
-  let effectiveUserName = userName || 'Học viên';
-  if (userId && (!effectiveAvatar || effectiveUserName === 'Học viên')) {
-    try {
-      const usersColl = db.collection('users');
-      const { ObjectId } = await import('mongodb');
-      const userDoc = ObjectId.isValid(userId)
-        ? await usersColl.findOne({ _id: new ObjectId(userId) })
-        : await usersColl.findOne({ id: String(userId) });
-      if (userDoc) {
-        if (!effectiveAvatar) {
-          effectiveAvatar = userDoc.avatar_url || userDoc.avatar || '';
-        }
-        if (effectiveUserName === 'Học viên') {
-          effectiveUserName = userDoc.full_name || userDoc.name || 'Học viên';
-        }
-      }
-    } catch {
-      // Bỏ qua lỗi tra cứu
-    }
-  }
+  let effectiveAvatar = account?.avatar_url || account?.avatar || existingParticipant?.avatar || userAvatar || avatar || '';
+  let effectiveUserName = account?.full_name || account?.name || existingParticipant?.name || userName || 'Học viên';
 
   const roleLabel = getRoleLabel(userRole);
   const initials = getInitials(effectiveUserName);
@@ -1291,23 +1322,47 @@ export async function generateLiveKitToken({ roomId, userId, userName = 'Học v
     role: userRole,
     roleLabel,
     position,
-    joinedAt: new Date()
+    joinedAt: existingParticipant?.joinedAt || new Date()
   };
 
-  await roomsColl.updateOne(
-    { _id: room._id },
-    {
-      $pull: { participants: { userId: String(userId) } }
-    }
+  const now = new Date();
+  const capacityCondition = {
+    $or: [
+      { 'participants.userId': String(userId) },
+      { $expr: { $lt: [{ $size: { $setUnion: [{ $map: { input: { $ifNull: ['$participants', []] }, as: 'participant', in: '$$participant.userId' } }, []] } }, '$capacity'] } }
+    ]
+  };
+  const updateResult = await roomsColl.updateOne(
+    { _id: room._id, ...capacityCondition },
+    [
+      { $set: {
+        participants: {
+          $let: {
+            vars: { current: { $ifNull: ['$participants', []] } },
+            in: {
+              $let: {
+                vars: { existing: { $first: { $filter: { input: '$$current', as: 'participant', cond: { $eq: ['$$participant.userId', String(userId)] } } } } },
+                in: {
+                  $concatArrays: [
+                    { $filter: { input: '$$current', as: 'participant', cond: { $ne: ['$$participant.userId', String(userId)] } } },
+                    [{ $mergeObjects: [participantDoc, { joinedAt: { $ifNull: ['$$existing.joinedAt', now] }, position: { $ifNull: ['$$existing.position', position] } }] }]
+                  ]
+                }
+              }
+            }
+          }
+        }
+      } },
+      { $set: {
+        currentUsers: { $size: { $setUnion: [{ $map: { input: '$participants', as: 'participant', in: '$$participant.userId' } }, []] } },
+        updatedAt: now,
+        emptySince: null
+      } }
+    ]
   );
-  await roomsColl.updateOne(
-    { _id: room._id },
-    {
-      $push: { participants: participantDoc },
-      $inc: { currentUsers: 1 },
-      $set: { updatedAt: new Date(), emptySince: null }
-    }
-  );
+  if (!updateResult.matchedCount) {
+    throw createStudyRoomError('Phòng học này hiện tại đã đủ sức chứa.', 403, 'ROOM_FULL');
+  }
 
   // Khởi tạo LiveKit AccessToken
   const at = new AccessToken(apiKey, apiSecret, {
@@ -1332,10 +1387,18 @@ export async function generateLiveKitToken({ roomId, userId, userName = 'Học v
 
   // Cấp quyền LiveKit Grant tùy theo vai trò và quyền phòng
   const isOwnerOrMod = userRole === 'owner' || userRole === 'moderator';
+  const canPublishSources = isOwnerOrMod
+    ? [TrackSource.MICROPHONE, TrackSource.CAMERA, TrackSource.SCREEN_SHARE, TrackSource.SCREEN_SHARE_AUDIO]
+    : [
+        ...(roomPermissions.voiceEnabled ? [TrackSource.MICROPHONE] : []),
+        ...(roomPermissions.cameraEnabled ? [TrackSource.CAMERA] : []),
+        ...(roomPermissions.participantShareScreen ? [TrackSource.SCREEN_SHARE, TrackSource.SCREEN_SHARE_AUDIO] : [])
+      ];
   at.addGrant({
     roomJoin: true,
     room: room.roomId,
-    canPublish: isOwnerOrMod || (roomPermissions.voiceEnabled || roomPermissions.cameraEnabled),
+    canPublish: canPublishSources.length > 0,
+    canPublishSources,
     canPublishData: isOwnerOrMod || roomPermissions.chatEnabled,
     canSubscribe: true
   });
@@ -1547,16 +1610,19 @@ export async function changeRoomTheme(roomId, requesterId, themeIdOrUrl) {
  * @param {string} emailOrPhone - Email hoặc SĐT của người được mời
  * @param {string} [inviterName='Bạn bè']
  */
-export async function inviteUserToRoom(roomId, emailOrPhone, inviterName = 'Bạn bè') {
-  const cleanTarget = typeof emailOrPhone === 'string' ? emailOrPhone.trim() : '';
-  if (!cleanTarget) {
+export async function inviteUserToRoom(roomId, emailOrPhone, inviterId, inviterName = 'Bạn bè', options = {}) {
+  if (!inviterId) {
+    throw createStudyRoomError('Yêu cầu đăng nhập để mời thành viên.', 401, 'AUTHENTICATION_REQUIRED');
+  }
+  const cleanTarget = normalizeInviteTarget(emailOrPhone);
+  if (!cleanTarget || cleanTarget.length > 254 || typeof roomId !== 'string' || !roomId.trim()) {
     const error = new Error('Vui lòng nhập email hoặc số điện thoại người bạn muốn mời.');
     error.status = 400;
     error.code = 'INVALID_INVITE_TARGET';
     throw error;
   }
 
-  const db = await getMongoDb();
+  const db = options.db || await getMongoDb();
   const roomsColl = db.collection(COLLECTION_STUDY_ROOMS);
 
   const room = await roomsColl.findOne({
@@ -1570,20 +1636,46 @@ export async function inviteUserToRoom(roomId, emailOrPhone, inviterName = 'Bạ
     throw error;
   }
 
-  // Lưu bản ghi lời mời để hệ thống notification kích hoạt gửi thông báo
+  const inviter = (room.participants || []).find(p => String(p.userId) === String(inviterId));
+  if (String(room.creatorId) !== String(inviterId) && inviter?.role !== 'moderator') {
+    throw createStudyRoomError('Chỉ chủ phòng hoặc moderator mới được mời thành viên.', 403, 'INVITE_PERMISSION_REQUIRED');
+  }
+
+  const actor = await getUserAccount(db, inviterId);
+  const displayName = actor?.full_name || actor?.name || 'Bạn bè';
+  // A public invite target must not deliver private-room details to an unverified email/phone.
+  const recipient = await db.collection('users').findOne(cleanTarget.includes('@')
+    ? { email: cleanTarget, email_verified: true, status: 'active', is_active: { $ne: false } }
+    : { phone: cleanTarget, phone_verified: true, status: 'active', is_active: { $ne: false } });
   const invitesColl = db.collection('study_room_invites');
   const inviteDoc = {
+    _id: `invite_${crypto.createHash('sha256').update(JSON.stringify([room.roomId, String(inviterId), cleanTarget])).digest('hex')}`,
     roomId: room.roomId,
     roomCode: room.roomCode,
     roomName: room.name,
     roomLink: room.roomLink,
     inviteTarget: cleanTarget,
-    inviterName,
+    inviterName: displayName,
+    inviterId: String(inviterId),
     status: 'pending',
     createdAt: new Date()
   };
 
-  await invitesColl.insertOne(inviteDoc);
+  const session = db.client.startSession();
+  try {
+    await session.withTransaction(async () => {
+      await invitesColl.updateOne({ _id: inviteDoc._id }, { $setOnInsert: inviteDoc }, { upsert: true, session });
+      const saved = await invitesColl.findOne({ _id: inviteDoc._id }, { session });
+      if (recipient && saved?.status === 'pending') {
+        await createNotificationForEvent(String(recipient._id || recipient.id), {
+          eventKey: `study-room-invitation:${inviteDoc._id}`, category: 'community', kind: 'invitation',
+          title: 'Lời mời vào phòng học', message: `${displayName} mời bạn tham gia phòng ${room.name}.`,
+          sourceType: 'study_room_invite', sourceId: inviteDoc._id,
+          href: `/learning/study-room/${encodeURIComponent(room.roomId)}`,
+        }, { ...options, db, session });
+      }
+    });
+  } finally { await session.endSession(); }
 
   return {
     success: true,
@@ -1720,24 +1812,29 @@ export async function leaveStudyRoom(roomId, userId) {
     return { success: true, message: 'Phòng không tồn tại hoặc đã bị xóa.' };
   }
 
-  // Loại bỏ người dùng khỏi danh sách participants
-  const updatedParticipants = (room.participants || []).filter(p => String(p.userId) !== String(userId));
-  const newCurrentUsers = Math.max(0, updatedParticipants.length);
-
-  // Nếu phòng trống hoàn toàn (kể cả chủ phòng không còn trong phòng) -> set emptySince
-  const emptySince = newCurrentUsers === 0 ? new Date() : null;
-
+  const now = new Date();
   await roomsColl.updateOne(
-    { _id: room._id },
-    {
-      $set: {
-        participants: updatedParticipants,
-        currentUsers: newCurrentUsers,
-        emptySince,
-        updatedAt: new Date()
-      }
-    }
+    { _id: room._id, 'participants.userId': String(userId) },
+    [
+      { $set: {
+        participants: {
+          $filter: {
+            input: { $ifNull: ['$participants', []] },
+            as: 'participant',
+            cond: { $ne: ['$$participant.userId', String(userId)] }
+          }
+        }
+      } },
+      { $set: {
+        currentUsers: { $size: { $setUnion: [{ $map: { input: '$participants', as: 'participant', in: '$$participant.userId' } }, []] } },
+        emptySince: { $cond: [{ $eq: [{ $size: '$participants' }, 0] }, now, null] },
+        updatedAt: now
+      } }
+    ]
   );
+
+  const updatedRoom = await roomsColl.findOne({ _id: room._id });
+  const newCurrentUsers = updatedRoom?.currentUsers || 0;
 
   return {
     success: true,
@@ -1768,6 +1865,9 @@ export async function sendRoomMessage(roomId, payload = {}) {
     error.status = 400;
     throw error;
   }
+  if (!userId) {
+    throw createStudyRoomError('Yêu cầu đăng nhập để gửi tin nhắn.', 401, 'AUTHENTICATION_REQUIRED');
+  }
 
   const db = await getMongoDb();
   const roomsColl = db.collection(COLLECTION_STUDY_ROOMS);
@@ -1781,6 +1881,11 @@ export async function sendRoomMessage(roomId, payload = {}) {
     const error = new Error('Không tìm thấy phòng học ảo để gửi tin nhắn.');
     error.status = 404;
     throw error;
+  }
+
+  const participant = (room.participants || []).find(p => String(p.userId) === String(userId));
+  if (!participant) {
+    throw createStudyRoomError('Chỉ thành viên trong phòng mới được gửi tin nhắn.', 403, 'ROOM_MEMBERSHIP_REQUIRED');
   }
 
   // Kiểm tra quyền chat của phòng
@@ -1799,8 +1904,8 @@ export async function sendRoomMessage(roomId, payload = {}) {
   const newMsg = {
     roomId: room.roomId,
     senderId: String(userId),
-    senderName,
-    senderAvatar,
+    senderName: participant.name || senderName,
+    senderAvatar: participant.avatar || senderAvatar,
     content: cleanContent,
     createdAt: new Date()
   };

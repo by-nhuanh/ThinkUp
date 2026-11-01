@@ -5,6 +5,7 @@ export const MOCK_COURSES: Course[] = [
   {
     id: "reactjs",
     title: "ReactJS - Từ cơ bản đến nâng cao",
+    shortLabel: "React",
     instructor: "Nguyễn Văn A",
     instructorInitial: "A",
     rating: 4.8,
@@ -13,7 +14,7 @@ export const MOCK_COURSES: Course[] = [
     students: "12,345 học viên",
     duration: "18 giờ 30 phút",
     tags: ["ReactJS", "Javascript", "Frontend"],
-    category: "Học sinh & Sinh viên",
+    category: "Frontend Developer",
     originalPrice: 1200000,
     salePrice: 699000,
     badge: "HOT",
@@ -24,6 +25,7 @@ export const MOCK_COURSES: Course[] = [
   {
     id: "javascript-es6",
     title: "JavaScript ES6+ - Nâng cao kỹ năng lập trình",
+    shortLabel: "JavaScript ES6+",
     instructor: "Trần Thị B",
     instructorInitial: "B",
     rating: 4.7,
@@ -32,7 +34,7 @@ export const MOCK_COURSES: Course[] = [
     students: "8,765 học viên",
     duration: "10 giờ 15 phút",
     tags: ["Javascript", "ES6", "Frontend"],
-    category: "Người mới bắt đầu",
+    category: "Frontend Developer",
     originalPrice: 800000,
     salePrice: 499000,
     badge: "NEW",
@@ -43,6 +45,7 @@ export const MOCK_COURSES: Course[] = [
   {
     id: "python-data",
     title: "Python for Data Science - Phân tích dữ liệu thực chiến",
+    shortLabel: "Python",
     instructor: "Lê Văn C",
     instructorInitial: "C",
     rating: 4.9,
@@ -51,7 +54,7 @@ export const MOCK_COURSES: Course[] = [
     students: "15,678 học viên",
     duration: "22 giờ 45 phút",
     tags: ["Python", "Data Science", "Machine Learning"],
-    category: "Người đi làm nâng cao kỹ năng",
+    category: "Data Science",
     originalPrice: 1500000,
     salePrice: 899000,
     badge: "BEST SELLER",
@@ -62,6 +65,7 @@ export const MOCK_COURSES: Course[] = [
   {
     id: "angular",
     title: "Angular - Từ cơ bản đến nâng cao",
+    shortLabel: "Angular",
     instructor: "Lý Thị K",
     instructorInitial: "K",
     rating: 4.8,
@@ -70,7 +74,7 @@ export const MOCK_COURSES: Course[] = [
     students: "4,590 học viên",
     duration: "17 giờ 20 phút",
     tags: ["Angular", "Typescript", "Frontend"],
-    category: "Người chuyển ngành",
+    category: "Frontend Developer",
     originalPrice: 1000000,
     salePrice: 599000,
     badge: "HOT",
@@ -81,6 +85,7 @@ export const MOCK_COURSES: Course[] = [
   {
     id: "uiux-design",
     title: "UI/UX Design Toàn tập - Từ tư duy đến thiết kế sản phẩm",
+    shortLabel: "UI/UX Design Toàn tập",
     instructor: "Phạm Thị D",
     instructorInitial: "D",
     rating: 4.6,
@@ -89,7 +94,7 @@ export const MOCK_COURSES: Course[] = [
     students: "6,543 học viên",
     duration: "12 giờ 10 phút",
     tags: ["UI/UX", "Figma", "Design"],
-    category: "Người mới bắt đầu",
+    category: "UI/UX Design",
     originalPrice: 1000000,
     salePrice: 599000,
     badge: "SALE",
@@ -100,6 +105,7 @@ export const MOCK_COURSES: Course[] = [
   {
     id: "vuejs-3",
     title: "Vue.js 3 - Xây dựng ứng dụng Web hiện đại",
+    shortLabel: "Vue.js 3",
     instructor: "Trịnh Văn I",
     instructorInitial: "I",
     rating: 4.6,
@@ -108,7 +114,7 @@ export const MOCK_COURSES: Course[] = [
     students: "3,876 học viên",
     duration: "13 giờ 25 phút",
     tags: ["Vue.js", "Javascript", "Frontend"],
-    category: "Học viên tự do",
+    category: "Frontend Developer",
     originalPrice: 900000,
     salePrice: 529000,
     badge: "NEW",
@@ -119,6 +125,7 @@ export const MOCK_COURSES: Course[] = [
   {
     id: "nextjs",
     title: "Next.js - Xây dựng ứng dụng React toàn diện",
+    shortLabel: "Next.js",
     instructor: "Phan Văn L",
     instructorInitial: "L",
     rating: 4.8,
@@ -127,7 +134,7 @@ export const MOCK_COURSES: Course[] = [
     students: "8,321 học viên",
     duration: "21 giờ 30 phút",
     tags: ["Next.js", "React", "SSR"],
-    category: "Người đi làm nâng cao kỹ năng",
+    category: "Fullstack Developer",
     originalPrice: 1200000,
     salePrice: 699000,
     badge: "NEW",
@@ -138,6 +145,7 @@ export const MOCK_COURSES: Course[] = [
   {
     id: "flutter",
     title: "Flutter - Phát triển ứng dụng Mobile đa nền tảng",
+    shortLabel: "Flutter",
     instructor: "Võ Thị G",
     instructorInitial: "G",
     rating: 4.7,
@@ -146,7 +154,7 @@ export const MOCK_COURSES: Course[] = [
     students: "5,432 học viên",
     duration: "19 giờ 30 phút",
     tags: ["Flutter", "Dart", "Mobile"],
-    category: "Người chuyển ngành",
+    category: "Mobile Developer",
     originalPrice: 1100000,
     salePrice: 649000,
     badge: "HOT",
@@ -157,6 +165,7 @@ export const MOCK_COURSES: Course[] = [
   {
     id: "ai-ml",
     title: "AI & Machine Learning - Ứng dụng AI trong thực tế",
+    shortLabel: "AI & Machine Learning",
     instructor: "Ngô Văn H",
     instructorInitial: "H",
     rating: 4.9,
@@ -165,7 +174,7 @@ export const MOCK_COURSES: Course[] = [
     students: "11,234 học viên",
     duration: "25 giờ 40 phút",
     tags: ["AI", "Machine Learning", "Python"],
-    category: "Doanh nghiệp & Đội ngũ kĩ thuật",
+    category: "Data Science",
     originalPrice: 1800000,
     salePrice: 999000,
     badge: "BEST SELLER",
@@ -176,6 +185,7 @@ export const MOCK_COURSES: Course[] = [
   {
     id: "sql-data",
     title: "Data Analysis with SQL - Phân tích dữ liệu chuyên sâu",
+    shortLabel: "Data Analysis with SQL",
     instructor: "Mai Thị M",
     instructorInitial: "M",
     rating: 4.7,
@@ -184,7 +194,7 @@ export const MOCK_COURSES: Course[] = [
     students: "4,156 học viên",
     duration: "12 giờ 10 phút",
     tags: ["SQL", "Database", "Data Analysis"],
-    category: "Học sinh & Sinh viên",
+    category: "Data Science",
     originalPrice: 800000,
     salePrice: 479000,
     badge: "SALE",
@@ -195,6 +205,7 @@ export const MOCK_COURSES: Course[] = [
   {
     id: "nodejs",
     title: "Node.js & Express - Xây dựng RESTful API chuyên nghiệp",
+    shortLabel: "Node.js & Express",
     instructor: "Hoàng Văn K",
     instructorInitial: "K",
     rating: 4.6,
@@ -203,7 +214,7 @@ export const MOCK_COURSES: Course[] = [
     students: "312 học viên",
     duration: "12 giờ 30 phút",
     tags: ["Node.js", "Express", "Backend"],
-    category: "Người đi làm nâng cao kỹ năng",
+    category: "Backend Developer",
     originalPrice: 900000,
     salePrice: 549000,
     badge: "NEW",
@@ -214,6 +225,7 @@ export const MOCK_COURSES: Course[] = [
   {
     id: "docker",
     title: "Docker & Kubernetes - Triển khai ứng dụng hiện đại",
+    shortLabel: "Docker & Kubernetes",
     instructor: "Đỗ Văn F",
     instructorInitial: "F",
     rating: 4.8,
@@ -222,7 +234,7 @@ export const MOCK_COURSES: Course[] = [
     students: "898 học viên",
     duration: "19 giờ 00 phút",
     tags: ["DevOps", "Docker", "Kubernetes"],
-    category: "Người đi làm nâng cao kỹ năng",
+    category: "DevOps",
     originalPrice: 1300000,
     salePrice: 799000,
     badge: "HOT",
@@ -233,12 +245,13 @@ export const MOCK_COURSES: Course[] = [
 ];
 
 export const MOCK_CATEGORIES = [
-  "Người mới bắt đầu",
-  "Học sinh & Sinh viên",
-  "Người đi làm nâng cao kỹ năng",
-  "Người chuyển ngành",
-  "Doanh nghiệp & Đội ngũ kĩ thuật",
-  "Học viên tự do"
+  "Frontend Developer",
+  "Backend Developer",
+  "Fullstack Developer",
+  "Mobile Developer",
+  "Data Science",
+  "UI/UX Design",
+  "DevOps"
 ];
 
 export const MOCK_POPULAR_TAGS = [

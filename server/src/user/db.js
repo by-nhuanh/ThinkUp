@@ -9,9 +9,9 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 try {
-  dotenv.config({ path: path.resolve(__dirname, '../../../server/.env') });
+  dotenv.config({ path: path.resolve(__dirname, '../../../server/.env'), quiet: true });
 } catch {
-  dotenv.config();
+  dotenv.config({ quiet: true });
 }
 
 let _mongoClient = null;

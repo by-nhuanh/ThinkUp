@@ -1,15 +1,16 @@
-import { Component, computed, effect, inject, input, signal, OnInit, HostListener, ElementRef } from '@angular/core';
+import { Component, computed, effect, inject, input, signal, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommerceService } from '../../../core/services/commerce.service';
 import { AuthService } from '../../../core/services/auth.service';
-import { NotificationService, UserNotification } from '../../../core/services/notification.service';
+import { NotificationService } from '../../../core/services/notification.service';
 import { AccountMenuComponent } from './account-menu/account-menu.component';
+import { NotificationPopoverComponent } from './notification-popover/notification-popover.component';
 
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive, AccountMenuComponent],
+  imports: [CommonModule, RouterLink, RouterLinkActive, AccountMenuComponent, NotificationPopoverComponent],
   templateUrl: './header.component.html',
   styleUrl: './header.component.css',
   host: { '[class.liquid-glass]': "appearance() === 'liquid-glass'" },
@@ -19,13 +20,11 @@ export class HeaderComponent implements OnInit {
   readonly appearance = input<'standard' | 'liquid-glass'>('standard');
   private commerceService = inject(CommerceService);
   private router = inject(Router);
-  private el = inject(ElementRef);
   private authService = inject(AuthService);
-  readonly notifications = inject(NotificationService);
+  private notifications = inject(NotificationService);
 
   readonly cartCount = this.commerceService.cartCount;
   isMobileMenuOpen = signal(false);
-  isNotificationOpen = signal(false);
 
   isLoggedIn = computed(() => this.audience() === 'member' && this.authService.isAuthenticated());
   userName = computed(() => this.authService.currentUser()?.full_name || 'Học viên');
@@ -56,30 +55,6 @@ export class HeaderComponent implements OnInit {
   onStorage(): void {
     this.authService.syncFromStorage();
     this.notifications.syncFromStorage();
-  }
-
-  // Đóng notification popup khi click bên ngoài
-  @HostListener('document:click', ['$event'])
-  onDocumentClick(event: MouseEvent): void {
-    const target = event.target;
-    if (target instanceof Node && !this.el.nativeElement.querySelector('[data-notification-root]')?.contains(target)) {
-      this.isNotificationOpen.set(false);
-    }
-  }
-
-  @HostListener('document:keydown.escape')
-  closeNotifications(): void {
-    this.isNotificationOpen.set(false);
-  }
-
-  toggleNotifications(): void {
-    this.isNotificationOpen.update(open => !open);
-  }
-
-  openNotification(notification: UserNotification): void {
-    this.notifications.markRead(notification.id);
-    this.isNotificationOpen.set(false);
-    if (notification.href) this.router.navigateByUrl(notification.href);
   }
 
   logout(): void {

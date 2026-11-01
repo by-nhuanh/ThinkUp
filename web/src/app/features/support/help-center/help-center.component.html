@@ -1,0 +1,111 @@
+<main class="hc-page">
+  <section class="hc-hero">
+    <div class="hc-hero__inner">
+      <h1 class="hc-h1">Trung tâm trợ giúp</h1>
+      <p class="hc-text hc-sub">Tìm kiếm câu trả lời và hướng dẫn chi tiết để sử dụng ThinkUp hiệu quả nhất.</p>
+
+      <form class="hc-search" (submit)="$event.preventDefault(); search(searchInput.value)">
+        <div class="hc-search__field">
+          <app-icon name="search" class="hc-search__icon hc-icon-16" />
+          <input
+            #searchInput
+            [value]="query()"
+            type="search"
+            maxlength="100"
+            aria-label="Tìm kiếm câu hỏi"
+            placeholder="Tìm kiếm câu hỏi, chủ đề..."
+          />
+        </div>
+        <button type="submit" class="hc-search__button">
+          <app-icon name="search" class="hc-icon-16" />
+          <span>Tìm kiếm</span>
+        </button>
+      </form>
+    </div>
+  </section>
+
+  <div class="hc-shell hc-body">
+    <div class="hc-columns">
+      <aside class="hc-aside">
+        <nav class="hc-card hc-nav" aria-label="Danh mục câu hỏi">
+          <h2 class="hc-nav__title">Danh mục câu hỏi</h2>
+          <div class="hc-nav__list">
+            @for (category of categories; track category.id) {
+              <button
+                type="button"
+                class="hc-nav__item"
+                [class.is-active]="activeCategoryId() === category.id"
+                [attr.aria-current]="activeCategoryId() === category.id ? 'true' : null"
+                (click)="selectCategory(category.id)"
+              >
+                <app-icon [name]="category.icon" class="hc-icon-16" />
+                <span>{{ category.label }}</span>
+              </button>
+            }
+          </div>
+        </nav>
+
+        <div class="hc-help">
+          <h2 class="hc-help__title">Không tìm thấy câu trả lời?</h2>
+          <p class="hc-help__text">Đội ngũ hỗ trợ của chúng tôi luôn sẵn sàng giúp bạn.</p>
+          <a [routerLink]="['/main/contact']" [queryParams]="{ category: activeCategoryId() }" class="hc-help__button">
+            <app-icon name="send" class="hc-icon-16" />
+            <span>Gửi yêu cầu hỗ trợ</span>
+          </a>
+        </div>
+      </aside>
+
+      <section class="hc-panel" aria-live="polite">
+        <header class="hc-panel__head">
+          <span class="hc-panel__icon">
+            <app-icon [name]="searched() ? 'search' : activeCategory.icon" class="hc-icon-16" />
+          </span>
+          <div>
+            <h2 class="hc-panel__title">{{ searched() ? 'Kết quả tìm kiếm' : activeCategory.label }}</h2>
+            <p class="hc-panel__sub">
+              {{ searched() ? visibleItems.length + ' kết quả phù hợp' : activeCategory.description }}
+            </p>
+          </div>
+        </header>
+
+        <div class="hc-list">
+          @for (item of visibleItems; track item.question; let i = $index) {
+            <article class="hc-item" [class.is-open]="openQuestion() === i">
+              <button
+                type="button"
+                class="hc-item__question"
+                [attr.aria-expanded]="openQuestion() === i"
+                (click)="toggleQuestion(i)"
+              >
+                <span>{{ i + 1 }}. {{ item.question }}</span>
+                <app-icon [name]="openQuestion() === i ? 'chevron-up' : 'chevron-down'" class="hc-icon-16" />
+              </button>
+              @if (openQuestion() === i) {
+                <p class="hc-item__answer">{{ item.answer }}</p>
+              }
+            </article>
+          } @empty {
+            <div class="hc-empty">
+              <p class="hc-empty__title">Không tìm thấy kết quả phù hợp với từ khóa của bạn</p>
+              <a [routerLink]="['/main/contact']" class="hc-help__button mt-4">Gửi yêu cầu hỗ trợ</a>
+            </div>
+          }
+        </div>
+      </section>
+    </div>
+
+    <section class="hc-cta">
+      <span class="hc-cta__icon">
+        <app-icon name="life-buoy" class="h-6 w-6" />
+      </span>
+      <div>
+        <h2 class="hc-cta__title">Vẫn cần hỗ trợ?</h2>
+        <p class="hc-cta__text">Đội ngũ hỗ trợ của Think Up luôn sẵn sàng giúp bạn giải quyết mọi vấn đề.</p>
+      </div>
+      <a [routerLink]="['/main/contact']" [queryParams]="{ category: activeCategoryId() }" class="hc-cta__button">
+        <app-icon name="arrow-right" class="hc-icon-16" />
+        <span>Gửi yêu cầu hỗ trợ</span>
+      </a>
+    </section>
+  </div>
+</main>

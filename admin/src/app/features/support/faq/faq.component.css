@@ -1,0 +1,93 @@
+.add-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 11px 15px;
+}
+.add-button svg { width: 17px; height: 17px; }
+.faq-filters {
+  grid-template-columns: minmax(320px, 2fr) minmax(220px, 1fr) minmax(
+      180px,
+      0.7fr
+    );
+}
+.faq-table {
+  min-width: 980px !important;
+}
+.faq-question {
+  max-width: 520px;
+}
+.order-control { display: flex; align-items: center; gap: 6px; }
+.order-control input { width: 58px; height: 34px; box-sizing: border-box; border: 1px solid #b8c5d5; border-radius: 7px; padding: 0 7px; color: #182c51; font: var(--admin-text-control-input); }
+.order-control button { min-height: 34px; border: 1px solid #c9d9ed; border-radius: 7px; background: #fff; color: #095dac; cursor: pointer; font: var(--admin-text-control-label); }
+.order-control button:disabled { cursor: default; opacity: .45; }
+.faq-row-actions { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.faq-primary-action { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 10px; border: 1px solid #c9d9ed; border-radius: 7px; background: #fff; color: #095dac; cursor: pointer; font: var(--admin-text-control-label); }
+.faq-primary-action:hover { border-color: #80addf; background: #f3f8ff; }
+.faq-primary-action svg, .faq-more-trigger svg, .faq-action-menu svg { width: 16px; height: 16px; flex: none; }
+.faq-more-actions { position: relative; }
+.faq-more-trigger { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid #d7e2ef; border-radius: 7px; background: #fff; color: #425b7d; cursor: pointer; }
+.faq-more-trigger:hover, .faq-more-trigger[aria-expanded='true'] { border-color: #91b3da; background: #f3f8ff; color: #095dac; }
+.faq-primary-action:focus-visible, .faq-more-trigger:focus-visible, .faq-action-menu button:focus-visible { outline: 2px solid #0965e4; outline-offset: 2px; }
+.faq-action-menu { position: absolute; z-index: 20; top: calc(100% + 6px); right: 0; display: grid; width: 178px; padding: 5px; border: 1px solid #d7e2ef; border-radius: 9px; background: #fff; box-shadow: 0 12px 28px #10264824; }
+.faq-action-menu button { display: flex; align-items: center; gap: 9px; min-height: 36px; padding: 7px 9px; border: 0; border-radius: 6px; background: transparent; color: #213758; cursor: pointer; font: var(--admin-text-control-input); text-align: left; }
+.faq-action-menu button:hover { background: #f1f6fd; }
+.faq-action-menu button.is-danger { color: #a32938; }
+.faq-action-menu button.is-danger:hover { background: #fff0f1; }
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.answer-toolbar { display: flex; flex-wrap: wrap; gap: 6px; padding: 7px; border: 1px solid #d7e2ef; border-bottom: 0; border-radius: 8px 8px 0 0; background: #f7faff; }
+.answer-toolbar button { min-height: 30px; padding: 4px 9px; border: 1px solid #c9d9ed; border-radius: 6px; background: #fff; color: #29496f; cursor: pointer; font: var(--admin-text-caption); }
+.answer-toolbar + textarea { border-radius: 0 0 8px 8px; }
+.failed-description { margin: 0; color: #64748b; font: var(--admin-text-body-default); }
+:host ::ng-deep .support-modal { max-height: calc(100vh - 48px); overflow: hidden; }
+:host ::ng-deep .support-modal .modal-body { overflow-y: auto; }
+.failed-head,
+.failed-row {
+  display: grid;
+  grid-template-columns: 1.4fr 0.45fr 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+.failed-head {
+  padding: 0 12px;
+  color: #536783;
+  font: var(--admin-text-badge);
+  text-transform: uppercase;
+}
+.failed-row {
+  padding: 13px 12px;
+  border: 1px solid #dce6f1;
+  border-radius: 10px;
+}
+.delete-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+}
+.delete-summary h3 {
+  margin: 0;
+  color: #102648;
+  font: var(--admin-text-card-title);
+}
+.delete-summary p {
+  margin: 6px 0 0;
+  color: #64748b;
+  line-height: 1.5;
+}
+@media (max-width: 1100px) {
+  .faq-filters {
+    grid-template-columns: 1fr 1fr;
+  }
+  .failed-head,
+  .failed-row {
+    grid-template-columns: 1fr auto;
+  }
+  .failed-head span:nth-child(3),
+  .failed-head span:nth-child(4) {
+    display: none;
+  }
+}

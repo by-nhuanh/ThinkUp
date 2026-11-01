@@ -48,17 +48,12 @@ export class FlashcardFormComponent {
   constructor() {
     const set = this.set();
     if (set) {
-      this.title.set(set.title);
-      this.desc.set(set.desc);
-      this.rows.set(
-        set.cards.map((card) => ({
-          key: card.id,
-          front: card.front,
-          back: card.back,
-          code: card.code ?? '',
-          note: card.note ?? ''
-        }))
-      );
+      this.populateForm(set);
+    } else if (this.editId) {
+      this.flashcardService.loadSet(this.editId).subscribe({
+        next: loaded => this.populateForm(loaded),
+        error: () => this.toastService.showToast({ type: 'error', message: 'Không thể tải bộ flashcard.' })
+      });
     } else {
       this.rows.set([this.createRow(), this.createRow(), this.createRow()]);
     }
@@ -71,6 +66,14 @@ export class FlashcardFormComponent {
     if (this.route.snapshot.queryParamMap.get('add') === '1') {
       this.addRow();
     }
+  }
+
+  private populateForm(set: NonNullable<ReturnType<FlashcardService['getSet']>>): void {
+    this.title.set(set.title);
+    this.desc.set(set.desc);
+    this.rows.set(set.cards.map(card => ({
+      key: card.id, front: card.front, back: card.back, code: card.code ?? '', note: card.note ?? ''
+    })));
   }
 
   private createRow(): FlashcardCardDraft {
@@ -123,24 +126,23 @@ export class FlashcardFormComponent {
     };
 
     if (this.isEdit() && this.editId) {
-      const result = this.flashcardService.updateSet(this.editId, draft);
-      if (!result.success) {
-        this.toastService.showToast({ type: 'error', message: result.message });
-        return;
-      }
-      this.toastService.showToast({ type: 'success', message: result.message });
-      this.router.navigate(['/learning/flashcards', this.editId]);
+      this.flashcardService.updateSet(this.editId, draft).subscribe({
+        next: result => {
+          this.toastService.showToast({ type: 'success', message: result.message });
+          this.router.navigate(['/learning/flashcards', this.editId]);
+        },
+        error: error => this.toastService.showToast({ type: 'error', message: error?.error?.message || 'Không thể lưu bộ flashcard.' })
+      });
       return;
     }
 
-    const result = this.flashcardService.createSet(draft);
-    if (!result.success || !result.setId) {
-      this.toastService.showToast({ type: 'error', message: result.message });
-      return;
-    }
-
-    this.toastService.showToast({ type: 'success', message: result.message });
-    this.router.navigate(['/learning/flashcards', result.setId]);
+    this.flashcardService.createSet(draft).subscribe({
+      next: result => {
+        this.toastService.showToast({ type: 'success', message: result.message });
+        this.router.navigate(['/learning/flashcards', result.setId]);
+      },
+      error: error => this.toastService.showToast({ type: 'error', message: error?.error?.message || 'Không thể tạo bộ flashcard.' })
+    });
   }
 
   cancel(): void {

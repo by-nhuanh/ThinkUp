@@ -14,11 +14,14 @@ interface BackendUser {
   role: User['role'];
   onboarding_completed?: boolean;
   email_verified?: boolean;
+  provider?: User['provider'];
+  status?: User['status'];
 }
 
 interface BackendLoginResponse {
   message: string;
   accessToken: string;
+  refreshToken?: string;
   user: BackendUser;
 }
 
@@ -34,6 +37,7 @@ interface BackendSessionResponse {
 }
 
 const TOKEN_KEY = 'access_token';
+const REFRESH_TOKEN_KEY = 'refresh_token';
 const USER_KEY = 'thinkup_current_user';
 
 @Injectable({ providedIn: 'root' })
@@ -156,7 +160,8 @@ export class AuthService {
 
   updateUser(user: User): void {
     this.userState.set(user);
-    if (typeof localStorage !== 'undefined') localStorage.setItem(USER_KEY, JSON.stringify(user));
+    const storage = this.getSessionStorage();
+    storage?.setItem(USER_KEY, JSON.stringify(user));
   }
 
   syncFromStorage(): void {
@@ -166,26 +171,27 @@ export class AuthService {
   clearSession(): void {
     this.userState.set(null);
     if (typeof localStorage !== 'undefined') {
-      for (const key of [TOKEN_KEY, USER_KEY, 'thinkup_user_logged_in', 'thinkup_token', 'token', 'user', 'thinkup_mock_db_users', 'thinkup_mock_social_users']) {
+      for (const key of [TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY, 'thinkup_user_logged_in', 'thinkup_token', 'token', 'user', 'thinkup_mock_db_users', 'thinkup_mock_social_users']) {
         localStorage.removeItem(key);
       }
     }
     if (typeof sessionStorage !== 'undefined') {
       sessionStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem(REFRESH_TOKEN_KEY);
+      sessionStorage.removeItem(USER_KEY);
       sessionStorage.removeItem('thinkup_login_lock_until');
       sessionStorage.removeItem('thinkup_post_onboarding_return');
     }
   }
 
   private restoreSession(): void {
-    if (typeof localStorage === 'undefined') return;
+    if (typeof window === 'undefined') return;
     if (!this.getToken()) {
-      // Một tab mới không có sessionStorage riêng; đừng xóa hồ sơ dùng chung của tab đã đăng nhập.
       this.userState.set(null);
       return;
     }
     try {
-      const raw = localStorage.getItem(USER_KEY);
+      const raw = this.getSessionStorage()?.getItem(USER_KEY);
       const user = raw ? JSON.parse(raw) as User : null;
       if (!user?.id) {
         this.clearSession();
@@ -202,12 +208,20 @@ export class AuthService {
     this.clearSession();
     const storage = rememberMe ? localStorage : sessionStorage;
     storage.setItem(TOKEN_KEY, response.token);
-    this.updateUser(response.user);
+    if (response.refreshToken) storage.setItem(REFRESH_TOKEN_KEY, response.refreshToken);
+    storage.setItem(USER_KEY, JSON.stringify(response.user));
+    this.userState.set(response.user);
   }
 
   private mapLoginResponse(response: BackendLoginResponse): AuthResponse {
     if (!response.accessToken || !response.user?.id) throw new Error('Phản hồi đăng nhập không hợp lệ.');
-    return { success: true, message: response.message, token: response.accessToken, user: this.mapUser(response.user) };
+    return {
+      success: true,
+      message: response.message,
+      token: response.accessToken,
+      refreshToken: response.refreshToken,
+      user: this.mapUser(response.user),
+    };
   }
 
   private mapUser(user: BackendUser): User {
@@ -218,9 +232,18 @@ export class AuthService {
       phone: user.phone || undefined,
       avatar: user.avatar || undefined,
       role: user.role,
+      provider: user.provider,
       onboarding_completed: !!user.onboarding_completed,
       email_verified: user.email_verified,
+      status: user.status,
     };
+  }
+
+  private getSessionStorage(): Storage | null {
+    if (typeof window === 'undefined') return null;
+    if (sessionStorage.getItem(TOKEN_KEY)) return sessionStorage;
+    if (localStorage.getItem(TOKEN_KEY)) return localStorage;
+    return null;
   }
 
   private handleError(error: unknown): Observable<never> {
@@ -240,7 +263,13 @@ export class AuthService {
     authError.errorCode = originalCode === 'EMAIL_EXISTS' ? 'DUPLICATE_EMAIL'
       : originalCode === 'PHONE_EXISTS' ? 'DUPLICATE_PHONE'
       : originalCode || (error.status === 0 ? 'NETWORK_ERROR' : '');
-    authError.retryAfter = typeof backend['retryAfter'] === 'number' ? backend['retryAfter'] : undefined;
+    const retryAfter = backend['retryAfter'];
+    const retryAfterHeader = Number(error.headers.get('Retry-After'));
+    authError.retryAfter = typeof retryAfter === 'number'
+      ? retryAfter
+      : typeof retryAfter === 'string' && Number.isFinite(Number(retryAfter))
+        ? Number(retryAfter)
+        : Number.isFinite(retryAfterHeader) && retryAfterHeader > 0 ? retryAfterHeader : undefined;
     authError.provider = typeof backend['provider'] === 'string' ? backend['provider'] : undefined;
     return throwError(() => authError);
   }

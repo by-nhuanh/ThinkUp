@@ -1,0 +1,119 @@
+.filter-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 0;
+  border-top: 1px solid #f1f5f9;
+}
+
+.filter-section--first {
+  padding-top: 36px;
+}
+
+.filter-heading {
+  margin: 0;
+  color: #0f172b;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.filter-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: #314158;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.filter-check,
+.filter-radio {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  appearance: none;
+  background: #ffffff;
+  border: 1px solid #cad5e2;
+  cursor: pointer;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.filter-check {
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+}
+
+.filter-check:checked {
+  background: #2b7fff;
+  border-color: #2b7fff;
+}
+
+.filter-check:checked::after {
+  content: '';
+  width: 9px;
+  height: 7px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='7' viewBox='0 0 9 7' fill='none'%3E%3Cpath d='M1 3.5L3.4 5.9L8 1' stroke='white' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 9px 7px no-repeat;
+}
+
+.filter-radio {
+  display: grid;
+  place-items: center;
+  border-width: 2px;
+  border-radius: 9999px;
+}
+
+.filter-radio:checked {
+  border-color: #2b7fff;
+}
+
+.filter-radio:checked::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #2b7fff;
+}
+
+.filter-check:focus-visible,
+.filter-radio:focus-visible {
+  outline: 2px solid #2b7fff;
+  outline-offset: 2px;
+}
+
+.duration-range {
+  width: 100%;
+  height: 4px;
+  margin: 4px 0;
+  appearance: none;
+  border-radius: 9999px;
+  outline: none;
+  cursor: pointer;
+}
+
+.duration-range::-webkit-slider-thumb {
+  width: 12px;
+  height: 12px;
+  appearance: none;
+  border: 0;
+  border-radius: 9999px;
+  background: #2b7fff;
+}
+
+.duration-range::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 0;
+  border-radius: 9999px;
+  background: #2b7fff;
+}
+
+.duration-range:focus-visible {
+  outline: 2px solid #2b7fff;
+  outline-offset: 4px;
+}

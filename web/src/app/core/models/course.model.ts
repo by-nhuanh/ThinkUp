@@ -29,10 +29,127 @@ export interface Course {
   language?: string;
   updatedAtLabel?: string;
   outcomes?: string[];
+  outcomeGroups?: CourseOutcomeGroup[];
   curriculum?: CourseChapter[];
   reviews?: CourseReview[];
   instructorProfile?: InstructorProfile;
   countdown?: string;
+  sectionsCount?: number;
+  previewVideoUrl?: string;
+  saleEndsAt?: string | null;
+  ratingBreakdown?: ReviewBreakdownRow[];
+  isAuthenticated?: boolean;
+  isPurchased?: boolean;
+  isInWishlist?: boolean;
+  isInCart?: boolean;
+  learningUrl?: string;
+  trialPreviewUrl?: string;
+}
+
+export interface CourseOutcomeGroup {
+  title: string;
+  items: string[];
+}
+
+export interface ReviewBreakdownRow {
+  stars: number;
+  count: number;
+  percent: number;
+}
+
+export interface CourseReviewFilterOption {
+  label: string;
+  value: string | number;
+  count: number;
+}
+
+export interface CourseReviewSortOption {
+  label: string;
+  value: string;
+  active: boolean;
+}
+
+export interface CourseReviewPage {
+  reviews: CourseReview[];
+  pagination: {
+    page: number;
+    limit: number;
+    totalItems: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+  summary: {
+    average: number;
+    total: number;
+    breakdown: ReviewBreakdownRow[];
+  };
+  filterOptions: CourseReviewFilterOption[];
+  sortOptions: CourseReviewSortOption[];
+}
+
+export interface CoursePreviewLesson {
+  id: string;
+  title: string;
+  type: 'video' | 'quiz' | 'lab' | 'article';
+  durationMinutes: number;
+  isFreePreview: boolean;
+  isLocked: boolean;
+  videoUrl?: string;
+}
+
+export interface CoursePreviewSection {
+  id: string;
+  title: string;
+  isLocked: boolean;
+  lessons: CoursePreviewLesson[];
+}
+
+export interface CourseUpsell {
+  title: string;
+  message: string;
+  ctaLabel: string;
+  ctaUrl: string;
+}
+
+export interface CoursePlayerConfig {
+  allowMarkCompleted: boolean;
+  allowNotes: boolean;
+  allowQa: boolean;
+  qaMessage: string;
+  upsell: CourseUpsell | null;
+}
+
+export interface CoursePreviewResource {
+  id: string;
+  name: string;
+  lessonName: string;
+  categoryLabel: string;
+  size: string;
+  downloadUrl: string;
+}
+
+export interface CoursePreview {
+  courseId: string;
+  title: string;
+  slug: string;
+  thumbnailUrl?: string;
+  price: number;
+  isPurchased: boolean;
+  mode: string;
+  playerConfig: CoursePlayerConfig;
+  syllabus: CoursePreviewSection[];
+  previewLessons: CoursePreviewLesson[];
+  initialLesson: CoursePreviewLesson | null;
+  resources: CoursePreviewResource[];
+}
+
+export interface LessonStream {
+  lessonId: string;
+  videoUrl: string;
+  duration?: string;
+  provider?: string;
+  isFreePreview: boolean;
 }
 
 export interface CourseLesson {
@@ -41,6 +158,7 @@ export interface CourseLesson {
   duration: string;
   type: 'Video' | 'Lab' | 'Quiz' | 'Reading';
   isPreview?: boolean;
+  isLocked?: boolean;
 }
 
 export interface CourseChapter {

@@ -1,0 +1,85 @@
+<article class="cc-card">
+  <div class="cc-card__cover" [style.background]="card().coverGradient">
+    @if (card().badge; as badge) {
+      <span class="cc-badge" [class]="'cc-badge--' + badge.tone">{{ badge.text }}</span>
+    }
+
+    <button
+      type="button"
+      class="cc-card__save"
+      [class.is-saved]="saved()"
+      [attr.aria-pressed]="saved()"
+      [attr.aria-label]="'Lưu ' + card().title"
+      (click)="saveToggle.emit(card())"
+    >
+      <app-icon name="heart" class="h-[14px] w-[14px]" />
+    </button>
+
+    <div class="cc-card__cover-text">
+      <p class="cc-card__cover-title" [class.cc-card__cover-title--lg]="card().coverSize === 'lg'">
+        {{ card().coverTitle }}
+      </p>
+      @if (card().coverSubtitle) {
+        <p class="cc-card__cover-sub">{{ card().coverSubtitle }}</p>
+      }
+    </div>
+
+    <span class="cc-card__glass" aria-hidden="true"></span>
+  </div>
+
+  <div class="cc-card__body">
+    <h3 class="cc-card__title">{{ card().title }}</h3>
+
+    <div class="cc-card__author">
+      <span class="cc-card__avatar">
+        <app-icon name="user" class="h-[12px] w-[12px]" />
+      </span>
+      <span class="cc-card__author-name">{{ card().author }}</span>
+      <span class="cc-card__level">{{ card().level }}</span>
+    </div>
+
+    <div class="cc-card__meta">
+      <span class="cc-card__meta-item">
+        <app-icon name="star" class="is-filled cc-card__star h-[12px] w-[12px]" />
+        <b>{{ card().rating }}</b>
+        <em>{{ card().reviews }}</em>
+      </span>
+      <span class="cc-card__meta-item cc-card__meta-item--muted">
+        <app-icon name="users" class="cc-card__meta-icon h-[12px] w-[12px]" />
+        {{ card().students }}
+      </span>
+    </div>
+
+    <div class="cc-card__meta cc-card__meta--single">
+      <span class="cc-card__meta-item cc-card__meta-item--muted">
+        <app-icon name="clock" class="cc-card__meta-icon h-[12px] w-[12px]" />
+        {{ card().duration }}
+      </span>
+    </div>
+
+    <div class="cc-card__tags">
+      @for (tag of card().tags; track tag) {
+        <span class="cc-tag">{{ tag }}</span>
+      }
+    </div>
+
+    <div class="cc-card__footer">
+      <div class="cc-card__prices">
+        <span class="cc-card__price">{{ card().price }}</span>
+        <span class="cc-card__old">{{ card().oldPrice }}</span>
+        @if (card().discount) {
+          <span class="cc-card__discount">{{ card().discount }}</span>
+        }
+      </div>
+
+      <div class="cc-card__actions">
+        <button type="button" class="cc-icon-btn" (click)="addToCart.emit(card())" aria-label="Thêm vào giỏ hàng">
+          <app-icon name="shopping-cart" class="h-[14px] w-[14px]" />
+        </button>
+        <a class="cc-icon-btn" [routerLink]="['/main/courses', card().id]" aria-label="Xem chi tiết khóa học">
+          <app-icon name="arrow-right" class="h-[14px] w-[14px]" />
+        </a>
+      </div>
+    </div>
+  </div>
+</article>

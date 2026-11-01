@@ -468,8 +468,10 @@ export async function addToCartLogic(userId, courseId) {
 
   // Kiểm tra trùng lặp
   const existing = await db.collection(COLLECTION_CARTS).findOne({
-    $or: [{ user_id: String(userId) }, { userId: String(userId) }],
-    $or: [{ course_id: cId }, { courseId: cId }],
+    $and: [
+      { $or: [{ user_id: String(userId) }, { userId: String(userId) }] },
+      { $or: [{ course_id: cId }, { courseId: cId }] },
+    ],
   });
 
   if (!existing) {
@@ -498,8 +500,10 @@ export async function removeFromCartLogic(userId, courseId) {
   const cId = String(courseId).trim();
 
   await db.collection(COLLECTION_CARTS).deleteMany({
-    $or: [{ user_id: String(userId) }, { userId: String(userId) }],
-    $or: [{ course_id: cId }, { courseId: cId }],
+    $and: [
+      { $or: [{ user_id: String(userId) }, { userId: String(userId) }] },
+      { $or: [{ course_id: cId }, { courseId: cId }] },
+    ],
   });
 
   return getCartDetails({ userId });

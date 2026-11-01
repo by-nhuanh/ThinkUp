@@ -1,0 +1,14 @@
+<footer class="support-table-footer">
+  <span>Hiển thị {{ start() }}–{{ end() }} của {{ totalItems() }} {{ itemLabel() }}</span>
+  <nav class="support-pagination" aria-label="Phân trang">
+    <button type="button" [disabled]="page() === 1" aria-label="Trang trước" (click)="goTo(page() - 1)"><svg lucideChevronLeft aria-hidden="true"></svg></button>
+    @for (item of items(); track $index) {
+      @if (item.kind === 'page') {
+        <button type="button" [class.current]="item.value === page()" [attr.aria-current]="item.value === page() ? 'page' : null" [attr.aria-label]="'Trang ' + item.value" (click)="goTo(item.value)">{{ item.value }}</button>
+      } @else {
+        <span class="pagination-ellipsis" aria-hidden="true">…</span>
+      }
+    }
+    <button type="button" [disabled]="page() >= pages()" aria-label="Trang sau" (click)="goTo(page() + 1)"><svg lucideChevronRight aria-hidden="true"></svg></button>
+  </nav>
+</footer>

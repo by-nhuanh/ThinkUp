@@ -16,6 +16,20 @@ export class SearchAndSuggestionsComponent {
   @Output() search = new EventEmitter<string>();
   @Output() tagToggle = new EventEmitter<string>();
 
+  readonly showAllTags = signal(false);
+
+  visibleTags(): string[] {
+    return this.showAllTags() ? this.suggestedTags : this.suggestedTags.slice(0, 6);
+  }
+
+  hasMoreTags(): boolean {
+    return this.suggestedTags.length > 6;
+  }
+
+  toggleAllTags(): void {
+    this.showAllTags.update(value => !value);
+  }
+
   submitSearch(): void {
     this.search.emit(this.searchQuery);
   }

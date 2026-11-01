@@ -1,0 +1,244 @@
+/* ---------- Đánh giá học viên ---------- */
+.ln-reviews {
+  padding-block: clamp(40px, 5.208vw, 100px);
+  background: #fff;
+}
+
+.ln-reviews__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(24px, 2.6vw, 50px);
+  width: min(90vw, 1024px);
+  margin-inline: auto;
+}
+
+.ln-reviews__head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(6px, 0.52vw, 10px);
+  text-align: center;
+}
+
+.ln-reviews__title {
+  margin: 0;
+  font-size: clamp(22px, 1.875vw, 36px);
+  font-weight: 700;
+  line-height: 1;
+  color: #0d111b;
+}
+
+.ln-reviews__sub {
+  margin: 0;
+  font-size: var(--ln-fs-16);
+  line-height: 1.25;
+  color: #5d646f;
+}
+
+.ln-reviews__list {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(20px, 1.875vw, 36px);
+  width: 100%;
+}
+
+.ln-review {
+  display: flex;
+  align-items: center;
+  gap: clamp(16px, 1.25vw, 24px);
+}
+
+.ln-review--reverse {
+  flex-direction: row-reverse;
+}
+
+.ln-review__card {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(4px, 0.42vw, 8px);
+  width: clamp(110px, 8.333vw, 160px);
+  height: clamp(110px, 8.333vw, 160px);
+  border-radius: clamp(12px, 0.833vw, 16px);
+  background: #edf2f8;
+  text-align: center;
+}
+
+.ln-review__avatar {
+  width: clamp(44px, 3.125vw, 60px);
+  height: clamp(44px, 3.125vw, 60px);
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: #fff;
+  object-fit: cover;
+}
+
+.ln-review__name {
+  font-size: clamp(10px, 0.677vw, 13px);
+  font-weight: 500;
+  line-height: 1.23;
+  color: #0d111b;
+}
+
+.ln-review__role {
+  font-size: clamp(9px, 0.573vw, 11px);
+  line-height: 1.09;
+  color: #5d646f;
+}
+
+.ln-review__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: clamp(6px, 0.52vw, 10px);
+  min-width: 0;
+}
+
+.ln-review--reverse .ln-review__body {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.ln-review__stars {
+  display: inline-flex;
+  gap: clamp(2px, 0.21vw, 4px);
+  color: #ffb400;
+}
+
+.ln-review__star {
+  display: inline-flex;
+  width: clamp(12px, 0.833vw, 16px);
+  height: clamp(12px, 0.833vw, 16px);
+}
+
+.ln-review__quote {
+  margin: 0;
+  font-size: clamp(12px, 0.781vw, 15px);
+  line-height: 1.6;
+  color: #5d646f;
+}
+
+/* ---------- 10. Câu hỏi thường gặp (Figma 3346:20152) ---------- */
+.ln-faq {
+  padding: clamp(40px, 3.333vw, 64px) clamp(24px, 12.5vw, 240px);
+  background: #fff;
+}
+
+.ln-faq__inner {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(28px, 2.5vw, 48px);
+  max-width: 1440px;
+  margin-inline: auto;
+}
+
+.ln-faq__head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(14px, 1.25vw, 24px);
+  text-align: center;
+}
+
+.ln-faq__logo {
+  width: clamp(56px, 5vw, 96px);
+  height: clamp(56px, 5vw, 96px);
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.ln-faq__title {
+  margin: 0;
+  font-family: 'Nunito', var(--font-sans);
+  font-size: clamp(30px, 2.5vw, 48px);
+  font-weight: 800;
+  line-height: 0.84;
+  color: var(--ln-ink);
+}
+
+.ln-faq__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(10px, 0.833vw, 16px);
+}
+
+.ln-faq__item {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 0.625vw, 12px);
+  padding: clamp(15px, 1.245vw, 23.9px);
+  border: 1px solid #d3ecff;
+  border-radius: clamp(9px, 0.729vw, 14px);
+  background: #f1f9ff;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.ln-faq__item--amber {
+  border-color: #ffefc1;
+  background: #fffbed;
+}
+
+.ln-faq__item.is-open {
+  border-color: #bfe5ff;
+  background: #e6f4ff;
+}
+
+.ln-faq__item--amber.is-open {
+  border-color: #ffe3a3;
+  background: #fff6da;
+}
+
+.ln-faq__question {
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, 0.833vw, 16px);
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ln-faq__question-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: 'Nunito', var(--font-sans);
+  font-size: clamp(11px, 0.885vw, 17px);
+  font-weight: 800;
+  line-height: 1.176;
+  color: var(--ln-ink);
+}
+
+.ln-faq__plus {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: clamp(21px, 1.667vw, 32px);
+  height: clamp(21px, 1.667vw, 32px);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ln-blue-deep);
+}
+
+.ln-faq__item--amber .ln-faq__plus {
+  color: #d89a00;
+}
+
+.ln-faq__plus-icon {
+  width: clamp(11px, 0.833vw, 16px);
+  height: clamp(11px, 0.833vw, 16px);
+}
+
+.ln-faq__answer {
+  margin: 0;
+  padding-right: clamp(28px, 2.5vw, 48px);
+  font-family: 'Nunito', var(--font-sans);
+  font-size: clamp(10px, 0.729vw, 14px);
+  line-height: 1.5;
+  color: #3f4f61;
+}

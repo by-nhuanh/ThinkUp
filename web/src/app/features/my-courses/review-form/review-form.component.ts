@@ -75,7 +75,10 @@ export class ReviewFormComponent implements OnDestroy {
       this.route.paramMap.subscribe((params) => {
         const courseId = params.get('courseId') ?? 'python-co-ban';
         this.subscriptions.add(
-          this.learningService.getCourse(courseId).subscribe((course) => this.course.set(course))
+          this.learningService.getCourse(courseId).subscribe({
+            next: (course) => this.course.set(course),
+            error: () => this.course.set(null),
+          })
         );
       })
     );

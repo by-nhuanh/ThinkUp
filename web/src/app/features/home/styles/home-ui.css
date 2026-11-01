@@ -1,0 +1,517 @@
+:host {
+  display: block;
+
+  /* Thang đo bám khung Figma 1920px: mỗi giá trị = px / 19.2 (vw). */
+  --hm-fs-10: clamp(8.5px, 0.521vw, 10px);
+  --hm-fs-11: clamp(9px, 0.573vw, 11px);
+  --hm-fs-12: clamp(9.5px, 0.625vw, 12px);
+  --hm-fs-13: clamp(10px, 0.677vw, 13px);
+  --hm-fs-14: clamp(11px, 0.729vw, 14px);
+  --hm-fs-16: clamp(12px, 0.833vw, 16px);
+  --hm-fs-17: clamp(12.5px, 0.885vw, 17px);
+  --hm-fs-18: clamp(13px, 0.938vw, 18px);
+  --hm-fs-20: clamp(14px, 1.042vw, 20px);
+  --hm-fs-24: clamp(16px, 1.25vw, 24px);
+  --hm-fs-27: clamp(18px, 1.406vw, 27px);
+  --hm-fs-36: clamp(24px, 1.875vw, 36px);
+  --hm-fs-48: clamp(30px, 2.5vw, 48px);
+
+  --hm-ink: #0d1c2d;
+  --hm-ink-soft: #45556c;
+  --hm-ink-muted: #62748e;
+  --hm-blue: #155dfc;
+  --hm-red: #fb2c36;
+  --hm-green: #22c55e;
+  --hm-border: #e2e8f0;
+  --hm-border-soft: #e3eaf4;
+
+  --hm-radius-sm: clamp(6px, 0.521vw, 10px);
+  --hm-radius-md: clamp(10px, 0.729vw, 14px);
+  --hm-radius-lg: clamp(12px, 0.938vw, 18px);
+
+  --hm-gap-section: clamp(20px, 1.667vw, 32px);
+  --hm-gap-card: clamp(10px, 0.833vw, 16px);
+}
+
+.hm-page {
+  min-height: 100vh;
+  padding-block: clamp(14px, 1.25vw, 24px);
+  background: #f9f9ff;
+  color: var(--hm-ink);
+}
+
+.hm-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hm-gap-section);
+  width: min(90vw, 1728px);
+  margin-inline: auto;
+}
+
+/* ---------- Toast ---------- */
+.hm-toast {
+  position: fixed;
+  right: clamp(14px, 1.667vw, 32px);
+  bottom: clamp(14px, 1.667vw, 32px);
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: clamp(9px, 0.625vw, 12px) clamp(12px, 1.042vw, 20px);
+  border-radius: var(--hm-radius-sm);
+  background: #0f172b;
+  color: #fff;
+  font-size: var(--hm-fs-14);
+  line-height: 1.45;
+  box-shadow: 0 18px 40px -16px rgba(10, 22, 53, 0.45);
+}
+
+/* ---------- 1. Hero ---------- */
+.hm-hero {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: clamp(400px, 28.802vw, 553px);
+  padding: clamp(28px, 2.917vw, 56px) clamp(20px, 2.083vw, 40px) clamp(28px, 2.917vw, 56px)
+    clamp(28px, 5.208vw, 100px);
+  overflow: hidden;
+  border-radius: var(--hm-radius-lg);
+  background: #0b1a5b url('/assets/home/hero-bg.png') center / cover no-repeat;
+  box-shadow: 0 22px 48px -24px rgba(9, 27, 78, 0.45);
+  isolation: isolate;
+}
+
+.hm-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(11, 26, 91, 0.95) 0%,
+    rgba(11, 26, 91, 0.7) 50%,
+    rgba(11, 26, 91, 0) 100%
+  );
+}
+
+.hm-hero__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: min(23.333vw, 448px);
+}
+
+.hm-hero__greeting {
+  margin: 0;
+  font-size: var(--hm-fs-16);
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.hm-hero__title {
+  margin: 4px 0 0;
+  font-size: var(--hm-fs-36);
+  font-weight: 800;
+  line-height: 1.111;
+  color: #fff;
+}
+
+.hm-hero__question {
+  margin: 0;
+  padding-top: clamp(12px, 1.042vw, 20px);
+  font-size: var(--hm-fs-16);
+  line-height: 1.5;
+  color: #fff;
+}
+
+.hm-hero__quote {
+  margin: 0;
+  padding: 4px 0 clamp(12px, 1.042vw, 20px);
+  font-size: var(--hm-fs-16);
+  font-style: italic;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.hm-hero__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  padding: clamp(8px, 0.521vw, 10px) clamp(14px, 1.042vw, 20px);
+  border-radius: var(--hm-radius-sm);
+  background: #fff;
+  color: #1447e6;
+  font-size: var(--hm-fs-16);
+  font-weight: 600;
+  line-height: 1.5;
+  text-decoration: none;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.hm-hero__cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px -14px rgba(0, 0, 0, 0.55);
+}
+
+/* ---------- Section head ---------- */
+.hm-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hm-gap-card);
+}
+
+.hm-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.hm-head__title {
+  margin: 0;
+  font-size: var(--hm-fs-18);
+  font-weight: 700;
+  line-height: 1.55;
+  color: #0f172b;
+}
+
+.hm-head__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--hm-blue);
+  font-size: clamp(11.5px, 0.875vw, 16.8px);
+  font-weight: 500;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.hm-head__link:hover {
+  text-decoration: underline;
+}
+
+/* ---------- 2. Carousel khóa học đang học ---------- */
+.hm-carousel {
+  position: relative;
+}
+
+.hm-track {
+  display: flex;
+  gap: var(--hm-gap-card);
+  padding-inline: 1.042%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+}
+
+.hm-track::-webkit-scrollbar {
+  display: none;
+}
+
+.hm-course {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+  height: clamp(220px, 14.844vw, 285px);
+  overflow: hidden;
+  border: 1px solid var(--hm-border);
+  border-radius: var(--hm-radius-md);
+  background: #fff;
+  box-shadow: 0 10px 24px -18px rgba(15, 23, 43, 0.35);
+  text-decoration: none;
+  scroll-snap-align: start;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.hm-course:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px -18px rgba(15, 23, 43, 0.4);
+}
+
+.hm-course__cover {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: clamp(100px, 6.771vw, 130px);
+  padding: clamp(12px, 1.25vw, 24px) clamp(10px, 0.833vw, 16px) clamp(10px, 0.938vw, 18px);
+  overflow: hidden;
+  background: linear-gradient(160deg, #0f172b 0%, #1d2939 100%);
+}
+
+.hm-course__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(40px, 2.917vw, 56px);
+  height: clamp(40px, 2.917vw, 56px);
+  font-size: clamp(24px, 1.875vw, 36px);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.hm-course__icon--react {
+  border-radius: clamp(8px, 0.625vw, 12px);
+  background: linear-gradient(150deg, #7c3aed 0%, #a855f7 100%);
+  color: #f5f3ff;
+  font-size: clamp(20px, 1.5vw, 29px);
+  box-shadow: 0 10px 22px -12px rgba(168, 85, 247, 0.9);
+}
+
+.hm-course__icon--python {
+  color: #7dd3fc;
+}
+
+.hm-course__icon--js {
+  justify-content: flex-start;
+  background: linear-gradient(180deg, #ffdf20 0%, #f0b100 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.hm-course__tag {
+  position: absolute;
+  top: clamp(6px, 0.625vw, 12px);
+  right: clamp(6px, 0.833vw, 16px);
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: var(--hm-fs-10);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.5;
+}
+
+.hm-course__name {
+  margin: 4px 0 0;
+  font-size: var(--hm-fs-18);
+  font-weight: 700;
+  line-height: 1.55;
+  color: #fff;
+}
+
+.hm-course__subtitle {
+  margin: 0;
+  font-size: var(--hm-fs-12);
+  line-height: 1.33;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.hm-course__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: clamp(10px, 0.833vw, 16px);
+}
+
+.hm-course__progress-label {
+  font-size: var(--hm-fs-12);
+  font-weight: 600;
+  line-height: 1.33;
+  color: #0f172b;
+}
+
+.hm-course__bar {
+  display: block;
+  height: clamp(4.5px, 0.313vw, 6px);
+  margin-top: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e8edf5;
+}
+
+.hm-course__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--hm-green);
+}
+
+.hm-course__next {
+  margin: 0;
+  padding: clamp(6px, 0.417vw, 8px) 0 clamp(7px, 0.469vw, 9px);
+  font-size: var(--hm-fs-12);
+  line-height: 1.33;
+  color: var(--hm-ink-muted);
+  white-space: pre-line;
+}
+
+.hm-course__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: auto;
+  height: clamp(28px, 1.875vw, 36px);
+  border-radius: var(--hm-radius-sm);
+  background: var(--hm-blue);
+  color: #fff;
+  font-size: var(--hm-fs-14);
+  font-weight: 500;
+  line-height: 1;
+}
+
+.hm-carousel__arrow {
+  position: absolute;
+  top: clamp(70px, 4.844vw, 93px);
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(28px, 1.875vw, 36px);
+  height: clamp(28px, 1.875vw, 36px);
+  border: 1px solid var(--hm-border);
+  border-radius: 999px;
+  background: #fff;
+  color: #0f172b;
+  box-shadow: 0 6px 16px -8px rgba(15, 23, 43, 0.4);
+  cursor: pointer;
+}
+
+.hm-carousel__arrow--prev {
+  left: calc(-1 * clamp(12px, 0.938vw, 18px));
+}
+
+.hm-carousel__arrow--next {
+  right: calc(-1 * clamp(12px, 0.938vw, 18px));
+}
+
+.hm-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.hm-dot {
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #cad5e2;
+}
+
+.hm-dot--active {
+  width: 20px;
+  background: var(--hm-blue);
+}
+
+/* ---------- 3. Roadmap banner ---------- */
+.hm-roadmap {
+  position: relative;
+  height: clamp(150px, 10.833vw, 208px);
+  overflow: hidden;
+  border-radius: clamp(18px, 1.354vw, 26px);
+  background: linear-gradient(90deg, #061a47 0%, #0e40ad 69%, #402eb8 100%);
+  box-shadow: 0 18px 38px -22px rgba(8, 31, 87, 0.55);
+}
+
+.hm-roadmap__glow {
+  position: absolute;
+  top: -70%;
+  left: 58%;
+  width: 34%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(125, 166, 255, 0.42) 0%, rgba(125, 166, 255, 0) 68%);
+  pointer-events: none;
+}
+
+.hm-roadmap__content {
+  position: absolute;
+  top: 11.54%;
+  left: 2.431%;
+  display: flex;
+  flex-direction: column;
+  width: 55.5%;
+  max-width: 960px;
+}
+
+.hm-roadmap__tag {
+  align-self: flex-start;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.13);
+  color: #d4e8ff;
+  font-size: var(--hm-fs-12);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  line-height: 1.33;
+}
+
+.hm-roadmap__title {
+  margin: 8px 0 0;
+  font-size: var(--hm-fs-27);
+  font-weight: 600;
+  line-height: 1.25;
+  color: #fff;
+}
+
+.hm-roadmap__desc {
+  margin: 6px 0 0;
+  font-size: var(--hm-fs-14);
+  line-height: 1.43;
+  color: #d1e0fa;
+}
+
+.hm-roadmap__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--hm-gap-card);
+  margin-top: clamp(8px, 0.729vw, 14px);
+}
+
+.hm-roadmap__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(230px, 16.563vw, 318px);
+  height: clamp(36px, 2.396vw, 46px);
+  border-radius: clamp(8px, 0.625vw, 12px);
+  background: #fff;
+  color: #0d40b2;
+  font-size: var(--hm-fs-14);
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 0.18s ease;
+}
+
+.hm-roadmap__cta:hover {
+  transform: translateY(-1px);
+}
+
+.hm-roadmap__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ebf5ff;
+  font-size: var(--hm-fs-13);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.hm-roadmap__dot {
+  display: block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #4df2a8;
+}
+
+.hm-roadmap__art {
+  position: absolute;
+  top: 0;
+  right: 1.16%;
+  width: clamp(380px, 32.292vw, 620px);
+  height: 100%;
+  pointer-events: none;
+}
+

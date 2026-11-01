@@ -1,0 +1,16 @@
+/* Popover thông báo trên header - Figma 400x460.
+   Chiều cao bị chặn theo viewport: màn thấp hoặc zoom lớn thì chỉ phần danh sách cuộn,
+   header và footer hành động vẫn nằm trong vùng nhìn thấy. */
+:host {
+  display: block;
+}
+
+.n-popover-panel {
+  max-height: calc(100vh - 6rem);
+  max-height: calc(100dvh - 6rem);
+}
+
+/* Dòng chưa đọc: nền nhấn nhẹ, giữ nguyên khi hover (tránh mất trạng thái khi rê chuột). */
+.is-unread {
+  background-color: #f5f8ff;
+}

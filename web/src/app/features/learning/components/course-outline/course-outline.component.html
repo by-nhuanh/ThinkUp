@@ -14,36 +14,58 @@
       </div>
     </div>
 
-    <div class="outline__card-progress">
-      <div class="outline__progress-meta">
-        <span>Tiến độ khóa học</span>
-        <strong>{{ progress }}%</strong>
+    @if (previewMode) {
+      <div class="outline__card-purchase">
+        <a [routerLink]="['/main/courses', course.id]" class="outline__purchase-link">Mua khóa học - 699.000đ</a>
       </div>
-      <div
-        class="outline__progress-track"
-        role="progressbar"
-        [attr.aria-valuenow]="progress"
-        aria-valuemin="0"
-        aria-valuemax="100"
-        [attr.aria-label]="'Tiến độ khóa học ' + progress + '%'"
-      >
-        <span [style.width.%]="progress"></span>
+    } @else {
+      <div class="outline__card-progress">
+        <div class="outline__progress-meta">
+          <span>Tiến độ khóa học</span>
+          <strong>{{ progress }}%</strong>
+        </div>
+        <div
+          class="outline__progress-track"
+          role="progressbar"
+          [attr.aria-valuenow]="progress"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          [attr.aria-label]="'Tiến độ khóa học ' + progress + '%'"
+        >
+          <span [style.width.%]="progress"></span>
+        </div>
       </div>
-    </div>
+    }
   </div>
 
   <p class="outline__label">Nội dung khóa học</p>
 
   <nav class="outline__chapters">
-    @for (chapter of course.chapters; track chapter.id) {
-      <section class="chapter" [class.chapter--open]="isOpen(chapter)">
+    @for (chapter of course.chapters; track chapter.id; let chapterIndex = $index) {
+      <section class="chapter" [class.chapter--open]="isOpen(chapter)" [class.chapter--locked]="isLocked(chapter, chapterIndex)">
         <button
           type="button"
           class="chapter__button"
-          (click)="chapterToggled.emit(chapter.id)"
-          [attr.aria-expanded]="isOpen(chapter)"
+          (click)="toggleChapter(chapter, chapterIndex)"
+          [attr.aria-expanded]="!isLocked(chapter, chapterIndex) && isOpen(chapter)"
+          [attr.aria-disabled]="isLocked(chapter, chapterIndex)"
         >
           <span class="chapter__title">{{ chapter.title }}</span>
+          @if (isLocked(chapter, chapterIndex)) {
+            <svg
+              class="chapter__lock"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.333"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="3.5" y="7" width="9" height="6" rx="1" />
+              <path d="M5.5 7V5.5a2.5 2.5 0 0 1 5 0V7" />
+            </svg>
+          }
           <svg
             class="chapter__chevron"
             viewBox="0 0 16 16"
@@ -58,7 +80,7 @@
           </svg>
         </button>
 
-        @if (isOpen(chapter)) {
+        @if (!isLocked(chapter, chapterIndex) && isOpen(chapter)) {
           <div class="chapter__lessons">
             @for (lesson of chapter.lessons; track lesson.id) {
               <button

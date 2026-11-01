@@ -76,10 +76,6 @@ export class CheckoutSuccessComponent implements OnInit {
     this.transactionId.set(id);
 
     if (!id) {
-      if (queryStatus === 'success') {
-        this.finishSuccess({ amount: 0, orderId: '', paidAt: null } as PaymentStatus);
-        return;
-      }
       this.state.set(queryStatus === 'failed' ? 'failed' : 'expired');
       this.errorMessage.set(
         queryStatus === 'failed'
@@ -98,9 +94,8 @@ export class CheckoutSuccessComponent implements OnInit {
       )
       .subscribe(status => {
         if (!status) {
-          this.stopPolling();
-          this.state.set('failed');
-          this.errorMessage.set('Không thể xác minh giao dịch lúc này. Vui lòng kiểm tra lại trong mục Hóa đơn.');
+          this.state.set('pending');
+          this.errorMessage.set('Kết nối xác minh tạm thời gián đoạn. Hệ thống sẽ tự thử lại.');
           return;
         }
         this.handleStatus(status);

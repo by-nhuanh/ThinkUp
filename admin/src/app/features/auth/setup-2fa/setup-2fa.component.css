@@ -305,11 +305,35 @@
 
 /* ---------- Bước 2: mã QR + khóa thiết lập ---------- */
 .qr-box {
+  display: grid;
+  place-items: center;
   align-self: center;
+  width: 186px;
+  min-height: 186px;
   padding: 16px 12px 12px;
   border: 1px solid #e0e9f3;
   border-radius: 10px;
   background: #ffffff;
+}
+
+.qr-loading,
+.qr-error {
+  font: var(--admin-text-caption);
+  color: #64748b;
+  text-align: center;
+}
+
+.qr-error {
+  display: grid;
+  gap: 10px;
+}
+
+.qr-error button {
+  border: 0;
+  background: transparent;
+  font: var(--admin-text-control-label);
+  color: #006ffe;
+  cursor: pointer;
 }
 
 .qr-box img {
@@ -372,6 +396,11 @@
 .copy-button:focus-visible {
   outline: 2px solid #006ffe;
   outline-offset: 2px;
+}
+
+.copy-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .key-hint {

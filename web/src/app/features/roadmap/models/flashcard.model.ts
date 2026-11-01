@@ -28,6 +28,9 @@ export interface FlashcardSet {
   /** ISO date. */
   createdAt: string;
   cards: FlashcardCard[];
+  nodeId?: string;
+  roadmapId?: string;
+  apiStats?: FlashcardSetStats;
 }
 
 export interface FlashcardSetStats {

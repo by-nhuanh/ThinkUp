@@ -1,0 +1,336 @@
+<main class="support-page">
+  <header class="page-heading">
+    <div>
+      <nav class="breadcrumb" aria-label="Đường dẫn trang"><span class="breadcrumb-parent">Quản lý hỗ trợ</span><span class="breadcrumb-separator" aria-hidden="true">/</span><span class="breadcrumb-current" aria-current="page">FAQ</span></nav>
+      <h1>Thư viện FAQ</h1>
+    </div>
+    <button
+      class="primary-button add-button"
+      type="button"
+      (click)="openEditor()"
+    >
+      <svg lucidePlus aria-hidden="true"></svg> Thêm câu hỏi
+    </button>
+  </header>
+  <section class="metric-grid">
+    <article class="metric-card">
+      <span class="metric-icon blue"><svg lucideBookOpenText aria-hidden="true"></svg></span>
+      <div>
+        <small>Tổng câu hỏi</small><strong>{{ faqs().length }}</strong>
+        <p>{{ published() }} câu đang xuất bản</p>
+      </div>
+    </article>
+    <article class="metric-card">
+      <span class="metric-icon cyan"><svg lucideChartNoAxesColumnIncreasing aria-hidden="true"></svg></span>
+      <div>
+        <small>Lượt tra cứu tháng</small><strong>{{ totalViews() }}</strong>
+        <p>Tổng lượt xem trong dữ liệu hiện tại</p>
+      </div>
+    </article>
+    <button
+      class="metric-card danger actionable"
+      type="button"
+      (click)="openModal('failed')"
+    >
+      <span class="metric-icon red"><svg lucideSearchX aria-hidden="true"></svg></span
+      ><span
+        ><small>Tìm kiếm thất bại</small><strong>{{ failedCount() }}</strong>
+        <p>Nhấn để xem khoảng trống nội dung</p></span
+      >
+    </button>
+    <article class="metric-card">
+      <span class="metric-icon green"><svg lucideTrendingDown aria-hidden="true"></svg></span>
+      <div>
+        <small>Lượng Ticket giảm</small><strong>—</strong>
+        <p>Chờ dữ liệu đo lường từ backend</p>
+      </div>
+    </article>
+  </section>
+  <section class="workspace-panel">
+    <div class="filter-bar faq-filters">
+      <label class="search-control"
+        ><svg lucideSearch class="search-icon" aria-hidden="true"></svg
+        ><input
+          type="search"
+          [ngModel]="queryInput()"
+          (ngModelChange)="setSearch($event)"
+          placeholder="Tìm câu hỏi, từ khóa hoặc nội dung..." /></label
+      ><label
+        ><span>Nhóm FAQ</span
+        ><select
+          [ngModel]="category()"
+          (ngModelChange)="category.set($event); page.set(1)"
+        >
+          <option value="">Tất cả 7 nhóm</option>
+          @for (c of categories; track c) {
+            <option [value]="c">{{ c }}</option>
+          }
+        </select></label
+      ><label
+        ><span>Trạng thái</span
+        ><select
+          [ngModel]="status()"
+          (ngModelChange)="status.set($event); page.set(1)"
+        >
+          <option value="">Tất cả</option>
+          <option value="published">Đã xuất bản</option>
+          <option value="hidden">Tạm ẩn</option>
+        </select></label
+      >
+    </div>
+    <div class="table-heading">
+      <div>
+        <h2>Nội dung trợ giúp</h2>
+      </div>
+      <span class="mock-label">Dữ liệu mô phỏng · Chờ API</span>
+    </div>
+    <div class="table-scroll">
+      <table class="faq-table">
+        <thead>
+          <tr>
+            <th>Câu hỏi</th>
+            <th>Nhóm</th>
+            <th>Lượt xem</th>
+            <th>Thứ tự</th>
+            <th>Trạng thái</th>
+            <th>Quản lý</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of visible(); track item.id) {
+            <tr>
+              <td>
+                <strong class="faq-question">{{ item.question }}</strong
+                ><small>{{ item.keywords.join(" · ") }}</small>
+              </td>
+              <td>
+                <span class="topic-chip">{{ item.category }}</span>
+              </td>
+              <td>
+                <strong>{{ item.views }}</strong>
+              </td>
+              <td>
+                <div class="order-control">
+                  <input type="number" min="1" [ngModel]="orderValue(item)" (ngModelChange)="setOrderDraft(item.id, +$event)" [attr.aria-label]="'Thứ tự của ' + item.question">
+                  <button type="button" (click)="saveOrder(item)" [disabled]="orderValue(item) === item.order">Lưu</button>
+                </div>
+              </td>
+              <td>
+                <span
+                  class="status-badge"
+                  [class.status-success]="item.status === 'published'"
+                  [class.status-info]="item.status === 'hidden'"
+                  >{{
+                    item.status === "published"
+                      ? "Đã xuất bản"
+                      : "Tạm ẩn"
+                  }}</span
+                >
+              </td>
+              <td>
+                <div class="faq-row-actions">
+                  <button class="faq-primary-action" type="button" (click)="openEditor(item)"><svg lucidePencil aria-hidden="true"></svg><span>Chỉnh sửa</span></button>
+                  <div class="faq-more-actions">
+                    <button class="faq-more-trigger" type="button" aria-label="Mở thêm thao tác" title="Thêm thao tác" [attr.aria-expanded]="actionMenuId() === item.id" (click)="toggleActionMenu(item.id, $event)"><svg lucideEllipsisVertical aria-hidden="true"></svg></button>
+                    @if (actionMenuId() === item.id) {
+                      <div class="faq-action-menu" role="menu" (click)="$event.stopPropagation()">
+                        @if (item.status === "published") {
+                          <button type="button" role="menuitem" (click)="setStatus(item, 'hidden')"><svg lucideEyeOff aria-hidden="true"></svg><span>Tạm ẩn FAQ</span></button>
+                        } @else {
+                          <button type="button" role="menuitem" (click)="setStatus(item, 'published')"><svg lucideSend aria-hidden="true"></svg><span>Xuất bản FAQ</span></button>
+                        }
+                        <button class="is-danger" type="button" role="menuitem" (click)="askDelete(item)"><svg lucideTrash2 aria-hidden="true"></svg><span>Xóa FAQ</span></button>
+                      </div>
+                    }
+                  </div>
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6">
+                <div class="empty-state">
+                  <strong>Chưa có FAQ phù hợp</strong
+                  ><span>Thử thay đổi điều kiện tìm kiếm.</span>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <app-support-pagination [page]="page()" [pages]="pages()" [pageSize]="pageSize" [totalItems]="filtered().length" itemLabel="FAQ" (pageChange)="pageTo($event)" />
+  </section>
+</main>
+@if (modal()) {
+  <div class="backdrop modal-backdrop" (click)="closeModal()"></div>
+  <section
+    class="support-modal"
+    [class.large]="modal() === 'failed'"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="faq-modal-title"
+  >
+    <header>
+      <div>
+        <p class="eyebrow">Quản lý tri thức</p>
+        <h2 id="faq-modal-title">
+          {{
+            modal() === "editor"
+              ? editing()
+                ? "Chỉnh sửa FAQ"
+                : "Tạo FAQ mới"
+              : modal() === "failed"
+                ? "Từ khóa người học tìm kiếm không có kết quả"
+                : "Xác nhận xóa FAQ"
+          }}
+        </h2>
+      </div>
+      <button
+        class="icon-button"
+        type="button"
+        aria-label="Đóng"
+        (click)="closeModal()"
+      >
+        <svg lucideX aria-hidden="true"></svg>
+      </button>
+    </header>
+    <div class="modal-body">
+      @if (modal() === "editor") {
+        <label class="field"
+          ><span>Nhóm câu hỏi *</span
+          ><select
+            [ngModel]="form().category"
+            (ngModelChange)="patch('category', $event)"
+          >
+            <option value="">Chọn nhóm</option>
+            @for (c of categories; track c) {
+              <option [value]="c">{{ c }}</option>
+            }
+          </select>
+          @if (attempted() && !form().category) {
+            <small class="text-danger">Vui lòng chọn nhóm.</small>
+          }</label
+        ><label class="field"
+          ><span>Câu hỏi *</span
+          ><input
+            [ngModel]="form().question"
+            (ngModelChange)="patch('question', $event)"
+            maxlength="150"
+            placeholder="Viết theo cách học viên thường tìm kiếm"
+          /><small [class.text-danger]="attempted() && !form().question.trim()"
+            >{{ form().question.length }}/150 ký tự</small
+          >@if (attempted() && !form().question.trim()) { <small class="text-danger">Vui lòng nhập câu hỏi.</small> }</label
+        ><label class="field"
+          ><span>Nội dung trả lời *</span
+          ><div class="answer-toolbar" aria-label="Định dạng câu trả lời">
+            <button type="button" (click)="insertAnswer(answerField, 'bullet')">• Danh sách</button>
+            <button type="button" (click)="insertAnswer(answerField, 'number')">1. Danh sách số</button>
+            <button type="button" (click)="insertAnswer(answerField, 'link')">Chèn liên kết</button>
+          </div><textarea
+            #answerField
+            rows="7"
+            [ngModel]="form().answer"
+            (ngModelChange)="patch('answer', $event)"
+            maxlength="500"
+            placeholder="Trả lời ngắn gọn, có các bước hành động rõ ràng..."
+          ></textarea
+          ><small [class.text-danger]="attempted() && !form().answer.trim()"
+            >{{ form().answer.length }}/500 ký tự · Hỗ trợ danh sách và liên kết dạng [nội dung](URL)</small
+          >@if (attempted() && !form().answer.trim()) { <small class="text-danger">Vui lòng nhập nội dung trả lời.</small> }</label
+        ><label class="field"
+          ><span>Từ khóa tìm kiếm</span
+          ><input
+            [ngModel]="form().keywords.join(', ')"
+            (ngModelChange)="keywords($event)"
+            placeholder="mật khẩu, đăng nhập, bảo mật"
+        /></label>
+        <div class="form-grid">
+          <label class="field"
+            ><span>Thứ tự trong nhóm *</span
+            ><input
+              type="number"
+              min="1"
+              [ngModel]="form().order"
+              (ngModelChange)="patch('order', +$event)" />
+              @if (attempted() && (!form().order || form().order < 1)) { <small class="text-danger">Thứ tự phải là số nguyên lớn hơn 0.</small> }
+            </label
+          ><label class="field"
+            ><span>Trạng thái</span
+            ><select
+              [ngModel]="form().status"
+              (ngModelChange)="patch('status', $event)"
+            >
+              <option value="published">Xuất bản</option>
+              <option value="hidden">Tạm ẩn</option>
+            </select></label
+          >
+        </div>
+      }
+      @if (modal() === "failed") {
+        <p class="failed-description">Những nội dung người học quan tâm nhưng chưa có câu trả lời trong 30 ngày qua.</p>
+        <div class="failed-head">
+          <span>Từ khóa</span><span>Lượt tìm</span><span>Nhóm gợi ý</span
+          ><span></span>
+        </div>
+        @for (item of failed(); track item.keyword) {
+          <div class="failed-row">
+            <strong>{{ item.keyword }}</strong
+            ><span>{{ item.count }}</span
+            ><span class="topic-chip">{{ item.suggestedCategory }}</span
+            ><button
+              class="table-action"
+              type="button"
+              (click)="fromFailed(item)"
+            >
+              Tạo câu hỏi này
+            </button>
+          </div>
+        } @empty {
+          <div class="empty-state"><strong>Chưa có từ khóa tìm hụt</strong><span>Dữ liệu 30 ngày gần nhất sẽ xuất hiện tại đây.</span></div>
+        }
+      }
+      @if (modal() === "delete" && deleting(); as item) {
+        <div class="delete-summary">
+          <span class="metric-icon red"><svg lucideTriangleAlert aria-hidden="true"></svg></span>
+          <div>
+            <h3>{{ item.question }}</h3>
+            <p>
+              Câu hỏi này đã có <strong>{{ item.views }}</strong> lượt xem. Xóa
+              sẽ làm mất nội dung khỏi thư viện; hãy cân nhắc tạm ẩn.
+            </p>
+          </div>
+        </div>
+        <button
+          class="secondary-button"
+          type="button"
+          (click)="setStatus(item, 'hidden'); closeModal()"
+        >
+          Tạm ẩn thay vì xóa
+        </button>
+      }
+    </div>
+    <footer>
+      <button class="ghost-button" type="button" (click)="closeModal()">
+        {{ modal() === 'failed' ? 'Đóng' : 'Hủy' }}
+      </button>
+      @if (modal() === "editor") {
+        <button
+          class="primary-button"
+          type="button"
+          (click)="save()"
+        >
+          Lưu và Áp dụng
+        </button>
+      }
+      @if (modal() === "delete") {
+        <button class="danger-button" type="button" (click)="confirmDelete()">
+          Xác nhận xóa
+        </button>
+      }
+    </footer>
+  </section>
+}
+@if (toast()) {
+  <div class="toast" role="status">{{ toast() }}</div>
+}

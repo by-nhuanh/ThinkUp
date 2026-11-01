@@ -1,0 +1,95 @@
+<div class="n-row group relative flex min-h-[126px] items-center gap-4 border-b border-[#E8EDF5] px-6 py-5 transition-colors last:border-b-0 hover:bg-[#F8FAFF]">
+  <button
+    type="button"
+    class="n-row-main flex min-w-0 flex-1 items-center gap-4 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#174FD6]"
+    (click)="onActivate()"
+  >
+    <span
+      class="size-2 shrink-0 rounded-full bg-[#1769FF]"
+      [class.invisible]="!!item().readAt"
+      [attr.aria-label]="item().readAt ? null : 'Chưa đọc'"
+    ></span>
+
+    <span
+      class="flex size-[52px] shrink-0 items-center justify-center rounded-full"
+      [style.background-color]="kindMeta().background"
+      [style.color]="kindMeta().color"
+      aria-hidden="true"
+    >
+      <app-notification-icon [kind]="item().kind" [size]="24" [strokeWidth]="1.8" />
+    </span>
+
+    <span class="flex min-w-0 flex-1 flex-col items-start">
+      <span class="n-row-title line-clamp-1 block w-full" [attr.title]="item().title">{{
+        item().title
+      }}</span>
+      <span class="n-row-body line-clamp-1 mt-1 block w-full" [attr.title]="item().message">{{
+        item().message
+      }}</span>
+      <span
+        class="n-row-badge mt-1 inline-flex items-center rounded-full px-[9px] py-[3px]"
+        [style.background-color]="badge().background"
+        [style.color]="badge().color"
+        >{{ badge().label }}</span
+      >
+    </span>
+  </button>
+
+  <div class="n-row-meta flex shrink-0 items-start gap-3.5 pl-4">
+    <span class="n-row-time whitespace-nowrap pt-px">{{ time() }}</span>
+
+    <div class="relative">
+      <button
+        #menuTrigger
+        type="button"
+        class="-m-1 flex size-8 items-center justify-center rounded-md text-[#788FAE] transition-colors hover:bg-[#EFF4FB] hover:text-[#17345F] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#174FD6]"
+        [attr.aria-expanded]="menuOpen()"
+        aria-haspopup="menu"
+        [attr.aria-controls]="menuOpen() ? menuId() : null"
+        aria-label="Tùy chọn thông báo"
+        (click)="toggleMenu($event)"
+        (keydown)="onMenuTriggerKeydown($event)"
+      >
+        <svg lucideEllipsisVertical [size]="18" [strokeWidth]="2"></svg>
+      </button>
+
+      @if (menuOpen()) {
+        <div
+          #rowMenu
+          [id]="menuId()"
+          role="menu"
+          aria-label="Tùy chọn thông báo"
+          class="n-row-menu absolute right-0 z-30 w-[251px] overflow-y-auto overflow-x-hidden rounded-[10px] border border-[#F1F5F9] bg-white shadow-[0px_10px_25px_rgba(15,23,42,0.16)]"
+          [class.is-above]="menuAbove()"
+          (keydown)="onMenuKeydown($event)"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            class="n-row-menu-item flex h-10 w-full items-center gap-3 px-4 text-left text-[#FB2B36] transition-colors hover:bg-[#FFF1F2] focus-visible:bg-[#FFF1F2] focus-visible:outline-none"
+            (click)="onRemove($event)"
+          >
+            <svg lucideTrash [size]="16" [strokeWidth]="1.6" class="shrink-0"></svg>
+            <span class="truncate">Xóa thông báo này</span>
+          </button>
+
+          @if (muteLabel(); as label) {
+            <span [attr.title]="muteLocked() ? lockedHint : null" class="block">
+              <button
+                type="button"
+                role="menuitem"
+                class="n-row-menu-item n-row-menu-item--neutral flex h-10 w-full items-center gap-3 px-4 text-left transition-colors hover:bg-[#F8FAFC] focus-visible:bg-[#F8FAFC] focus-visible:outline-none"
+                [class.is-locked]="muteLocked()"
+                [disabled]="muteLocked()"
+                (click)="onToggleMute($event)"
+              >
+                <svg lucideBellOff [size]="16" [strokeWidth]="1.6" class="shrink-0"></svg>
+                <span class="truncate">{{ label }}</span>
+              </button>
+            </span>
+          }
+        </div>
+      }
+    </div>
+  </div>
+</div>

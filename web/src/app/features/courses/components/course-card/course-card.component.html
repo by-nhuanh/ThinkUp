@@ -1,127 +1,173 @@
+<article
+  role="link"
+  tabindex="0"
+  (click)="navigateToDetail()"
+  (keydown.enter)="navigateToDetail()"
+  class="group flex h-full min-h-[410px] cursor-pointer flex-col overflow-hidden rounded-[10px] border border-[#E2E8F0] bg-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-24px_rgba(15,23,43,0.35)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2B7FFF]"
+  [attr.aria-label]="'Xem chi tiết khóa học ' + course.title"
+>
+  <!-- Course visual banner -->
+  <div class="relative h-[160px] w-full shrink-0 overflow-hidden" [style.background]="getBackgroundStyle()">
+    @if (course.badge) {
+      <span
+        class="absolute left-3 top-3 z-10 rounded-[4px] px-2 py-[4px] text-[10px] font-bold leading-[15px] text-white"
+        [ngClass]="getBadgeColor(course.badge)"
+      >
+        {{ course.badge }}
+      </span>
+    }
 
-    <article
-      role="link"
-      tabindex="0"
-      (click)="navigateToDetail()"
-      (keydown.enter)="navigateToDetail()"
-      class="group flex h-full min-h-[410px] cursor-pointer flex-col justify-between overflow-hidden rounded-[8px] border border-[#EEF0F3] bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006AB5]"
-      [attr.aria-label]="'Xem chi tiết khóa học ' + course.title"
+    <button
+      type="button"
+      (click)="$event.stopPropagation(); toggleWishlist()"
+      class="absolute right-3 top-3 z-10 grid h-7 w-7 place-items-center rounded-full bg-white/90 text-[#90A1B9] transition-all hover:scale-105 hover:text-[#FB2C36] active:scale-95"
+      [attr.aria-label]="isWishlisted() ? 'Bỏ khỏi khóa học yêu thích' : 'Thêm vào khóa học yêu thích'"
     >
-      <div>
-        <!-- Course Visual Banner -->
-        <div
-          class="relative h-[160px] w-full overflow-hidden px-3 py-3"
-          [style.background]="getBackgroundStyle()"
-        >
-          @if (course.badge) {
-            <span class="rounded-[7px] px-2 py-1 text-[10px] font-bold leading-[15px] text-white"
-                  [ngClass]="getBadgeColor(course.badge)">
-              {{ course.badge }}
-            </span>
-          }
+      <svg
+        class="h-4 w-4 transition-colors"
+        viewBox="0 0 24 24"
+        [attr.fill]="isWishlisted() ? '#FB2C36' : 'none'"
+        [attr.stroke]="isWishlisted() ? '#FB2C36' : 'currentColor'"
+        stroke-width="1.33"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+      </svg>
+    </button>
 
-          <!-- Wishlist Heart Button -->
-          <button
-            type="button"
-            (click)="$event.stopPropagation(); toggleWishlist()"
-            class="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-[8px] bg-white/90 text-[#64748B] transition-all hover:scale-105 active:scale-95"
-            [attr.aria-label]="isWishlisted() ? 'Bỏ khỏi khóa học yêu thích' : 'Thêm vào khóa học yêu thích'"
+    <div class="flex h-full items-center gap-4 px-6">
+      @if (getCoverMarkKind(); as mark) {
+        @if (mark === 'ring') {
+          <span class="cover-mark-ring" aria-hidden="true"><span></span></span>
+        } @else {
+          <span class="cover-mark-text" [style.color]="getCoverMarkColor()" aria-hidden="true">
+            {{ course.icon }}
+          </span>
+        }
+      }
+
+      <div class="min-w-0">
+        <p class="cover-title line-clamp-2 whitespace-pre-line" [ngClass]="getCoverTitleClass()">
+          {{ getCoverTitle() }}
+        </p>
+        @if (getCoverSubtitle()) {
+          <p
+            class="mt-1 line-clamp-2 text-[12px] font-normal leading-4"
+            [ngClass]="isDarkCover() ? 'text-[#1A1A2E]/80' : 'text-white/80'"
           >
-            <svg class="w-4 h-4 transition-colors" [class.fill-red-500]="isWishlisted()" [class.text-red-500]="isWishlisted()" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
-            </svg>
-          </button>
+            {{ getCoverSubtitle() }}
+          </p>
+        }
+      </div>
+    </div>
+  </div>
 
-          <!-- Icon & Short Title -->
-          <div class="mt-5 flex items-center gap-5">
-            @if (course.icon) {
-              <div class="grid h-20 w-20 shrink-0 place-items-center rounded-full border-2 text-[24px] font-extrabold"
-                   [class]="isDarkText() ? 'border-[#0D111C]/20 text-[#0D111C]' : 'border-cyan-400 text-cyan-300'">
-                {{ course.icon }}
-              </div>
-            }
-            <div class="min-w-0">
-              <p class="whitespace-pre-line text-[22px] font-extrabold leading-7"
-                 [class]="isDarkText() ? 'text-[#0D111C]' : 'text-white'">
-                {{ getShortTitle() }}
-              </p>
-            </div>
-          </div>
-        </div>
+  <!-- Course information -->
+  <div class="flex flex-1 flex-col p-4">
+    <h3 class="mb-3 line-clamp-2 min-h-[40px] text-[14px] font-semibold leading-[19.25px] text-[#0F172B] transition-colors group-hover:text-[#155DFC]">
+      {{ course.title }}
+    </h3>
 
-        <!-- Course Meta Info -->
-        <div class="p-4">
-          <h3 class="min-h-[42px] line-clamp-2 text-[14px] font-bold leading-5 text-[#111827] transition-colors group-hover:text-[#0088E8]">
-            {{ course.title }}
-          </h3>
+    <div class="mb-2 flex items-center gap-2">
+      <span class="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#E2E8F0] text-[#90A1B9]">
+        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.17" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+      </span>
+      <span class="min-w-0 flex-1 truncate text-[12px] leading-4 text-[#45556C]">{{ course.instructor }}</span>
+      @if (course.level) {
+        <span class="shrink-0 rounded-[4px] bg-[#F1F5F9] px-2 py-[4px] text-[10px] font-normal leading-[15px] text-[#45556C]">
+          {{ course.level }}
+        </span>
+      }
+    </div>
 
-          <div class="mt-3 flex items-center justify-between gap-3 text-[12px] leading-4 text-[#64748B]">
-            <div class="flex min-w-0 items-center gap-2">
-              <span class="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#F1F5F9] text-[#94A3B8]">
-                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-                </svg>
-              </span>
-              <span class="truncate">{{ course.instructor }}</span>
-            </div>
-            @if (course.level) {
-              <span class="shrink-0 rounded-[4px] bg-[#F1F5F9] px-2 py-1 text-[10px] font-medium leading-[15px] text-[#64748B]">
-                {{ course.level }}
-              </span>
-            }
-          </div>
+    <div class="mb-2 flex items-center gap-3 text-[12px] leading-4 text-[#45556C]">
+      <span class="flex min-w-0 items-center gap-1">
+        <svg class="h-3.5 w-3.5 shrink-0 fill-[#FCC800] text-[#FCC800]" viewBox="0 0 24 24" aria-hidden="true">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+        </svg>
+        <b class="font-semibold">{{ formatRating() }}</b>
+        <span class="truncate text-[#90A1B9]">({{ formatCompactCount(course.ratingCount) }})</span>
+      </span>
+      <span class="flex min-w-0 items-center gap-1">
+        <svg class="h-3.5 w-3.5 shrink-0 text-[#90A1B9]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.17" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+        <span class="truncate">{{ formatStudents() }}</span>
+      </span>
+    </div>
 
-          <div class="mt-2 flex items-center gap-4 text-[12px] leading-4 text-[#64748B]">
-            <div class="flex items-center gap-1 text-[#F59E0B]">
-              <svg class="w-3.5 h-3.5 fill-[#F59E0B] text-[#F59E0B]" viewBox="0 0 24 24">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-              </svg>
-              <span class="font-bold text-[#111827]">{{ course.rating }}</span>
-              <span class="text-[#94A3B8]">({{ formatCompactCount(course.ratingCount) }})</span>
-            </div>
-            @if (course.duration) {
-              <div class="flex items-center gap-1">
-                <svg class="w-3.5 h-3.5 text-[#94A3B8]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                </svg>
-                <span>{{ course.duration }}</span>
-              </div>
-            }
-          </div>
-        </div>
+    <div class="mb-3 flex items-center gap-1 text-[12px] leading-4 text-[#62748E]">
+      <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.17" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" />
+        <polyline points="12 6 12 12 16 14" />
+      </svg>
+      <span>{{ course.duration || 'Đang cập nhật' }}</span>
+    </div>
+
+    @if (getVisibleTags().length) {
+      <div class="mb-4 flex flex-nowrap gap-1.5 overflow-hidden">
+        @for (tag of getVisibleTags(); track tag) {
+          <span class="shrink-0 rounded-[4px] bg-[#EFF6FF] px-2 py-[4px] text-[10px] leading-[15px] text-[#155DFC]">
+            {{ tag }}
+          </span>
+        }
+      </div>
+    } @else {
+      <div class="mb-4 h-[23px]"></div>
+    }
+
+    <!-- Price + actions -->
+    <div class="mt-auto flex items-center justify-between gap-2 border-t border-[#F1F5F9] pt-3">
+      <div class="flex min-w-0 flex-wrap items-baseline gap-2">
+        <span class="text-[16px] font-bold leading-6 text-[#FB2C36]">
+          {{ course.salePrice === 0 ? 'Miễn phí' : formatPrice(course.salePrice) }}
+        </span>
+        @if (course.originalPrice > course.salePrice) {
+          <span class="text-[12px] font-normal leading-4 text-[#90A1B9] line-through">
+            {{ formatPrice(course.originalPrice) }}
+          </span>
+        }
+        @if (getDiscountLabel()) {
+          <span class="text-[10px] font-semibold leading-[15px] text-[#FB2C36]">
+            {{ getDiscountLabel() }}
+          </span>
+        }
       </div>
 
-      <!-- Price & Actions Footer -->
-      <div class="p-4 pt-0">
-        <div class="flex items-center justify-between border-t border-[#EEF0F3] pt-3">
-          <div>
-            <div class="flex items-baseline gap-1.5">
-              <span class="text-[16px] font-extrabold text-[#0088E8]">
-                {{ course.salePrice === 0 ? "Miễn phí" : formatPrice(course.salePrice) }}
-              </span>
-              @if (course.originalPrice > course.salePrice) {
-                <span class="text-[12px] text-[#94A3B8] line-through">
-                  {{ formatPrice(course.originalPrice) }}
-                </span>
-              }
-            </div>
-          </div>
+      <div class="flex shrink-0 items-center gap-1">
+        <button
+          type="button"
+          (click)="$event.stopPropagation(); addToCart()"
+          class="grid h-7 w-7 place-items-center rounded-[4px] border border-[#E2E8F0] transition-colors"
+          [ngClass]="isInCart() ? 'bg-[#2B7FFF] text-white hover:bg-[#1C66DF]' : 'bg-white text-[#2B7FFF] hover:bg-[#EFF6FF]'"
+          [attr.aria-label]="isInCart() ? 'Đã có trong giỏ hàng' : 'Thêm vào giỏ hàng'"
+        >
+          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.17" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="8" cy="21" r="1" />
+            <circle cx="19" cy="21" r="1" />
+            <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+          </svg>
+        </button>
 
-          <div class="flex items-center gap-1.5">
-            <!-- Add to cart button -->
-            <button
-              type="button"
-              (click)="$event.stopPropagation(); addToCart()"
-              class="flex h-8 w-8 items-center justify-center rounded-[8px] transition-all"
-              [class]="isInCart() ? 'bg-[#0088E8] text-white' : 'bg-[#F1F5F9] text-[#64748B] hover:bg-[#0088E8] hover:text-white'"
-              [attr.aria-label]="isInCart() ? 'Đã có trong giỏ hàng' : 'Thêm vào giỏ hàng'"
-            >
-              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/>
-                <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
-              </svg>
-            </button>
-          </div>
-        </div>
+        <button
+          type="button"
+          (click)="$event.stopPropagation(); navigateToDetail()"
+          class="grid h-7 w-7 place-items-center rounded-[4px] border border-[#E2E8F0] bg-white text-[#2B7FFF] transition-colors hover:bg-[#EFF6FF]"
+          aria-label="Xem chi tiết khóa học"
+        >
+          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.17" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5 12h14" />
+            <path d="m12 5 7 7-7 7" />
+          </svg>
+        </button>
       </div>
-    </article>
+    </div>
+  </div>
+</article>

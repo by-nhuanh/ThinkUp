@@ -14,6 +14,7 @@
 .nav-item:hover { background: #17315b; }
 .nav-item.active { background: #1570d1; box-shadow: 0 4px 16px #1570d14d; }
 .nav-item img { flex: none; }
+.nav-item > svg:not(.chevron) { width: 16px; height: 16px; flex: none; }
 .nav-item[href] { text-decoration: none; }
 .chevron { width: 16px; height: 16px; margin-left: auto; flex: none; }.nav-label { cursor: default; }
 .business-toggle .chevron { transition: transform .18s ease; }
@@ -30,8 +31,14 @@
 .is-collapsed .brand:hover .collapse-button, .is-collapsed .brand:focus-within .collapse-button { opacity: 1; pointer-events: auto; }
 .is-collapsed .nav-item { justify-content: center; }
 .page-shell { min-width: 0; }
-.top-utility-bar { position: fixed; z-index: 25; top: 16px; right: 24px; display: block; width: max-content; padding: 0; border: 0; background: transparent; }
+.top-utility-bar { position: fixed; z-index: 25; top: 16px; right: 24px; display: block; width: max-content; padding: 0; border: 0; background: transparent; transition: right .16s ease; }
+.top-utility-bar.is-dragging { user-select: none; transition: none; }
 .liquid-tools { display: flex; align-items: center; gap: 2px; padding: 4px; border: 1px solid #cbdced80; border-radius: 18px; background: linear-gradient(135deg, #ffffffa8, #edf5ff78); box-shadow: inset 0 1px 0 #ffffffcc, 0 7px 20px #163c6d12; backdrop-filter: blur(20px) saturate(155%); -webkit-backdrop-filter: blur(20px) saturate(155%); }
+.utility-drag-handle { align-self: stretch; width: 28px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 11px; background: transparent; color: #6682a6; cursor: grab; touch-action: none; transition: color .16s ease, background-color .16s ease; }
+.utility-drag-handle:hover { color: #1570d1; background: #ffffff80; }
+.utility-drag-handle:focus-visible { outline: 2px solid #4388e8; outline-offset: 2px; }
+.utility-drag-handle svg { width: 16px; height: 16px; pointer-events: none; }
+.is-dragging .utility-drag-handle { color: #1570d1; background: #ffffffa8; cursor: grabbing; }
 .top-popover-anchor { position: relative; }
 .top-tool { min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 9px; padding: 5px 12px; border: 0; border-radius: 12px; background: transparent; color: #183a67; font: 600 14px Inter, Arial, sans-serif; cursor: pointer; transition: background-color .16s ease, box-shadow .16s ease, transform .16s ease; }
 .top-tool:hover, .top-tool[aria-expanded='true'] { background: #ffffff99; box-shadow: inset 0 1px 0 #ffffffd9; }

@@ -1,0 +1,319 @@
+/* Trung tâm thông báo - Figma section "thông báo" (3188:19571).
+   Token chữ co giãn có biên: 1920 giữ đúng Figma, 1440/1366 thu nhỏ vừa khung. */
+
+:host {
+  display: block;
+}
+
+/* Dùng cùng một grid cho hàng tab/bộ lọc và phần nội dung để các mép cột luôn thẳng hàng. */
+.n-center-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(320px, 23vw, 442px);
+  gap: 24px;
+}
+
+@media (max-width: 1023px) {
+  .n-center-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Reflow hẹp: tab và bộ lọc xếp dọc để tab không bị ép cạnh bộ lọc. */
+@media (max-width: 640px) {
+  .n-filter-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .n-sort-root {
+    flex: 1 1 100%;
+  }
+
+  .n-sort-trigger {
+    width: 100%;
+  }
+
+  .n-sort-menu {
+    width: 100%;
+  }
+}
+
+.n-page-title {
+  font-size: clamp(22px, 1.458vw, 28px);
+  line-height: 1.21;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #102a56;
+}
+
+.n-crumb {
+  font-size: clamp(12px, 0.677vw, 13px);
+  line-height: 16px;
+  color: #64748b;
+}
+
+.n-mark-all {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  font-size: clamp(12.5px, 0.729vw, 14px);
+  line-height: 17px;
+  font-weight: 600;
+  color: #2563eb;
+  transition: color 0.15s ease;
+}
+
+.n-mark-all:hover:not(:disabled) {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.n-mark-all:disabled {
+  color: #94a3b8;
+  cursor: default;
+}
+
+.n-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 39px;
+  padding: 11px 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background-color: #ffffff;
+  font-size: clamp(12.5px, 0.729vw, 14px);
+  line-height: 17px;
+  font-weight: 400;
+  color: #52637a;
+  white-space: nowrap;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.n-tab:hover {
+  border-color: #c7d7f5;
+  background-color: #f8faff;
+}
+
+.n-tab.is-active,
+.n-tab.is-active:hover {
+  border-color: #174fd6;
+  background-color: #174fd6;
+  color: #ffffff;
+}
+
+.n-tab:focus-visible {
+  outline: 2px solid #174fd6;
+  outline-offset: 2px;
+}
+
+.n-group-title {
+  font-size: clamp(13.5px, 0.781vw, 15px);
+  line-height: 1.2;
+  font-weight: 600;
+  color: #17345f;
+}
+
+.n-sort-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 172px;
+  height: 40px;
+  padding: 10px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background-color: #ffffff;
+  font-size: clamp(12.5px, 0.729vw, 14px);
+  line-height: 17px;
+  font-weight: 500;
+  color: #26334a;
+  transition: border-color 0.15s ease;
+}
+
+.n-sort-trigger:hover {
+  border-color: #c7d7f5;
+}
+
+.n-sort-trigger:focus-visible {
+  outline: 2px solid #174fd6;
+  outline-offset: 2px;
+}
+
+.n-sort-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 172px;
+  max-height: min(220px, calc(100vh - 120px));
+  max-height: min(220px, calc(100dvh - 120px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background-color: #ffffff;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+}
+
+/* Viewport thấp hoặc zoom lớn: đảo menu lên trên trigger thay vì để bị cắt. */
+.n-sort-menu.is-above {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+
+.n-sort-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: clamp(12.5px, 0.729vw, 14px);
+  line-height: 17px;
+  font-weight: 500;
+  color: #38455a;
+  text-align: left;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.n-sort-option:hover {
+  background-color: #f8faff;
+}
+
+.n-sort-option.is-selected {
+  background-color: #f0f6ff;
+  color: #145ce8;
+}
+
+.n-sort-option:focus-visible {
+  outline: 2px solid #174fd6;
+  outline-offset: -2px;
+}
+
+.n-side-title {
+  font-size: clamp(14px, 0.833vw, 16px);
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+.n-side-label {
+  font-size: clamp(12.5px, 0.729vw, 13.5px);
+  line-height: 20px;
+}
+
+.n-side-value {
+  font-size: clamp(12.5px, 0.729vw, 14px);
+  line-height: 20px;
+  font-weight: 600;
+}
+
+.n-about-card {
+  display: flex;
+  min-height: 350px;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px 24px;
+}
+
+.n-about-illustration {
+  display: flex;
+  width: 100%;
+  flex: 0 0 214px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.n-about-illustration img {
+  display: block;
+  flex: none;
+  object-fit: contain;
+}
+
+.n-about-card--learning .n-about-illustration {
+  border-radius: 16px;
+  background-color: #f8faff;
+  padding: 12px;
+}
+
+.n-about-card--learning .n-about-illustration img {
+  width: auto;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.n-about-card--transactions .n-about-illustration img {
+  width: min(379px, 100%);
+  height: auto;
+}
+
+.n-about-card--security .n-about-illustration {
+  flex-basis: 206px;
+}
+
+.n-about-card--security .n-about-illustration img {
+  width: min(317px, 100%);
+  height: auto;
+}
+
+.n-about-description {
+  width: 100%;
+  color: #536780;
+  font-size: clamp(12.5px, 0.677vw, 13px);
+  font-weight: 400;
+  line-height: 20px;
+  text-align: center;
+}
+
+.n-side-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 44px;
+  border-radius: 8px;
+  background-color: #174fd6;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: #ffffff;
+  transition: background-color 0.15s ease;
+}
+
+.n-side-button:hover {
+  background-color: #1240b0;
+}
+
+.n-support-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 46px;
+  border: 1px solid #7aa2ff;
+  border-radius: 7px;
+  background-color: #ffffff;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: #2563eb;
+  transition: background-color 0.15s ease;
+}
+
+.n-support-button:hover {
+  background-color: #f5f8ff;
+}

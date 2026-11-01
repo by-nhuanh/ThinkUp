@@ -86,14 +86,14 @@
           </div>
 
           <!-- Tabs -->
-          <nav class="mt-6 flex gap-8 overflow-x-auto border-b border-[#DCE6F2]" role="tablist" aria-label="Nội dung khóa học">
+          <nav class="mt-6 flex flex-wrap gap-x-8 gap-y-2 border-b border-[#DCE6F2]" role="tablist" aria-label="Nội dung khóa học">
             @for (tab of tabs; track tab.id) {
               <button
                 type="button"
                 role="tab"
                 (click)="selectTab(tab.id)"
-                class="-mb-px shrink-0 border-b-2 pb-3 text-[16.8px] font-medium leading-5 transition"
-                [class]="activeTab() === tab.id ? 'border-[#2076FF] text-[#2076FF]' : 'border-transparent text-[#56647A] hover:text-[#0F172B]'"
+                class="-mb-px shrink-0 border-b-2 pb-3 font-medium leading-5 transition"
+                [class]="(tab.id === 'content' ? 'text-[16.8px]' : 'text-[14px]') + ' ' + (activeTab() === tab.id ? 'border-[#2076FF] text-[#2076FF]' : 'border-transparent text-[#56647A] hover:text-[#0F172B]')"
                 [attr.aria-selected]="activeTab() === tab.id"
               >
                 {{ tab.label }}
@@ -106,7 +106,13 @@
             @switch (activeTab()) {
               <!-- Figma 3173:9386 - tab "Nội dung khóa học" của trang dashboard khóa học. -->
               @case ('content') {
-                <div class="space-y-3">
+                <div>
+                  <!-- Figma 3173:9384 - tổng quan chương trình học. -->
+                  <p class="mb-3 text-[12px] leading-4 text-[#56647A]">
+                    {{ currentCourse.chapters.length }} chương · {{ courseLessonCount(currentCourse) }} bài học · {{ enrollment()?.studyTime ?? courseDuration(currentCourse) }}
+                  </p>
+
+                  <div class="space-y-3">
                   @for (chapter of currentCourse.chapters; track chapter.id) {
                     <section class="overflow-hidden rounded-[20px] border border-[#E0E5EB] bg-white">
                       <button
@@ -207,6 +213,7 @@
                       }
                     </section>
                   }
+                  </div>
                 </div>
               }
 
@@ -442,193 +449,226 @@
               }
 
               @case ('qa') {
-                <section class="rounded-[20px] border border-[#E0E5EB] bg-white p-6">
-                <h2 class="text-[21.6px] font-bold leading-7">Hỏi đáp</h2>
-                <p class="mt-1 text-[14px] leading-5 text-[#62748E]">Đặt câu hỏi và nhận giải đáp từ giảng viên.</p>
+                <section class="rounded-[20px] border border-[#DCE6F2] bg-white p-6">
+                  <div>
+                    <h2 class="text-[18px] font-bold leading-7 text-[#051127]">Hỏi đáp</h2>
+                    <p class="mt-1 text-[14px] leading-5 text-[#56647A]">Đặt câu hỏi và nhận giải đáp từ giảng viên.</p>
+                  </div>
 
-                <form class="mt-4 rounded-xl border border-[#C7DBFF] bg-white p-4" (ngSubmit)="submitQuestion()">
-                  <h3 class="text-[13px] font-semibold">Đặt câu hỏi mới</h3>
-                  <p class="mt-0.5 text-[11px] text-[#62748E]">Mô tả rõ vấn đề, giảng viên có thể hỗ trợ bạn tốt hơn.</p>
-                  <select
-                    name="lesson"
-                    [(ngModel)]="selectedLessonId"
-                    class="mt-3 h-10 w-full rounded-lg border border-[#E2E8F0] px-3 text-[12px] text-[#45556C] outline-none focus:border-[#155DFC]"
-                    aria-label="Chọn bài học liên quan"
-                  >
-                    @for (chapter of currentCourse.chapters; track chapter.id) {
-                      <optgroup [label]="chapter.title">
-                        @for (lesson of chapter.lessons; track lesson.id) {
-                          <option [value]="lesson.id">{{ lesson.title }}</option>
+                  <form class="mt-6 flex flex-col gap-3 rounded-xl border border-[#B7D9FF] bg-[#F6FAFF] p-4" (ngSubmit)="submitQuestion()">
+                    <div class="flex flex-col gap-0.5">
+                      <h3 class="text-[16px] font-semibold leading-6 text-[#0B1729]">Đặt câu hỏi mới</h3>
+                      <p class="text-[13px] leading-5 text-[#5B646F]">Mô tả rõ vấn đề để giảng viên có thể hỗ trợ bạn tốt hơn.</p>
+                    </div>
+
+                    <div class="relative">
+                      <select
+                        name="lesson"
+                        [(ngModel)]="selectedLessonId"
+                        class="h-[42px] w-full appearance-none rounded-[9px] border border-[#D1D9E5] bg-white pl-3 pr-9 text-[14px] leading-5 text-[#0B1729] outline-none transition focus:border-[#2076FF]"
+                        aria-label="Chọn bài học liên quan"
+                      >
+                        @for (chapter of currentCourse.chapters; track chapter.id) {
+                          <optgroup [label]="chapter.title">
+                            @for (lesson of chapter.lessons; track lesson.id) {
+                              <option [value]="lesson.id">{{ lesson.title }}</option>
+                            }
+                          </optgroup>
                         }
-                      </optgroup>
-                    }
-                  </select>
-                  <textarea
-                    name="question"
-                    rows="3"
-                    [(ngModel)]="questionDraft"
-                    placeholder="Nhập câu hỏi của bạn..."
-                    class="mt-3 w-full resize-none rounded-lg border border-[#E2E8F0] px-3 py-2.5 text-[13px] outline-none transition placeholder:text-[#90A1B9] focus:border-[#155DFC]"
-                  ></textarea>
-                  <button type="submit" [disabled]="!questionDraft.trim()" class="mt-3 h-9 rounded-lg bg-[#155DFC] px-4 text-[12px] font-semibold text-white transition hover:bg-[#0F4CD1] disabled:bg-[#BFD4FF]">
-                    Gửi câu hỏi
-                  </button>
-                </form>
+                      </select>
+                      <svg lucideChevronDown class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5B646F]" aria-hidden="true"></svg>
+                    </div>
 
-                <div class="mt-5 space-y-5">
-                  @for (question of questions(); track question.id) {
-                    <article class="rounded-xl border border-[#EEF0F3] p-4">
-                      <div class="flex items-start gap-3">
-                        <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#F1F5F9] text-[12px] font-bold text-[#45556C]">{{ question.initials }}</span>
+                    <textarea
+                      name="question"
+                      rows="3"
+                      [(ngModel)]="questionDraft"
+                      placeholder="Nhập câu hỏi của bạn..."
+                      class="h-[104px] w-full resize-none rounded-[9px] border border-[#D1D9E5] bg-white p-3 text-[14px] leading-5 text-[#0B1729] outline-none transition placeholder:text-[#8C96A6] focus:border-[#2076FF]"
+                    ></textarea>
+
+                    <div class="flex h-10 items-center bg-white">
+                      <button type="submit" [disabled]="!questionDraft.trim()" class="h-10 w-[124px] rounded-[9px] bg-[#1E75FF] text-[14px] font-semibold leading-5 text-white transition hover:bg-[#1557D6] disabled:cursor-not-allowed">
+                        Gửi câu hỏi
+                      </button>
+                    </div>
+                  </form>
+
+                  <div class="mt-6 space-y-6">
+                    @for (question of questions(); track question.id) {
+                      <article class="flex items-start gap-3">
+                        <img [src]="avatarFor(question.author)" alt="" class="h-10 w-10 shrink-0 rounded-full object-cover" />
+
                         <div class="min-w-0 flex-1">
-                          <p class="text-[10px] text-[#62748E]">{{ question.role }}</p>
-                          <p class="text-[13px] font-semibold">{{ question.author }}</p>
-                        </div>
-                        <span class="text-[11px] text-[#90A1B9]">{{ question.date }}</span>
-                      </div>
-
-                      <p class="mt-2 text-[13px] leading-5 text-[#45556C]">{{ question.body }}</p>
-                      @if (question.author === 'Bạn') {
-                        <button type="button" class="mt-1 text-[11px] font-medium text-[#155DFC] hover:underline">Chỉnh sửa</button>
-                      }
-
-                      @if (question.relatedLessonTitle) {
-                        <div class="mt-2.5 rounded-lg bg-[#F8FAFF] p-3">
-                          <p class="text-[10px] text-[#62748E]">Thông tin bài học liên quan</p>
-                          <div class="mt-1 flex items-center gap-2 text-[12px] font-medium text-[#155DFC]">
-                            <svg lucideCirclePlay class="h-4 w-4" aria-hidden="true"></svg>
-                            {{ question.relatedLessonTitle }}
+                          <div class="flex items-start justify-between gap-2">
+                            <div>
+                              <p class="text-[12px] leading-4" [class]="question.role === 'Giảng viên' ? 'font-semibold text-[#0088E8]' : 'text-[#56647A]'">{{ question.role }}</p>
+                              <p class="text-[14px] font-semibold leading-5 text-[#051127]">{{ question.author }}</p>
+                            </div>
+                            <span class="shrink-0 text-[12px] leading-4 text-[#56647A]">{{ question.date }}</span>
                           </div>
+
+                          <div class="mt-[7px]">
+                            <p class="text-[14px] leading-[22.75px] text-[#051127]">{{ question.body }}</p>
+                            @if (question.author === 'Bạn') {
+                              <button type="button" class="text-[12px] font-medium leading-[18px] text-[#2563EB] hover:underline">Chỉnh sửa</button>
+                            } @else {
+                              <button type="button" (click)="startQuestionReply(question)" class="text-[12px] font-medium leading-[18px] text-[#2563EB] hover:underline">
+                                {{ replyingQuestionId === question.id ? 'Hủy trả lời' : 'Trả lời' }}
+                              </button>
+                            }
+                          </div>
+
+                          @if (question.relatedLessonTitle) {
+                            <div class="mt-[7px] rounded-2xl border border-[#DCE6F2] bg-[#EBF3FC]/60 px-3 pb-3 pt-[17px]">
+                              <p class="text-[11px] leading-[16.5px] text-[#56647A]">Thông tin bài học liên quan</p>
+                              <div class="mt-1.5 flex h-8 items-center gap-3">
+                                <span class="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-[#DBF0FF] text-[#2076FF]">
+                                  <svg lucideCirclePlay class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                                </span>
+                                <p class="min-w-0 truncate text-[12px] font-semibold leading-4 text-[#2076FF]">{{ question.relatedLessonTitle }}</p>
+                              </div>
+                            </div>
+                          }
+
+                          @if (replyingQuestionId === question.id) {
+                            <form class="mt-3 flex gap-2" (ngSubmit)="submitQuestionReply(question)">
+                              <input
+                                name="question-reply-{{ question.id }}"
+                                [(ngModel)]="questionReplyDraft"
+                                placeholder="Nhập câu trả lời của bạn..."
+                                class="h-10 min-w-0 flex-1 rounded-[9px] border border-[#D1D9E5] px-3 text-[13px] outline-none transition focus:border-[#2076FF]"
+                              />
+                              <button type="submit" [disabled]="!questionReplyDraft.trim()" class="grid h-10 w-10 place-items-center rounded-[9px] bg-[#1E75FF] text-white disabled:cursor-not-allowed disabled:bg-[#BFD4FF]" aria-label="Gửi trả lời">
+                                <svg lucideSend class="h-4 w-4" aria-hidden="true"></svg>
+                              </button>
+                            </form>
+                          }
                         </div>
-                      }
+                      </article>
 
                       @if (question.replies.length) {
-                        <p class="mt-4 text-[12px] font-semibold text-[#155DFC]">Trả lời ({{ question.replies.length }})</p>
-                        <div class="mt-2 space-y-3 border-l-2 border-[#EEF0F3] pl-3">
-                          @for (reply of question.replies; track $index) {
-                            <div>
-                              <div class="flex items-start gap-2.5">
-                                <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#E8F1FF] text-[11px] font-bold text-[#155DFC]">{{ reply.initials }}</span>
-                                <div class="min-w-0 flex-1">
-                                  <p class="text-[10px] text-[#62748E]">{{ reply.role }}</p>
-                                  <p class="text-[12px] font-semibold">{{ reply.author }}</p>
+                        <p class="text-[14px] font-semibold leading-5 text-[#2076FF]">Trả lời ({{ question.replies.length }})</p>
+
+                        @for (reply of question.replies; track $index) {
+                          <article class="flex items-start gap-3">
+                            <img [src]="avatarFor(reply.author)" alt="" class="h-10 w-10 shrink-0 rounded-full object-cover" />
+
+                            <div class="min-w-0 flex-1">
+                              <div class="flex items-start justify-between gap-2">
+                                <div>
+                                  <p class="text-[12px] leading-4" [class]="reply.role === 'Giảng viên' ? 'font-semibold text-[#0088E8]' : 'text-[#56647A]'">{{ reply.role }}</p>
+                                  <p class="text-[14px] font-semibold leading-5 text-[#051127]">{{ reply.author }}</p>
                                 </div>
-                                <span class="text-[10px] text-[#90A1B9]">{{ reply.date }}</span>
+                                <span class="shrink-0 pt-1.5 text-[12px] leading-4 text-[#56647A]">{{ reply.date }}</span>
                               </div>
-                              <p class="mt-1.5 text-[13px] leading-5 text-[#45556C]">{{ reply.body }}</p>
+
+                              <div class="mt-[7px]">
+                                <p class="text-[14px] leading-[22.75px] text-[#051127]">{{ reply.body }}</p>
+                                @if (reply.author === 'Bạn') {
+                                  <button type="button" class="text-[12px] font-medium leading-[18px] text-[#2563EB] hover:underline">Chỉnh sửa</button>
+                                }
+                              </div>
+
                               @if (reply.relatedLessonTitle) {
-                                <div class="mt-2 flex items-center justify-between gap-2 rounded-lg bg-[#F8FAFF] p-2.5">
-                                  <div class="min-w-0">
-                                    <p class="text-[10px] text-[#62748E]">Thông tin bài học liên quan</p>
-                                    <p class="mt-0.5 flex items-center gap-1.5 truncate text-[11px] font-medium text-[#155DFC]">
-                                      <svg lucideCirclePlay class="h-3.5 w-3.5 shrink-0" aria-hidden="true"></svg>
-                                      {{ reply.relatedLessonTitle }}
-                                    </p>
+                                <div class="mt-[7px] rounded-2xl border border-[#DCE6F2] bg-[#EBF3FC]/60 px-3 pb-3 pt-[17px]">
+                                  <p class="text-[11px] leading-[16.5px] text-[#56647A]">Thông tin bài học liên quan</p>
+                                  <div class="mt-1.5 flex h-8 items-center justify-between gap-3">
+                                    <div class="flex min-w-0 items-center gap-3">
+                                      <span class="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-[#DBF0FF] text-[#2076FF]">
+                                        <svg lucideCirclePlay class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                                      </span>
+                                      <p class="min-w-0 truncate text-[12px] font-semibold leading-4 text-[#2076FF]">{{ reply.relatedLessonTitle }}</p>
+                                    </div>
+                                    @if (reply.role === 'Giảng viên') {
+                                      <button type="button" (click)="startQuestionReply(question)" class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-xl border border-[#2076FF] px-3 text-[12px] font-semibold leading-4 text-[#2076FF]">
+                                        <svg lucideMessageSquare class="h-3.5 w-3.5" aria-hidden="true"></svg>
+                                        Trả lời
+                                      </button>
+                                    }
                                   </div>
-                                  <button type="button" class="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-[#155DFC] px-2 text-[11px] font-medium text-[#155DFC]">
-                                    <svg lucideMessageSquare class="h-3 w-3" aria-hidden="true"></svg>
-                                    Trả lời
-                                  </button>
                                 </div>
                               }
                             </div>
-                          }
-                        </div>
+                          </article>
+                        }
                       }
-
-                      <div class="mt-3 flex items-center justify-between">
-                        <button type="button" (click)="startQuestionReply(question)" class="text-[11px] font-medium text-[#62748E] hover:text-[#155DFC]">
-                          {{ replyingQuestionId === question.id ? 'Hủy trả lời' : 'Trả lời câu hỏi' }}
-                        </button>
-                        <button type="button" (click)="startQuestionReply(question)" class="inline-flex h-7 items-center gap-1 rounded-md border border-[#E2E8F0] px-2 text-[11px] text-[#62748E] hover:border-[#155DFC] hover:text-[#155DFC]">
-                          <svg lucideMessageSquare class="h-3 w-3" aria-hidden="true"></svg>
-                          Trả lời
-                        </button>
-                      </div>
-
-                      @if (replyingQuestionId === question.id) {
-                        <form class="mt-2 flex gap-2" (ngSubmit)="submitQuestionReply(question)">
-                          <input
-                            name="question-reply-{{ question.id }}"
-                            [(ngModel)]="questionReplyDraft"
-                            placeholder="Nhập câu trả lời của bạn..."
-                            class="h-9 min-w-0 flex-1 rounded-lg border border-[#E2E8F0] px-3 text-[12px] outline-none focus:border-[#155DFC]"
-                          />
-                          <button type="submit" [disabled]="!questionReplyDraft.trim()" class="grid h-9 w-9 place-items-center rounded-lg bg-[#155DFC] text-white disabled:bg-[#BFD4FF]" aria-label="Gửi trả lời">
-                            <svg lucideSend class="h-4 w-4" aria-hidden="true"></svg>
-                          </button>
-                        </form>
-                      }
-                    </article>
-                  }
-                </div>
+                    }
+                  </div>
                 </section>
               }
 
-              <!-- Figma 3173:10690 - tab "Thảo luận" của cùng trang dashboard khóa học. -->
+              <!-- Figma 3173:10689 - tab "Thảo luận" của cùng trang dashboard khóa học. -->
               @case ('discussion') {
                 <section class="rounded-[20px] border border-[#E0E5EB] bg-white p-6">
                   <div class="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                      <h2 class="text-[21.6px] font-bold leading-7 text-[#0F172B]">Thảo luận chung</h2>
-                      <p class="mt-1 text-[16px] leading-6 text-[#62748E]">Tham gia thảo luận cùng tất cả học viên trong khóa học.</p>
+                      <h2 class="text-[18px] font-bold leading-7 text-[#0F1926]">Thảo luận chung</h2>
+                      <p class="mt-1 text-[16.8px] leading-5 text-[#677383]">Tham gia thảo luận cùng tất cả học viên trong khóa học.</p>
                     </div>
 
                     <div class="relative">
                       <select
                         [value]="discussionSort"
                         (change)="discussionSort = $any($event.target).value"
-                        class="h-10 w-[144px] appearance-none rounded-xl border border-[#E0E5EB] bg-white pl-4 pr-9 text-[13px] font-medium text-[#0F172B] outline-none transition focus:border-[#2076FF]"
+                        class="h-10 w-[144px] appearance-none rounded-xl border border-[#E0E5EB] bg-white pl-4 pr-9 text-[14px] font-medium leading-5 text-[#0F1926] outline-none transition focus:border-[#2076FF]"
                         aria-label="Sắp xếp thảo luận"
                       >
                         <option value="newest">Mới nhất</option>
                         <option value="popular">Nổi bật</option>
                         <option value="oldest">Cũ nhất</option>
                       </select>
-                      <svg lucideChevronDown class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#0F172B]" aria-hidden="true"></svg>
+                      <svg lucideChevronDown class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#677383]" aria-hidden="true"></svg>
                     </div>
                   </div>
 
-                  <form class="mt-5" (ngSubmit)="submitComment()">
+                  <form class="mt-6" (ngSubmit)="submitComment()">
                     <input
                       name="comment"
                       [(ngModel)]="commentDraft"
                       maxlength="500"
                       placeholder="Chia sẻ thảo luận của bạn..."
-                      class="h-11 w-full rounded-xl border border-[#E0E5EB] px-4 text-[14px] text-[#0F172B] outline-none transition placeholder:text-[#90A1B9] focus:border-[#2076FF]"
+                      class="h-11 w-full rounded-xl border border-[#E0E5EB] px-4 text-[14px] leading-[17px] text-[#0F1926] outline-none transition placeholder:text-[#677383] focus:border-[#2076FF]"
                     />
                     <button
                       type="submit"
                       [disabled]="!commentDraft.trim()"
-                      class="mt-3 h-10 w-[168px] rounded-xl bg-[#1E64EF] text-[14px] font-semibold text-white transition hover:bg-[#1557D6] disabled:cursor-not-allowed disabled:opacity-50"
+                      class="mt-4 h-10 w-[168px] rounded-xl bg-[#1E64EF] text-[14px] font-semibold leading-5 text-[#FCFCFC] transition hover:bg-[#1557D6] disabled:cursor-not-allowed"
                     >
                       Đăng thảo luận
                     </button>
                   </form>
 
-                  <div class="mt-6 space-y-3">
+                  <div class="mt-6 space-y-4">
                     @for (post of sortedDiscussions; track post.id) {
                       <article class="rounded-2xl border border-[#E0E5EB] bg-white p-4">
                         <div class="flex items-start gap-3">
-                          <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#F1F5F9] text-[12px] font-bold text-[#45556C]">
-                            {{ post.initials }}
-                          </span>
+                          <img [src]="avatarFor(post.author)" alt="" class="h-10 w-10 shrink-0 rounded-full object-cover" />
 
                           <div class="min-w-0 flex-1">
-                            <p class="text-[14px] font-semibold leading-5 text-[#0F172B]">{{ post.author }}</p>
-                            <p class="text-[12px] leading-4 text-[#90A1B9]">{{ post.createdAt }}</p>
-                            <p class="mt-2 text-[14px] leading-5 text-[#45556C]">{{ post.body }}</p>
+                            <div class="flex items-start justify-between gap-2">
+                              <div>
+                                <p class="text-[14px] font-semibold leading-5 text-[#0F1926]">{{ post.author }}</p>
+                                <p class="text-[12px] leading-4 text-[#677383]">{{ post.createdAt }}</p>
+                              </div>
 
-                            <div class="mt-3 flex flex-wrap items-center gap-6 text-[13px] text-[#56647A]">
+                              <button
+                                type="button"
+                                (click)="reportPost.set(post)"
+                                class="inline-flex h-7 shrink-0 items-center rounded-md border border-[#FBB7B7] bg-[#FFF1F1] px-2.5 text-[12px] font-medium leading-4 text-[#B91C1C] transition hover:bg-[#FFE4E4]"
+                              >
+                                Báo cáo
+                              </button>
+                            </div>
+
+                            <p class="mt-[7px] text-[14px] leading-[22.75px] text-[#0F1926]">{{ post.body }}</p>
+
+                            <div class="mt-3 flex flex-wrap items-center gap-6 pt-1 text-[14px] leading-5 text-[#677383]">
                               <button
                                 type="button"
                                 (click)="toggleLike(post)"
-                                class="-ml-2 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 transition-colors duration-200"
-                                [class]="
-                                  post.liked
-                                    ? 'bg-[#EAF2FF] font-semibold text-[#0B73FF]'
-                                    : 'text-[#56647A] hover:bg-[#F4F7FB] hover:text-[#0B73FF]'
-                                "
+                                class="inline-flex items-center gap-2 transition-colors duration-200"
+                                [class]="post.liked ? 'font-semibold text-[#0B73FF]' : 'hover:text-[#0B73FF]'"
                                 [attr.aria-pressed]="post.liked"
                                 [attr.title]="post.liked ? 'Bỏ thích nội dung này' : 'Thích nội dung này'"
                               >
@@ -641,34 +681,51 @@
                                 ></svg>
                                 Thích ({{ post.likes }})
                               </button>
-                              <button type="button" (click)="startReply(post)" class="inline-flex items-center gap-1.5 transition hover:text-[#155DFC]">
+                              <button type="button" (click)="startReply(post)" class="inline-flex items-center gap-2 transition hover:text-[#155DFC]">
                                 <svg lucideMessageSquare class="h-4 w-4" aria-hidden="true"></svg>
                                 Trả lời ({{ post.replies.length }})
                               </button>
                             </div>
 
                             @if (replyingToId === post.id) {
+                              @if (post.replies.length) {
+                                <div class="mt-3 rounded-xl bg-[#F8FAFC] p-3">
+                                  <p class="text-[11px] font-semibold uppercase tracking-wide text-[#90A1B9]">
+                                    Câu trả lời ({{ post.replies.length }})
+                                  </p>
+                                  <div class="mt-2 space-y-2">
+                                    @for (reply of post.replies; track reply.id) {
+                                      <div class="flex items-start gap-2.5 rounded-lg border border-[#EDF1F6] bg-white p-2.5">
+                                        <img [src]="avatarFor(reply.author)" alt="" class="h-8 w-8 shrink-0 rounded-full object-cover" />
+                                        <div class="min-w-0 flex-1">
+                                          <div class="flex flex-wrap items-center gap-2">
+                                            <span class="text-[13px] font-semibold text-[#0F172B]">{{ reply.author }}</span>
+                                            @if (reply.role === 'Giảng viên') {
+                                              <span class="rounded bg-[#E8F1FF] px-1.5 py-0.5 text-[10px] font-semibold text-[#155DFC]">Giảng viên</span>
+                                            }
+                                            <span class="text-[11px] text-[#90A1B9]">{{ reply.createdAt }}</span>
+                                          </div>
+                                          <p class="mt-1 text-[13px] leading-5 text-[#45556C]">{{ reply.body }}</p>
+                                        </div>
+                                      </div>
+                                    }
+                                  </div>
+                                </div>
+                              }
+
                               <form class="mt-3 flex gap-2" (ngSubmit)="submitReply(post)">
                                 <input
                                   name="reply-{{ post.id }}"
                                   [(ngModel)]="replyDraft"
                                   placeholder="Trả lời {{ post.author }}..."
-                                  class="h-9 min-w-0 flex-1 rounded-lg border border-[#E0E5EB] px-3 text-[13px] outline-none focus:border-[#2076FF]"
+                                  class="h-10 min-w-0 flex-1 rounded-[9px] border border-[#E0E5EB] px-3 text-[13px] outline-none transition focus:border-[#2076FF]"
                                 />
-                                <button type="submit" [disabled]="!replyDraft.trim()" class="grid h-9 w-9 place-items-center rounded-lg bg-[#155DFC] text-white disabled:bg-[#BFD4FF]" aria-label="Gửi trả lời">
+                                <button type="submit" [disabled]="!replyDraft.trim()" class="grid h-10 w-10 place-items-center rounded-[9px] bg-[#1E64EF] text-white disabled:cursor-not-allowed disabled:bg-[#BFD4FF]" aria-label="Gửi trả lời">
                                   <svg lucideSend class="h-4 w-4" aria-hidden="true"></svg>
                                 </button>
                               </form>
                             }
                           </div>
-
-                          <button
-                            type="button"
-                            (click)="reportPost.set(post)"
-                            class="inline-flex h-8 shrink-0 items-center rounded-lg border border-[#FCA5A5] px-3 text-[12px] font-medium text-[#EF4444] transition hover:bg-[#FEF2F2]"
-                          >
-                            Báo cáo
-                          </button>
                         </div>
                       </article>
                     }

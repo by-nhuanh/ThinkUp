@@ -114,10 +114,11 @@
                       type="button"
                       class="rm-btn rm-btn--soft rm-btn--sm test-submit"
                       [class.test-submit--ready]="canSubmit()"
-                      [attr.aria-disabled]="!canSubmit()"
+                      [attr.aria-disabled]="!canSubmit() || submitting()"
+                      [disabled]="submitting()"
                       (click)="submit()"
                     >
-                      Nộp bài test
+                      {{ submitting() ? 'Đang nộp bài...' : 'Nộp bài test' }}
                     </button>
                   </div>
                 </footer>
@@ -183,12 +184,17 @@
     } @else {
       <div class="rm-card test-empty">
         <svg lucideCodeXml aria-hidden="true" [size]="32" [strokeWidth]="1.5"></svg>
-        <h1 class="rm-card-title">Không tìm thấy bài test</h1>
-        <p class="rm-base">Giai đoạn bạn chọn không tồn tại hoặc chưa có đề thi.</p>
-        <a class="rm-btn rm-btn--primary rm-btn--sm" [routerLink]="['/learning/roadmap', roadmapId]">
-          <svg lucideArrowLeft aria-hidden="true" [size]="16" [strokeWidth]="2"></svg>
-          Về lộ trình học
-        </a>
+        @if (loading()) {
+          <h1 class="rm-card-title">Đang tải bài test</h1>
+          <p class="rm-base">Vui lòng chờ trong giây lát...</p>
+        } @else {
+          <h1 class="rm-card-title">Không tìm thấy bài test</h1>
+          <p class="rm-base">{{ error() ?? 'Giai đoạn bạn chọn không tồn tại hoặc chưa có đề thi.' }}</p>
+          <a class="rm-btn rm-btn--primary rm-btn--sm" [routerLink]="['/learning/roadmap', roadmapId]">
+            <svg lucideArrowLeft aria-hidden="true" [size]="16" [strokeWidth]="2"></svg>
+            Về lộ trình học
+          </a>
+        }
       </div>
     }
   </div>

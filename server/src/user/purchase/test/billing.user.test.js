@@ -26,21 +26,116 @@ import { getMongoDb, closeMongoDb } from '../../db.js';
 
 // ─── Hằng số kiểm thử ────────────────────────────────────────────────────────
 
-const TEST_USER_ID = '1';
+const TEST_USER_ID = 'billing-history-test-user';
 const OTHER_USER_ID = '999999';
+const TEST_COURSE_ID = 'billing-history-course';
+const TEST_TRANSACTION_ID = 'TXN-BILLING-HISTORY-01';
+const TEST_ORDER_ID = 'DH-BILLING-HISTORY-01';
+const INCOMPLETE_TRANSACTION_ID = 'TXN-BILLING-LEGACY-INCOMPLETE';
+const INCONSISTENT_TRANSACTION_ID = 'TXN-BILLING-SNAPSHOT-INCONSISTENT';
 
 describe('Chức Năng Chi Tiết Giao Dịch & Hóa Đơn Điện Tử (Billing)', () => {
   let sampleTxn = null;
+  let db = null;
 
   before(async () => {
-    const db = await getMongoDb();
-    // Lấy một giao dịch thực tế của user 1 để kiểm thử
-    sampleTxn = await db.collection('payment_transactions').findOne({
-      user_id: TEST_USER_ID,
+    db = await getMongoDb();
+    const transactions = db.collection('payment_transactions');
+    await Promise.all([
+      transactions.deleteMany({ user_id: TEST_USER_ID }),
+      db.collection('users').deleteMany({ id: TEST_USER_ID }),
+      db.collection('courses').deleteMany({ course_id: TEST_COURSE_ID }),
+    ]);
+    await db.collection('users').insertOne({
+      id: TEST_USER_ID,
+      full_name: 'Nguyễn Người Mua',
+      email: 'billing-test@example.invalid',
+      phone: '0900000000',
     });
+    await db.collection('courses').insertOne({
+      course_id: TEST_COURSE_ID,
+      title: 'Tên khóa học hiện tại đã đổi',
+      price: 70000,
+      original_price: 80000,
+      thumbnail_url: 'current-thumbnail.png',
+    });
+    const historicalSnapshot = {
+      courses: [{
+        id: TEST_COURSE_ID,
+        title: 'Tên khóa học lúc mua',
+        price: 150000,
+        original_price: 200000,
+        thumbnail_url: 'purchase-thumbnail.png',
+      }],
+      subtotal: 200000,
+      sale_subtotal: 150000,
+      voucher_code: 'SAVE20K',
+      voucher_discount: 20000,
+      total: 130000,
+    };
+    await transactions.insertMany([
+      {
+        transaction_id: TEST_TRANSACTION_ID,
+        order_id: TEST_ORDER_ID,
+        user_id: TEST_USER_ID,
+        payment_method: 'sepay',
+        amount: 130000,
+        currency: 'VND',
+        status: 'success',
+        transfer_content: `THINKUP ${TEST_TRANSACTION_ID}`,
+        order_summary: JSON.stringify(historicalSnapshot),
+        created_at: new Date('2026-07-13T10:00:00.000Z'),
+        paid_at: new Date('2026-07-13T10:05:00.000Z'),
+      },
+      {
+        transaction_id: INCOMPLETE_TRANSACTION_ID,
+        order_id: 'DH-BILLING-LEGACY-INCOMPLETE',
+        user_id: TEST_USER_ID,
+        payment_method: 'sepay',
+        amount: 130000,
+        currency: 'VND',
+        status: 'success',
+        order_summary: JSON.stringify({
+          courses: [{ id: TEST_COURSE_ID, title: 'Legacy course', price: 150000 }],
+          subtotal: 200000,
+          sale_subtotal: 150000,
+          voucher_code: 'SAVE20K',
+          voucher_discount: 20000,
+          total: 130000,
+        }),
+      },
+      {
+        transaction_id: INCONSISTENT_TRANSACTION_ID,
+        order_id: 'DH-BILLING-SNAPSHOT-INCONSISTENT',
+        user_id: TEST_USER_ID,
+        payment_method: 'sepay',
+        amount: 130000,
+        currency: 'VND',
+        status: 'success',
+        order_summary: JSON.stringify({
+          courses: [{ id: TEST_COURSE_ID, title: 'Historical course', price: 150000, original_price: 200000 }],
+          subtotal: 200000,
+          sale_subtotal: 150000,
+          voucher_code: 'SAVE20K',
+          voucher_discount: 20000,
+          total: 120000,
+        }),
+      },
+    ]);
+    sampleTxn = await transactions.findOne({ transaction_id: TEST_TRANSACTION_ID });
   });
 
   after(async () => {
+    if (db) {
+      await Promise.all([
+        db.collection('payment_transactions').deleteMany({ user_id: TEST_USER_ID }),
+        db.collection('users').deleteMany({ id: TEST_USER_ID }),
+        db.collection('courses').deleteMany({ course_id: TEST_COURSE_ID }),
+      ]);
+      assert.equal(await db.collection('payment_transactions').countDocuments({ user_id: TEST_USER_ID }), 0);
+      assert.equal(await db.collection('users').countDocuments({ id: TEST_USER_ID }), 0);
+      assert.equal(await db.collection('courses').countDocuments({ course_id: TEST_COURSE_ID }), 0);
+    }
     await closeMongoDb();
   });
 
@@ -156,6 +251,27 @@ describe('Chức Năng Chi Tiết Giao Dịch & Hóa Đơn Điện Tử (Billing
       assert.ok('total' in detail.order, 'Thiếu order.total');
       assert.ok('total_number' in detail.order, 'Thiếu order.total_number');
       assert.ok(detail.order.total_number >= 0, 'total_number không được âm');
+      assert.equal(detail.order.courses[0].price_number, 150000);
+      assert.equal(detail.order.courses[0].original_price_number, 200000);
+      assert.equal(detail.order.subtotal_number, 200000);
+      assert.equal(detail.order.course_discount_number, 50000);
+      assert.equal(detail.order.voucher_discount_number, 20000);
+      assert.equal(detail.order.total_number, 130000);
+      assert.equal(detail.order.courses[0].title, 'Tên khóa học lúc mua');
+    });
+
+    it('TC-ORDER-03: Từ chối hóa đơn legacy thiếu giá gốc snapshot thay vì lấy giá catalog hiện tại', async () => {
+      await assert.rejects(
+        () => getTransactionBillingDetail(TEST_USER_ID, INCOMPLETE_TRANSACTION_ID),
+        error => error.status === 409 && error.code === 'BILLING_SNAPSHOT_INCOMPLETE',
+      );
+    });
+
+    it('TC-ORDER-04: Từ chối hóa đơn khi số tổng snapshot không khớp', async () => {
+      await assert.rejects(
+        () => getTransactionBillingDetail(TEST_USER_ID, INCONSISTENT_TRANSACTION_ID),
+        error => error.status === 409 && error.code === 'BILLING_SNAPSHOT_INCONSISTENT',
+      );
     });
   });
 
@@ -246,4 +362,29 @@ describe('Chức Năng Chi Tiết Giao Dịch & Hóa Đơn Điện Tử (Billing
       assert.equal(typeof router, 'function', 'Express router là middleware function');
     });
   });
+});
+
+it('Learning integration: billing preserves UTC instants and renders selected timezone', () => {
+  const source = '2026-10-30T18:00:00Z';
+  const result = formatDateTimeParts(source, 'Asia/Tokyo');
+  assert.equal(result.full, '31/10/2026 03:00:00');assert.equal(result.iso, '2026-10-30T18:00:00.000Z');
+  assert.equal(formatDateTimeParts('2026-10-31 01:00:00', 'Etc/UTC').full, '30/10/2026 18:00:00');
+  assert.equal(formatDateTimeParts('bad'), null);
+});
+
+it('Learning integration: billing loads owner timezone while retaining immutable payment snapshot', async () => {
+  const tx = { transaction_id: 'txn', order_id: 'order', user_id: 'learner', status: 'success', amount: 70,
+    created_at: '2026-10-30T18:00:00Z', paid_at: '2026-10-30T18:00:00Z',
+    order_summary: { courses: [{ id: 'course', title: 'Course', price: 80, original_price: 100 }], subtotal: 100, sale_subtotal: 80, voucher_code: 'VOUCHER', voucher_discount: 10, total: 70 } };
+  let preferenceReads = 0;
+  const db = { collection(name) { return { async findOne() {
+    if (name === 'payment_transactions') return tx;
+    if (name === 'learning_preferences') { preferenceReads++;return { timezone: 'Asia/Tokyo' }; }
+    if (['users', 'courses', 'instructor_profiles'].includes(name)) return null;
+    throw new Error(name);
+  } }; } };
+  await assert.rejects(getTransactionBillingDetail('other', 'txn', { db }), { status: 403 });assert.equal(preferenceReads, 0);
+  const result = await getTransactionBillingDetail('learner', 'txn', { db });
+  assert.equal(result.timezone, 'Asia/Tokyo');assert.equal(result.created_at, '31/10/2026 03:00:00');
+  assert.equal(result.created_at_iso, '2026-10-30T18:00:00.000Z');assert.equal(result.order.total_number, 70);
 });

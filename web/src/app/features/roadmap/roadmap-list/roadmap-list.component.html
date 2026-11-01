@@ -32,9 +32,12 @@
             type="button"
             class="rm-btn rm-btn--outline rm-btn--sm roadmap-card__select"
             [class.roadmap-card__select--active]="isEnrolled(roadmap.id)"
+            [disabled]="isEnrolling(roadmap.id)"
             (click)="toggleEnroll(roadmap)"
           >
-            @if (isEnrolled(roadmap.id)) {
+            @if (isEnrolling(roadmap.id)) {
+              Đang xử lý...
+            } @else if (isEnrolled(roadmap.id)) {
               <svg lucideCircleCheck aria-hidden="true" [size]="16" [strokeWidth]="2"></svg>
               Đã chọn lộ trình
             } @else {
@@ -51,6 +54,16 @@
             </a>
           </div>
         </article>
+      } @empty {
+        <div class="rm-card roadmap-list__state">
+          @if (loading()) {
+            <p class="rm-base">Đang tải danh sách lộ trình...</p>
+          } @else if (error(); as message) {
+            <p class="rm-base">{{ message }}</p>
+          } @else {
+            <p class="rm-base">Chưa có lộ trình học nào được mở.</p>
+          }
+        </div>
       }
     </div>
   </div>

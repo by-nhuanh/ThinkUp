@@ -1,10 +1,37 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
-import { catchError, tap } from 'rxjs/operators';
+import { Observable, catchError, map, tap, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Course } from '../models/course.model';
-import { MOCK_COURSES } from '../data/mock/mock-courses';
+
+interface FavoriteCourseDto {
+  course_id: string;
+  title: string;
+  slug?: string;
+  thumbnail?: string;
+  rating?: number | string;
+  total_reviews?: number | string;
+  total_students?: number | string;
+  price?: {
+    sale?: number | string;
+    original?: number | string;
+  };
+}
+
+interface FavoritesListResponse {
+  success: boolean;
+  data: {
+    courses: FavoriteCourseDto[];
+  };
+}
+
+interface FavoriteToggleResponse {
+  success: boolean;
+  data: {
+    course_id: string;
+    is_favorite: boolean;
+  };
+}
 
 @Injectable({ providedIn: 'root' })
 export class FavoritesService {
@@ -29,13 +56,9 @@ export class FavoritesService {
           return;
         }
       }
-      // TODO(pre-deploy): Nhớ xóa danh sách yêu thích mock khi có API thật.
-      // Default initial mock favorites if first time
-      const initialFavs = MOCK_COURSES.slice(0, 3);
-      this._favorites.set(initialFavs);
-      this.saveToStorage(initialFavs);
+      this._favorites.set([]);
     } catch {
-      this._favorites.set(MOCK_COURSES.slice(0, 3));
+      this._favorites.set([]);
     }
   }
 
@@ -52,48 +75,70 @@ export class FavoritesService {
   }
 
   loadFavorites(): Observable<Course[]> {
-    return this.http.get<{ success: boolean; data: Course[] }>(`${this.apiUrl}/user/favorites`, { withCredentials: true }).pipe(
-      tap(res => {
-        if (res.success && res.data) {
-          this._favorites.set(res.data);
-          this.saveToStorage(res.data);
-        }
-      }),
-      catchError(() => {
-        this.loadFromStorage();
-        return of(this._favorites());
+    return this.http.get<FavoritesListResponse>(`${this.apiUrl}/user/favorites`).pipe(
+      map(response => response.data.courses.map(course => this.mapCourse(course))),
+      tap(courses => {
+        this._favorites.set(courses);
+        this.saveToStorage(courses);
       })
-    ) as Observable<any>;
+    );
   }
 
   toggleFavorite(course: Course): Observable<{ success: boolean; data: Course[]; isFavorite: boolean }> {
     const courseId = course.id;
-    const isFav = this.isFavorite(courseId);
+    const wasFavorite = this.isFavorite(courseId);
 
     // Update state immediately for instant responsive UX
     const current = this._favorites();
-    const next = isFav
+    const next = wasFavorite
       ? current.filter(c => c.id !== courseId)
       : [course, ...current];
     this._favorites.set(next);
     this.saveToStorage(next);
 
-    return this.http.request<{ success: boolean; data: Course[] }>(
-      isFav ? 'DELETE' : 'POST',
-      `${this.apiUrl}/user/favorites`,
-      {
-        body: { courseId },
-        withCredentials: true,
-        headers: { 'Content-Type': 'application/json' }
-      }
-    ).pipe(
-      tap(res => {
-        if (res.success && res.data) {
-          this._favorites.set(res.data);
-          this.saveToStorage(res.data);
+    return this.http.post<FavoriteToggleResponse>(`${this.apiUrl}/user/favorites/toggle`, {
+      course_id: courseId,
+    }).pipe(
+      map(response => ({
+        success: response.success,
+        data: next,
+        isFavorite: response.data.is_favorite,
+      })),
+      tap(result => {
+        if (result.isFavorite !== !wasFavorite) {
+          const reconciled = result.isFavorite
+            ? [course, ...current.filter(item => item.id !== courseId)]
+            : current.filter(item => item.id !== courseId);
+          this._favorites.set(reconciled);
+          this.saveToStorage(reconciled);
         }
       }),
-      catchError(() => of({ success: true, data: next, isFavorite: !isFav }))
-    ) as Observable<any>;
+      catchError(error => {
+        this._favorites.set(current);
+        this.saveToStorage(current);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  private mapCourse(course: FavoriteCourseDto): Course {
+    return {
+      id: course.course_id,
+      courseId: course.course_id,
+      slug: course.slug,
+      title: course.title,
+      instructor: 'Giảng viên ThinkUp',
+      rating: this.toNumber(course.rating),
+      ratingCount: this.toNumber(course.total_reviews),
+      studentsCount: this.toNumber(course.total_students),
+      originalPrice: this.toNumber(course.price?.original),
+      salePrice: this.toNumber(course.price?.sale),
+      thumbnailUrl: course.thumbnail,
+    };
+  }
+
+  private toNumber(value: number | string | null | undefined): number {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
   }
 }

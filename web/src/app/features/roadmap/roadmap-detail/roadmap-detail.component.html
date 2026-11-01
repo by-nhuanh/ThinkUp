@@ -20,9 +20,12 @@
             type="button"
             class="rm-btn rm-btn--outline detail-head__enroll"
             [class.detail-head__enroll--active]="isEnrolled()"
+            [disabled]="enrolling()"
             (click)="toggleEnroll()"
           >
-            @if (isEnrolled()) {
+            @if (enrolling()) {
+              Đang xử lý...
+            } @else if (isEnrolled()) {
               <svg lucideCircleCheck aria-hidden="true" [size]="17" [strokeWidth]="2"></svg>
               Đã chọn lộ trình
             } @else {
@@ -171,11 +174,15 @@
           </button>
         </div>
       }
+    } @else if (loading()) {
+      <div class="rm-card detail-empty">
+        <p class="rm-base">Đang tải lộ trình...</p>
+      </div>
     } @else {
       <div class="rm-card detail-empty">
         <svg lucideSearch aria-hidden="true" [size]="32" [strokeWidth]="1.5"></svg>
         <h1 class="rm-card-title">Không tìm thấy lộ trình</h1>
-        <p class="rm-base">Lộ trình bạn mở không tồn tại hoặc đã bị gỡ.</p>
+        <p class="rm-base">{{ error() ?? 'Lộ trình bạn mở không tồn tại hoặc đã bị gỡ.' }}</p>
         <a class="rm-btn rm-btn--primary rm-btn--sm" routerLink="/learning/roadmap">
           Về danh sách lộ trình
           <svg lucideArrowRight aria-hidden="true" [size]="16" [strokeWidth]="2"></svg>

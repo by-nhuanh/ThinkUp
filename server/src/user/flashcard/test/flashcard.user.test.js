@@ -11,6 +11,7 @@ import {
   LEARNING_MODE_RESTART,
   ROADMAP_STATUS_REVIEW,
   ROADMAP_STATUS_COMPLETED,
+  ROADMAP_STATUS_IN_PROGRESS,
   formatDateDDMMYYYY,
   cycleCardStatus,
   normalizeCardStatusAction,
@@ -228,6 +229,25 @@ test('Flashcard User Backend Service Test Suite', async (t) => {
     assert.equal(step3.new_status, CARD_STATUS_NOT_LEARNED);
   });
 
+  await t.test('5.1 Cập nhật đồng thời nhiều thẻ không làm mất trạng thái đã ghi', async () => {
+    const cards = Array.from({ length: 8 }, (_, index) => ({
+      knowledge: `Concurrent card ${index + 1}`,
+      description: '',
+      code: '',
+      note: '',
+    }));
+    const list = await createFlashcardList(testUserId, { title: 'Concurrent updates', cards });
+
+    await Promise.all(list.cards.map(card =>
+      updateCardStatus(list.id, card.card_id, testUserId, 'đã học'),
+    ));
+
+    const savedList = await getFlashcardsInList(list.id, testUserId);
+    assert.equal(savedList.learned_cards, cards.length);
+    assert.equal(savedList.progress_percentage, 100);
+    assert.ok(savedList.cards.every(card => card.status === CARD_STATUS_LEARNED));
+  });
+
   await t.test('6. 3 Chế độ học (order, random, restart) và lọc thẻ áp dụng (chỉ thẻ cần ôn tập & chưa học):', async (sub) => {
     // Tạo 1 list 6 thẻ
     const sampleCards = [
@@ -395,7 +415,7 @@ test('Flashcard User Backend Service Test Suite', async (t) => {
     });
 
     let list10;
-    await sub.test('8.2 Có đủ >= 5 flashcard nhưng CHƯA đạt tối thiểu 70%: Giữ nguyên trạng thái review', async () => {
+    await sub.test('8.2 Có đủ >= 5 flashcard nhưng CHƯA hoàn thành hết (chưa đạt 100%): Giữ nguyên trạng thái review', async () => {
       const cards10 = Array.from({ length: 10 }, (_, i) => ({
         knowledge: `Thẻ kỹ năng HTML số ${i + 1}`,
         description: 'Chi tiết kiến thức',
@@ -409,7 +429,7 @@ test('Flashcard User Backend Service Test Suite', async (t) => {
         cards: cards10,
       });
 
-      // Chỉ đánh dấu 6/10 thẻ là "Đã học" (60% < 70%)
+      // Chỉ đánh dấu 6/10 thẻ là "Đã học" (60% < 100%)
       for (let i = 0; i < 6; i++) {
         await updateCardStatus(list10.id, list10.cards[i].card_id, testUserId, 'đã học');
       }
@@ -420,7 +440,7 @@ test('Flashcard User Backend Service Test Suite', async (t) => {
         list10.id
       );
 
-      assert.equal(syncResult.updated, false, 'Không được cập nhật khi đạt dưới 70%');
+      assert.equal(syncResult.updated, false, 'Không được cập nhật khi chưa hoàn thành hết tất cả các thẻ');
       assert.equal(syncResult.node_status, ROADMAP_STATUS_REVIEW);
       assert.equal(syncResult.progress_percentage, 60);
 
@@ -431,14 +451,17 @@ test('Flashcard User Backend Service Test Suite', async (t) => {
       assert.equal(nodeInDb.is_review, true);
     });
 
-    await sub.test('8.3 Có >= 5 flashcard VÀ đạt >= 70%: Cập nhật thành công trạng thái node trên roadmap', async () => {
-      // Học thêm 1 thẻ nữa từ list10 để thành 7/10 thẻ (70% >= 70%)
-      const card7 = list10.cards[6].card_id;
-      const updateRes = await updateCardStatus(list10.id, card7, testUserId, 'đã học');
+    await sub.test('8.3 Có >= 5 flashcard VÀ ĐÃ HOÀN THÀNH HẾT (100% thẻ): Cập nhật thành công trạng thái node trên roadmap', async () => {
+      // Học nốt 4 thẻ còn lại từ list10 để hoàn thành toàn bộ 10/10 thẻ (100%)
+      let updateRes;
+      for (let i = 6; i < 10; i++) {
+        updateRes = await updateCardStatus(list10.id, list10.cards[i].card_id, testUserId, 'đã học');
+      }
 
-      assert.equal(updateRes.stats.progress_percentage, 70);
+      assert.equal(updateRes.stats.progress_percentage, 100);
+      assert.equal(updateRes.stats.learned_cards, 10);
       assert.ok(updateRes.roadmap_sync);
-      assert.equal(updateRes.roadmap_sync.updated, true, 'Đã đạt 70% và >= 5 thẻ -> Cập nhật lộ trình');
+      assert.equal(updateRes.roadmap_sync.updated, true, 'Đã đạt 100% và >= 5 thẻ -> Cập nhật lộ trình');
 
       // Kiểm tra trực tiếp trong collection user_roadmaps
       const roadmapInDb = await roadmapsColl.findOne({ user_id: testUserId });
@@ -452,6 +475,42 @@ test('Flashcard User Backend Service Test Suite', async (t) => {
       assert.equal(nodeInDb.is_review, false, 'Cờ is_review phải được gỡ bỏ');
       assert.equal(roadmapInDb.completed_nodes, 1);
       assert.equal(roadmapInDb.progress_percentage, 100);
+    });
+
+    await sub.test('8.4 Response trả đúng trạng thái phục hồi theo điểm node', async () => {
+      const lowScoreNodeId = 'fe-node-low-score-review-test';
+      await roadmapsColl.updateOne(
+        { user_id: testUserId },
+        { $push: { nodes: {
+          node_id: lowScoreNodeId,
+          title: 'Low score review node',
+          status: ROADMAP_STATUS_REVIEW,
+          is_review: true,
+          score: 50,
+        } } },
+      );
+      const completeCards = Array.from({ length: 5 }, (_, index) => ({
+        knowledge: `Completed review ${index + 1}`,
+        description: '',
+        code: '',
+        note: '',
+      }));
+      const reviewList = await createFlashcardList(testUserId, {
+        title: 'Low score review node',
+        node_id: lowScoreNodeId,
+        cards: completeCards,
+      });
+      for (const card of reviewList.cards) {
+        await updateCardStatus(reviewList.id, card.card_id, testUserId, 'đã học');
+      }
+
+      const syncResult = await checkAndUpdateRoadmapFromFlashcard(testUserId, lowScoreNodeId, reviewList.id);
+      assert.equal(syncResult.updated, true);
+      assert.equal(syncResult.new_status, ROADMAP_STATUS_IN_PROGRESS);
+      const roadmap = await roadmapsColl.findOne({ user_id: testUserId });
+      const savedNode = roadmap.nodes.find(node => node.node_id === lowScoreNodeId);
+      assert.equal(savedNode.status, ROADMAP_STATUS_IN_PROGRESS);
+      assert.equal(savedNode.is_review, false);
     });
   });
 

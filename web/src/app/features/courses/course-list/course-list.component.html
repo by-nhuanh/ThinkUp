@@ -1,14 +1,12 @@
 <div class="min-h-screen bg-[#F9F9FF] text-[#0F172B]">
-  <main class="mx-auto w-full max-w-[1776px] px-5 py-8 sm:px-6">
-    <div class="mb-6">
-      <h1 class="text-[24px] font-bold leading-8 text-[#0F172B]">
-        Tìm kiếm khóa học
-      </h1>
-    </div>
+  <main class="mx-auto w-full max-w-[1736px] px-5 py-8 sm:px-6">
+    <h1 class="mb-6 text-[24px] font-bold leading-8 text-[#0F172B] sm:text-[28.8px]">
+      Tìm kiếm khóa học
+    </h1>
 
-    <div class="flex flex-col lg:flex-row gap-6 items-start">
-      <!-- Left Sticky Sidebar -->
-      <div class="hidden lg:block w-[260px] shrink-0 sticky top-[102px] max-h-[calc(100vh-120px)] overflow-y-auto">
+    <div class="flex flex-col items-start gap-6 lg:flex-row">
+      <!-- Left filter sidebar -->
+      <div class="sticky top-[102px] hidden max-h-[calc(100vh-120px)] w-[260px] shrink-0 overflow-y-auto lg:block">
         <app-filter-sidebar
           [filters]="filters()"
           [categories]="availableCategories()"
@@ -17,9 +15,9 @@
         />
       </div>
 
-      <!-- Right Main Content Area -->
-      <div class="flex-1 w-full flex flex-col gap-5">
-        <!-- Search and Suggestions -->
+      <!-- Right content -->
+      <div class="flex w-full min-w-0 flex-1 flex-col gap-5">
+        <!-- Search and suggestions -->
         <app-search-and-suggestions
           [searchQuery]="filters().query || ''"
           [suggestedTags]="availableTags()"
@@ -28,51 +26,100 @@
           (tagToggle)="onTagToggle($event)"
         />
 
-        <!-- Count and Sorting Bar -->
-        <div class="flex flex-col gap-3 py-1 sm:flex-row sm:items-center sm:justify-between">
-          <div class="text-[14px] text-slate-600 font-medium">
-            Hiển thị <span class="font-semibold text-[#0F172B]">{{ courses().length }}</span> khóa học
+        <!-- Result count and sorting -->
+        <div class="flex min-h-[38px] flex-col gap-3 py-0.5 sm:flex-row sm:items-center sm:justify-between">
+          <div class="text-[14px] font-normal leading-5 text-[#45556C]">
+            Hiển thị {{ courses().length }} khóa học
           </div>
 
           <div class="flex flex-wrap items-center gap-3">
-            <!-- Mobile Filter Toggle Button -->
+            <!-- Mobile filter trigger -->
             <button
               type="button"
               (click)="isMobileFilterOpen.set(true)"
-              class="flex lg:hidden items-center gap-2 px-3 py-2 border border-[#E2E8F0] bg-white hover:bg-slate-50 rounded-[8px] text-[14px] font-semibold text-slate-700 active:scale-95 transition-all"
+              class="flex h-[34px] items-center gap-2 rounded-[8px] border border-[#E2E8F0] bg-white px-3 text-[14px] font-normal leading-5 text-[#45556C] transition-colors hover:bg-[#F8FAFC] lg:hidden"
             >
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/>
+              <svg
+                class="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.33"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <line x1="4" x2="4" y1="21" y2="14" />
+                <line x1="4" x2="4" y1="10" y2="3" />
+                <line x1="12" x2="12" y1="21" y2="12" />
+                <line x1="12" x2="12" y1="8" y2="3" />
+                <line x1="20" x2="20" y1="21" y2="16" />
+                <line x1="20" x2="20" y1="12" y2="3" />
+                <line x1="2" x2="6" y1="14" y2="14" />
+                <line x1="10" x2="14" y1="8" y2="8" />
+                <line x1="18" x2="22" y1="16" y2="16" />
               </svg>
               <span>Bộ lọc</span>
             </button>
 
-            <!-- Sort Dropdown -->
+            <!-- Sort -->
             <div class="relative flex items-center gap-2">
-              <span class="hidden text-[14px] font-medium text-[#62748E] sm:inline">Sắp xếp:</span>
+              <span class="hidden text-[14px] font-normal leading-5 text-[#62748E] sm:inline">Sắp xếp:</span>
               <button
                 type="button"
                 (click)="isSortOpen.update(v => !v)"
-                class="flex h-[34px] items-center gap-2 rounded-[8px] border border-[#E2E8F0] bg-white px-3 text-[14px] font-medium text-slate-700 transition-all hover:bg-slate-50 active:scale-95"
+                class="flex h-[34px] items-center gap-2 rounded-[8px] border border-[#E2E8F0] bg-white px-3 text-[14px] font-normal leading-5 text-[#0F172B] transition-colors hover:bg-[#F8FAFC]"
+                [attr.aria-expanded]="isSortOpen()"
+                aria-haspopup="listbox"
               >
-                <svg class="w-3.5 h-3.5 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="m21 8-4-4-4 4"/><path d="M17 4v16"/>
-                </svg>
                 <span>{{ activeSortLabel() }}</span>
+                <svg
+                  class="h-4 w-4 text-[#62748E]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.33"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
               </button>
 
               @if (isSortOpen()) {
-                <div class="absolute right-0 top-10 z-20 w-[180px] overflow-hidden rounded-[8px] border border-[#E2E8F0] bg-white py-1 shadow-lg">
+                <div class="fixed inset-0 z-10" (click)="isSortOpen.set(false)" aria-hidden="true"></div>
+                <div
+                  class="absolute right-0 top-[42px] z-20 w-[288px] overflow-hidden rounded-[10px] border border-[#F1F5F9] bg-white py-2 shadow-[0_20px_25px_-5px_rgba(15,23,43,0.12),0_8px_10px_-6px_rgba(15,23,43,0.08)]"
+                  role="listbox"
+                  aria-label="Sắp xếp khóa học"
+                >
+                  <div class="px-4 py-2 text-[12px] font-semibold leading-4 text-[#90A1B9]">Sắp xếp theo</div>
+
                   @for (opt of sortOptions; track opt.id) {
                     <button
                       type="button"
                       (click)="onSortSelect(opt.id)"
-                      class="block w-full px-4 py-2 text-left text-[13px] hover:bg-[#F8FAFC]"
-                      [class.font-semibold]="filters().sort === opt.id"
-                      [class.text-[#0088E8]]="filters().sort === opt.id"
-                      [class.text-[#45556C]]="filters().sort !== opt.id"
+                      class="flex h-9 w-full items-center justify-between gap-2 px-4 py-2 text-left text-[14px] leading-5 transition-colors hover:bg-[#F8FAFC]"
+                      [ngClass]="filters().sort === opt.id ? 'font-semibold text-[#155DFC]' : 'font-normal text-[#0F172B]'"
+                      role="option"
+                      [attr.aria-selected]="filters().sort === opt.id"
                     >
-                      {{ opt.label }}
+                      <span>{{ opt.label }}</span>
+                      @if (filters().sort === opt.id) {
+                        <svg
+                          class="h-4 w-4 shrink-0"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.33"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                        >
+                          <path d="m5 12 4 4L19 6" />
+                        </svg>
+                      }
                     </button>
                   }
                 </div>
@@ -81,94 +128,136 @@
           </div>
         </div>
 
-        <!-- Course Cards Grid -->
+        <!-- Loading -->
         @if (loading()) {
           <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-            @for (i of [1,2,3,4,5,6,7,8]; track i) {
-              <div class="flex min-h-[410px] flex-col justify-between overflow-hidden rounded-[8px] border border-[#EEF0F3] bg-white animate-pulse">
+            @for (i of skeletons; track i) {
+              <div class="flex min-h-[410px] animate-pulse flex-col overflow-hidden rounded-[10px] border border-[#E2E8F0] bg-white">
                 <div class="h-[160px] bg-slate-200"></div>
-                <div class="p-4 space-y-3"><div class="h-5 bg-slate-200 rounded w-full"></div><div class="h-4 bg-slate-200 rounded w-1/2"></div></div>
+                <div class="flex flex-1 flex-col gap-3 p-4">
+                  <div class="h-5 w-full rounded bg-slate-200"></div>
+                  <div class="h-4 w-2/3 rounded bg-slate-200"></div>
+                  <div class="h-4 w-1/2 rounded bg-slate-200"></div>
+                  <div class="mt-auto h-8 w-full rounded bg-slate-100"></div>
+                </div>
               </div>
             }
           </div>
         }
 
+        <!-- Empty -->
         @if (!loading() && courses().length === 0) {
-          <div class="flex flex-col items-center justify-center min-h-[350px] p-8 text-center bg-white border border-[#E2E8F0] rounded-[8px]">
-            <h3 class="text-[18px] font-bold text-[#0F172B] mb-2">Không tìm thấy khóa học nào</h3>
-            <p class="text-[14px] text-[#62748E] mb-4">Vui lòng thử điều chỉnh lại bộ lọc hoặc từ khóa tìm kiếm.</p>
+          <div class="flex min-h-[350px] flex-col items-center justify-center rounded-[10px] border border-[#E2E8F0] bg-white p-8 text-center">
+            <h3 class="mb-2 text-[18px] font-bold leading-7 text-[#0F172B]">Không tìm thấy khóa học nào</h3>
+            <p class="mb-4 text-[14px] leading-5 text-[#62748E]">Vui lòng thử điều chỉnh lại bộ lọc hoặc từ khóa tìm kiếm.</p>
             <button
               type="button"
               (click)="onClearFilters()"
-              class="px-5 py-2.5 bg-[#006AB5] text-white rounded-[8px] text-[14px] font-semibold hover:bg-[#00528C] transition"
+              class="rounded-[8px] bg-[#2B7FFF] px-5 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-[#1C66DF]"
             >
               Xóa bộ lọc
             </button>
           </div>
         }
 
+        <!-- Course grid -->
         @if (!loading() && courses().length > 0) {
           <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-            @for (course of paginatedCourses(); track course.id) {
-              <app-course-card [course]="course" />
+            @for (course of paginatedCourses(); track course.id; let i = $index) {
+              <app-course-card [course]="course" [featured]="i === 0" />
             }
           </div>
 
-          <!-- Pagination Bar -->
+          <!-- Pagination -->
           @if (totalPages() > 1) {
-            <div class="flex items-center justify-center gap-2 pt-6">
+            <nav class="flex h-14 items-center justify-center gap-2 pt-5" aria-label="Phân trang khóa học">
               <button
                 type="button"
                 (click)="goToPage(currentPage() - 1)"
                 [disabled]="currentPage() === 1"
-                class="px-3 py-1.5 rounded-[6px] border border-[#E2E8F0] text-[13px] font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition"
+                class="flex h-9 items-center gap-1 rounded-[8px] px-3 py-2 text-[14px] font-normal leading-5 text-[#45556C] transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Trước
+                <svg
+                  class="h-4 w-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.33"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m15 18-6-6 6-6" />
+                </svg>
+                <span>Trang trước</span>
               </button>
-              @for (page of [1, 2, 3]; track page) {
-                @if (page <= totalPages()) {
+
+              @for (page of pageNumbers(); track $index) {
+                @if (page === '...') {
+                  <span class="grid h-9 w-9 place-items-center rounded-[8px] text-[14px] leading-5 text-[#314158]">...</span>
+                } @else {
                   <button
                     type="button"
-                    (click)="goToPage(page)"
-                    class="h-8 w-8 rounded-[6px] text-[13px] font-semibold transition"
-                    [class]="currentPage() === page ? 'bg-[#0088E8] text-white' : 'border border-[#E2E8F0] hover:bg-slate-50 text-[#0F172B]'"
+                    (click)="goToPage(+page)"
+                    class="grid h-9 w-9 place-items-center rounded-[8px] text-[14px] font-normal leading-5 transition-colors"
+                    [ngClass]="currentPage() === page ? 'bg-[#2B7FFF] text-white' : 'text-[#314158] hover:bg-white'"
+                    [attr.aria-current]="currentPage() === page ? 'page' : null"
                   >
                     {{ page }}
                   </button>
                 }
               }
+
               <button
                 type="button"
                 (click)="goToPage(currentPage() + 1)"
                 [disabled]="currentPage() === totalPages()"
-                class="px-3 py-1.5 rounded-[6px] border border-[#E2E8F0] text-[13px] font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition"
+                class="flex h-9 items-center gap-1 rounded-[8px] px-3 py-2 text-[14px] font-normal leading-5 text-[#45556C] transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Sau
+                <span>Trang sau</span>
+                <svg
+                  class="h-4 w-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.33"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
               </button>
-            </div>
+            </nav>
           }
         }
       </div>
     </div>
-
-    <!-- Mobile Filter Drawer Modal -->
-    @if (isMobileFilterOpen()) {
-      <div class="fixed inset-0 z-50 flex bg-black/50 backdrop-blur-sm lg:hidden">
-        <div class="w-[300px] h-full bg-white p-5 overflow-y-auto">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-bold">Bộ lọc</h3>
-            <button type="button" (click)="isMobileFilterOpen.set(false)" class="p-1 text-slate-500">
-              ✕
-            </button>
-          </div>
-          <app-filter-sidebar
-            [filters]="filters()"
-            [categories]="availableCategories()"
-            (filterChange)="onFilterChange($event); isMobileFilterOpen.set(false)"
-            (clearFilters)="onClearFilters(); isMobileFilterOpen.set(false)"
-          />
-        </div>
-      </div>
-    }
   </main>
+
+  <!-- Mobile filter drawer -->
+  @if (isMobileFilterOpen()) {
+    <div class="fixed inset-0 z-50 flex lg:hidden">
+      <div class="absolute inset-0 bg-black/50" (click)="isMobileFilterOpen.set(false)" aria-hidden="true"></div>
+      <div class="relative h-full w-[320px] overflow-y-auto bg-[#F9F9FF] p-4">
+        <button
+          type="button"
+          (click)="isMobileFilterOpen.set(false)"
+          class="mb-3 grid h-9 w-9 place-items-center rounded-full bg-white text-[#45556C] shadow-sm"
+          aria-label="Đóng bộ lọc"
+        >
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+        <app-filter-sidebar
+          [filters]="filters()"
+          [categories]="availableCategories()"
+          (filterChange)="onFilterChange($event); isMobileFilterOpen.set(false)"
+          (clearFilters)="onClearFilters(); isMobileFilterOpen.set(false)"
+        />
+      </div>
+    </div>
+  }
 </div>

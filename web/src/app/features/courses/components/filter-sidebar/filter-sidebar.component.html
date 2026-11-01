@@ -1,119 +1,148 @@
+<aside class="w-full rounded-[10px] border border-[#E2E8F0] bg-white p-5 text-[#0F172B]">
+  <!-- Header -->
+  <div class="flex items-center justify-between gap-3">
+    <h2 class="text-[16px] font-bold leading-6 text-[#0F172B]">Bộ lọc</h2>
+    <button
+      type="button"
+      (click)="clearFilters.emit()"
+      class="flex items-center gap-1 text-[12px] font-normal leading-4 text-[#62748E] transition-colors hover:text-[#2B7FFF]"
+    >
+      <svg
+        class="h-4 w-4"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.33"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M21 2v6h-6" />
+        <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+        <path d="M3 22v-6h6" />
+        <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+      </svg>
+      <span>Xóa bộ lọc</span>
+    </button>
+  </div>
 
-    <aside class="w-full flex flex-col gap-5 bg-white border border-[#E2E8F0] rounded-[8px] p-5 shadow-sm text-[#0F172B]">
-      <!-- Header -->
-      <div class="flex items-center justify-between pb-1">
-        <h2 class="text-[16px] font-bold text-[#0F172B]">Bộ lọc</h2>
+  <!-- Danh mục -->
+  <section class="filter-section filter-section--first">
+    <h3 class="filter-heading">Danh mục</h3>
+    <div class="flex flex-col gap-[9.5px]">
+      @for (cat of getVisibleCategories(); track cat) {
+        <label class="filter-label">
+          <input
+            type="checkbox"
+            class="filter-check"
+            [checked]="filters.categories?.includes(cat)"
+            (change)="toggleCategory(cat)"
+          />
+          <span class="truncate">{{ cat }}</span>
+        </label>
+      }
+
+      @if (categories.length > visibleCategoryLimit) {
         <button
           type="button"
-          (click)="clearFilters.emit()"
-          class="flex items-center gap-1 text-[12px] font-medium text-[#62748E] hover:text-[#0088E8] transition-colors"
+          (click)="showAllCategories.update(v => !v)"
+          class="mt-1 flex items-center gap-1 text-left text-[12px] font-normal leading-4 text-[#2B7FFF] hover:underline"
         >
-          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
+          <span>{{ showAllCategories() ? 'Thu gọn' : 'Xem thêm' }}</span>
+          <svg
+            class="h-3 w-3 transition-transform"
+            [class.rotate-180]="showAllCategories()"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="m6 9 6 6 6-6" />
           </svg>
-          <span>Xóa bộ lọc</span>
         </button>
-      </div>
+      }
+    </div>
+  </section>
 
-      <!-- Danh mục -->
-      <div class="border-t border-[#F1F5F9] pt-4">
-        <h3 class="text-[14px] font-semibold text-[#0F172B] mb-3">Danh mục</h3>
-        <div class="flex flex-col gap-2.5">
-          @for (cat of getVisibleCategories(); track cat) {
-            <label class="flex items-center gap-2.5 text-[13px] text-[#475569] cursor-pointer hover:text-[#0F172B]">
-              <input
-                type="checkbox"
-                [checked]="filters.categories?.includes(cat)"
-                (change)="toggleCategory(cat)"
-                class="w-4 h-4 rounded border-[#CBD5E1] text-[#006AB5] focus:ring-[#006AB5]"
-              />
-              <span>{{ cat }}</span>
-            </label>
-          }
-          @if (categories.length > 5) {
-            <button
-              type="button"
-              (click)="showAllCategories.update(v => !v)"
-              class="text-left text-[12px] font-medium text-[#0088E8] hover:underline pt-1"
-            >
-              {{ showAllCategories() ? 'Thu gọn' : 'Xem thêm' }}
-            </button>
-          }
-        </div>
-      </div>
+  <!-- Trình độ -->
+  <section class="filter-section">
+    <h3 class="filter-heading">Trình độ</h3>
+    <div class="flex flex-col gap-2.5">
+      @for (level of levels; track level) {
+        <label class="filter-label">
+          <input
+            type="radio"
+            name="level"
+            class="filter-radio"
+            [checked]="filters.levels?.includes(level)"
+            (change)="setLevel(level)"
+          />
+          <span>{{ level }}</span>
+        </label>
+      }
+    </div>
+  </section>
 
-      <!-- Trình độ -->
-      <div class="border-t border-[#F1F5F9] pt-4">
-        <h3 class="text-[14px] font-semibold text-[#0F172B] mb-3">Trình độ</h3>
-        <div class="flex flex-col gap-2.5">
-          @for (level of levels; track level) {
-            <label class="flex items-center gap-2.5 text-[13px] text-[#475569] cursor-pointer hover:text-[#0F172B]">
-              <input
-                type="checkbox"
-                [checked]="filters.levels?.includes(level)"
-                (change)="toggleLevel(level)"
-                class="w-4 h-4 rounded border-[#CBD5E1] text-[#006AB5] focus:ring-[#006AB5]"
-              />
-              <span>{{ level }}</span>
-            </label>
-          }
-        </div>
-      </div>
+  <!-- Đánh giá -->
+  <section class="filter-section">
+    <h3 class="filter-heading">Đánh giá</h3>
+    <div class="flex flex-col gap-2.5">
+      @for (rating of ratings; track rating.id) {
+        <label class="filter-label">
+          <input
+            type="radio"
+            name="rating"
+            class="filter-radio"
+            [checked]="(filters.ratings || '') === rating.id"
+            (change)="setRating(rating.id)"
+          />
+          <span>{{ rating.label }}</span>
+        </label>
+      }
+    </div>
+  </section>
 
-      <!-- Đánh giá -->
-      <div class="border-t border-[#F1F5F9] pt-4">
-        <h3 class="text-[14px] font-semibold text-[#0F172B] mb-3">Đánh giá</h3>
-        <div class="flex flex-col gap-2.5">
-          @for (rating of ratings; track rating.id) {
-            <label class="flex items-center gap-2.5 text-[13px] text-[#475569] cursor-pointer hover:text-[#0F172B]">
-              <input
-                type="radio"
-                name="rating"
-                [checked]="filters.ratings === rating.id"
-                (change)="setRating(rating.id)"
-                class="w-4 h-4 text-[#006AB5] focus:ring-[#006AB5]"
-              />
-              <span class="flex items-center gap-1">
-                <span>{{ rating.label }}</span>
-                <span class="text-[#F59E0B]">★</span>
-              </span>
-            </label>
-          }
-        </div>
+  <!-- Thời gian học -->
+  <section class="filter-section">
+    <h3 class="filter-heading">Thời gian học</h3>
+    <div class="flex flex-col gap-2">
+      <div class="flex items-center justify-between gap-2 text-[12px] leading-4 text-[#62748E]">
+        <span>0 giờ</span>
+        <span class="text-[#2B7FFF]">{{ maxDuration() }} giờ</span>
+        <span>120+ giờ</span>
       </div>
+      <input
+        type="range"
+        min="1"
+        max="120"
+        [value]="maxDuration()"
+        (input)="setDuration($any($event.target).value)"
+        class="duration-range"
+        [style.background]="getDurationTrackBackground()"
+        aria-label="Thời gian học tối đa"
+      />
+    </div>
+  </section>
 
-      <!-- Thời lượng -->
-      <div class="border-t border-[#F1F5F9] pt-4">
-        <div class="flex items-center justify-between mb-2">
-          <h3 class="text-[14px] font-semibold text-[#0F172B]">Thời lượng tối đa</h3>
-          <span class="text-[12px] font-medium text-[#0088E8]">{{ filters.maxDuration || 120 }} giờ</span>
-        </div>
-        <input
-          type="range"
-          min="1"
-          max="120"
-          [value]="filters.maxDuration || 120"
-          (input)="setDuration($any($event.target).value)"
-          class="w-full h-1.5 bg-[#E2E8F0] rounded-lg appearance-none cursor-pointer accent-[#006AB5]"
-        />
-      </div>
-
-      <!-- Giá -->
-      <div class="border-t border-[#F1F5F9] pt-4">
-        <h3 class="text-[14px] font-semibold text-[#0F172B] mb-3">Giá</h3>
-        <div class="flex flex-col gap-2.5">
-          @for (pt of priceTypes; track pt.id) {
-            <label class="flex items-center gap-2.5 text-[13px] text-[#475569] cursor-pointer hover:text-[#0F172B]">
-              <input
-                type="radio"
-                name="priceType"
-                [checked]="(filters.priceType || 'all') === pt.id"
-                (change)="setPriceType(pt.id)"
-                class="w-4 h-4 text-[#006AB5] focus:ring-[#006AB5]"
-              />
-              <span>{{ pt.label }}</span>
-            </label>
-          }
-        </div>
-      </div>
-    </aside>
+  <!-- Giá -->
+  <section class="filter-section">
+    <h3 class="filter-heading">Giá</h3>
+    <div class="flex flex-col gap-2.5">
+      @for (pt of priceTypes; track pt.id) {
+        <label class="filter-label">
+          <input
+            type="radio"
+            name="priceType"
+            class="filter-radio"
+            [checked]="(filters.priceType || 'all') === pt.id"
+            (change)="setPriceType(pt.id)"
+          />
+          <span>{{ pt.label }}</span>
+        </label>
+      }
+    </div>
+  </section>
+</aside>

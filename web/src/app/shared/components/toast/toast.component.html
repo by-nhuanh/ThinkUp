@@ -39,6 +39,16 @@
         {{ toast.message }}
       </p>
 
+      @if (toast.action; as action) {
+        <button
+          type="button"
+          (click)="runAction(toast.id, action)"
+          class="shrink-0 rounded-md px-2 py-1 text-[13px] font-semibold text-[#2563EB] transition-colors hover:bg-white/60 hover:text-[#1D4ED8]"
+        >
+          {{ action.label }}
+        </button>
+      }
+
       <button
         type="button"
         (click)="close(toast.id)"

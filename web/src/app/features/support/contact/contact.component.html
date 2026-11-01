@@ -1,147 +1,273 @@
-
-    <div class="min-h-screen bg-[#F9F9FF] text-[#0F172B] font-sans">
-      <main class="mx-auto w-full max-w-[1280px] px-5 py-12 sm:px-8">
-        <!-- Header -->
-        <header class="mb-12 text-center max-w-2xl mx-auto">
-          <span class="rounded-full bg-[#E6F4FF] px-4 py-1.5 text-xs font-semibold text-[#0088E8] border border-[#0088E8]/20">
-            📞 Hỗ trợ học viên 24/7
+<main class="min-h-screen">
+  <section class="ct-hero">
+    <img class="ct-hero__bg" src="/assets/contact/support-banner.png" alt="" aria-hidden="true" />
+    <div class="ct-hero__inner">
+      <h1 class="ct-h1">Liên hệ hỗ trợ</h1>
+      <p class="ct-hero__text">
+        Chúng tôi luôn sẵn sàng lắng nghe và hỗ trợ bạn.<br />
+        Đừng ngần ngại liên hệ nếu bạn cần giúp đỡ!
+      </p>
+      <ul class="ct-hero__badges">
+        <li class="ct-hero__badge">
+          <span class="ct-hero__badge-icon">
+            <app-icon name="clock" class="h-[18px] w-[18px]" />
           </span>
-          <h1 class="mt-4 text-3xl font-extrabold text-[#0F172B] sm:text-4xl tracking-tight">
-            Liên Hệ & Trung Tâm Trợ Giúp
-          </h1>
-          <p class="mt-3 text-sm text-[#62748E] leading-relaxed">
-            Bạn có thắc mắc về khóa học, tài khoản, thanh toán hoặc cần tư vấn lộ trình học tập? Hãy gửi tin nhắn cho chúng tôi.
-          </p>
-        </header>
+          <span>
+            <b class="ct-hero__badge-title">Phản hồi nhanh</b>
+            <small class="ct-hero__badge-text">Trong 24 giờ</small>
+          </span>
+        </li>
+        <li class="ct-hero__badge">
+          <span class="ct-hero__badge-icon">
+            <app-icon name="headphones" class="h-[18px] w-[18px]" />
+          </span>
+          <span>
+            <b class="ct-hero__badge-title">Hỗ trợ tận tâm</b>
+            <small class="ct-hero__badge-text">Đội ngũ chuyên nghiệp</small>
+          </span>
+        </li>
+        <li class="ct-hero__badge">
+          <span class="ct-hero__badge-icon">
+            <app-icon name="shield-check" class="h-[18px] w-[18px]" />
+          </span>
+          <span>
+            <b class="ct-hero__badge-title">Bảo mật thông tin</b>
+            <small class="ct-hero__badge-text">An toàn tuyệt đối</small>
+          </span>
+        </li>
+      </ul>
+    </div>
+  </section>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          <!-- Left Info Cards -->
-          <div class="lg:col-span-5 space-y-6">
-            <div class="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
-              <h2 class="text-base font-bold text-slate-900 mb-4">Thông tin liên hệ trực tiếp</h2>
-              <ul class="space-y-4 text-xs text-slate-600">
-                <li class="flex items-center gap-3">
-                  <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-[#0088E8] font-bold">✉️</span>
-                  <div>
-                    <p class="font-semibold text-slate-800">Email hỗ trợ</p>
-                    <p class="text-slate-500">support&#64;thinkup.edu.vn</p>
-                  </div>
-                </li>
-                <li class="flex items-center gap-3">
-                  <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 font-bold">📞</span>
-                  <div>
-                    <p class="font-semibold text-slate-800">Hotline</p>
-                    <p class="text-slate-500">1900 6868 (8:00 - 21:00 hàng ngày)</p>
-                  </div>
-                </li>
-                <li class="flex items-center gap-3">
-                  <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 text-purple-600 font-bold">📍</span>
-                  <div>
-                    <p class="font-semibold text-slate-800">Trụ sở chính</p>
-                    <p class="text-slate-500">Tầng 8, Tòa nhà Innovation, TP. Hồ Chí Minh</p>
-                  </div>
-                </li>
-              </ul>
+  <section class="ct-form-section">
+    <div class="ct-shell">
+      <div class="ct-form-grid">
+        <div class="ct-card ct-form-card">
+          <h2 class="ct-card__title">Gửi yêu cầu hỗ trợ</h2>
+
+          <form class="ct-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+            <div class="ct-row ct-row--2">
+              <label class="ct-field">
+                <span class="sr-only">Họ và tên</span>
+                <app-icon name="user" class="ct-field__icon h-4 w-4" />
+                <input
+                  class="ct-control ct-input"
+                  [class.is-invalid]="fieldInvalid('fullName')"
+                  formControlName="fullName"
+                  maxlength="50"
+                  autocomplete="name"
+                  placeholder="Họ và tên *"
+                />
+                @if (fieldInvalid('fullName')) {
+                  <small class="ct-error">Vui lòng nhập họ và tên của bạn.</small>
+                }
+              </label>
+
+              <label class="ct-field">
+                <span class="sr-only">Email</span>
+                <app-icon name="mail" class="ct-field__icon h-4 w-4" />
+                <input
+                  class="ct-control ct-input"
+                  [class.is-invalid]="fieldInvalid('email')"
+                  formControlName="email"
+                  type="email"
+                  maxlength="100"
+                  autocomplete="email"
+                  placeholder="Email *"
+                />
+                @if (fieldInvalid('email')) {
+                  <small class="ct-error">Email không đúng định dạng. Ví dụ: user&#64;example.com</small>
+                }
+              </label>
             </div>
 
-            <!-- FAQ Quick Links -->
-            <div class="rounded-2xl border border-blue-100 bg-[#F0F6FF] p-6">
-              <h3 class="text-sm font-bold text-[#0088E8] mb-2">Câu hỏi thường gặp (FAQ)</h3>
-              <p class="text-xs text-slate-600 mb-4">
-                Xem ngay câu trả lời cho các thắc mắc về phương thức thanh toán, hoàn tiền và kích hoạt khóa học.
-              </p>
-              <ul class="space-y-2 text-xs font-semibold text-slate-700">
-                <li class="hover:text-[#0088E8] cursor-pointer">› Làm sao để nhận chứng chỉ sau khi hoàn thành?</li>
-                <li class="hover:text-[#0088E8] cursor-pointer">› Chính sách hoàn tiền trong vòng 30 ngày?</li>
-                <li class="hover:text-[#0088E8] cursor-pointer">› Tôi có thể xem video bài giảng ngoại tuyến không?</li>
-              </ul>
+            <div class="ct-field ct-topic" #topicField>
+              <span class="sr-only" id="ct-topic-label">Chủ đề</span>
+              <button
+                type="button"
+                class="ct-control ct-topic__trigger"
+                [class.is-invalid]="fieldInvalid('topic')"
+                [class.is-open]="topicOpen()"
+                [attr.aria-expanded]="topicOpen()"
+                aria-haspopup="listbox"
+                aria-labelledby="ct-topic-label ct-topic-value"
+                (click)="toggleTopic()"
+                (keydown)="onTopicKeydown($event)"
+              >
+                <app-icon name="layout-grid" class="ct-field__icon h-4 w-4" />
+                <span id="ct-topic-value" class="ct-topic__value" [class.is-placeholder]="!form.controls.topic.value">
+                  {{ form.controls.topic.value || 'Chọn chủ đề *' }}
+                </span>
+                <app-icon name="chevron-down" class="ct-field__icon ct-field__icon--right ct-topic__chevron h-4 w-4" />
+              </button>
+
+              @if (topicOpen()) {
+                <ul class="ct-topic__menu" role="listbox" aria-labelledby="ct-topic-label">
+                  @for (topic of topics; track topic; let i = $index) {
+                    <li
+                      role="option"
+                      class="ct-topic__option"
+                      [class.is-active]="activeTopic() === i"
+                      [class.is-selected]="form.controls.topic.value === topic"
+                      [attr.aria-selected]="form.controls.topic.value === topic"
+                      (mouseenter)="activeTopic.set(i)"
+                      (click)="selectTopic(topic)"
+                    >
+                      {{ topic }}
+                    </li>
+                  }
+                </ul>
+              }
+
+              @if (fieldInvalid('topic')) {
+                <small class="ct-error">Vui lòng chọn chủ đề yêu cầu.</small>
+              }
             </div>
-          </div>
 
-          <!-- Right Contact Form -->
-          <div class="lg:col-span-7 rounded-2xl border border-slate-200/80 bg-white p-8 shadow-sm">
-            <h2 class="text-lg font-bold text-slate-900 mb-1">Gửi yêu cầu hỗ trợ</h2>
-            <p class="text-xs text-slate-500 mb-6">Đội ngũ ThinkUp sẽ phản hồi yêu cầu của bạn qua email trong vòng 24 giờ.</p>
+            <label class="ct-field">
+              <span class="sr-only">Nội dung yêu cầu</span>
+              <app-icon name="file-text" class="ct-field__icon ct-field__icon--top h-4 w-4" />
+              <textarea
+                class="ct-control ct-textarea"
+                [class.is-invalid]="fieldInvalid('message')"
+                formControlName="message"
+                maxlength="1000"
+                placeholder="Nội dung yêu cầu của bạn *"
+              ></textarea>
+              <small class="ct-counter">{{ form.controls.message.value.length }}/1000</small>
+              @if (fieldInvalid('message')) {
+                <small class="ct-error">Nội dung yêu cầu phải có tối thiểu 20 ký tự.</small>
+              }
+            </label>
 
-            @if (submittedSuccess()) {
-              <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-center text-emerald-800 mb-6">
-                <p class="text-sm font-bold">✓ Gửi yêu cầu hỗ trợ thành công!</p>
-                <p class="text-xs text-emerald-600 mt-1">Cảm ơn bạn. Chúng tôi sẽ liên hệ lại sớm nhất có thể.</p>
-                <button
-                  type="button"
-                  (click)="submittedSuccess.set(false)"
-                  class="mt-4 text-xs font-semibold underline text-emerald-700"
-                >
-                  Gửi yêu cầu khác
+            <div class="ct-attachment">
+              <app-icon name="paperclip" class="h-4 w-4 text-[#5b646f]" />
+              <div>
+                <b class="ct-attachment__label">Đính kèm tệp (nếu có)</b>
+                <span class="ct-attachment__hint">Hỗ trợ: JPG, PNG, PDF, DOCX (Tối đa 5MB)</span>
+              </div>
+              <div class="ml-auto">
+                <label class="ct-attachment__button">
+                  <app-icon name="upload" class="h-[14px] w-[14px]" />
+                  <span>Thêm tệp</span>
+                  <input type="file" multiple accept=".jpg,.jpeg,.png,.pdf,.docx" class="hidden" (change)="addFiles($event)" />
+                </label>
+              </div>
+            </div>
+
+            @for (item of attachments(); track item.file.name; let i = $index) {
+              <div class="ct-file">
+                <span class="truncate">
+                  {{ item.file.name }} <small class="text-[#5b646f]">({{ item.size }})</small>
+                </span>
+                <button type="button" (click)="removeFile(i)" aria-label="Xóa tệp" class="text-[#5b646f]">
+                  <app-icon name="x" class="h-4 w-4" />
                 </button>
               </div>
-            } @else {
-              <form (ngSubmit)="handleSubmit()" class="space-y-4">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1">Họ và tên *</label>
-                    <input
-                      type="text"
-                      [(ngModel)]="fullName"
-                      name="fullName"
-                      required
-                      placeholder="Nguyễn Văn A"
-                      class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs outline-none focus:border-[#0088E8]"
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1">Email liên hệ *</label>
-                    <input
-                      type="email"
-                      [(ngModel)]="email"
-                      name="email"
-                      required
-                      placeholder="email&#64;example.com"
-                      class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs outline-none focus:border-[#0088E8]"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label class="block text-xs font-semibold text-slate-700 mb-1">Chủ đề cần hỗ trợ *</label>
-                  <select
-                    [(ngModel)]="topic"
-                    name="topic"
-                    class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs outline-none focus:border-[#0088E8]"
-                  >
-                    <option value="Tài khoản & Bảo mật">Tài khoản & Bảo mật</option>
-                    <option value="Thanh toán & Hóa đơn">Thanh toán & Hóa đơn</option>
-                    <option value="Khóa học & Học tập">Khóa học & Học tập</option>
-                    <option value="Chứng chỉ">Chứng chỉ</option>
-                    <option value="Khác">Chủ đề khác</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label class="block text-xs font-semibold text-slate-700 mb-1">Nội dung chi tiết *</label>
-                  <textarea
-                    [(ngModel)]="message"
-                    name="message"
-                    rows="4"
-                    required
-                    placeholder="Mô tả cụ thể vấn đề hoặc câu hỏi của bạn..."
-                    class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs outline-none focus:border-[#0088E8]"
-                  ></textarea>
-                </div>
-
-                @if (errorMessage()) {
-                  <p class="text-xs text-red-600 font-medium">{{ errorMessage() }}</p>
-                }
-
-                <button
-                  type="submit"
-                  class="w-full rounded-xl bg-[#0088E8] py-3 text-xs font-bold text-white shadow-md transition hover:bg-[#0077CC]"
-                >
-                  Gửi yêu cầu hỗ trợ ngay
-                </button>
-              </form>
             }
-          </div>
+            @if (fileError()) {
+              <p class="ct-error">{{ fileError() }}</p>
+            }
+
+            <button type="submit" class="ct-submit">
+              <app-icon name="send" class="h-4 w-4" />
+              <span>Gửi yêu cầu</span>
+            </button>
+          </form>
         </div>
-      </main>
+
+        <aside class="ct-card ct-info-card">
+          <h2 class="ct-card__title">Thông tin liên hệ khác</h2>
+          <div class="ct-info-list">
+            <div class="ct-info-row">
+              <span class="ct-info-row__icon">
+                <app-icon name="message-circle" class="h-[18px] w-[18px]" />
+              </span>
+              <div class="ct-info-row__body">
+                <b class="ct-info-row__title">Trung tâm hỗ trợ</b>
+                <p class="ct-info-row__text">Hỗ trợ giải đáp mọi thắc mắc của bạn</p>
+              </div>
+              <a href="mailto:support@thinkup.vn" class="ct-info-row__link">support&#64;thinkup.vn</a>
+            </div>
+            <div class="ct-info-row">
+              <span class="ct-info-row__icon">
+                <app-icon name="phone" class="h-[18px] w-[18px]" />
+              </span>
+              <div class="ct-info-row__body">
+                <b class="ct-info-row__title">Hotline</b>
+                <p class="ct-info-row__text">Thứ 2 - Thứ 7: 8:00 - 22:00</p>
+              </div>
+              <a href="tel:0234000864" class="ct-info-row__link">0234 000 864</a>
+            </div>
+            <div class="ct-info-row">
+              <span class="ct-info-row__icon">
+                <app-icon name="facebook" class="h-[18px] w-[18px]" />
+              </span>
+              <div class="ct-info-row__body">
+                <b class="ct-info-row__title">Facebook</b>
+                <p class="ct-info-row__text">Gửi tin nhắn qua Fanpage</p>
+              </div>
+              <a href="https://facebook.com/thinkup.vn" target="_blank" rel="noopener" class="ct-info-row__link">/thinkup.vn</a>
+            </div>
+            <div class="ct-info-row">
+              <span class="ct-info-row__icon">
+                <app-icon name="clock" class="h-[18px] w-[18px]" />
+              </span>
+              <div class="ct-info-row__body">
+                <b class="ct-info-row__title">Thời gian phản hồi</b>
+                <p class="ct-info-row__text">Chúng tôi sẽ phản hồi trong vòng 24 giờ</p>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
     </div>
+  </section>
+
+  <section class="ct-shell ct-faq">
+    <div class="ct-faq__head">
+      <h2 class="ct-faq__title">Câu hỏi thường gặp</h2>
+      <a routerLink="/main/help-center" class="ct-faq__all">
+        <span>Xem tất cả</span>
+        <app-icon name="arrow-right" class="h-4 w-4" />
+      </a>
+    </div>
+    <div class="ct-faq__grid">
+      @for (card of faqCards; track card.title) {
+        <a [routerLink]="['/main/help-center']" [queryParams]="{ category: card.category }" class="ct-faq__card">
+          <span class="ct-faq__icon">
+            <app-icon [name]="card.icon" class="h-5 w-5" />
+          </span>
+          <span class="ct-faq__body">
+            <b class="ct-faq__card-title">{{ card.title }}</b>
+            <span class="ct-faq__card-text">{{ card.text }}</span>
+          </span>
+          <app-icon name="chevron-right" class="ct-faq__arrow h-4 w-4" />
+        </a>
+      }
+    </div>
+  </section>
+</main>
+
+@if (submitted()) {
+  <div class="ct-modal" role="dialog" aria-modal="true" aria-labelledby="contact-success-title">
+    <div class="ct-modal__card">
+      <div class="ct-modal__icon">
+        <app-icon name="circle-check" class="h-7 w-7" />
+      </div>
+      <h2 id="contact-success-title" class="mt-5 text-xl font-bold">Gửi yêu cầu hỗ trợ thành công!</h2>
+      <p class="mt-3 text-[#5b646f]">
+        Mã yêu cầu của bạn là <b class="text-[#0b1723]">{{ ticketId() }}</b>
+      </p>
+      <p class="mt-2 text-sm text-[#5b646f]">
+        Chúng tôi đã tiếp nhận và sẽ phản hồi qua email trong thời gian sớm nhất.
+      </p>
+      <div class="mt-6 grid grid-cols-2 gap-3">
+        <button type="button" class="rounded-xl border border-[#005ccc] py-3 font-semibold text-[#005ccc]" (click)="submitted.set(false)">
+          Theo dõi yêu cầu
+        </button>
+        <a routerLink="/main/home" class="rounded-xl bg-[#005ccc] py-3 font-semibold text-white">Về trang chủ</a>
+      </div>
+    </div>
+  </div>
+}

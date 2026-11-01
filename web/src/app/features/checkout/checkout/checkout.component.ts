@@ -247,9 +247,9 @@ export class CheckoutComponent implements OnInit {
     const current = this.session();
     if (!current?.bankInfo) return this.fallbackBank;
     return {
-      bankName: this.bankFullName(current.bankInfo.bankId),
+      bankName: current.bankInfo.bankName || this.bankFullName(current.bankInfo.bankId),
       accountNo: current.bankInfo.accountNo,
-      accountName: current.bankInfo.accountName,
+      accountName: current.bankInfo.accountHolder,
       transferContent: current.transferContent,
     };
   });
@@ -456,11 +456,10 @@ export class CheckoutComponent implements OnInit {
         courses: this.courses().map(course => ({
           id: course.courseId || course.id,
           title: course.displayTitle || course.title,
-          salePrice: course.salePrice,
+          price: course.salePrice,
           originalPrice: course.originalPrice,
           thumbnail: course.thumbnailUrl || '',
-          thumbnail_url: course.thumbnailUrl || '',
-          instructor: course.instructor,
+          instructorName: course.instructor,
         })),
         paymentMethod: this.requestMethod(method),
         bankCode,
@@ -486,19 +485,19 @@ export class CheckoutComponent implements OnInit {
   private requestMethod(method: MethodId): PaymentMethodId {
     switch (method) {
       case 'atm':
-        return 'atm';
+        return 'vnpay';
       case 'card':
       case 'paypal':
       case 'apple-pay':
         return 'stripe';
       case 'swift':
-        return 'swift';
+        return 'stripe';
       case 'wallet':
-        return 'wallet';
       case 'bank-transfer':
-        return 'bank-transfer';
+      case 'qr':
+        return 'sepay';
       default:
-        return 'qr';
+        return 'sepay';
     }
   }
 
@@ -542,7 +541,7 @@ export class CheckoutComponent implements OnInit {
       .subscribe(() => {
         const left = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
         this.remaining.set(left);
-        if (left === 0) this.stopTimers();
+        if (left === 0) this.expirePayment();
       });
 
     this.pollSub = timer(0, 5000)
@@ -572,11 +571,7 @@ export class CheckoutComponent implements OnInit {
         this.failPayment();
         break;
       case 'expired':
-        this.stopTimers();
-        this.remaining.set(0);
-        this.session.set(null);
-        this.dialogMessage.set('Phiên thanh toán đã hết hạn. Vui lòng tạo phiên mới để tiếp tục.');
-        this.dialog.set('expired');
+        this.expirePayment();
         break;
       default:
         break;
@@ -603,6 +598,14 @@ export class CheckoutComponent implements OnInit {
     this.session.set(null);
     this.dialogMessage.set('Giao dịch chưa thể hoàn tất. Vui lòng thử lại hoặc chọn phương thức thanh toán khác.');
     this.dialog.set('failure');
+  }
+
+  private expirePayment(): void {
+    this.stopTimers();
+    this.remaining.set(0);
+    this.session.set(null);
+    this.dialogMessage.set('Phiên thanh toán đã hết hạn. Vui lòng tạo phiên mới để tiếp tục.');
+    this.dialog.set('expired');
   }
 
   checkStatusNow(): void {

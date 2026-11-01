@@ -105,58 +105,41 @@
         </section>
 
         <!-- 3. Popular Courses Section -->
-        <section class="relative bg-[#168ADB] px-6 py-16 md:px-16 lg:px-24">
-          <div class="mx-auto max-w-[1440px] flex flex-col gap-10">
-            <h2 class="text-center font-['Inter'] text-[26px] font-bold leading-[36px] text-[#F8F8F8] md:text-[32px] lg:text-[36px]">
-              Bắt đầu với khóa học được yêu thích
-            </h2>
+        <section class="ln-courses">
+          <div class="ln-courses__inner">
+            <h2 class="ln-courses__title">Bắt đầu với khóa học được yêu thích</h2>
 
-            <div class="grid items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              @for (course of popularCourses(); track course.id) {
-                <article class="flex flex-col rounded-[16px] bg-white overflow-hidden shadow-md transition hover:-translate-y-1 hover:shadow-xl">
-                  <div
-                    class="h-44 w-full flex items-center justify-center text-4xl font-bold text-white relative p-4"
-                    [ngStyle]="{ background: course.bgGradient || '#0A1535' }"
-                  >
-                    <span>{{ course.icon || '💻' }}</span>
-                    @if (course.badge) {
-                      <span class="absolute top-3 left-3 bg-[#FB2C36] text-white text-[10px] font-bold px-2 py-0.5 rounded">
-                        {{ course.badge }}
-                      </span>
-                    }
-                  </div>
-                  <div class="p-5 flex flex-col flex-1">
-                    <h3 class="font-bold text-[16px] text-[#0F1C33] line-clamp-2 mb-2">{{ course.title }}</h3>
-                    <p class="text-xs text-[#61738F] mb-3">Giảng viên: {{ course.instructor }}</p>
-                    <div class="flex items-center justify-between text-xs text-[#7A8AA1] mb-4">
-                      <span>⭐ {{ course.rating }} ({{ course.ratingCount }})</span>
-                      <span>{{ course.students }}</span>
-                    </div>
-                    <div class="mt-auto flex items-center justify-between pt-4 border-t border-slate-100">
-                      <div>
-                        <span class="text-xs text-slate-400 line-through block">{{ course.originalPrice | currency:'VND':'symbol':'1.0-0' }}</span>
-                        <span class="text-base font-bold text-[#145CF2]">{{ course.salePrice | currency:'VND':'symbol':'1.0-0' }}</span>
-                      </div>
-                      <a
-                        [routerLink]="['/main/courses', course.id]"
-                        class="px-4 py-2 bg-[#145CF2] text-white rounded-lg text-xs font-semibold hover:bg-[#0B4ACD] transition"
-                      >
-                        Chi tiết
-                      </a>
-                    </div>
-                  </div>
-                </article>
-              }
-            </div>
-
-            <div class="flex justify-center mt-6">
-              <a
-                routerLink="/main/courses"
-                class="inline-flex items-center justify-center rounded-[33.5px] bg-[#FFAA00] px-7 py-3 font-['Inter'] text-[14px] font-bold text-black shadow-lg hover:bg-[#FDB500] active:scale-[0.98] transition-all"
+            <div class="ln-courses__row">
+              <button
+                type="button"
+                class="ln-courses__arrow ln-courses__arrow--prev"
+                (click)="scrollCourses(-1)"
+                aria-label="Xem khóa học trước"
               >
-                Xem tất cả khóa học
-              </a>
+                <app-icon name="chevron-left" class="h-[20px] w-[20px]" />
+              </button>
+
+              <div class="ln-courses__grid" #courseTrack>
+                @for (card of popularCards(); track card.id) {
+                  <app-course-card
+                    [card]="card"
+                    (saveToggle)="requireAccount()"
+                    (addToCart)="requireAccount()"
+                  />
+                }
+              </div>
+
+              <button
+                type="button"
+                class="ln-courses__arrow ln-courses__arrow--next"
+                (click)="scrollCourses(1)"
+                aria-label="Xem khóa học tiếp theo"
+              >
+                <app-icon name="chevron-right" class="h-[20px] w-[20px]" />
+              </button>
             </div>
+
+            <a routerLink="/main/courses" class="ln-courses__more">Xem khóa học</a>
           </div>
         </section>
 
@@ -221,81 +204,93 @@
           </div>
         </section>
 
-        <!-- 6. Developer Tools & Dashboard Preview Section -->
-        <section class="bg-white px-6 py-16 md:px-16 lg:px-24">
-          <div class="mx-auto flex max-w-[1440px] flex-col items-center gap-10">
-            <div class="text-center flex flex-col gap-3 max-w-[772px]">
-              <h2 class="font-['Inter'] text-[28px] font-extrabold leading-[38px] text-[#09131A] md:text-[38px] lg:text-[42px]">
-                Mọi công cụ <span class="text-[#007BE5]">cần thiết</span> để bạn trở thành Developer
+        <!-- 6. Learning Tools Section -->
+        <section class="ln-tools">
+          <div class="ln-tools__inner">
+            <header class="ln-tools__head">
+              <h2 class="ln-tools__title">
+                Mọi công cụ <span>cần thiết</span> để bạn trở thành<br />
+                Developer
               </h2>
-              <p class="font-['Inter'] text-[16px] font-bold leading-[26px] text-[#09131A]">
-                Tất cả tích hợp trong một nền tảng học IT duy nhất.
-              </p>
-            </div>
+              <p class="ln-tools__sub">Tất cả tích hợp trong một nền tảng học IT duy nhất.</p>
+            </header>
 
-            <div class="relative w-full max-w-[1440px] rounded-[32px] bg-[rgba(0,123,229,0.43)] p-6 md:p-10 min-h-[500px] grid md:grid-cols-[1.1fr_0.9fr] items-center gap-10">
-              <div class="flex flex-col items-start gap-4">
-                <div class="h-28 w-24 rounded-md overflow-hidden">
-                  <img src="/assets/landing/icon-planning-58d7e8.png" alt="" class="h-full w-full object-contain" />
-                </div>
-                <div class="inline-flex rounded-[33.5px] bg-white px-4 py-1 shadow-sm">
-                  <span class="font-['Inter'] text-[11px] font-extrabold uppercase tracking-widest text-[#09131A]">
-                    LỘ TRÌNH
-                  </span>
-                </div>
-                <h3 class="font-['Inter'] text-[26px] font-extrabold leading-[34px] text-[#09131A] md:text-[32px]">
-                  Bảng điều khiển <span class="text-[#193CB8]">học tập của bạn</span>
-                </h3>
-                <ul class="flex flex-col gap-3 mt-2">
-                  <li class="flex items-center gap-3">
-                    <span class="h-2 w-2 shrink-0 rounded-full bg-[#09131A]"></span>
-                    <p class="font-['Inter'] text-[15px] text-[#09131A]">Theo dõi tiến độ từng khoá học và mỗi bài lab.</p>
-                  </li>
-                  <li class="flex items-center gap-3">
-                    <span class="h-2 w-2 shrink-0 rounded-full bg-[#09131A]"></span>
-                    <p class="font-['Inter'] text-[15px] text-[#09131A]">Đặt mục tiêu hàng tuần và nhận nhắc nhở từ AI.</p>
-                  </li>
-                  <li class="flex items-center gap-3">
-                    <span class="h-2 w-2 shrink-0 rounded-full bg-[#09131A]"></span>
-                    <p class="font-['Inter'] text-[15px] text-[#09131A]">Xem gợi ý khoá học tiếp theo phù hợp với mục tiêu nghề nghiệp.</p>
-                  </li>
+            <div class="ln-tools__panel">
+              <div class="ln-tools__lead">
+                <span class="ln-tools__gear">
+                  <app-icon name="settings" class="h-[26px] w-[26px]" />
+                </span>
+                <span class="ln-tools__pill">Công cụ học tập</span>
+                <h3 class="ln-tools__heading">Học tập đa phương thức thực chiến</h3>
+                <ul class="ln-tools__checks">
+                  @for (item of toolChecks; track item) {
+                    <li>
+                      <span class="ln-tools__check">
+                        <app-icon name="check" class="h-[9px] w-[9px]" />
+                      </span>
+                      <span>{{ item }}</span>
+                    </li>
+                  }
                 </ul>
+
+                <div class="ln-tools__charts" aria-hidden="true">
+                  <div class="ln-chart ln-chart--line">
+                    <span class="ln-chart__bar"></span>
+                    <svg viewBox="0 0 100 46" preserveAspectRatio="none">
+                      <path d="M2 40 L20 24 L36 30 L54 14 L72 20 L98 4" fill="none" stroke="#12B76A" stroke-width="2.5" />
+                    </svg>
+                    <span class="ln-chart__dot"></span>
+                  </div>
+                  <div class="ln-chart ln-chart--bars">
+                    <i style="height: 34%"></i>
+                    <i style="height: 58%"></i>
+                    <i style="height: 44%"></i>
+                    <i style="height: 82%"></i>
+                    <i style="height: 66%"></i>
+                    <i style="height: 95%"></i>
+                  </div>
+                  <div class="ln-chart ln-chart--donut">
+                    <svg viewBox="0 0 36 36">
+                      <circle cx="18" cy="18" r="14" fill="none" stroke="#E2E8F0" stroke-width="6" />
+                      <circle
+                        cx="18"
+                        cy="18"
+                        r="14"
+                        fill="none"
+                        stroke="#2563EB"
+                        stroke-width="6"
+                        stroke-linecap="round"
+                        stroke-dasharray="62 100"
+                        transform="rotate(-90 18 18)"
+                      />
+                    </svg>
+                  </div>
+                </div>
               </div>
 
-              <!-- Right panel mimicking a dashboard view -->
-              <div class="relative rounded-[32px] bg-white p-5 md:p-6 shadow-2xl border border-[#DFE6EB] w-full max-w-[620px] justify-self-center">
-                <div class="flex items-center gap-4 rounded-[28px] bg-[rgba(244,224,249,0.6)] p-3 md:p-4">
-                  <div class="flex h-10 w-10 items-center justify-center rounded-full bg-[#FDC357]">
-                    <span class="text-[18px]">👋</span>
-                  </div>
-                  <div>
-                    <h4 class="font-['Inter'] text-[15px] font-extrabold text-[#09131A]">Chào bạn</h4>
-                    <p class="font-['Inter'] text-[12px] text-[#59656E]">Hôm nay bạn muốn học gì nào?</p>
-                  </div>
-                </div>
+              <div class="ln-tools__grid">
+                @for (tool of toolCards; track tool.label) {
+                  <article class="ln-tool" [class.ln-tool--wide]="tool.wide">
+                    <span class="ln-tool__icon" [class]="'ln-tool__icon ln-tool__icon--' + tool.tone">
+                      <app-icon [name]="tool.icon" class="h-[20px] w-[20px]" />
+                    </span>
 
-                <div class="flex gap-4 border-b border-[#DFE6EB] mt-5 pb-2">
-                  <span class="font-['Inter'] text-[13px] font-bold text-[#09131A] border-b-2 border-[#09131A] pb-2">Đề xuất</span>
-                  <span class="font-['Inter'] text-[13px] font-bold text-[#59656E]">Cần làm</span>
-                  <span class="font-['Inter'] text-[13px] font-bold text-[#59656E]">Tất cả khoá</span>
-                </div>
+                    <div class="ln-tool__text">
+                      <span class="ln-tool__label">{{ tool.label }}</span>
+                      <h4 class="ln-tool__title">{{ tool.title }}</h4>
+                      <p class="ln-tool__desc">{{ tool.desc }}</p>
+                    </div>
 
-                <div class="flex flex-col gap-3 mt-4">
-                  <div class="flex gap-3 rounded-[20px] bg-[rgba(236,243,248,0.5)] p-3">
-                    <span class="text-purple-600 text-lg">✨</span>
-                    <div>
-                      <h5 class="font-['Inter'] text-[13px] font-bold text-[#09131A]">Hoàn thành bài lab React Hooks!</h5>
-                      <p class="font-['Inter'] text-[11px] text-[#59656E]">Tiếp tục module 4: State Management</p>
-                    </div>
-                  </div>
-                  <div class="flex gap-3 rounded-[20px] bg-[rgba(236,243,248,0.5)] p-3">
-                    <span class="text-purple-600 text-lg">✨</span>
-                    <div>
-                      <h5 class="font-['Inter'] text-[13px] font-bold text-[#09131A]">Bài kiểm tra Python Data sắp đến hạn</h5>
-                      <p class="font-['Inter'] text-[11px] text-[#59656E]">Còn 2 ngày để nộp bài tập cuối khoá</p>
-                    </div>
-                  </div>
-                </div>
+                    @if (tool.wide) {
+                      <span class="ln-tool__snippet" aria-hidden="true">
+                        <i class="ln-tool__snippet-line ln-tool__snippet-line--blue"></i>
+                        <i class="ln-tool__snippet-line ln-tool__snippet-line--purple"></i>
+                        <i class="ln-tool__snippet-line"></i>
+                        <i class="ln-tool__snippet-line ln-tool__snippet-line--short"></i>
+                      </span>
+                    }
+                  </article>
+                }
               </div>
             </div>
           </div>
@@ -332,23 +327,29 @@
         </section>
 
         <!-- 8. Testimonials Section -->
-        <section class="bg-white px-6 py-16 md:px-16 lg:px-24">
-          <div class="mx-auto max-w-[1024px] flex flex-col gap-12">
-            <div class="text-center flex flex-col items-center gap-4">
-              <h2 class="font-['Inter'] text-[30px] font-bold text-[#0D111B]">Đánh giá học viên</h2>
-              <p class="font-['Inter'] text-[14px] text-[#5D646F]">Học viên nói gì về chúng tôi</p>
-            </div>
-            <div class="flex flex-col gap-8">
+        <section class="ln-reviews">
+          <div class="ln-reviews__inner">
+            <header class="ln-reviews__head">
+              <h2 class="ln-reviews__title">Đánh giá</h2>
+              <p class="ln-reviews__sub">Học viên nói gì về chúng tôi</p>
+            </header>
+
+            <div class="ln-reviews__list">
               @for (t of testimonials; track t.name) {
-                <article class="flex flex-col gap-6 md:flex-row md:items-center rounded-2xl border border-slate-100 p-6 shadow-sm">
-                  <div class="flex h-[120px] w-[120px] shrink-0 flex-col items-center justify-center rounded-xl bg-[#EDF2F8] p-3 text-center">
-                    <img [src]="t.image" [alt]="t.name" class="h-14 w-14 rounded-full object-cover" />
-                    <h4 class="mt-2 text-xs font-bold text-[#0D111B]">{{ t.name }}</h4>
-                    <p class="text-[10px] text-slate-500">{{ t.role }}</p>
+                <article class="ln-review" [class.ln-review--reverse]="t.reverse">
+                  <div class="ln-review__card">
+                    <img class="ln-review__avatar" [src]="t.image" [alt]="t.name" />
+                    <b class="ln-review__name">{{ t.name }}</b>
+                    <span class="ln-review__role">{{ t.role }}</span>
                   </div>
-                  <div class="flex-1">
-                    <div class="text-amber-400 text-sm mb-2">★★★★★</div>
-                    <p class="font-['Inter'] text-[14px] italic text-[#5D646F] leading-relaxed">{{ t.quote }}</p>
+
+                  <div class="ln-review__body">
+                    <div class="ln-review__stars" aria-label="5 trên 5 sao">
+                      @for (star of [1, 2, 3, 4, 5]; track star) {
+                        <app-icon name="star" class="is-filled ln-review__star" />
+                      }
+                    </div>
+                    <p class="ln-review__quote">{{ t.quote }}</p>
                   </div>
                 </article>
               }
@@ -356,33 +357,49 @@
           </div>
         </section>
 
-        <!-- 9. FAQ Section -->
-        <section class="bg-white px-6 py-16 md:px-16 lg:px-24 border-t border-slate-100">
-          <div class="mx-auto flex max-w-[1440px] flex-col items-center gap-12">
-            <div class="text-center flex flex-col items-center gap-4">
-              <div class="h-20 w-20 rounded-full overflow-hidden">
-                <img src="/assets/landing/faq-logo.png" alt="" class="h-full w-full object-cover" />
-              </div>
-              <h2 class="font-['Inter'] text-[32px] font-extrabold text-[#09131A]">
-                Câu hỏi thường gặp
-              </h2>
+        <!-- 9. Support Section -->
+        <section class="bg-[#dff6ff] px-6 py-20 md:px-16 lg:px-24">
+          <div class="mx-auto grid max-w-[1320px] items-start gap-16 lg:grid-cols-[.85fr_1.15fr]">
+            <div class="pt-4">
+              <h2 class="font-['Inter'] text-[38px] font-bold leading-tight text-[#09131A]">Bạn cần hỗ trợ?</h2>
+              <p class="mt-4 max-w-[590px] text-[16px] leading-7 text-[#4d5b6b]">Đội ngũ tư vấn của chúng tôi luôn sẵn sàng giải đáp mọi thắc mắc của bạn về lộ trình học tập và học phí.</p>
+              <div class="mt-8 space-y-5"><div class="flex items-center gap-4"><span class="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-[#006ab5]">✉</span><span><small class="block text-[#687793]">Email</small><b>thinkup.edu.vn&#64;gmail.com</b></span></div><div class="flex items-center gap-4"><span class="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-[#006ab5]">☎</span><span><small class="block text-[#687793]">Hotline</small><b>1900 6789</b></span></div></div>
+            </div>
+            <div class="rounded-[28px] bg-white p-7 shadow-2xl shadow-slate-400/25">
+              <div class="border-b pb-5 text-2xl font-bold"><span class="text-black">THINK</span><span class="text-[#0088e8]">UP</span></div>
+              <div class="mt-6 space-y-4"><label class="block text-sm font-semibold">Họ và tên<input class="mt-2 h-13 w-full rounded-xl border border-[#cfd8e6] px-4 font-normal outline-none focus:border-[#0088e8]" placeholder="Nhập tên của bạn" /></label><label class="block text-sm font-semibold">Email<input type="email" class="mt-2 h-13 w-full rounded-xl border border-[#cfd8e6] px-4 font-normal outline-none focus:border-[#0088e8]" placeholder="example@gmail.com" /></label><label class="block text-sm font-semibold">Tin nhắn<textarea class="mt-2 min-h-[120px] w-full resize-none rounded-xl border border-[#cfd8e6] p-4 font-normal outline-none focus:border-[#0088e8]" placeholder="Bạn quan tâm đến khóa học nào?"></textarea></label><a routerLink="/main/contact" class="flex h-[58px] items-center justify-center rounded-full bg-[#07131b] font-bold text-white">Gửi tin nhắn</a></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 10. FAQ Section -->
+        <section class="ln-faq">
+          <div class="ln-faq__inner">
+            <div class="ln-faq__head">
+              <img class="ln-faq__logo" src="/assets/landing/faq-logo.png" alt="" aria-hidden="true" />
+              <h2 class="ln-faq__title">Câu hỏi thường gặp</h2>
             </div>
 
-            <div class="grid gap-4 w-full md:grid-cols-2">
+            <div class="ln-faq__grid">
               @for (item of faqItems; track item.question; let i = $index) {
                 <div
-                  class="rounded-[14px] border p-5 transition-all cursor-pointer"
-                  [ngClass]="openFaq() === i ? 'border-[#BFE5FF] bg-[#E6F4FF]' : 'border-[#D3ECFF] bg-[#F1F9FF] hover:bg-[#E6F4FF]'"
-                  (click)="toggleFaq(i)"
+                  class="ln-faq__item"
+                  [class.ln-faq__item--amber]="i % 4 === 1 || i % 4 === 2"
+                  [class.is-open]="openFaq() === i"
                 >
-                  <div class="flex w-full items-center justify-between text-left">
-                    <span class="font-['Inter'] text-[15px] font-extrabold text-[#09131A]">{{ item.question }}</span>
-                    <span class="text-lg font-bold">{{ openFaq() === i ? '−' : '+' }}</span>
-                  </div>
+                  <button
+                    type="button"
+                    class="ln-faq__question"
+                    [attr.aria-expanded]="openFaq() === i"
+                    (click)="toggleFaq(i)"
+                  >
+                    <span class="ln-faq__question-text">{{ item.question }}</span>
+                    <span class="ln-faq__plus">
+                      <app-icon [name]="openFaq() === i ? 'minus' : 'plus'" class="ln-faq__plus-icon" [strokeWidth]="2" />
+                    </span>
+                  </button>
                   @if (openFaq() === i) {
-                    <p class="mt-4 font-['Inter'] text-[13px] leading-5 text-[rgba(9,19,26,0.8)]">
-                      {{ item.answer }}
-                    </p>
+                    <p class="ln-faq__answer">{{ item.answer }}</p>
                   }
                 </div>
               }
@@ -390,7 +407,7 @@
           </div>
         </section>
 
-        <!-- 10. CTA Section -->
+        <!-- 11. CTA Section -->
         <section class="bg-[#006AB5] px-6 py-14 text-white text-center">
           <div class="mx-auto max-w-[768px] flex flex-col items-center gap-6">
             <h2 class="font-['Inter'] text-[32px] font-bold">

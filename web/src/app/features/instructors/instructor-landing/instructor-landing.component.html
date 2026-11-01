@@ -1,0 +1,245 @@
+<main class="overflow-hidden">
+  <!-- Hero -->
+  <section class="il-hero">
+    <div class="il-hero__content">
+      <span class="il-badge">
+        <app-icon name="sparkles" class="h-[13px] w-[13px]" />
+        NỀN TẢNG DÀNH CHO GIẢNG VIÊN
+      </span>
+
+      <h1 class="il-hero__title">Biến kiến thức của bạn <em>thành thu nhập thụ động</em></h1>
+
+      <p class="il-hero__text">
+        Chia sẻ kiến thức, truyền cảm hứng và tạo nguồn thu nhập bền vững với nền tảng giảng dạy trực
+        tuyến dành cho giảng viên.
+      </p>
+
+      <ul class="il-checks">
+        <li>
+          <span class="il-check"><app-icon name="check" class="h-[12px] w-[12px]" /></span>
+          Dễ dàng tạo &amp; quản lý khóa học
+        </li>
+        <li>
+          <span class="il-check"><app-icon name="check" class="h-[12px] w-[12px]" /></span>
+          Tiếp cận hàng nghìn học viên
+        </li>
+        <li>
+          <span class="il-check"><app-icon name="check" class="h-[12px] w-[12px]" /></span>
+          Thu nhập thụ động mỗi tháng
+        </li>
+      </ul>
+
+      <a routerLink="/main/instructors/start" class="il-hero__cta">Bắt đầu giảng dạy</a>
+
+      <div class="il-social">
+        <div class="il-social__avatars">
+          @for (image of avatars; track image) {
+            <img [src]="image" alt="" />
+          }
+        </div>
+        <span>Hơn 10.000+ giảng viên đã tin tưởng và đồng hành</span>
+      </div>
+    </div>
+
+    <div class="il-hero__media">
+      <img
+        src="/assets/instructor-application/hero-instructor.png"
+        alt="Giảng viên ThinkUp"
+        class="il-hero__photo"
+      />
+
+      <div class="il-float il-float--revenue">
+        <small class="il-float__label">Doanh thu tháng này</small>
+        <b class="il-float__value">$5,630</b>
+        <span class="il-float__delta">↑ 28% so với tháng trước</span>
+        <svg class="il-revenue-card__spark" viewBox="0 0 200 44" fill="none" aria-hidden="true">
+          <polyline
+            points="2,34 34,31 62,33 92,29 120,24 150,26 180,16 196,12"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </div>
+
+      <div class="il-float il-float--stats">
+        <span class="il-stat">
+          <small class="il-float__label">Học viên</small>
+          <b class="il-float__value">2,345</b>
+        </span>
+        <span class="il-stat">
+          <small class="il-float__label">Khóa học</small>
+          <b class="il-float__value">12</b>
+        </span>
+      </div>
+
+      <div class="il-float il-float--quote">
+        <span class="il-quote__mark">“</span>
+        <p class="il-quote__text">
+          Nền tảng dễ sử dụng, hỗ trợ tuyệt vời! Tôi đã đạt được thu nhập ổn định mỗi tháng.
+        </p>
+        <span class="il-quote__mark il-quote__mark--end">”</span>
+        <div class="il-quote__author">
+          <img src="/assets/instructor-application/avatar-2.png" alt="" />
+          <span>
+            <b class="il-quote__name">Nguyễn Minh Anh</b>
+            <small class="il-quote__role">Giảng viên Marketing</small>
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Benefits + why -->
+  <section class="il-benefits">
+    <h2 class="il-section-title">Bạn nhận được gì khi giảng dạy cùng chúng tôi?</h2>
+
+    <div class="il-container il-benefit-grid">
+      @for (card of benefits; track card.title) {
+        <article class="il-benefit-card">
+          <h3 class="il-benefit-card__title">{{ card.title }}</h3>
+          <p class="il-benefit-card__text">{{ card.text }}</p>
+
+          <ul class="il-benefit-card__list">
+            @for (item of card.bullets; track item) {
+              <li>{{ item }}</li>
+            }
+          </ul>
+
+          @if (card.revenue) {
+            <div class="il-revenue-box">
+              <small class="il-float__label">Doanh thu ước tính</small>
+              <b class="il-revenue-box__value">$5,630 <em>/ tháng</em></b>
+              <span class="il-revenue-box__delta">↑ 28% so với tháng trước</span>
+              <svg class="il-revenue-box__spark" viewBox="0 0 240 44" fill="none" aria-hidden="true">
+                <polyline
+                  points="4,34 36,30 70,32 104,24 140,26 172,18 208,20 234,8"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </div>
+          } @else if (card.image) {
+            <div class="il-benefit-card__media">
+              <img [src]="card.image" [alt]="card.title" />
+            </div>
+          }
+        </article>
+      }
+    </div>
+
+    <div class="il-why">
+      <h2 class="il-section-title">Vì sao nên chọn chúng tôi?</h2>
+      <div class="il-why__grid">
+        @for (item of why; track item.title) {
+          <div class="il-why__card">
+            <b>{{ item.title }}</b>
+            <p>{{ item.text }}</p>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Testimonials -->
+  <section class="il-testimonials">
+    <h2 class="il-section-title">Giảng viên nói gì về chúng tôi?</h2>
+
+    <div class="il-testimonial-grid">
+      @for (item of testimonials; track item.name) {
+        <article class="il-testimonial">
+          <header class="il-testimonial__head">
+            <img [src]="item.image" [alt]="item.name" />
+            <span>
+              <b class="il-testimonial__name">{{ item.name }}</b>
+              <small class="il-testimonial__role">{{ item.role }}</small>
+            </span>
+          </header>
+
+          <div class="il-stars" aria-label="5 trên 5 sao">
+            @for (star of [1, 2, 3, 4, 5]; track star) {
+              <app-icon name="star" class="is-filled h-[15px] w-[15px]" />
+            }
+          </div>
+
+          <p class="il-testimonial__quote">“{{ item.quote }}”</p>
+        </article>
+      }
+    </div>
+  </section>
+
+  <!-- Bottom CTA -->
+  <section class="il-cta">
+    <div class="il-cta__inner">
+      <div class="il-cta__content">
+        <span class="il-cta__badge">
+          <app-icon name="star" class="is-filled h-[13px] w-[13px] text-[#f5a623]" />
+          Tham gia cùng hàng nghìn giảng viên
+        </span>
+
+        <h2 class="il-cta__title">Sẵn sàng chia sẻ kiến thức và tạo <em>thu nhập thụ động?</em></h2>
+
+        <p class="il-cta__text">
+          Biến chuyên môn của bạn thành khóa học giá trị, giúp hàng nghìn học viên và tạo nguồn thu
+          nhập bền vững mỗi tháng.
+        </p>
+
+        <div class="il-cta__checks">
+          @for (item of ctaChecks; track item.title) {
+            <div class="il-cta__check">
+              <span class="il-check"><app-icon name="check" class="h-[12px] w-[12px]" /></span>
+              <span>
+                <b>{{ item.title }}</b>
+                <span>{{ item.text }}</span>
+              </span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="il-cta__media">
+        <img src="/assets/instructor-application/cta-instructors.png" alt="Giảng viên ThinkUp" />
+
+        <div class="il-cta__float il-cta__float--revenue">
+          <small class="il-float__label">Doanh thu tháng này</small>
+          <b class="il-float__value">$5,630</b>
+          <span class="il-float__delta">↑ 28% so với tháng trước</span>
+          <svg class="il-revenue-card__spark" viewBox="0 0 200 44" fill="none" aria-hidden="true">
+            <polyline
+              points="2,34 34,31 62,33 92,29 120,24 150,26 180,16 196,12"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </div>
+
+        <div class="il-cta__float il-cta__float--rating">
+          <small class="il-float__label">Học viên hài lòng</small>
+          <b class="il-cta__rating-value">98%</b>
+          <div class="il-stars" aria-label="5 trên 5 sao">
+            @for (star of [1, 2, 3, 4, 5]; track star) {
+              <app-icon name="star" class="is-filled h-[14px] w-[14px]" />
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="il-cta__bar">
+      <div class="il-cta__bar-avatars">
+        @for (image of barAvatars; track image) {
+          <img [src]="image" alt="" />
+        }
+      </div>
+      <span class="il-cta__bar-count">10K+</span>
+      <p class="il-cta__bar-text">Hơn 10.000+ giảng viên đã tin tưởng và đồng hành cùng chúng tôi</p>
+      <p class="il-cta__bar-hint">Bắt đầu hành trình giảng dạy của bạn ngay hôm nay!</p>
+      <a routerLink="/main/instructors/start" class="il-cta__bar-cta">Bắt đầu giảng dạy</a>
+    </div>
+  </section>
+</main>

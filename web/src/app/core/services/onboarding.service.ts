@@ -6,6 +6,29 @@ import { StudentPreferences, User } from '../models/user.model';
 import { Course } from '../models/course.model';
 import { AuthService } from './auth.service';
 
+interface BackendOnboardingCourse {
+  id: string;
+  course_id?: string | null;
+  title: string;
+  description?: string | null;
+  short_description?: string | null;
+  category_id?: string | null;
+  level?: string | null;
+  rating?: number | string | null;
+  total_reviews?: number | string | null;
+  total_students?: number | string | null;
+  price?: number | string | null;
+  original_price?: number | string | null;
+  thumbnail_url?: string | null;
+  badge?: string | null;
+  tag_ids?: string[];
+}
+
+interface OnboardingCoursesResponse {
+  message?: string;
+  courses: BackendOnboardingCourse[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class OnboardingService {
   private http = inject(HttpClient);
@@ -13,15 +36,13 @@ export class OnboardingService {
   private apiUrl = environment.apiUrl;
 
   getRecommendedCourses(): Observable<Course[]> {
-    interface BackendCourse {
-      id: string; course_id?: string | null; title: string; description?: string | null;
-      short_description?: string | null; category_id?: string | null; level?: string | null;
-      rating?: number | null; total_reviews?: number | null; total_students?: number | null;
-      price?: number | null; original_price?: number | null; thumbnail_url?: string | null;
-      instructor_id?: string | null; badge?: string | null; tag_ids?: string[];
-    }
-    return this.http.get<{ courses: BackendCourse[] }>(`${this.apiUrl}/user/onboarding/courses`).pipe(
-      map(response => response.courses.map(course => ({
+    return this.http.get<OnboardingCoursesResponse>(`${this.apiUrl}/user/onboarding/courses`).pipe(
+      map(response => this.mapCourses(response.courses))
+    );
+  }
+
+  private mapCourses(courses: BackendOnboardingCourse[]): Course[] {
+    return courses.map(course => ({
         id: course.id,
         courseId: course.course_id || undefined,
         title: course.title,
@@ -30,16 +51,20 @@ export class OnboardingService {
         instructor: 'Giảng viên ThinkUp',
         category: course.category_id || undefined,
         level: course.level || undefined,
-        rating: course.rating ?? 0,
-        ratingCount: course.total_reviews ?? 0,
-        studentsCount: course.total_students ?? 0,
-        originalPrice: course.original_price ?? course.price ?? 0,
-        salePrice: course.price ?? 0,
+        rating: this.toNumber(course.rating),
+        ratingCount: this.toNumber(course.total_reviews),
+        studentsCount: this.toNumber(course.total_students),
+        originalPrice: this.toNumber(course.original_price ?? course.price),
+        salePrice: this.toNumber(course.price),
         thumbnailUrl: course.thumbnail_url || undefined,
         badge: course.badge || undefined,
         tags: course.tag_ids || [],
-      })))
-    );
+      }));
+  }
+
+  private toNumber(value: number | string | null | undefined): number {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
   }
 
   /**

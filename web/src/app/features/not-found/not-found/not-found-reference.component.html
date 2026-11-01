@@ -1,0 +1,63 @@
+<main class="not-found-page">
+  <section class="not-found-layout" aria-labelledby="not-found-title">
+    <div class="game-column">
+      <div class="scoreboard" aria-live="polite">
+        <span class="score-row">
+          <span>SCORE {{ score() }}</span>
+          @if (status() === 'gameover') {
+            <button type="button" (click)="resetGame(); jump()">
+              <svg lucideRotateCcw [size]="14" [strokeWidth]="3" aria-hidden="true"></svg>
+              CHƠI LẠI
+            </button>
+          }
+        </span>
+        <span class="lives-meter" [attr.aria-label]="lives() + ' lượt chơi còn lại'">
+          <span class="lives-fill" [style.width.%]="lives() / 3 * 100">
+            <img class="pixel-hearts" src="/assets/not-found/pixel-hearts.png" alt="" />
+          </span>
+        </span>
+      </div>
+
+      <div
+        #gameTrack
+        class="game-track"
+        (pointerdown)="jump()"
+        role="application"
+        tabindex="0"
+        aria-label="Trò chơi khủng long ThinkUp. Nhấn Space, mũi tên lên hoặc nhấp chuột để nhảy."
+      >
+        <img class="campus-scenery" src="/assets/not-found/pixel-campus-cropped.png" alt="" aria-hidden="true" />
+        <img class="dino" src="/assets/not-found/thinkup-dino-green.png" alt="" aria-hidden="true" [style.transform]="'translateY(' + (-dinoY()) + 'px)'" />
+        @for (asset of obstacleAssets; track asset; let index = $index) {
+          <img
+            [class]="'obstacle obstacle-' + asset"
+            [src]="'/assets/not-found/obstacle-' + asset + '.png'"
+            alt=""
+            aria-hidden="true"
+            [style.transform]="'translateX(' + obstaclePositions()[index] + 'px)'"
+          />
+        }
+        <div class="ground" aria-hidden="true"></div>
+      </div>
+    </div>
+
+    <div class="content-column">
+      <img class="error-code" src="/assets/not-found/error-404-pixel.png" alt="404!" />
+      <h1 id="not-found-title">Ôi! Bạn đã đi lạc khỏi lộ trình học</h1>
+      <p class="description">Trang bạn đang tìm không tồn tại hoặc đã được di chuyển.</p>
+
+      <div class="actions">
+        <a class="primary-action" routerLink="/main">
+          <svg lucideHouse [size]="25" [strokeWidth]="2.8" aria-hidden="true"></svg>
+          Về trang chủ
+        </a>
+        <a class="secondary-action" routerLink="/main/courses">
+          <svg lucideBookOpen [size]="25" [strokeWidth]="2.3" aria-hidden="true"></svg>
+          Khám phá khóa học
+        </a>
+      </div>
+
+      <p class="keyboard-hint"><kbd>Space</kbd> Nhấn phím Space để khủng long tiếp tục chạy</p>
+    </div>
+  </section>
+</main>

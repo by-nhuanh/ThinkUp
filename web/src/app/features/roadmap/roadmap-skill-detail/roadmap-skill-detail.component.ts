@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   LucideArrowRight,
@@ -16,6 +16,7 @@ import { CommerceService } from '../../../core/services/commerce.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { RoadmapSkillStatus, RoadmapStage } from '../models/roadmap.model';
 import { RoadmapService } from '../services/roadmap.service';
+import { FlashcardService } from '../services/flashcard.service';
 import { RoadmapCourseCardComponent } from '../components/roadmap-course-card/roadmap-course-card.component';
 import { RoadmapProgressComponent } from '../components/roadmap-progress/roadmap-progress.component';
 import { RoadmapStageIconComponent } from '../components/roadmap-stage-icon/roadmap-stage-icon.component';
@@ -52,8 +53,9 @@ const STATUS_OPTIONS: StatusOption[] = [
   templateUrl: './roadmap-skill-detail.component.html',
   styleUrls: ['../styles/roadmap-ui.css', './roadmap-skill-detail.component.css']
 })
-export class RoadmapSkillDetailComponent {
+export class RoadmapSkillDetailComponent implements OnInit {
   readonly roadmapService = inject(RoadmapService);
+  private readonly flashcardService = inject(FlashcardService);
   private readonly commerceService = inject(CommerceService);
   private readonly toastService = inject(ToastService);
   private readonly router = inject(Router);
@@ -62,6 +64,8 @@ export class RoadmapSkillDetailComponent {
   readonly roadmapId = this.params.get('roadmapId') ?? '';
   readonly skillId = this.params.get('skillId') ?? '';
   readonly statusOptions = STATUS_OPTIONS;
+  readonly loading = this.roadmapService.loading;
+  readonly error = signal<string | null>(null);
 
   readonly roadmap = computed(() => this.roadmapService.getRoadmapById(this.roadmapId));
   readonly skillInfo = computed(() => this.roadmapService.getSkill(this.roadmapId, this.skillId));
@@ -98,20 +102,15 @@ export class RoadmapSkillDetailComponent {
       .slice(0, 2);
   });
 
-  stagePercent(stage: RoadmapStage): number {
-    return this.roadmapService.getStageProgress(stage).percent;
+  ngOnInit(): void {
+    this.error.set(null);
+    this.roadmapService.loadRoadmap(this.roadmapId).subscribe({
+      error: () => this.error.set('Không tải được thông tin kỹ năng. Vui lòng thử lại sau.')
+    });
   }
 
-  setStatus(status: RoadmapSkillStatus): void {
-    const skill = this.skill();
-    if (!skill || skill.status === status) return;
-
-    this.roadmapService.updateSkillStatus(this.roadmapId, skill.id, status);
-    const label = STATUS_OPTIONS.find((option) => option.id === status)?.label ?? '';
-    this.toastService.showToast({
-      type: status === 'review' ? 'warning' : 'success',
-      message: `Đã cập nhật trạng thái: ${label}`
-    });
+  stagePercent(stage: RoadmapStage): number {
+    return this.roadmapService.getStageProgress(stage).percent;
   }
 
   openTest(): void {
@@ -119,9 +118,24 @@ export class RoadmapSkillDetailComponent {
   }
 
   createFlashcard(): void {
-    this.router.navigate(['/learning/flashcards/new'], {
-      queryParams: { title: `Ôn tập ${this.skill()?.title ?? 'kỹ năng'}` }
-    });
+    const skill = this.skill();
+    if (!skill) return;
+
+    this.flashcardService
+      .createFromRoadmap({ nodeId: skill.id, roadmapId: this.roadmapId, title: skill.title })
+      .subscribe({
+        next: result => {
+          this.router.navigate(['/learning/flashcards', result.setId, 'edit'], {
+            queryParams: { add: '1' }
+          });
+        },
+        error: (error: { error?: { message?: string } }) => {
+          this.toastService.showToast({
+            type: 'error',
+            message: error?.error?.message ?? 'Không tạo được bộ flashcard ôn tập.'
+          });
+        }
+      });
   }
 
   addToCart(courseId: string): void {

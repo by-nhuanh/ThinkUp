@@ -54,7 +54,7 @@
 
           <!-- Menu Items List -->
           <div class="flex flex-col">
-            @for (item of menuItems; track item.label) {
+            @for (item of menuItems(); track item.label) {
               @if (item.dividerBefore) {
                 <div class="h-px bg-[#E8ECF2]"></div>
               }
@@ -139,7 +139,7 @@
                 <span class="min-w-0 flex-1 truncate">{{ item.label }}</span>
 
                 @if (item.badge) {
-                  <span class="grid h-6 w-6 place-items-center rounded-full bg-[#EF4444] text-[11px] font-semibold text-white">
+                  <span class="grid h-6 min-w-6 place-items-center rounded-full bg-[#EF4444] px-1 text-[11px] font-semibold text-white">
                     {{ item.badge }}
                   </span>
                 }

@@ -15,6 +15,7 @@ import {
 } from '@lucide/angular';
 import { FlashcardCardStatus, FlashcardStudyMode } from '../models/flashcard.model';
 import { FlashcardService } from '../services/flashcard.service';
+import { RoadmapService } from '../services/roadmap.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { FlashcardSetIconComponent } from '../components/flashcard-set-icon/flashcard-set-icon.component';
 
@@ -62,6 +63,7 @@ const CARD_STATUS_LABEL: Record<FlashcardCardStatus, string> = {
 })
 export class FlashcardDetailComponent {
   private readonly flashcardService = inject(FlashcardService);
+  private readonly roadmapService = inject(RoadmapService);
   private readonly toastService = inject(ToastService);
   private readonly router = inject(Router);
 
@@ -71,6 +73,7 @@ export class FlashcardDetailComponent {
   readonly cardFilter = signal<CardFilter>('all');
   readonly studyMode = signal<FlashcardStudyMode>('shuffle');
   readonly deleteConfirm = signal(false);
+  readonly syncing = signal(false);
 
   readonly set = computed(() => this.flashcardService.getSet(this.setId));
   readonly stats = computed(() => {
@@ -93,6 +96,12 @@ export class FlashcardDetailComponent {
     const filter = this.cardFilter();
     return filter === 'all' ? set.cards : set.cards.filter((card) => card.status === filter);
   });
+
+  constructor() {
+    this.flashcardService.loadSet(this.setId).subscribe({
+      error: () => this.toastService.showToast({ type: 'error', message: 'Không thể tải bộ flashcard.' })
+    });
+  }
 
   cardStatusLabel(status: FlashcardCardStatus): string {
     return CARD_STATUS_LABEL[status];
@@ -123,10 +132,42 @@ export class FlashcardDetailComponent {
     });
   }
 
+  syncToRoadmap(): void {
+    const set = this.set();
+    if (!set?.nodeId || this.syncing()) return;
+
+    this.syncing.set(true);
+    this.flashcardService.syncToRoadmap(set.nodeId, set.id).subscribe({
+      next: result => {
+        this.syncing.set(false);
+        if (result?.updated) {
+          this.roadmapService.refreshActiveRoadmap().subscribe({ error: () => undefined });
+          this.toastService.showToast({
+            type: 'success',
+            message: result.message ?? 'Đã đồng bộ tiến độ sang lộ trình học.'
+          });
+          return;
+        }
+        this.toastService.showToast({
+          type: 'info',
+          message: result?.message ?? result?.reason ?? 'Bộ thẻ chưa đủ điều kiện đồng bộ sang lộ trình.'
+        });
+      },
+      error: (error: { error?: { message?: string } }) => {
+        this.syncing.set(false);
+        this.toastService.showToast({
+          type: 'error',
+          message: error?.error?.message ?? 'Không đồng bộ được tiến độ sang lộ trình.'
+        });
+      }
+    });
+  }
+
   confirmDelete(): void {
-    this.flashcardService.deleteSet(this.setId);
     this.deleteConfirm.set(false);
-    this.toastService.showToast({ type: 'success', message: 'Đã xóa bộ flashcard.' });
-    this.router.navigate(['/learning/flashcards']);
+    this.toastService.showToast({
+      type: 'info',
+      message: 'Chức năng xóa đang chờ backend cung cấp API contract.'
+    });
   }
 }

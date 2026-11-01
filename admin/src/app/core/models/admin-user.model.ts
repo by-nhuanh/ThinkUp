@@ -51,6 +51,20 @@ export interface AdminVerifyTwoFactorResponse {
   };
 }
 
+/** Dữ liệu riêng của từng tài khoản dùng để ghép ứng dụng Authenticator. */
+export interface AdminTwoFactorSetup {
+  setupKey: string;
+  qrUri: string;
+}
+
+/** Phần dữ liệu 2FA backend trả về sau bước khởi tạo mật khẩu onboarding. */
+export interface AdminOnboardingSetupResponse {
+  success: boolean;
+  onboardingToken: string;
+  secretKey: string;
+  qrUri: string;
+}
+
 /** Lỗi API đã được chuẩn hoá để component hiển thị thông điệp tiếng Việt. */
 export interface AdminAuthError extends Error {
   status?: number;

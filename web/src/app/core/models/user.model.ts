@@ -17,6 +17,7 @@ export interface User {
   onboarding_completed?: boolean;
   preferences?: StudentPreferences;
   email_verified?: boolean;
+  status?: 'active' | 'pending' | 'suspended' | string;
 }
 
 export interface AuthResponse {
@@ -24,6 +25,7 @@ export interface AuthResponse {
   message: string;
   user?: User;
   token?: string;
+  refreshToken?: string;
   code?: string;
   errorCode?: 'INVALID_CREDENTIALS' | 'ACCOUNT_LOCKED' | 'BRUTE_FORCE' | 'NETWORK_ERROR' | 'MISSING_EMAIL' | 'DUPLICATE_EMAIL' | 'DUPLICATE_PHONE' | string;
   provider?: string;

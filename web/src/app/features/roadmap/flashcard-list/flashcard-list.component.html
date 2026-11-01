@@ -49,7 +49,16 @@
       </label>
     </div>
 
-    @if (sets().length === 0) {
+    @if (loading()) {
+      <div class="rm-card flashcard-empty flashcard-empty--compact">
+        <p class="flashcard-empty__text">Đang tải danh sách flashcard...</p>
+      </div>
+    } @else if (error(); as message) {
+      <div class="rm-card flashcard-empty flashcard-empty--compact">
+        <h2 class="flashcard-empty__title">Không tải được flashcard</h2>
+        <p class="flashcard-empty__text">{{ message }}</p>
+      </div>
+    } @else if (sets().length === 0) {
       <div class="rm-card flashcard-empty">
         <img
           class="flashcard-empty__illustration"

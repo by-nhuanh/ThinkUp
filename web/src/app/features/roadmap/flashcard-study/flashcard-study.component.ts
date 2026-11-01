@@ -13,6 +13,7 @@ import {
 } from '@lucide/angular';
 import { FlashcardCard, FlashcardStudyMode } from '../models/flashcard.model';
 import { FlashcardService } from '../services/flashcard.service';
+import { RoadmapService } from '../services/roadmap.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { RoadmapProgressComponent } from '../components/roadmap-progress/roadmap-progress.component';
 import { FlashcardSetIconComponent } from '../components/flashcard-set-icon/flashcard-set-icon.component';
@@ -41,6 +42,7 @@ const VALID_MODES: FlashcardStudyMode[] = ['shuffle', 'ordered', 'review-first']
 })
 export class FlashcardStudyComponent {
   private readonly flashcardService = inject(FlashcardService);
+  private readonly roadmapService = inject(RoadmapService);
   private readonly toastService = inject(ToastService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -65,11 +67,14 @@ export class FlashcardStudyComponent {
   readonly codeLines = computed(() => (this.card()?.code ?? '').split('\n').filter((line) => line.length > 0));
 
   constructor() {
-    const queue = this.flashcardService.buildStudyQueue(this.setId, this.mode);
     const filter = this.route.snapshot.queryParamMap.get('filter');
-    this.queue.set(
-      filter === 'review' ? queue.filter((card) => card.status === 'review') : queue
-    );
+    this.flashcardService.loadSet(this.setId, true).subscribe({
+      next: () => this.flashcardService.startSession(this.setId, this.mode).subscribe({
+        next: queue => this.queue.set(filter === 'review' ? queue.filter(card => card.status === 'review') : queue),
+        error: () => this.toastService.showToast({ type: 'error', message: 'Không thể bắt đầu phiên học.' })
+      }),
+      error: () => this.toastService.showToast({ type: 'error', message: 'Không thể tải bộ flashcard.' })
+    });
   }
 
   private resolveMode(value: string | null): FlashcardStudyMode {
@@ -96,22 +101,21 @@ export class FlashcardStudyComponent {
     const card = this.card();
     if (!card) return;
 
-    this.flashcardService.updateCardStatus(this.setId, card.id, status);
-
-    if (status === 'review') {
-      this.toastService.showToast({
-        type: 'warning',
-        message: 'Đã đưa thẻ vào danh sách cần ôn tập.'
-      });
-    }
-
-    if (this.isLast()) {
-      this.router.navigate(['/learning/flashcards', this.setId, 'complete']);
-      return;
-    }
-
-    this.flipped.set(false);
-    this.currentIndex.update((index) => index + 1);
+    this.flashcardService.updateCardStatus(this.setId, card.id, status).subscribe({
+      next: roadmapSync => {
+        if (roadmapSync?.updated) {
+          this.roadmapService.refreshActiveRoadmap().subscribe({ error: () => undefined });
+        }
+        if (status === 'review') this.toastService.showToast({ type: 'warning', message: 'Đã đưa thẻ vào danh sách cần ôn tập.' });
+        if (this.isLast()) {
+          this.router.navigate(['/learning/flashcards', this.setId, 'complete']);
+          return;
+        }
+        this.flipped.set(false);
+        this.currentIndex.update(index => index + 1);
+      },
+      error: () => this.toastService.showToast({ type: 'error', message: 'Không thể cập nhật trạng thái thẻ.' })
+    });
   }
 
   exit(): void {

@@ -66,12 +66,15 @@ export interface Certificate {
 
 export interface ProfileOverviewData {
   profile: UserProfile;
-  learningStats: LearningStat[];
-  roadmapProgress: number;
   currentCourses: CurrentCourse[];
-  achievements: Achievement[];
-  totalAwards: number;
   recentActivities: RecentActivity[];
   certificates?: Certificate[];
   completedCourses?: CurrentCourse[];
+  totalCompletedCourses?: number;
+  totalCertificates?: number;
+  timezone?: string;
+  learningStats?: LearningStat[];
+  roadmapProgress?: number;
+  achievements?: Achievement[];
+  totalAwards?: number;
 }

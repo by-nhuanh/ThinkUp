@@ -1,0 +1,209 @@
+<div class="min-h-full bg-[#F8FAFF] text-[#0F172B]">
+  <main class="mx-auto flex w-full min-w-0 max-w-[1920px] flex-col gap-12 px-8 pb-7 pt-6">
+    <!-- Tiêu đề + hành động toàn cục -->
+    <header class="flex flex-col gap-2.5">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h1 class="n-page-title">Trung tâm thông báo</h1>
+
+        <button
+          type="button"
+          class="n-mark-all flex items-center gap-2"
+          [disabled]="unreadCount() === 0"
+          (click)="markAllRead()"
+        >
+          <svg lucideCircleCheck [size]="18" [strokeWidth]="1.5"></svg>
+          <span>Đánh dấu tất cả là đã đọc</span>
+        </button>
+      </div>
+
+      @if (tab() === 'all') {
+        <p class="n-crumb">Quản lý và theo dõi tất cả thông báo của bạn</p>
+      } @else {
+        <nav class="n-crumb flex flex-wrap items-center gap-2" aria-label="Breadcrumb">
+          <a routerLink="/main/home" class="transition-colors hover:text-[#174FD6]">Trang chủ</a>
+          <span aria-hidden="true">›</span>
+          <a routerLink="/main/notifications" class="transition-colors hover:text-[#174FD6]">Thông báo</a>
+          <span aria-hidden="true">›</span>
+          <span class="font-medium text-[#17345F]">{{ tabLabel() }}</span>
+        </nav>
+      }
+
+      <!-- Tab chuyên đề + sắp xếp (chỉ tab Tất cả) -->
+      <div class="n-center-grid items-center">
+        <div class="n-filter-row flex min-w-0 items-center justify-between gap-3">
+          <nav class="flex flex-wrap items-center gap-2" aria-label="Nhóm thông báo">
+            @for (tabItem of tabs(); track tabItem.id) {
+              <a
+                [routerLink]="tabItem.path"
+                class="n-tab"
+                [class.is-active]="tabItem.id === tab()"
+                [attr.aria-current]="tabItem.id === tab() ? 'page' : null"
+              >
+                {{ tabItem.label }} ({{ tabItem.count }})
+              </a>
+            }
+          </nav>
+
+          @if (tab() === 'all') {
+            <div class="n-sort-root relative shrink-0" data-sort-root>
+              <button
+                #sortTrigger
+                type="button"
+                class="n-sort-trigger"
+                aria-haspopup="listbox"
+                aria-controls="notification-sort-menu"
+                [attr.aria-expanded]="sortOpen()"
+                (click)="toggleSort($event)"
+                (keydown)="onSortTriggerKeydown($event)"
+              >
+                <span class="min-w-0 truncate">{{ sortLabel() }}</span>
+                <svg lucideChevronDown [size]="16" [strokeWidth]="1.5" class="shrink-0"></svg>
+              </button>
+
+              @if (sortOpen()) {
+                <div
+                  #sortMenu
+                  id="notification-sort-menu"
+                  class="n-sort-menu"
+                  [class.is-above]="sortMenuAbove()"
+                  role="listbox"
+                  aria-label="Sắp xếp thông báo"
+                  (keydown)="onSortMenuKeydown($event)"
+                >
+                  @for (option of sortOptions; track option.id) {
+                    <button
+                      type="button"
+                      role="option"
+                      class="n-sort-option"
+                      [class.is-selected]="option.id === sort()"
+                      [attr.aria-selected]="option.id === sort()"
+                      (click)="selectSort(option.id)"
+                    >
+                      <span>{{ option.label }}</span>
+                      @if (option.id === sort()) {
+                        <svg lucideCheck [size]="16" [strokeWidth]="1.7" class="shrink-0"></svg>
+                      }
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </header>
+
+    <div class="n-center-grid items-start">
+      <!-- Danh sách thông báo -->
+      <section class="flex min-w-0 flex-col gap-3.5" aria-label="Danh sách thông báo">
+        @if (groups().length === 0) {
+          <div
+            class="flex flex-col items-center justify-center gap-3 rounded-[10px] border border-[#DDE5F0] bg-white px-6 py-16 text-center"
+          >
+            <span class="flex size-14 items-center justify-center rounded-full bg-[#EFF6FF] text-[#174FD6]">
+              <svg lucideInbox [size]="26" [strokeWidth]="1.6"></svg>
+            </span>
+            <p class="text-[15px] font-semibold text-[#17345F]">Không có thông báo nào</p>
+            <p class="max-w-[380px] text-[13px] leading-5 text-[#536780]">
+              Khi có cập nhật mới, thông báo sẽ xuất hiện tại đây.
+            </p>
+          </div>
+        } @else {
+          @for (group of groups(); track group.key) {
+            <div class="flex flex-col gap-6">
+              <h2 class="n-group-title">{{ group.label }}</h2>
+              <div class="rounded-[10px] border border-[#DDE5F0] bg-white">
+                @for (item of group.items; track item.id) {
+                  <app-notification-row
+                    [item]="item"
+                    [badgeMode]="tab() === 'all' ? 'category' : 'kind'"
+                    [muteLabel]="muteLabelFor(item)"
+                    [muteLocked]="item.category === 'security'"
+                    (openNotification)="openNotification($event)"
+                    (removeNotification)="removeNotification($event)"
+                    (toggleMute)="toggleMute($event)"
+                  />
+                }
+              </div>
+            </div>
+          }
+
+          <p class="pt-1 text-center text-[12px] leading-4 text-[#94A3B8]">Không còn thông báo nào</p>
+        }
+      </section>
+
+      <!-- Cột phải theo từng màn hình -->
+      <aside class="flex min-w-0 flex-col gap-4">
+        @if (tab() === 'all') {
+          <section class="rounded-[10px] border border-[#DDE5F0] bg-white p-6">
+            <h2 class="n-side-title text-[#0E172B]">Tổng quan thông báo</h2>
+
+            <dl class="mt-4 flex flex-col gap-3.5">
+              <div class="flex items-center justify-between gap-4">
+                <dt class="n-side-label flex items-center gap-3 text-[#536780]">
+                  <svg lucideBell [size]="18" [strokeWidth]="1.6" class="shrink-0 text-[#94A3B8]"></svg>
+                  <span>Tổng số thông báo</span>
+                </dt>
+                <dd class="n-side-value text-[#17345F]">{{ totalCount() }}</dd>
+              </div>
+
+              <div class="flex items-center justify-between gap-4">
+                <dt class="n-side-label flex items-center gap-3 text-[#536780]">
+                  <svg lucideBell [size]="18" [strokeWidth]="1.6" class="shrink-0 text-[#94A3B8]"></svg>
+                  <span>Chưa đọc</span>
+                </dt>
+                <dd class="n-side-value text-[#E5484D]">{{ unreadCount() }}</dd>
+              </div>
+
+              <div class="flex items-center justify-between gap-4">
+                <dt class="n-side-label flex items-center gap-3 text-[#536780]">
+                  <svg lucideCircleCheck [size]="18" [strokeWidth]="1.6" class="shrink-0 text-[#94A3B8]"></svg>
+                  <span>Đã đọc</span>
+                </dt>
+                <dd class="n-side-value text-[#17345F]">{{ readCount() }}</dd>
+              </div>
+            </dl>
+
+            <a [routerLink]="settingsPath" class="n-side-button mt-5">
+              <svg lucideSettings2 [size]="18" [strokeWidth]="1.8"></svg>
+              <span>Cài đặt thông báo</span>
+            </a>
+          </section>
+        } @else if (aside(); as info) {
+          <section
+            class="n-about-card rounded-[10px] border border-[#DDE5F0] bg-white"
+            [class.n-about-card--learning]="tab() === 'learning'"
+            [class.n-about-card--transactions]="tab() === 'transactions'"
+            [class.n-about-card--security]="tab() === 'security'"
+          >
+            @if (tab() !== 'transactions') {
+              <h2 class="n-side-title text-[#17345F]">Về nhóm thông báo này</h2>
+            }
+
+            <div class="n-about-illustration">
+              <img
+                [src]="info.illustration"
+                [attr.width]="info.illustrationWidth"
+                [attr.height]="info.illustrationHeight"
+                alt=""
+                decoding="async"
+              />
+            </div>
+
+            <p class="n-about-description">{{ info.description }}</p>
+          </section>
+
+          <section class="rounded-[10px] border border-[#DDE5F0] bg-white px-6 py-[22px]">
+            <h2 class="n-side-title text-[#17345F]">Bạn cần hỗ trợ?</h2>
+            <p class="n-side-label mt-4 text-[#536780]">{{ info.supportText }}</p>
+
+            <a routerLink="/main/contact" class="n-support-button mt-4">
+              <svg lucideMessageCircle [size]="18" [strokeWidth]="1.6"></svg>
+              <span>Liên hệ hỗ trợ</span>
+            </a>
+          </section>
+        }
+      </aside>
+    </div>
+  </main>
+</div>

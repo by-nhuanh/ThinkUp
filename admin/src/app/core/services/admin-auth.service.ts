@@ -2,16 +2,15 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, catchError, from, map, of, tap, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import {
-  MOCK_ADMIN_BACKUP_CODES,
-  MOCK_ADMIN_SETUP_KEY
-} from '../data/mock/admin-auth.mock';
+import { MOCK_ADMIN_ACCOUNT, MOCK_ADMIN_BACKUP_CODES, MOCK_FIRST_LOGIN_ADMIN_ACCOUNT } from '../data/mock/admin-auth.mock';
 import {
   AdminAuthError,
   AdminLoginRequest,
   AdminLoginResponse,
   AdminPasswordState,
+  AdminOnboardingSetupResponse,
   AdminRole,
+  AdminTwoFactorSetup,
   AdminTwoFactorChallenge,
   AdminUser,
   AdminVerifyTwoFactorResponse
@@ -21,6 +20,7 @@ const TOKEN_KEY = 'access_token';
 const USER_KEY = 'thinkup_admin_user';
 const CHALLENGE_KEY = 'thinkup_admin_2fa';
 const REMINDER_KEY = 'thinkup_admin_password_reminder_dismissed';
+const TWO_FACTOR_SETUP_KEY = 'thinkup_admin_2fa_setup';
 
 /** Chính sách xoay vòng mật khẩu: 90 ngày, cảnh báo trước 7 ngày. */
 const PASSWORD_LIFETIME_DAYS = 90;
@@ -42,11 +42,13 @@ export class AdminAuthService {
   private readonly challengeState = signal<AdminTwoFactorChallenge | null>(null);
 
   private readonly issuedCodesState = signal<readonly string[]>([]);
+  private readonly twoFactorSetupState = signal<AdminTwoFactorSetup | null>(null);
 
   readonly currentUser = this.userState.asReadonly();
   readonly pendingChallenge = this.challengeState.asReadonly();
   /** Mã dự phòng vừa cấp sau khi hoàn tất thiết lập 2FA. */
   readonly issuedBackupCodes = this.issuedCodesState.asReadonly();
+  readonly twoFactorSetup = this.twoFactorSetupState.asReadonly();
 
   readonly passwordState = computed<AdminPasswordState>(() => {
     const expiresAt = this.userState()?.passwordExpiresAt;
@@ -65,6 +67,7 @@ export class AdminAuthService {
   constructor() {
     this.restoreSession();
     this.restoreChallenge();
+    this.restoreTwoFactorSetup();
   }
 
   isAuthenticated(): boolean {
@@ -89,6 +92,29 @@ export class AdminAuthService {
       email: (credentials.email ?? '').trim().toLowerCase(),
       password: credentials.password ?? ''
     };
+
+    // TODO(pre-deploy): Nhớ xóa nhánh đăng nhập local này khi backend Admin sẵn sàng.
+    // Không gửi email/mật khẩu ra mạng trong chế độ demo.
+    if (environment.adminDemoLogin) {
+      const account = [MOCK_ADMIN_ACCOUNT, MOCK_FIRST_LOGIN_ADMIN_ACCOUNT]
+        .find(item => item.email === payload.email && item.password === payload.password);
+      if (!account) {
+        return throwError(() => this.buildError('Email hoặc mật khẩu không chính xác. Vui lòng thử lại.', 401, 'INVALID_CREDENTIALS'));
+      }
+
+      const user: AdminUser = {
+        id: `demo-${account.email}`,
+        email: account.email,
+        fullName: account.fullName,
+        role: 'admin',
+        avatar: null,
+        passwordExpiresAt: null,
+        mustChangePassword: false,
+        twoFactorSetupRequired: false
+      };
+      this.saveSession('demo-local-access-token', user, false);
+      return of(user);
+    }
 
     return this.http.post<AdminLoginResponse>(`${this.apiUrl}/admin/auth/login`, payload).pipe(
       map(response => {
@@ -133,6 +159,48 @@ export class AdminAuthService {
 
   cancelChallenge(): void {
     this.clearChallenge();
+  }
+
+  /**
+   * Nhận dữ liệu QR thật từ response của `onboarding/setup-password`.
+   * `secretKey` của backend được chuẩn hoá thành `setupKey` cho view model FE.
+   */
+  captureTwoFactorSetup(response: AdminOnboardingSetupResponse): AdminTwoFactorSetup {
+    if (!response.success || !response.secretKey?.trim() || !response.qrUri?.startsWith('otpauth://')) {
+      throw this.buildError('Dữ liệu thiết lập 2FA từ máy chủ không hợp lệ.', 500, 'INVALID_2FA_SETUP');
+    }
+
+    const setup = {
+      setupKey: response.secretKey.trim(),
+      qrUri: response.qrUri
+    };
+    this.persistTwoFactorSetup(setup);
+    return setup;
+  }
+
+  /** Lấy đúng dữ liệu thiết lập của phiên/tài khoản hiện tại. */
+  getTwoFactorSetup(): Observable<AdminTwoFactorSetup> {
+    const existing = this.twoFactorSetupState();
+    if (existing) return of(existing);
+
+    // TODO(pre-deploy): Xóa nhánh tạo dữ liệu local khi toàn bộ màn đổi mật khẩu
+    // onboarding đã gọi `onboarding/setup-password` và capture response phía trên.
+    if (environment.adminDemoAuthFlow.twoFactorEnabled) {
+      const setupKey = createDemoSetupKey();
+      const account = encodeURIComponent(this.userState()?.email || 'admin@thinkup.edu.vn');
+      const setup = {
+        setupKey,
+        qrUri: `otpauth://totp/ThinkUp:${account}?secret=${setupKey}&issuer=ThinkUp&algorithm=SHA1&digits=6&period=30`
+      };
+      this.persistTwoFactorSetup(setup);
+      return of(setup);
+    }
+
+    return throwError(() => this.buildError(
+      'Không tìm thấy dữ liệu thiết lập 2FA. Vui lòng thực hiện lại bước tạo mật khẩu.',
+      409,
+      'TWO_FACTOR_SETUP_MISSING'
+    ));
   }
 
   /**
@@ -195,6 +263,8 @@ export class AdminAuthService {
     const updatedUser: AdminUser = { ...user, twoFactorSetupRequired: false };
     this.persistUser(updatedUser);
     this.userState.set(updatedUser);
+    if (typeof window !== 'undefined') sessionStorage.removeItem(TWO_FACTOR_SETUP_KEY);
+    this.twoFactorSetupState.set(null);
   }
 
   passwordReminderDismissed(): boolean {
@@ -215,9 +285,11 @@ export class AdminAuthService {
       localStorage.removeItem(USER_KEY);
       sessionStorage.removeItem(CHALLENGE_KEY);
       sessionStorage.removeItem(REMINDER_KEY);
+      sessionStorage.removeItem(TWO_FACTOR_SETUP_KEY);
     }
     this.userState.set(null);
     this.challengeState.set(null);
+    this.twoFactorSetupState.set(null);
   }
 
   private verifyTwoFactor(input: { otp: string } | { backupCode: string }): Observable<AdminUser> {
@@ -396,6 +468,39 @@ export class AdminAuthService {
     sessionStorage.removeItem(REMINDER_KEY);
   }
 
+  private persistTwoFactorSetup(setup: AdminTwoFactorSetup): void {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem(TWO_FACTOR_SETUP_KEY, JSON.stringify({
+        ownerId: this.userState()?.id ?? null,
+        setup
+      }));
+    }
+    this.twoFactorSetupState.set(setup);
+  }
+
+  private restoreTwoFactorSetup(): void {
+    if (typeof window === 'undefined') return;
+
+    const raw = sessionStorage.getItem(TWO_FACTOR_SETUP_KEY);
+    if (!raw) return;
+
+    try {
+      const stored = JSON.parse(raw) as { ownerId: string | null; setup: AdminTwoFactorSetup };
+      const setup = stored.setup;
+      if (
+        stored.ownerId === (this.userState()?.id ?? null) &&
+        setup.setupKey?.trim() &&
+        setup.qrUri?.startsWith('otpauth://')
+      ) {
+        this.twoFactorSetupState.set(setup);
+      } else {
+        sessionStorage.removeItem(TWO_FACTOR_SETUP_KEY);
+      }
+    } catch {
+      sessionStorage.removeItem(TWO_FACTOR_SETUP_KEY);
+    }
+  }
+
   private addDays(date: Date, days: number): Date {
     const next = new Date(date);
     next.setDate(next.getDate() + days);
@@ -408,7 +513,7 @@ export class AdminAuthService {
 
     const key = await crypto.subtle.importKey(
       'raw',
-      decodeBase32(MOCK_ADMIN_SETUP_KEY),
+      decodeBase32(this.twoFactorSetupState()?.setupKey ?? ''),
       { name: 'HMAC', hash: 'SHA-1' },
       false,
       ['sign']
@@ -460,4 +565,11 @@ function decodeBase32(value: string): ArrayBuffer {
     bytes[index] = Number.parseInt(bits.slice(index * 8, index * 8 + 8), 2);
   }
   return bytes.buffer;
+}
+
+function createDemoSetupKey(): string {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  const bytes = new Uint8Array(20);
+  globalThis.crypto.getRandomValues(bytes);
+  return Array.from(bytes, value => alphabet[value % alphabet.length]).join('');
 }

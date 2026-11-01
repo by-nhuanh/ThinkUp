@@ -327,10 +327,25 @@ export class CourseDashboardComponent implements OnDestroy {
 
   chapterDuration(chapter: LearningChapter): string {
     const seconds = chapter.lessons.reduce((total, lesson) => total + this.durationInSeconds(lesson), 0);
-    if (!seconds) return '';
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.round((seconds % 3600) / 60);
-    return hours ? `${hours}h ${minutes.toString().padStart(2, '0')}m` : `${minutes}m`;
+    return this.durationLabel(seconds);
+  }
+
+  courseLessonCount(course: LearningCourse): number {
+    return course.chapters.reduce((total, chapter) => total + chapter.lessons.length, 0);
+  }
+
+  courseDuration(course: LearningCourse): string {
+    const seconds = course.chapters.reduce(
+      (total, chapter) =>
+        total + chapter.lessons.reduce((chapterTotal, lesson) => chapterTotal + this.durationInSeconds(lesson), 0),
+      0
+    );
+    return this.durationLabel(seconds);
+  }
+
+  avatarFor(author: string): string {
+    const index = author.includes('Trần') ? 2 : author.includes('Lê') ? 3 : 1;
+    return `/assets/learning/discussion-avatar-${index}.webp`;
   }
 
   quizQuestionCount(lesson: LearningLesson): number {
@@ -342,6 +357,17 @@ export class CourseDashboardComponent implements OnDestroy {
     if (match) return Number(match[1]) * 60 + Number(match[2]);
     const minutes = lesson.duration.match(/(\d+)/);
     return minutes ? Number(minutes[1]) * 60 : 0;
+  }
+
+  private durationLabel(seconds: number): string {
+    if (!seconds) return '';
+    let hours = Math.floor(seconds / 3600);
+    let minutes = Math.round((seconds % 3600) / 60);
+    if (minutes === 60) {
+      hours += 1;
+      minutes = 0;
+    }
+    return hours ? `${hours}h ${minutes.toString().padStart(2, '0')}m` : `${minutes}m`;
   }
 
   startQuestionReply(question: DashboardQuestion): void {

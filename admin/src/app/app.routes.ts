@@ -55,7 +55,12 @@ export const routes: Routes = [
       { path: '', loadComponent: () => import('./features/dashboard/dashboard/dashboard.component').then(m => m.DashboardComponent) },
       { path: 'business/orders', loadComponent: () => import('./features/business/orders/orders.component').then(m => m.OrdersComponent) },
       { path: 'business/vouchers', loadComponent: () => import('./features/business/vouchers/vouchers.component').then(m => m.VouchersComponent) },
-      { path: 'business/payouts', loadComponent: () => import('./features/business/payouts/payouts.component').then(m => m.PayoutsComponent) }
+      { path: 'business/payouts', loadComponent: () => import('./features/business/payouts/payouts.component').then(m => m.PayoutsComponent) },
+      { path: 'support/tickets/:id', loadComponent: () => import('./features/support/ticket-detail/ticket-detail.component').then(m => m.TicketDetailComponent) },
+      { path: 'support/tickets', loadComponent: () => import('./features/support/tickets/tickets.component').then(m => m.TicketsComponent) },
+      { path: 'support/complaints/:id', loadComponent: () => import('./features/support/complaint-detail/complaint-detail.component').then(m => m.ComplaintDetailComponent) },
+      { path: 'support/complaints', loadComponent: () => import('./features/support/complaints/complaints.component').then(m => m.ComplaintsComponent) },
+      { path: 'support/faq', loadComponent: () => import('./features/support/faq/faq.component').then(m => m.FaqComponent) }
     ]
   },
   {

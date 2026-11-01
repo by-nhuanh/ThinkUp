@@ -1,8 +1,8 @@
-import { Component, computed, inject, signal, viewChild } from '@angular/core';
+import { Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { MOCK_ADMIN_SETUP_KEY } from '../../../core/data/mock/admin-auth.mock';
+import QRCode from 'qrcode';
 import { AdminAuthError } from '../../../core/models/admin-user.model';
 import { AdminAuthService } from '../../../core/services/admin-auth.service';
 import { AuthBrandBarComponent } from '../components/auth-brand-bar/auth-brand-bar.component';
@@ -26,14 +26,17 @@ type StepState = 'done' | 'current' | 'todo';
   templateUrl: './setup-2fa.component.html',
   styleUrl: './setup-2fa.component.css'
 })
-export class SetupTwoFactorComponent {
+export class SetupTwoFactorComponent implements OnInit {
   private readonly auth = inject(AdminAuthService);
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
 
   readonly step = signal<SetupStep>(1);
   readonly selectedApp = signal<AuthenticatorApp | null>(null);
-  readonly setupKey = MOCK_ADMIN_SETUP_KEY;
+  readonly setupKey = computed(() => this.auth.twoFactorSetup()?.setupKey ?? '');
+  readonly qrDataUrl = signal('');
+  readonly setupLoading = signal(true);
+  readonly setupError = signal('');
   readonly copied = signal(false);
   readonly loading = signal(false);
   readonly otpError = signal('');
@@ -47,6 +50,14 @@ export class SetupTwoFactorComponent {
 
   private readonly otp = viewChild(OtpInputComponent);
   private copyTimer: ReturnType<typeof setTimeout> | null = null;
+
+  ngOnInit(): void {
+    this.loadSetup();
+  }
+
+  retrySetup(): void {
+    this.loadSetup();
+  }
 
   /** Trạng thái của từng bước trên thanh tiến trình. */
   stepState(step: SetupStep): StepState {
@@ -78,7 +89,7 @@ export class SetupTwoFactorComponent {
 
   async copySetupKey(): Promise<void> {
     try {
-      await navigator.clipboard.writeText(this.setupKey);
+      await navigator.clipboard.writeText(this.setupKey());
       this.copied.set(true);
 
       if (this.copyTimer) clearTimeout(this.copyTimer);
@@ -87,6 +98,32 @@ export class SetupTwoFactorComponent {
       // Trình duyệt chặn clipboard (không phải HTTPS): để người dùng tự chọn mã.
       this.copied.set(false);
     }
+  }
+
+  private loadSetup(): void {
+    this.setupLoading.set(true);
+    this.setupError.set('');
+
+    this.auth.getTwoFactorSetup().subscribe({
+      next: setup => {
+        void QRCode.toDataURL(setup.qrUri, {
+          errorCorrectionLevel: 'M',
+          margin: 1,
+          width: 320,
+          color: { dark: '#0f1320', light: '#ffffff' }
+        }).then(dataUrl => {
+          this.qrDataUrl.set(dataUrl);
+          this.setupLoading.set(false);
+        }).catch(() => {
+          this.setupLoading.set(false);
+          this.setupError.set('Không thể tạo mã QR. Vui lòng thử lại.');
+        });
+      },
+      error: (error: AdminAuthError) => {
+        this.setupLoading.set(false);
+        this.setupError.set(error.message || 'Không thể tải dữ liệu thiết lập 2FA.');
+      }
+    });
   }
 
   verify(): void {
