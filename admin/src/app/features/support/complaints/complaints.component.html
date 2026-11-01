@@ -4,156 +4,78 @@
       <nav class="breadcrumb" aria-label="Đường dẫn trang"><span class="breadcrumb-parent">Quản lý hỗ trợ</span><span class="breadcrumb-separator" aria-hidden="true">/</span><span class="breadcrumb-current" aria-current="page">Khiếu nại &amp; Sự cố</span></nav>
       <h1>Khiếu nại &amp; Sự cố</h1>
     </div>
-    <button class="ghost-button" type="button" (click)="reset()">
-      Đặt lại bộ lọc
-    </button>
   </header>
-  <section class="metric-grid">
-    <article class="metric-card">
+  <section class="metric-grid complaint-metrics" aria-label="Tổng quan khiếu nại và sự cố">
+    <article class="metric-card complaint-metric metric-pending">
       <span class="metric-icon blue"
         ><svg lucideClipboardList aria-hidden="true"></svg
       ></span>
       <div>
         <small>Hồ sơ tồn đọng</small><strong>{{ pending() }}</strong>
-        <p>Chưa có quyết định cuối cùng</p>
       </div>
     </article>
-    <article class="metric-card danger">
+    <article class="metric-card complaint-metric metric-risk">
       <span class="metric-icon red"
         ><svg lucideShieldAlert aria-hidden="true"></svg
       ></span>
       <div>
         <small>Nguy cơ cao</small><strong>{{ highRisk() }}</strong>
-        <p>Giá trị lớn hoặc dấu hiệu gian lận</p>
       </div>
     </article>
-    <article class="metric-card">
+    <article class="metric-card complaint-metric metric-refund">
       <span class="metric-icon violet"
         ><svg lucideCircleDollarSign aria-hidden="true"></svg
       ></span>
       <div>
         <small>Tiền yêu cầu hoàn</small
         ><strong class="money-metric">{{ money(totalAmount()) }}</strong>
-        <p>Tổng hồ sơ đang mở</p>
       </div>
     </article>
-    <article class="metric-card danger">
+    <article class="metric-card complaint-metric metric-breach">
       <span class="metric-icon red"
         ><svg lucideTriangleAlert aria-hidden="true"></svg
       ></span>
       <div>
         <small>Vi phạm SLA</small><strong>{{ breached() }}</strong>
-        <p>Cần xử lý khẩn</p>
       </div>
     </article>
   </section>
   <section class="workspace-panel">
-    <div class="filter-bar complaint-filters">
-      <label class="search-control"
-        ><svg lucideSearch class="search-icon" aria-hidden="true"></svg
-        ><input
-          type="search"
-          [ngModel]="queryInput()"
-          (ngModelChange)="setSearch($event)"
-          placeholder="Mã thụ lý, học viên hoặc giảng viên..." /></label
-      ><label
-        ><span>Loại khiếu nại</span
-        ><select
-          [ngModel]="type()"
-          (ngModelChange)="type.set($event); page.set(1)"
-        >
-          <option value="">Tất cả</option>
-          @for (t of types(); track t) {
-            <option [value]="t">{{ t }}</option>
-          }
-        </select></label
-      ><label
-        ><span>Tình trạng</span
-        ><select
-          [ngModel]="status()"
-          (ngModelChange)="status.set($event); page.set(1)"
-        >
-          <option value="">Tất cả</option>
-          <option value="reviewing">Đang thụ lý</option>
-          <option value="waiting_instructor">Chờ giải trình</option>
-          <option value="ready">Sẵn sàng phân xử</option>
-          <option value="resolved">Đã giải quyết</option>
-          <option value="dismissed">Đã bác bỏ</option>
-        </select></label
-      ><label
-        ><span>Hạn mức</span
-        ><select
-          [ngModel]="amount()"
-          (ngModelChange)="amount.set($event); page.set(1)"
-        >
-          <option value="">Tất cả</option>
-          <option value="under1">Dưới 1 triệu</option>
-          <option value="1to5">1–5 triệu</option>
-          <option value="over5">Trên 5 triệu</option>
-        </select></label
-      ><label
-        ><span>Thời gian</span
-        ><select
-          [ngModel]="period()"
-          (ngModelChange)="period.set($event); page.set(1)"
-        >
-          <option value="all">Tất cả</option>
-          <option value="today">Hôm nay</option>
-          <option value="week">7 ngày</option>
-          <option value="month">Tháng này</option>
-          <option value="quarter">Quý này</option>
-          <option value="year">Năm nay</option>
-          <option value="custom">Khoảng tùy chỉnh</option>
-        </select></label
-      >
-      @if (period() === 'custom') { <label><span>Từ ngày</span><input type="date" [ngModel]="from()" (ngModelChange)="from.set($event); page.set(1)"></label><label><span>Đến ngày</span><input type="date" [ngModel]="to()" (ngModelChange)="to.set($event); page.set(1)"></label> }
+    <div class="filter-bar complaint-filters advanced-filter-toolbar">
+      <label class="search-control"><svg lucideSearch class="search-icon" aria-hidden="true"></svg><input type="search" [ngModel]="queryInput()" (ngModelChange)="setSearch($event)" placeholder="Mã thụ lý, học viên hoặc giảng viên..."></label>
+      <button class="filter-trigger" type="button" [attr.aria-expanded]="filterOpen()" (click)="openFilters()"><svg lucideFilter aria-hidden="true"></svg><span>Lọc</span>@if (activeFilterCount()) { <span class="filter-count">{{ activeFilterCount() }}</span> }</button>
+      <app-column-visibility tableId="support-complaint-table" storageKey="thinkup-admin-complaint-columns" [columns]="tableColumns"></app-column-visibility>
     </div>
-    <div class="table-heading">
-      <div>
-        <h2>Hàng đợi phân xử</h2>
-      </div>
-      <span class="mock-label">Dữ liệu mô phỏng · Chờ API</span>
-    </div>
+    @if (filterChips().length) { <div class="applied-filter-chips" aria-label="Bộ lọc đang áp dụng">@for (chip of filterChips(); track chip.key) { <span class="filter-chip">{{ chip.label }}<button type="button" [attr.aria-label]="'Xóa ' + chip.label" (click)="removeFilterChip(chip.key)"><svg lucideX aria-hidden="true"></svg></button></span> }</div> }
     <div class="table-scroll">
-      <table>
+      <table id="support-complaint-table" class="support-centered-table normal-case-headings" appResizableColumns="support-complaint-queue">
         <thead>
           <tr>
-            <th>Mã thụ lý</th>
-            <th>Bên khiếu nại</th>
-            <th>Bên bị khiếu nại</th>
-            <th>Tranh chấp</th>
-            <th>Bằng chứng</th>
-            <th>Tình trạng</th>
-            <th>Số tiền</th>
-            <th>SLA</th>
-            <th>Xử lý hồ sơ</th>
+            <th data-column="id">Mã thụ lý</th><th data-column="claimant">Bên khiếu nại</th><th data-column="respondent">Bên bị khiếu nại</th><th data-column="dispute">Tranh chấp</th><th data-column="evidence">Bằng chứng</th><th data-column="status">Tình trạng</th><th data-column="amount">Số tiền</th><th data-column="sla">SLA</th><th data-column="action" data-fixed-column>Xử lý hồ sơ</th>
           </tr>
         </thead>
         <tbody>
           @for (item of visible(); track item.id) {
             <tr [class.urgent-row]="item.risk === 'high'">
-              <td>
+              <td data-column="id">
                 <strong>{{ item.id }}</strong>
                 @if (item.sourceTicketId) {
                   <small>Từ {{ item.sourceTicketId }}</small>
                 }
               </td>
-              <td>{{ item.claimant }}</td>
-              <td>{{ item.respondent }}</td>
-              <td>
-                <span class="topic-chip">{{ item.type }}</span>
-                @if (item.risk === "high") {
-                  <small class="text-danger inline-icon-label"><svg lucideTriangleAlert aria-hidden="true"></svg>Nguy cơ cao</small>
-                }
+              <td data-column="claimant">{{ item.claimant }}</td>
+              <td data-column="respondent">{{ item.respondent }}</td>
+              <td data-column="dispute">
+                <span class="dispute-cell"><span class="topic-chip">{{ item.type }}</span>@if (item.risk === "high") { <span class="risk-indicator" tabindex="0" aria-label="Nguy cơ cao"><svg lucideTriangleAlert aria-hidden="true"></svg><span class="risk-tooltip" role="tooltip"><strong>Nguy cơ cao</strong>Giá trị lớn hoặc có dấu hiệu gian lận</span></span> }</span>
               </td>
-                <td><span class="inline-icon-label">@if (item.evidence.length) { <svg lucideFileText aria-hidden="true"></svg>{{ item.evidence.length }} tệp } @else { Không có }</span></td>
-              <td>
-                <span class="status-badge status-info">{{ statusLabel(item.status) }}</span>
+                <td data-column="evidence"><span class="inline-icon-label">@if (item.evidence.length) { <svg lucideFileText aria-hidden="true"></svg>{{ item.evidence.length }} tệp } @else { Không có }</span></td>
+              <td data-column="status">
+                <span class="status-badge" [class]="'status-badge complaint-status-' + item.status">{{ statusLabel(item.status) }}</span>
               </td>
-              <td>
+              <td data-column="amount">
                 <strong>{{ money(item.amount) }}</strong>
               </td>
-              <td>
+              <td data-column="sla">
                 <strong
                   class="sla"
                   [class.is-danger]="
@@ -164,13 +86,13 @@
                   >{{ sla(item) }}</strong
                 ><small>{{ item.dueAt | date: "dd/MM, HH:mm" }}</small>
               </td>
-              <td>
+              <td data-column="action">
                 <button
                   class="table-action"
                   type="button"
                   (click)="openCase(item)"
                 >
-                  {{ item.status === "resolved" || item.status === "dismissed" ? "Xem hồ sơ" : "Mở đối soát" }}
+                  {{ item.status === "resolved" || item.status === "dismissed" ? "Xem hồ sơ" : "Mở hồ sơ thụ lý" }}
                 </button>
               </td>
             </tr>
@@ -190,6 +112,16 @@
     <app-support-pagination [page]="page()" [pages]="pages()" [pageSize]="pageSize" [totalItems]="filtered().length" itemLabel="hồ sơ" (pageChange)="pageTo($event)" />
   </section>
 </main>
+@if (filterOpen()) {
+  <app-support-filter-modal [resultCount]="previewResults().length" [applyDisabled]="!moneyRangeValid()" (closed)="closeFilters()" (cleared)="clearDraftFilters()" (applied)="applyFilters()">
+    <div class="advanced-filter-grid complaint-advanced-grid">
+      <section class="advanced-filter-section full-width"><h3>Thời gian</h3><div class="filter-option-grid">@for (item of [{ value: 'all', label: 'Tất cả' }, { value: 'today', label: 'Hôm nay' }, { value: 'week', label: '7 ngày' }, { value: 'month', label: 'Tháng này' }, { value: 'quarter', label: 'Quý này' }, { value: 'year', label: 'Năm này' }]; track item.value) { <button type="button" [class.active]="draftFilters().period === item.value" (click)="selectDraftPeriod($any(item.value))">{{ item.label }}</button> }</div><div class="modal-date-fields"><label><span>Từ ngày</span><app-date-time-picker [value]="draftFilters().from" label="Chọn ngày bắt đầu" (valueChange)="setDraftDate('from', $event)"></app-date-time-picker></label><label><span>Đến ngày</span><app-date-time-picker [value]="draftFilters().to" label="Chọn ngày kết thúc" (valueChange)="setDraftDate('to', $event)"></app-date-time-picker></label></div></section>
+      <section class="advanced-filter-section"><h3 id="complaint-type-filter-title">Loại khiếu nại</h3><div class="radio-filter-list" role="radiogroup" aria-labelledby="complaint-type-filter-title">@for (option of typeOptions(); track option.value) { <label class="radio-filter-option" [class.is-selected]="draftFilters().type === option.value"><input type="radio" name="complaint-type-filter" [value]="option.value" [checked]="draftFilters().type === option.value" (change)="setDraft('type', option.value)"><span class="radio-circle" aria-hidden="true"></span><span>{{ option.label }}</span></label> }</div></section>
+      <section class="advanced-filter-section"><h3 id="complaint-status-filter-title">Tình trạng</h3><div class="radio-filter-list" role="radiogroup" aria-labelledby="complaint-status-filter-title">@for (option of statusOptions; track option.value) { <label class="radio-filter-option" [class.is-selected]="draftFilters().status === option.value"><input type="radio" name="complaint-status-filter" [value]="option.value" [checked]="draftFilters().status === option.value" (change)="setDraft('status', option.value)"><span class="radio-circle" aria-hidden="true"></span><span>{{ option.label }}</span></label> }</div></section>
+      <section class="advanced-filter-section full-width amount-range-section"><h3>Khoảng tiền</h3><p>Chọn trong giới hạn dữ liệu hiện có: {{ money(minAvailableAmount()) }} – {{ money(maxAvailableAmount()) }}</p><div class="dual-range" [class.invalid]="!moneyRangeValid()"><input type="range" [min]="minAvailableAmount()" [max]="maxAvailableAmount()" [value]="draftMinValue()" aria-label="Số tiền tối thiểu" (input)="setDraftAmount('minAmount', $any($event.target).value)"><input type="range" [min]="minAvailableAmount()" [max]="maxAvailableAmount()" [value]="draftMaxValue()" aria-label="Số tiền tối đa" (input)="setDraftAmount('maxAmount', $any($event.target).value)"></div><div class="amount-inputs"><label><span>Tối thiểu</span><span class="currency-input"><input type="number" min="0" [value]="draftMinValue()" (input)="setDraftAmount('minAmount', $any($event.target).value)"><span aria-hidden="true">đ</span></span></label><label><span>Tối đa</span><span class="currency-input"><input type="number" min="0" [value]="draftMaxValue()" (input)="setDraftAmount('maxAmount', $any($event.target).value)"><span aria-hidden="true">đ</span></span></label></div>@if (moneyRangeError()) { <p class="range-error" role="alert">{{ moneyRangeError() }}</p> }</section>
+    </div>
+  </app-support-filter-modal>
+}
 @if (selected(); as item) {
   <div class="backdrop modal-backdrop" (click)="selected.set(null)"></div>
   <section
@@ -199,32 +131,32 @@
     aria-labelledby="case-title"
   >
     <header class="case-modal-header">
-      <div class="case-title-group"><h2 id="case-title">Hồ sơ đối soát ba bên</h2><p>{{ item.id }} · {{ item.type }}</p></div>
+      <div class="case-title-group"><h2 id="case-title">Hồ sơ thụ lý Khiếu nại &amp; Sự cố</h2><p>{{ item.id }} · {{ item.type }}</p></div>
       <div class="case-header-actions">@if (item.risk === "high") { <span class="case-risk-badge"><svg lucideTriangleAlert aria-hidden="true"></svg>Nguy cơ cao</span> }<span class="case-sla-badge" [class.is-overdue]="sla(item).startsWith('Trễ')"><svg lucideClock3 aria-hidden="true"></svg>{{ sla(item) }}</span><button class="icon-button" type="button" aria-label="Đóng" (click)="selected.set(null)"><svg lucideX aria-hidden="true"></svg></button></div>
     </header>
     <div class="case-summary" aria-label="Tóm tắt hồ sơ">
       <div><span class="summary-icon"><svg lucideUserRound aria-hidden="true"></svg></span><span><small>Học viên</small><strong>{{ item.claimant }}</strong><em>{{ item.sourceTicketId || "Hồ sơ trực tiếp" }}</em></span></div>
-      <div><span class="summary-icon"><svg lucideGraduationCap aria-hidden="true"></svg></span><span><small>Giảng viên</small><strong>{{ item.respondent }}</strong><em>Đối tượng được đối soát</em></span></div>
+      <div><span class="summary-icon"><svg lucideGraduationCap aria-hidden="true"></svg></span><span><small>Đối tượng liên quan</small><strong>{{ item.respondent }}</strong><em>Bên liên quan trong hồ sơ</em></span></div>
       <div><span class="summary-icon"><svg lucideBookOpen aria-hidden="true"></svg></span><span><small>Khóa học</small><strong>{{ item.course }}</strong><em>{{ item.orderId }}</em></span></div>
       <div><span class="summary-icon"><svg lucideCircleDollarSign aria-hidden="true"></svg></span><span><small>Giá trị tranh chấp</small><strong>{{ money(item.amount) }}</strong><em>Tiến độ học {{ item.progress }}%</em></span></div>
     </div>
     <div class="modal-body case-modal-body">
       <div class="case-workspace">
-        <section class="case-record" aria-label="Nội dung đối soát ba bên">
+        <section class="case-record" aria-label="Nội dung thụ lý">
           <article class="record-entry learner-entry"><span class="record-icon"><svg lucideUserRound aria-hidden="true"></svg></span><div class="record-content"><header><h3>Ý kiến học viên</h3><time>{{ item.createdAt | date: "dd/MM/yyyy, HH:mm" }}</time></header><p>{{ item.learnerStatement }}</p><strong class="evidence-label">Bằng chứng đính kèm ({{ item.evidence.length }})</strong><div class="evidence-list">@for (file of item.evidence; track file.name) { <button type="button" title="Xem {{ file.name }}"><svg lucideFileText aria-hidden="true"></svg>{{ file.name }}</button> } @empty { <span>Chưa có tệp đính kèm</span> }</div></div></article>
           <article class="record-entry instructor-entry"><span class="record-icon"><svg lucideGraduationCap aria-hidden="true"></svg></span><div class="record-content"><header><h3>Phản hồi giảng viên</h3><time>{{ item.createdAt | date: "dd/MM/yyyy, HH:mm" }}</time></header>@if (item.instructorStatement) { <p>{{ item.instructorStatement }}</p><strong class="evidence-label">Trạng thái phản hồi</strong><div class="evidence-list"><span class="evidence-state"><svg lucideCheckCircle2 aria-hidden="true"></svg>Đã cung cấp giải trình</span></div> } @else { <div class="record-empty">Chưa có giải trình từ giảng viên.</div><button class="secondary-button inline-request" type="button" (click)="openAction('explanation')"><svg lucideMessageSquareText aria-hidden="true"></svg>Yêu cầu giải trình</button> }</div></article>
-          <article class="record-entry system-entry"><span class="record-icon"><svg lucideDatabase aria-hidden="true"></svg></span><div class="record-content"><header><h3>Đối soát hệ thống</h3><time>{{ item.createdAt | date: "dd/MM/yyyy, HH:mm" }}</time></header><p>Hệ thống ghi nhận đơn hàng {{ item.orderId }}, mua ngày {{ item.purchasedAt | date: "dd/MM/yyyy" }}, tiến độ học {{ item.progress }}%. Hạn đổi trả đến {{ item.refundEligibleUntil | date: "dd/MM/yyyy, HH:mm" }}.</p><strong class="evidence-label">Dữ liệu xác minh</strong><div class="evidence-list"><span class="evidence-state"><svg lucideCheckCircle2 aria-hidden="true"></svg>Giao dịch hợp lệ</span><span class="evidence-state"><svg lucideCheckCircle2 aria-hidden="true"></svg>Đã ghi nhận lịch sử học</span></div></div></article>
+          <article class="record-entry system-entry"><span class="record-icon"><svg lucideDatabase aria-hidden="true"></svg></span><div class="record-content"><header><h3>Xác minh hệ thống</h3><time>{{ item.createdAt | date: "dd/MM/yyyy, HH:mm" }}</time></header><p>Hệ thống ghi nhận đơn hàng {{ item.orderId }}, mua ngày {{ item.purchasedAt | date: "dd/MM/yyyy" }}, tiến độ học {{ item.progress }}%. Hạn đổi trả đến {{ item.refundEligibleUntil | date: "dd/MM/yyyy, HH:mm" }}.</p><strong class="evidence-label">Dữ liệu xác minh</strong><div class="evidence-list"><span class="evidence-state"><svg lucideCheckCircle2 aria-hidden="true"></svg>Giao dịch hợp lệ</span><span class="evidence-state"><svg lucideCheckCircle2 aria-hidden="true"></svg>Đã ghi nhận lịch sử học</span></div></div></article>
         </section>
-        <aside class="case-review" aria-label="Đánh giá hồ sơ"><h3>Đánh giá hồ sơ</h3><section><h4>Mức độ đầy đủ bằng chứng</h4><ul class="review-checklist"><li><span>Bằng chứng từ học viên</span><strong><svg lucideCheckCircle2 aria-hidden="true"></svg>Đã cung cấp ({{ item.evidence.length }})</strong></li><li><span>Bằng chứng từ giảng viên</span><strong [class.is-pending]="!item.instructorStatement"><svg lucideCheckCircle2 aria-hidden="true"></svg>{{ item.instructorStatement ? "Đã cung cấp" : "Chờ bổ sung" }}</strong></li><li><span>Dữ liệu đối soát hệ thống</span><strong><svg lucideCheckCircle2 aria-hidden="true"></svg>Đầy đủ</strong></li><li><span>Thông tin giao dịch</span><strong><svg lucideCheckCircle2 aria-hidden="true"></svg>Đầy đủ</strong></li></ul></section>
-          <!-- TODO(pre-deploy): Nhớ thay chỉ báo rủi ro mô phỏng bằng dữ liệu đối soát từ API. -->
+        <aside class="case-review" aria-label="Đánh giá hồ sơ"><h3>Đánh giá hồ sơ</h3><section><h4>Mức độ đầy đủ bằng chứng</h4><ul class="review-checklist"><li><span>Bằng chứng từ người gửi</span><strong><svg lucideCheckCircle2 aria-hidden="true"></svg>Đã cung cấp ({{ item.evidence.length }})</strong></li><li><span>Bằng chứng từ bên liên quan</span><strong [class.is-pending]="!item.instructorStatement"><svg lucideCheckCircle2 aria-hidden="true"></svg>{{ item.instructorStatement ? "Đã cung cấp" : "Chờ bổ sung" }}</strong></li><li><span>Dữ liệu xác minh hệ thống</span><strong><svg lucideCheckCircle2 aria-hidden="true"></svg>Đầy đủ</strong></li><li><span>Thông tin giao dịch</span><strong><svg lucideCheckCircle2 aria-hidden="true"></svg>Đầy đủ</strong></li></ul></section>
+          <!-- TODO(pre-deploy): Nhớ thay chỉ báo rủi ro mô phỏng bằng dữ liệu xác minh từ API. -->
           <section class="risk-panel"><h4><svg lucideTriangleAlert aria-hidden="true"></svg>Chỉ báo rủi ro</h4><dl><div><dt>Tỷ lệ tương đồng nội dung</dt><dd>{{ item.risk === "high" ? "28% (Cao)" : "8% (Thấp)" }}</dd></div><div><dt>Trùng lặp với khóa học khác</dt><dd>{{ item.risk === "high" ? "2 khóa học" : "Không phát hiện" }}</dd></div><div><dt>Ảnh hưởng uy tín</dt><dd>{{ item.risk === "high" ? "Cao" : "Thấp" }}</dd></div></dl></section>
-          <section class="audit-section"><h4>Lịch sử xử lý</h4><ol><li><span></span><div><strong>Tạo khiếu nại</strong><small>{{ item.createdAt | date: "dd/MM/yyyy, HH:mm" }}</small></div></li><li><span></span><div><strong>Tiếp nhận hồ sơ</strong><small>Đã chuyển bộ phận CSKH</small></div></li><li><span></span><div><strong>Đối soát hệ thống</strong><small>Hoàn tất phân tích dữ liệu</small></div></li><li class="pending"><span></span><div><strong>Chờ quyết định</strong><small>Chờ quản trị viên phát hành</small></div></li></ol></section>
+          <section class="audit-section"><h4>Lịch sử xử lý</h4><ol><li><span></span><div><strong>Tạo khiếu nại</strong><small>{{ item.createdAt | date: "dd/MM/yyyy, HH:mm" }}</small></div></li><li><span></span><div><strong>Tiếp nhận hồ sơ</strong><small>Đã chuyển bộ phận CSKH</small></div></li><li><span></span><div><strong>Xác minh hệ thống</strong><small>Hoàn tất phân tích dữ liệu</small></div></li><li class="pending"><span></span><div><strong>Chờ quyết định</strong><small>Chờ quản trị viên phát hành</small></div></li></ol></section>
         </aside>
       </div>
     </div>
     <footer class="case-decision-footer">
-      <label class="field decision-select"><span>Hướng xử lý *</span><select [ngModel]="decision()" (ngModelChange)="decision.set($event)"><option value="">Chọn hướng xử lý</option><option value="refund">Chấp thuận hoàn tiền</option><option value="dismiss">Bác bỏ khiếu nại</option><option value="discipline">Áp dụng kỷ luật</option></select></label>
-      <label class="field decision-conclusion"><span>Kết luận đối soát *</span><textarea rows="2" [ngModel]="conclusion()" (ngModelChange)="conclusion.set($event)" placeholder="Nêu căn cứ, dữ liệu đối chiếu và kết luận..."></textarea><small [class.text-danger]="conclusion().trim().length < 30">{{ conclusion().trim().length }}/30 ký tự tối thiểu</small></label>
+      <label class="field decision-select"><span>Hướng xử lý *</span><app-custom-select [value]="decision()" (valueChange)="decision.set($event)" [placeholder]="'Chọn hướng xử lý'" [options]="decisionOptions" [menuWidth]="240"></app-custom-select></label>
+      <label class="field decision-conclusion"><span>Kết luận xử lý *</span><textarea rows="2" [ngModel]="conclusion()" (ngModelChange)="conclusion.set($event)" placeholder="Nêu căn cứ, dữ liệu đối chiếu và kết luận xử lý..."></textarea><small [class.text-danger]="conclusion().trim().length < 30">{{ conclusion().trim().length }}/30 ký tự tối thiểu</small></label>
       <div class="decision-footer-actions"><button class="secondary-button" type="button" (click)="openAction('explanation')"><svg lucideMessageSquareText aria-hidden="true"></svg>Yêu cầu giải trình</button><button class="primary-button" type="button" [disabled]="!canIssue()" (click)="issue()"><svg lucideFileText aria-hidden="true"></svg>Phát hành quyết định</button></div>
     </footer>
   </section>
@@ -267,26 +199,7 @@
                   : "Hình thức kỷ luật"
           }}
           *</span
-        ><select [ngModel]="option()" (ngModelChange)="option.set($event)">
-          <option value="">Chọn phương án</option>
-          @if (action() === "explanation") {
-            <option value="12h">12 giờ</option>
-            <option value="24h">24 giờ</option>
-          }
-          @if (action() === "refund") {
-            <option value="100">Hoàn 100%</option>
-            <option value="partial">Hoàn một phần</option>
-          }
-          @if (action() === "dismiss") {
-            <option value="terms">Không đáp ứng điều kiện hoàn tiền</option>
-            <option value="evidence">Bằng chứng không hợp lệ</option>
-          }
-          @if (action() === "discipline") {
-            <option value="violation">Ghi nhận điểm vi phạm</option>
-            <option value="archive">Tạm ẩn khóa học 14 ngày</option>
-            <option value="freeze">Đóng băng rút tiền 30 ngày</option>
-          }
-        </select></label
+        ><app-custom-select [value]="option()" (valueChange)="option.set($event)" [placeholder]="'Chọn phương án'" [options]="actionOptionList()" [menuWidth]="340"></app-custom-select></label
       ><label class="field"
         ><span>Nội dung quyết định *</span
         ><textarea
@@ -305,8 +218,7 @@
             [ngModel]="confirmRisk()"
             (ngModelChange)="confirmRisk.set($event)"
           /><span
-            >Tôi hiểu thao tác này cần backend xác minh quyền và xác nhận thành
-            công trước khi cập nhật hồ sơ.</span
+            >Tôi xác nhận đã kiểm tra hồ sơ và hiểu tác động của thao tác này.</span
           ></label
         >
       }
