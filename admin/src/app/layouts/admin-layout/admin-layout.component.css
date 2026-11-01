@@ -12,7 +12,7 @@
 .nav-list { display: grid; align-content: start; gap: 3px; min-height: 0; overflow-y: auto; }
 .nav-item { width: 100%; height: 39px; padding: 0 10px; display: flex; align-items: center; gap: 10px; border: 0; border-radius: 6px; background: transparent; color: #eef6ff; font: 500 15px Inter, Arial, sans-serif; text-align: left; cursor: pointer; white-space: nowrap; }
 .nav-item:hover { background: #17315b; }
-.nav-item.active { background: #1570d1; box-shadow: 0 4px 8px #1570d14d; }
+.nav-item.active { background: #1570d1; box-shadow: 0 4px 16px #1570d14d; }
 .nav-item img { flex: none; }
 .nav-item > svg:not(.chevron) { width: 16px; height: 16px; flex: none; }
 .nav-item[href] { text-decoration: none; }

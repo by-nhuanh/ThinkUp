@@ -1,5 +1,7 @@
 import { Component, ElementRef, HostListener, ViewChild, inject, signal } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { filter, map } from 'rxjs';
 import { LucideGripVertical, LucideHeadphones } from '@lucide/angular';
 import { AdminAuthService } from '../../core/services/admin-auth.service';
 
@@ -28,12 +30,19 @@ export class AdminLayoutComponent {
   readonly utilityRight = signal(this.readUtilityPosition());
   readonly businessOpen = signal(typeof window !== 'undefined' && window.location.pathname.startsWith('/business/'));
   readonly supportOpen = signal(typeof window !== 'undefined' && window.location.pathname.startsWith('/support/'));
+  readonly businessActive = toSignal(
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map(() => this.router.url.startsWith('/business/'))
+    ),
+    { initialValue: typeof window !== 'undefined' && window.location.pathname.startsWith('/business/') }
+  );
   readonly nav = [
     { label: 'Quản lý người dùng', icon: '0-svg1.svg' },
     { label: 'Quản lý khóa học', icon: '0-svg2.svg' },
     { label: 'Quản lý nội dung', icon: '0-svg3.svg' },
     { label: 'Quản lý hỗ trợ', icon: '0-svg4.svg' },
-    { label: 'Quản trị hệ thống', icon: '0-shield-admin.svg' }
+    { label: 'Quản trị hệ thống', icon: '0-settings-gear.svg' }
   ];
   readonly businessPages = [
     { label: 'Đơn hàng', path: '/business/orders' },
