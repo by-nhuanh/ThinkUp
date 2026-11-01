@@ -30,6 +30,14 @@ export class AdminLayoutComponent {
   readonly utilityRight = signal(this.readUtilityPosition());
   readonly businessOpen = signal(typeof window !== 'undefined' && window.location.pathname.startsWith('/business/'));
   readonly supportOpen = signal(typeof window !== 'undefined' && window.location.pathname.startsWith('/support/'));
+  readonly usersOpen = signal(typeof window !== 'undefined' && window.location.pathname.startsWith('/users/'));
+  readonly usersActive = toSignal(
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map(() => this.router.url.startsWith('/users/'))
+    ),
+    { initialValue: typeof window !== 'undefined' && window.location.pathname.startsWith('/users/') }
+  );
   readonly businessActive = toSignal(
     this.router.events.pipe(
       filter((event): event is NavigationEnd => event instanceof NavigationEnd),
@@ -53,6 +61,10 @@ export class AdminLayoutComponent {
     { label: 'Ticket hỗ trợ', path: '/support/tickets' },
     { label: 'Khiếu nại & Sự cố', path: '/support/complaints' },
     { label: 'FAQ', path: '/support/faq' }
+  ];
+  readonly usersPages = [
+    { label: 'Giảng viên', path: '/users/lecturers' },
+    { label: 'Học viên', path: '/users/students' }
   ];
 
   beginUtilityDrag(event: PointerEvent): void {
@@ -113,6 +125,11 @@ export class AdminLayoutComponent {
   toggleSupport(): void {
     if (this.collapsed()) this.collapsed.set(false);
     this.supportOpen.update(value => !value);
+  }
+
+  toggleUsers(): void {
+    if (this.collapsed()) this.collapsed.set(false);
+    this.usersOpen.update(value => !value);
   }
 
   logout(): void {

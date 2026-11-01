@@ -1,0 +1,175 @@
+<section class="user-page">
+  <a class="back-link" routerLink="/users/lecturers">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5" /><path d="m11 18-6-6 6-6" /></svg>
+    Danh sách giảng viên
+  </a>
+
+  <header class="page-heading">
+    <h1>Thẩm định hồ sơ giảng viên</h1>
+  </header>
+
+  @if (lecturer(); as item) {
+    <div class="panel profile-card">
+      <div class="identity">
+        <span class="avatar avatar--0 profile-avatar" aria-hidden="true">{{ item.initials }}</span>
+        <div class="profile-copy">
+          <h2>{{ item.name }}</h2>
+          <p class="profile-title">{{ item.title }}</p>
+          <p class="profile-meta">{{ item.email }} · {{ item.phone }} · {{ item.id }}</p>
+          <span class="status-badge" [class]="'status-badge status-badge--' + statusTone[item.status]">
+            {{ statusLabels[item.status] }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="section-heading">Hồ sơ năng lực</h2>
+
+    <div class="detail-grid">
+      <div class="detail-column">
+        <section class="panel detail-card">
+          <h3>Thông tin cá nhân &amp; chuyên môn</h3>
+          <dl class="kv-rows">
+            <div><dt>Chức danh</dt><dd>{{ item.title }}</dd></div>
+            <div><dt>Lĩnh vực chính</dt><dd>{{ item.field }}</dd></div>
+            <div><dt>Chuyên môn</dt><dd>{{ item.stack }}</dd></div>
+            <div><dt>Điện thoại</dt><dd>{{ item.phone }}</dd></div>
+            <div><dt>Email</dt><dd>{{ item.email }}</dd></div>
+          </dl>
+        </section>
+
+        <section class="panel detail-card">
+          <h3>CV / Hồ sơ năng lực</h3>
+          <div class="file-row">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /></svg>
+            <div class="file-copy">
+              <strong>{{ item.cv.fileName }} · {{ item.cv.size }}</strong>
+              <span>PDF · tải lên {{ item.cv.uploadedAt }}</span>
+            </div>
+            <!-- TODO(pre-deploy): Nhớ nối API tệp đính kèm để thay hai nút xem trước/tải xuống đang chạy demo. -->
+            <div class="file-actions">
+              <button class="btn btn--outline btn--sm" type="button" (click)="notify('Bản demo chưa kèm tệp CV thật để xem trước.')">Xem trước</button>
+              <button class="btn btn--outline btn--sm" type="button" (click)="notify('Bản demo chưa kèm tệp CV thật để tải xuống.')">Tải xuống</button>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="detail-column">
+        <section class="panel detail-card">
+          <h3>Liên kết năng lực &amp; Bio</h3>
+          <dl class="kv-rows">
+            <div><dt>Portfolio</dt><dd><a [href]="'https://' + item.links.portfolio" target="_blank" rel="noreferrer">{{ item.links.portfolio }}</a></dd></div>
+            <div><dt>LinkedIn</dt><dd><a [href]="'https://' + item.links.linkedin" target="_blank" rel="noreferrer">{{ item.links.linkedin }}</a></dd></div>
+            <div><dt>GSAHub</dt><dd><a [href]="'https://' + item.links.gsahub" target="_blank" rel="noreferrer">{{ item.links.gsahub }}</a></dd></div>
+            <div><dt>Giới thiệu</dt><dd>{{ item.bio }}</dd></div>
+          </dl>
+        </section>
+
+        <section class="panel detail-card">
+          <h3>Quyết định thẩm định</h3>
+          <p class="decision-note">Quyết định sẽ gửi thông báo cho giảng viên và lưu nhật ký kiểm toán.</p>
+          <div class="decision-actions">
+            <button class="btn btn--danger" type="button" [disabled]="!canDecide()" (click)="openReject()">Từ chối hồ sơ</button>
+            <button class="btn btn--outline" type="button" [disabled]="!canDecide()" (click)="openDocuments()">Yêu cầu bổ sung</button>
+            <button class="btn btn--primary" type="button" [disabled]="!canDecide()" (click)="approve()">Duyệt chuyên môn &amp; Chuyển bước pháp lý</button>
+          </div>
+          @if (!canDecide()) {
+            <p class="field-help">Hồ sơ đang ở trạng thái “{{ statusLabels[item.status] }}” nên không thể ra quyết định thẩm định.</p>
+          }
+        </section>
+      </div>
+    </div>
+  } @else {
+    <div class="panel state-block">
+      <strong>Không tìm thấy hồ sơ giảng viên</strong>
+      <p>Hồ sơ có thể đã bị xoá hoặc đường dẫn không đúng.</p>
+      <a class="btn btn--outline btn--sm" routerLink="/users/lecturers">Quay lại danh sách</a>
+    </div>
+  }
+
+  <!-- ================= Từ chối hồ sơ ================= -->
+  @if (modal() === 'reject') {
+    @if (lecturer(); as item) {
+      <app-user-modal
+        title="Từ chối hồ sơ giảng viên"
+        [subtitle]="item.name + ' · ' + item.id"
+        size="md"
+        (closed)="closeModal()"
+      >
+        <div class="notice notice--danger modal-section">Ứng viên sẽ nhận email thông báo từ chối hợp tác.</div>
+
+        <div class="field-block modal-section">
+          <label for="reject-reason">Lý do từ chối hồ sơ <span class="required">*</span></label>
+          <textarea id="reject-reason" placeholder="Nêu rõ lý do hồ sơ chưa đáp ứng yêu cầu chuyên môn..." [value]="rejectReason()" (input)="setRejectReason($event)"></textarea>
+          <p class="char-count" [class.is-invalid]="rejectReason().trim().length < 20">{{ rejectReason().length }}/20 ký tự tối thiểu</p>
+        </div>
+
+        <label class="option-row modal-section">
+          <input type="checkbox" [checked]="rejectSendEmail()" (change)="rejectSendEmail.set(!rejectSendEmail())" />
+          Gửi email thông báo kết quả cho ứng viên
+        </label>
+
+        <div modalFooter>
+          <button class="btn btn--outline" type="button" (click)="closeModal()">Hủy bỏ</button>
+          <button class="btn btn--danger" type="button" [disabled]="!canReject()" (click)="submitReject()">Xác nhận từ chối</button>
+        </div>
+      </app-user-modal>
+    }
+  }
+
+  <!-- ================= Yêu cầu bổ sung giấy tờ ================= -->
+  @if (modal() === 'documents') {
+    @if (lecturer(); as item) {
+      <app-user-modal
+        title="Yêu cầu bổ sung thông tin giấy tờ"
+        [subtitle]="item.name + ' · ' + item.id"
+        size="md"
+        (closed)="closeModal()"
+      >
+        <div class="modal-section">
+          <span class="field-label">Chọn giấy tờ cần bổ sung <span class="required">*</span></span>
+          <fieldset class="check-list">
+            <legend class="sr-only">Chọn giấy tờ cần bổ sung</legend>
+            @for (doc of documentOptions(); track doc.key) {
+              <label class="check-row" [class.is-selected]="isDocumentSelected(doc.key)">
+                <input type="checkbox" [checked]="isDocumentSelected(doc.key)" (change)="toggleDocument(doc.key, $event)" />
+                <span class="label">{{ doc.label }}</span>
+                <span class="doc-state" [class]="'doc-state doc-state--' + doc.tone">{{ doc.stateLabel }}</span>
+              </label>
+            }
+          </fieldset>
+        </div>
+
+        <div class="field-block modal-section">
+          <label for="document-guidance">Hướng dẫn bổ sung <span class="required">*</span></label>
+          <textarea id="document-guidance" placeholder="Nêu rõ giấy tờ thiếu hoặc chưa hợp lệ và hướng khắc phục..." [value]="documentGuidance()" (input)="setDocumentGuidance($event)"></textarea>
+          <p class="char-count" [class.is-invalid]="documentGuidance().trim().length < 20">{{ documentGuidance().length }}/20 ký tự tối thiểu</p>
+        </div>
+
+        <div class="modal-section">
+          <span class="field-label">Thời hạn bổ sung</span>
+          <div class="segmented">
+            @for (days of [3, 7, 14]; track days) {
+              <button type="button" [attr.aria-pressed]="documentDeadline() === days" (click)="documentDeadline.set(days)">{{ days }} ngày</button>
+            }
+          </div>
+        </div>
+
+        <label class="option-row modal-section">
+          <input type="checkbox" [checked]="documentSendEmail()" (change)="documentSendEmail.set(!documentSendEmail())" />
+          Gửi email kèm liên kết cập nhật hồ sơ
+        </label>
+
+        <div modalFooter>
+          <button class="btn btn--outline" type="button" (click)="closeModal()">Hủy bỏ</button>
+          <button class="btn btn--primary" type="button" [disabled]="!canRequestDocuments()" (click)="submitDocuments()">Xác nhận yêu cầu</button>
+        </div>
+      </app-user-modal>
+    }
+  }
+
+  @if (toast()) {
+    <div class="toast" role="status" aria-live="polite">{{ toast() }}</div>
+  }
+</section>

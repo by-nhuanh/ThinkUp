@@ -1,0 +1,423 @@
+<section class="user-page">
+  <header class="page-heading">
+    <h1>Quản lý học viên</h1>
+  </header>
+
+  <div class="kpi-grid">
+    <article class="kpi-card kpi-card--blue">
+      <h2 class="kpi-title">Tổng học viên</h2>
+      <div class="kpi-value-row">
+        <span class="kpi-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
+            <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+        </span>
+        <span class="kpi-value">{{ formatCount(kpis().total) }}</span>
+      </div>
+      <p class="kpi-note">Toàn bộ tài khoản học viên</p>
+    </article>
+
+    <article class="kpi-card kpi-card--green">
+      <h2 class="kpi-title">Học viên mới</h2>
+      <div class="kpi-value-row">
+        <span class="kpi-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M19 8v6M22 11h-6" />
+          </svg>
+        </span>
+        <span class="kpi-value">{{ formatCount(kpis().fresh) }}</span>
+      </div>
+      <p class="kpi-note kpi-note--positive">30 ngày gần nhất</p>
+    </article>
+
+    <article class="kpi-card kpi-card--violet">
+      <h2 class="kpi-title">Đang hoạt động</h2>
+      <div class="kpi-value-row">
+        <span class="kpi-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9" /><path d="m8.5 12.2 2.4 2.4 4.6-4.9" />
+          </svg>
+        </span>
+        <span class="kpi-value">{{ formatCount(kpis().active) }}</span>
+      </div>
+      <p class="kpi-note">{{ activePercent() }}% tổng số</p>
+    </article>
+
+    <article class="kpi-card kpi-card--red">
+      <h2 class="kpi-title">Đang bị khóa</h2>
+      <div class="kpi-value-row">
+        <span class="kpi-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="10" width="16" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" />
+          </svg>
+        </span>
+        <span class="kpi-value">{{ formatCount(kpis().locked) }}</span>
+      </div>
+      <p class="kpi-note kpi-note--danger">Cần theo dõi</p>
+    </article>
+  </div>
+
+  <div class="panel filter-bar">
+    <div class="field field--search">
+      <span class="field-label">Tìm kiếm</span>
+      <app-search-field
+        inputId="student-search"
+        label="Tìm học viên theo tên, email, SĐT, mã học viên"
+        placeholder="Tìm theo tên, email, SĐT, mã học viên..."
+        [value]="searchInput()"
+        (valueChange)="setSearch($event)"
+      />
+    </div>
+
+    <div class="field">
+      <span class="field-label" id="student-status-label">Trạng thái</span>
+      <app-custom-select
+        controlId="student-status"
+        labelId="student-status-label"
+        [menuWidth]="220"
+        [value]="status()"
+        [options]="statusOptions"
+        [placeholder]="'Tất cả trạng thái'"
+        (valueChange)="setStatus($event)"
+      />
+    </div>
+
+    <div class="field">
+      <span class="field-label" id="student-courses-label">Số lượng khóa học</span>
+      <app-custom-select
+        controlId="student-courses"
+        labelId="student-courses-label"
+        [menuWidth]="250"
+        [value]="courseCount()"
+        [options]="courseCountOptions"
+        [placeholder]="'Tất cả số lượng'"
+        (valueChange)="setCourseCount($event)"
+      />
+    </div>
+
+    <app-user-date-range
+      label="Thời gian đăng ký"
+      [from]="from()"
+      [to]="to()"
+      (rangeChange)="setRange($event)"
+    />
+
+    <div class="toolbar-buttons">
+      <button class="icon-action" type="button" aria-label="Đặt lại bộ lọc" title="Đặt lại bộ lọc" [disabled]="!hasActiveFilters()" (click)="resetFilters()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" />
+        </svg>
+      </button>
+      <app-export-menu label="Xuất danh sách học viên" (formatChange)="exportList($event)" />
+    </div>
+  </div>
+
+  <div class="panel">
+    @if (selection().length) {
+      <div class="selection-bar">
+        <strong>Đã chọn {{ selection().length }} học viên</strong>
+        <span class="spacer"></span>
+        <button class="btn btn--outline btn--sm" type="button" (click)="clearSelection()">Bỏ chọn</button>
+        <button class="btn btn--danger btn--sm" type="button" (click)="openBulkLock()">Khóa tài khoản</button>
+      </div>
+    }
+
+    <div class="table-heading">
+      <div>
+        <h2>Danh sách học viên</h2>
+        <p>{{ formatCount(filtered().length) }} tài khoản khớp bộ lọc hiện tại</p>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="user-table">
+        <thead>
+          <tr>
+            <th scope="col" class="checkbox-cell">
+              <input type="checkbox" [checked]="allVisibleSelected()" aria-label="Chọn tất cả học viên trên trang này" (change)="toggleAllVisible($event)" />
+            </th>
+            <th scope="col">Mã học viên</th>
+            <th scope="col">Họ tên</th>
+            <th scope="col">Email</th>
+            <th scope="col">SĐT</th>
+            <th scope="col">Số lượng khóa học</th>
+            <th scope="col">Ngày đăng ký</th>
+            <th scope="col">Trạng thái</th>
+            <th scope="col">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of visible(); track item.id) {
+            <tr>
+              <td class="checkbox-cell">
+                <input type="checkbox" [checked]="isSelected(item.id)" [attr.aria-label]="'Chọn ' + item.name" (change)="toggleRow(item.id, $event)" />
+              </td>
+              <td class="cell-nowrap">{{ item.id }}</td>
+              <td>
+                <div class="identity">
+                  <span class="avatar avatar--{{ $index % 5 }}" aria-hidden="true">{{ item.initials }}</span>
+                  <div class="cell-stack"><strong>{{ item.name }}</strong></div>
+                </div>
+              </td>
+              <td>{{ item.email }}</td>
+              <td class="cell-nowrap">{{ item.phone }}</td>
+              <td class="cell-nowrap">{{ item.courseCount }}</td>
+              <td class="cell-nowrap">{{ item.registeredAt }}</td>
+              <td>
+                <span class="status-badge" [class]="'status-badge status-badge--' + statusTone[item.status]">
+                  @switch (statusTone[item.status]) {
+                    @case ('success') {
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="m8.5 12.2 2.4 2.4 4.6-4.9" /></svg>
+                    }
+                    @case ('danger') {
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="9" rx="2" /><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" /></svg>
+                    }
+                    @default {
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 8v4M12 16h.01" /></svg>
+                    }
+                  }
+                  {{ statusLabels[item.status] }}
+                </span>
+              </td>
+              <td>
+                <div class="row-actions">
+                  <button
+                    class="row-actions-trigger"
+                    type="button"
+                    [attr.aria-expanded]="menu()?.id === item.id"
+                    [attr.aria-label]="'Thao tác cho ' + item.name"
+                    (click)="toggleMenu(item.id, $event)"
+                  >•••</button>
+                  @if (menu()?.id === item.id) {
+                    <div
+                      class="row-actions-menu"
+                      role="menu"
+                      [attr.aria-label]="'Thao tác cho ' + item.name"
+                      [style.left.px]="menu()?.left"
+                      [style.top.px]="menu()?.top"
+                    >
+                      <button type="button" role="menuitem" (click)="openProfile(item)">Chi tiết</button>
+                      <button type="button" role="menuitem" (click)="openProfile(item)">Đơn hàng</button>
+                      <button type="button" role="menuitem" class="is-danger" (click)="openLock(item)">Xử lý kỷ luật</button>
+                      @if (item.status === 'locked') {
+                        <button type="button" role="menuitem" (click)="openUnlock(item)">Mở khóa tài khoản</button>
+                      }
+                    </div>
+                  }
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="9">
+                <div class="state-block">
+                  <strong>Không có học viên nào khớp bộ lọc</strong>
+                  <p>Thử xoá từ khoá tìm kiếm hoặc chọn lại trạng thái, số lượng khóa học.</p>
+                  <button class="btn btn--outline btn--sm" type="button" (click)="resetFilters()">Đặt lại bộ lọc</button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <footer class="table-footer">
+      <span>Đang hiển thị {{ rangeStart() }}–{{ rangeEnd() }} trong {{ formatCount(filtered().length) }} học viên</span>
+      <nav class="pagination" aria-label="Phân trang danh sách học viên">
+        <button type="button" [disabled]="currentPage() === 1" aria-label="Trang trước" (click)="pageTo(currentPage() - 1)">‹</button>
+        @for (item of pageItems(); track $index) {
+          @if (item === 'gap') {
+            <span class="pagination-gap" aria-hidden="true">…</span>
+          } @else {
+            <button type="button" [attr.aria-current]="item === currentPage() ? 'page' : null" [attr.aria-label]="'Trang ' + item" (click)="pageTo(item)">{{ item }}</button>
+          }
+        }
+        <button type="button" [disabled]="currentPage() >= pages()" aria-label="Trang sau" (click)="pageTo(currentPage() + 1)">›</button>
+      </nav>
+    </footer>
+  </div>
+
+  <!-- ================= Hồ sơ học viên ================= -->
+  @if (modal() === 'profile') {
+    @if (selected(); as student) {
+      <app-user-modal title="Hồ sơ học viên" size="xl" (closed)="closeModal()">
+        <div class="subject-card modal-section">
+          <div class="identity">
+            <span class="avatar" aria-hidden="true">{{ student.initials }}</span>
+            <div>
+              <span class="subject-name">{{ student.name }}</span>
+              <span class="subject-meta">{{ student.id }} · {{ student.email }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="stat-tiles modal-section">
+          <div class="stat-tile"><strong>{{ student.courseCount }}</strong><span>Khóa học sở hữu</span></div>
+          <div class="stat-tile"><strong>{{ student.orders }}</strong><span>Đơn hàng</span></div>
+          <div class="stat-tile"><strong>{{ student.registeredAt }}</strong><span>Ngày đăng ký</span></div>
+        </div>
+
+        <div class="profile-columns">
+          <div>
+            <section class="modal-section">
+              <h3>Thông tin tài khoản</h3>
+              <dl class="kv-rows">
+                <div><dt>Họ và tên</dt><dd>{{ student.name }}</dd></div>
+                <div><dt>Mã học viên</dt><dd>{{ student.id }}</dd></div>
+                <div><dt>Email</dt><dd>{{ student.email }}</dd></div>
+                <div><dt>Điện thoại</dt><dd>{{ student.phone }}</dd></div>
+                <div><dt>Trạng thái</dt><dd>{{ statusLabels[student.status] }}</dd></div>
+              </dl>
+            </section>
+
+            <section class="modal-section">
+              <h3>Lịch sử kỷ luật</h3>
+              @if (student.violations.length) {
+                <div class="notice notice--warning">
+                  @for (violation of student.violations; track $index) {
+                    <span><strong>{{ violation.level }}</strong> · {{ violation.appliedAt }} · {{ violation.reason }}</span>
+                  }
+                </div>
+              } @else {
+                <div class="notice notice--neutral">Chưa ghi nhận vi phạm</div>
+              }
+            </section>
+          </div>
+
+          <div>
+            <section class="modal-section">
+              <h3>Khóa học đã đăng ký</h3>
+              @if (student.enrolledCourses.length) {
+                <ul class="progress-list">
+                  @for (course of student.enrolledCourses; track course.name) {
+                    <li class="progress-item">
+                      <strong>{{ course.name }} <em>{{ course.progress }}%</em></strong>
+                      <div class="progress-track" role="img" [attr.aria-label]="'Tiến độ ' + course.progress + '%'"><i [style.width.%]="course.progress"></i></div>
+                    </li>
+                  }
+                </ul>
+              } @else {
+                <div class="notice notice--neutral">Học viên chưa đăng ký khóa học nào.</div>
+              }
+            </section>
+
+            <section class="modal-section">
+              <h3>Đơn hàng gần đây</h3>
+              @if (student.recentOrder; as order) {
+                <div class="order-card">
+                  <div class="order-head">
+                    <strong>Đơn hàng {{ order.id }}</strong>
+                    <span class="status-badge status-badge--success">{{ order.status }}</span>
+                  </div>
+                  <div class="order-meta">
+                    <div><span>Số tiền</span><b>{{ formatCurrency(order.amount) }}</b></div>
+                    <div><span>Thời gian</span><b>{{ order.paidAt }}</b></div>
+                  </div>
+                  <p class="order-note">Lịch sử mua khóa học · Chi tiết xem tại Quản lý đơn hàng</p>
+                </div>
+              } @else {
+                <div class="notice notice--neutral">Chưa có đơn hàng nào.</div>
+              }
+            </section>
+          </div>
+        </div>
+
+        <div modalFooter>
+          <button class="btn btn--outline" type="button" (click)="closeModal()">Đóng</button>
+          @if (student.status === 'locked') {
+            <button class="btn btn--primary" type="button" (click)="openUnlock(student)">Mở khóa tài khoản</button>
+          } @else {
+            <button class="btn btn--danger-outline" type="button" (click)="openLock(student)">Khóa tài khoản</button>
+          }
+        </div>
+      </app-user-modal>
+    }
+  }
+
+  <!-- ================= Khóa tài khoản ================= -->
+  @if (modal() === 'lock') {
+    <app-user-modal title="Xác nhận khóa tài khoản học viên" size="lg" (closed)="closeModal()">
+      <div class="subject-card modal-section">
+        <div class="identity">
+          <span class="avatar" aria-hidden="true">
+            @if (selected(); as student) { {{ student.initials }} } @else { {{ lockTargets().length }} }
+          </span>
+          <div>
+            <span class="subject-name">{{ lockSubjectLabel() }}</span>
+            <span class="subject-meta">Thao tác này sẽ ghi vào lịch sử kỷ luật của tài khoản.</span>
+          </div>
+        </div>
+      </div>
+
+      <fieldset class="level-list modal-section">
+        <legend>Chọn mức độ kỷ luật</legend>
+        @for (option of levels; track option.level) {
+          <label class="level-option" [class.is-selected]="level() === option.level">
+            <input type="radio" name="student-level" [checked]="level() === option.level" (change)="setLevel(option.level)" />
+            <span class="level-copy">
+              <strong>{{ option.title }}</strong>
+              <p>{{ option.description }}</p>
+              <p class="level-deadline">{{ deadlineLabel(option.days) }}</p>
+            </span>
+            <span class="level-tag">{{ option.tag }}</span>
+          </label>
+        }
+      </fieldset>
+
+      <div class="notice notice--warning modal-section">{{ deadlinePreview() }}</div>
+
+      <div class="field-block modal-section">
+        <label for="lock-reason">Lý do xử lý kỷ luật <span class="required">*</span></label>
+        <textarea id="lock-reason" placeholder="Ghi rõ hành vi vi phạm, bằng chứng cụ thể để lưu vết hồ sơ..." [value]="reason()" (input)="setReasonFromEvent($event)"></textarea>
+        <p class="char-count" [class.is-invalid]="reason().trim().length < 10">{{ reason().length }}/10 ký tự tối thiểu</p>
+      </div>
+
+      <div class="modal-section">
+        <h3>Minh chứng lý do vi phạm <span class="required">*</span></h3>
+        <div class="upload-row">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4" /><path d="m7 9 5-5 5 5" /><path d="M4 20h16" /></svg>
+          <div class="upload-copy">
+            <strong>{{ evidence().length ? evidence().join(', ') : 'Tải ảnh hoặc biên bản vi phạm' }}</strong>
+            <span>PNG, JPG, PDF · tối đa 5 tệp · 20 MB/tệp</span>
+          </div>
+          <button class="btn btn--soft btn--sm" type="button" (click)="evidenceInput.click()">Chọn tệp</button>
+          <input #evidenceInput class="sr-only" type="file" accept=".png,.jpg,.jpeg,.pdf" multiple (change)="onEvidenceChange($event)" />
+        </div>
+      </div>
+
+      <div modalFooter>
+        <button class="btn btn--outline" type="button" (click)="closeModal()">Hủy bỏ</button>
+        <button class="btn btn--danger" type="button" [disabled]="!canSubmitLock()" (click)="submitLock()">Xác nhận khóa tài khoản</button>
+      </div>
+    </app-user-modal>
+  }
+
+  <!-- ================= Mở khóa tài khoản ================= -->
+  @if (modal() === 'unlock') {
+    @if (selected(); as student) {
+      <app-user-modal title="Mở khóa tài khoản học viên" [subtitle]="student.name + ' · ' + student.id" size="lg" (closed)="closeModal()">
+        <div class="notice notice--warning modal-section">
+          <strong>Tài khoản đang ở trạng thái {{ statusLabels[student.status] }}</strong>
+          <span>Mở khoá sẽ khôi phục quyền truy cập khóa học và phòng học ảo của học viên.</span>
+        </div>
+
+        <div class="field-block modal-section">
+          <label for="student-unlock-reason">Lý do mở khóa <span class="required">*</span></label>
+          <textarea id="student-unlock-reason" placeholder="Nhập lý do khôi phục tài khoản" [value]="unlockReason()" (input)="setUnlockReasonFromEvent($event)"></textarea>
+          <p class="char-count" [class.is-invalid]="unlockReason().trim().length < 10">{{ unlockReason().length }}/10 ký tự tối thiểu</p>
+        </div>
+
+        <div modalFooter>
+          <button class="btn btn--outline" type="button" (click)="closeModal()">Hủy bỏ</button>
+          <button class="btn btn--primary" type="button" [disabled]="!canSubmitUnlock()" (click)="submitUnlock()">Xác nhận mở khóa</button>
+        </div>
+      </app-user-modal>
+    }
+  }
+
+  @if (toast()) {
+    <div class="toast" role="status" aria-live="polite">{{ toast() }}</div>
+  }
+</section>

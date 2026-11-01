@@ -1,0 +1,15 @@
+/* Phần dùng riêng của trang Quản lý giảng viên. */
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+/* Bảng trong hộp thoại hẹp: bỏ min-width để không phải cuộn ngang trong dialog. */
+.user-table--fluid {
+  min-width: 0;
+}
+
+.field--search app-search-field {
+  width: 100%;
+}

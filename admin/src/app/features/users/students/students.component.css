@@ -1,0 +1,28 @@
+/* Phần dùng riêng của trang Quản lý học viên. */
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.field--search app-search-field {
+  width: 100%;
+}
+
+/* Hồ sơ học viên: hai cột khi đủ rộng, tự xếp dọc khi hẹp. */
+.profile-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.profile-columns > div {
+  min-width: 0;
+}
+
+@media (max-width: 980px) {
+  .profile-columns {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+}

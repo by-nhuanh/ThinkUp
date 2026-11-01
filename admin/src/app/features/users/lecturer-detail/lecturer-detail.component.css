@@ -1,0 +1,142 @@
+/* Trang Thẩm định hồ sơ giảng viên. */
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  margin-bottom: 8px;
+  color: #4a5b74;
+  font: var(--admin-text-control-label);
+  text-decoration: none;
+}
+
+.back-link:hover {
+  color: #266ee5;
+}
+
+.back-link:focus-visible {
+  outline: 2px solid #266ee5;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.back-link svg {
+  width: 16px;
+  height: 16px;
+}
+
+.profile-card {
+  padding: 20px 22px;
+}
+
+.profile-avatar {
+  width: 60px;
+  height: 60px;
+  font-size: 20px;
+}
+
+.profile-copy {
+  min-width: 0;
+}
+
+.profile-copy h2 {
+  margin: 0;
+  color: #14243b;
+  font: var(--admin-text-panel-title);
+  overflow-wrap: anywhere;
+}
+
+.profile-title {
+  margin: 2px 0 0;
+  color: var(--user-muted);
+  font: var(--admin-text-body-default);
+}
+
+.profile-meta {
+  margin: 2px 0 8px;
+  color: var(--user-muted);
+  font: var(--admin-text-caption);
+  overflow-wrap: anywhere;
+}
+
+.section-heading {
+  margin: 22px 0 12px;
+  color: #14243b;
+  font: var(--admin-text-panel-title);
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.detail-column {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.detail-card {
+  padding: 18px 20px;
+}
+
+.detail-card > h3 {
+  margin: 0 0 14px;
+  color: #14243b;
+  font: var(--admin-text-card-title);
+}
+
+.detail-card .kv-rows {
+  gap: 12px;
+}
+
+.detail-card .kv-rows > div {
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eef1f6;
+}
+
+.detail-card .kv-rows > div:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.detail-card .kv-rows dt {
+  color: var(--user-muted);
+  font: var(--admin-text-control-label);
+}
+
+.detail-card a {
+  color: #266ee5;
+  overflow-wrap: anywhere;
+}
+
+.decision-note {
+  margin: 0 0 14px;
+  color: var(--user-muted);
+  font: var(--admin-text-caption);
+}
+
+.decision-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.decision-actions .btn {
+  flex: 1 1 auto;
+  min-width: 180px;
+}
+
+@media (max-width: 1180px) {
+  .detail-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
