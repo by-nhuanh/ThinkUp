@@ -108,7 +108,7 @@ export class LessonPlayerComponent implements OnDestroy {
       this.route.queryParamMap.subscribe((params) => {
         const lessonId = params.get('lesson') ?? '';
         if (lessonId) this.activeLessonId.set(lessonId);
-        this.previewMode.set(params.get('preview') === 'true');
+        this.previewMode.set(params.get('preview') === 'true' || params.get('trial') === 'true');
 
         const course = this.course();
         if (course) this.setInitialOpenChapters(course);
@@ -136,6 +136,7 @@ export class LessonPlayerComponent implements OnDestroy {
 
   selectLesson(lesson: LearningLesson): void {
     this.activeLessonId.set(lesson.id);
+    this.loadLessonVideo(lesson);
     const chapter = this.course()?.chapters.find((item) =>
       item.lessons.some((chapterLesson) => chapterLesson.id === lesson.id)
     );
@@ -178,10 +179,32 @@ export class LessonPlayerComponent implements OnDestroy {
     this.openChapterIds.set([activeChapter?.id ?? course.chapters[0]?.id].filter(Boolean) as string[]);
   }
 
+  private loadLessonVideo(lesson: LearningLesson): void {
+    const course = this.course();
+    if (!course || lesson.type !== 'video' || lesson.videoUrl || lesson.isLocked) return;
+
+    this.learningService.loadLessonVideo(course.id, lesson.id).subscribe(video => {
+      if (!video) return;
+      this.course.update(current => {
+        if (!current) return current;
+        return {
+          ...current,
+          chapters: current.chapters.map(chapter => ({
+            ...chapter,
+            lessons: chapter.lessons.map(item =>
+              item.id === video.lessonId ? { ...item, videoUrl: video.videoUrl } : item
+            ),
+          })),
+        };
+      });
+    });
+  }
+
   markCompleted(): void {
     const course = this.course();
     const lesson = this.activeLesson();
     if (!course || !lesson) return;
+    if (course.playerConfig?.allowMarkCompleted === false) return;
 
     this.learningService.setLessonCompleted(lesson.id, !lesson.completed);
 

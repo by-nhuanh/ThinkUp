@@ -7,12 +7,35 @@ import {
   AccountSecurityPayload,
   DEFAULT_LEARNING_OPTIONS,
   DEFAULT_NOTIFICATION_PREFS,
+  DndDuration,
   LearningOptions,
   NotificationPrefs,
   PaymentMethod,
   SettingSection,
   SettingsApiResponse,
 } from '../models/settings.model';
+
+interface NotificationPrefsDto {
+  web?: boolean;
+  email?: boolean;
+  newsletter?: boolean;
+  learning?: boolean;
+  community?: boolean;
+  courseUpdates?: boolean;
+  marketing?: boolean;
+  marketingOptIn?: boolean;
+  revision?: number;
+  dnd?: {
+    mode?: 'off' | 'timed' | 'indefinite';
+    durationMinutes?: number | null;
+    endsAt?: string | null;
+  };
+}
+
+interface PaymentMethodsDto {
+  items?: PaymentMethod[];
+  supported?: boolean;
+}
 
 /**
  * Dịch vụ cài đặt người dùng.
@@ -63,6 +86,14 @@ export class SettingsService {
   readonly learningOptions = this.learningOptionsState.asReadonly();
   readonly notificationPrefs = this.notificationPrefsState.asReadonly();
   readonly paymentMethods = this.paymentMethodsState.asReadonly();
+
+  private notificationRevision = 0;
+  private readonly dndMinutes: Record<Exclude<DndDuration, 'until'>, number> = {
+    '15': 15,
+    '1': 60,
+    '8': 480,
+    '24': 1440,
+  };
 
   /** Cập nhật trạng thái cục bộ (dùng cho toggle/dropdown trước khi lưu API). */
   setLearningOptions(value: LearningOptions): void {
@@ -166,49 +197,111 @@ export class SettingsService {
 
   getNotificationPrefs(): Observable<NotificationPrefs> {
     return this.http
-      .get<SettingsApiResponse<NotificationPrefs>>(`${this.apiUrl}/user/settings/notifications`, {
-        withCredentials: true,
-      })
+      .get<SettingsApiResponse<NotificationPrefsDto>>(
+        `${this.apiUrl}/user/notifications/preferences`,
+        { withCredentials: true }
+      )
       .pipe(
         tap((res) => {
           if (res.success && res.data) {
-            this.notificationPrefsState.set({ ...DEFAULT_NOTIFICATION_PREFS, ...res.data });
+            this.notificationPrefsState.set(this.mapNotificationPrefs(res.data));
           }
         }),
-        map((res) => (res.success ? (res.data ?? this.notificationPrefsState()) : this.notificationPrefsState())),
+        map(() => this.notificationPrefsState()),
         catchError(() => of(this.notificationPrefsState()))
       );
   }
 
   updateNotificationPrefs(payload: Partial<NotificationPrefs>): Observable<NotificationPrefs> {
     const next: NotificationPrefs = { ...this.notificationPrefsState(), ...payload };
+    const body: Record<string, unknown> = {};
+
+    for (const key of ['web', 'email', 'learning', 'community', 'courseUpdates'] as const) {
+      if (typeof payload[key] === 'boolean') body[key] = payload[key];
+    }
+
+    // BE dùng chung marketingOptIn cho cả hai công tắc khuyến mãi.
+    const marketing = payload.marketing ?? payload.newsletter;
+    if (typeof marketing === 'boolean') {
+      body['marketingOptIn'] = marketing;
+      body['newsletter'] = marketing;
+      body['marketing'] = marketing;
+    }
+
+    if (payload.dnd !== undefined) {
+      body['dnd'] =
+        payload.dnd === 'until'
+          ? { mode: 'indefinite' }
+          : { mode: 'timed', durationMinutes: this.dndMinutes[payload.dnd] };
+      // BE bắt buộc gửi revision khi đổi chế độ không làm phiền.
+      body['expectedRevision'] = this.notificationRevision;
+    }
+
+    if (Object.keys(body).length === 0) return of(next);
+
+    this.notificationPrefsState.set(next);
     return this.http
-      .put<SettingsApiResponse<NotificationPrefs>>(
-        `${this.apiUrl}/user/settings/notifications`,
-        next,
+      .put<SettingsApiResponse<NotificationPrefsDto>>(
+        `${this.apiUrl}/user/notifications/preferences`,
+        body,
         { withCredentials: true }
       )
       .pipe(
         tap((res) => {
           if (res.success && res.data) {
-            this.notificationPrefsState.set({ ...DEFAULT_NOTIFICATION_PREFS, ...res.data });
+            this.notificationPrefsState.set(this.mapNotificationPrefs(res.data));
           } else this.notificationPrefsState.set(next);
         }),
-        map((res) => (res.success ? (res.data ?? next) : next)),
+        map((res) => (res.success && res.data ? this.notificationPrefsState() : next)),
         catchError(() => of(next))
       );
   }
 
+  private mapNotificationPrefs(dto: NotificationPrefsDto): NotificationPrefs {
+    const marketing = dto.marketingOptIn ?? dto.marketing ?? dto.newsletter;
+    const marketingValue =
+      typeof marketing === 'boolean' ? marketing : DEFAULT_NOTIFICATION_PREFS.marketing;
+
+    let dnd: DndDuration = DEFAULT_NOTIFICATION_PREFS.dnd;
+    if (dto.dnd?.mode === 'indefinite') {
+      dnd = 'until';
+    } else if (dto.dnd?.mode === 'timed' && typeof dto.dnd.durationMinutes === 'number') {
+      const matched = (Object.keys(this.dndMinutes) as Array<Exclude<DndDuration, 'until'>>).find(
+        (key) => this.dndMinutes[key] === dto.dnd?.durationMinutes
+      );
+      if (matched) dnd = matched;
+    }
+
+    if (typeof dto.revision === 'number' && Number.isInteger(dto.revision) && dto.revision >= 0) {
+      this.notificationRevision = dto.revision;
+    }
+
+    return {
+      web: dto.web ?? DEFAULT_NOTIFICATION_PREFS.web,
+      email: dto.email ?? DEFAULT_NOTIFICATION_PREFS.email,
+      newsletter: marketingValue,
+      learning: dto.learning ?? DEFAULT_NOTIFICATION_PREFS.learning,
+      community: dto.community ?? DEFAULT_NOTIFICATION_PREFS.community,
+      courseUpdates: dto.courseUpdates ?? DEFAULT_NOTIFICATION_PREFS.courseUpdates,
+      marketing: marketingValue,
+      dnd,
+    };
+  }
+
   getPaymentMethods(): Observable<PaymentMethod[]> {
     return this.http
-      .get<SettingsApiResponse<PaymentMethod[]>>(`${this.apiUrl}/user/settings/payment`, {
-        withCredentials: true,
-      })
+      .get<SettingsApiResponse<PaymentMethodsDto>>(
+        `${this.apiUrl}/user/settings/payment/methods`,
+        { withCredentials: true }
+      )
       .pipe(
         tap((res) => {
-          if (res.success && res.data) this.paymentMethodsState.set(res.data);
+          // BE chưa hỗ trợ liên kết ví/thẻ (supported = false): giữ danh sách demo.
+          if (res.success && res.data?.supported && Array.isArray(res.data.items)) {
+            this.paymentMethodsState.set(res.data.items);
+          }
         }),
-        map((res) => (res.success ? (res.data ?? this.paymentMethodsState()) : this.paymentMethodsState())),
+        map(() => this.paymentMethodsState()),
         catchError(() => of(this.paymentMethodsState()))
       );
   }

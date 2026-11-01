@@ -1,11 +1,19 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { catchError, forkJoin, of } from 'rxjs';
 import { CourseService } from '../../../core/services/course.service';
 import { CommerceService } from '../../../core/services/commerce.service';
 import { FavoritesService } from '../../../core/services/favorites.service';
-import { Course, CourseChapter } from '../../../core/models/course.model';
+import {
+  Course,
+  CourseReview,
+  CourseReviewFilterOption,
+  CourseReviewPage,
+  CourseReviewSortOption,
+  ReviewBreakdownRow,
+} from '../../../core/models/course.model';
 
 @Component({
   selector: 'app-course-detail',
@@ -14,7 +22,7 @@ import { Course, CourseChapter } from '../../../core/models/course.model';
   templateUrl: './course-detail.component.html',
   styleUrl: './course-detail.component.css'
 })
-export class CourseDetailComponent implements OnInit {
+export class CourseDetailComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private courseService = inject(CourseService);
@@ -28,27 +36,68 @@ export class CourseDetailComponent implements OnInit {
   openChapters = signal<number[]>([0]);
   toastMessage = signal<string>('');
 
-  readonly reviewBreakdown = [
-    { stars: 5, percent: 80, count: 960 },
-    { stars: 4, percent: 12, count: 144 },
-    { stars: 3, percent: 5, count: 60 },
-    { stars: 2, percent: 2, count: 24 },
-    { stars: 1, percent: 1, count: 12 },
-  ];
+  reviews = signal<CourseReview[]>([]);
+  reviewSummary = signal<{ average: number; total: number } | null>(null);
+  reviewBreakdown = signal<ReviewBreakdownRow[]>([]);
+  reviewFilterOptions = signal<CourseReviewFilterOption[]>([]);
+  reviewSortOptions = signal<CourseReviewSortOption[]>([
+    { label: 'Mới nhất', value: 'newest', active: true },
+    { label: 'Đánh giá cao nhất', value: 'highest', active: false },
+    { label: 'Đánh giá thấp nhất', value: 'lowest', active: false },
+  ]);
+  reviewSort = signal<string>('newest');
+  reviewFilter = signal<number | 'all'>('all');
+  reviewPage = signal<number>(1);
+  reviewHasNext = signal<boolean>(false);
+  reviewsLoading = signal<boolean>(false);
+  reviewsLoadingMore = signal<boolean>(false);
+
+  private readonly now = signal<number>(Date.now());
+  private countdownTimer?: ReturnType<typeof setInterval>;
+
+  readonly countdown = computed(() => {
+    const endsAt = this.course()?.saleEndsAt;
+    if (!endsAt) return '';
+    const diff = new Date(endsAt).getTime() - this.now();
+    if (!Number.isFinite(diff) || diff <= 0) return '';
+    const totalMinutes = Math.floor(diff / 60000);
+    const days = Math.floor(totalMinutes / 1440);
+    const hours = Math.floor((totalMinutes % 1440) / 60);
+    const minutes = totalMinutes % 60;
+    if (days > 0) return `${days} ngày ${hours} giờ`;
+    if (hours > 0) return `${hours} giờ ${minutes} phút`;
+    return `${minutes} phút`;
+  });
+
+  isPurchased = computed(() => this.course()?.isPurchased === true);
+
+  readonly trialLesson = computed(() => {
+    const curriculum = this.course()?.curriculum;
+    if (!curriculum) return null;
+    for (const chapter of curriculum) {
+      const lesson = chapter.lessons.find(item => item.isPreview && !item.isLocked);
+      if (lesson) return lesson;
+    }
+    return null;
+  });
 
   isWishlisted = computed(() => {
     const id = this.courseId();
-    return id ? this.favoritesService.isFavorite(id) : false;
+    const serverState = this.course()?.isInWishlist === true;
+    return serverState || (id ? this.favoritesService.isFavorite(id) : false);
   });
 
   isInCart = computed(() => {
     const id = this.courseId();
-    return id ? this.commerceService.cartItems().some(i => i.id === id) : false;
+    const serverState = this.course()?.isInCart === true;
+    return serverState || (id ? this.commerceService.cartItems().some(i => i.id === id) : false);
   });
 
   totalLessonsCount = computed(() => {
     const c = this.course();
-    if (!c?.curriculum) return 0;
+    if (!c) return 0;
+    if (c.lessonsCount) return c.lessonsCount;
+    if (!c.curriculum) return 0;
     return c.curriculum.reduce((acc, chap) => acc + (chap.lessons?.length || 0), 0);
   });
 
@@ -65,25 +114,113 @@ export class CourseDetailComponent implements OnInit {
     });
   }
 
+  ngOnDestroy(): void {
+    if (this.countdownTimer) clearInterval(this.countdownTimer);
+  }
+
   private loadCourse(id: string): void {
     this.loading.set(true);
     this.error.set('');
+    this.reviews.set([]);
+    this.reviewSummary.set(null);
+    this.reviewBreakdown.set([]);
+    this.reviewPage.set(1);
+    this.reviewHasNext.set(false);
+    this.reviewSort.set('newest');
+    this.reviewFilter.set('all');
 
-    this.courseService.getCourseById(id).subscribe({
-      next: (res) => {
+    forkJoin({
+      detail: this.courseService.getCourseDetail(id),
+      reviews: this.courseService
+        .getCourseReviews(id, { page: 1, limit: 5 })
+        .pipe(catchError(() => of(null))),
+    }).subscribe({
+      next: ({ detail, reviews }) => {
         this.loading.set(false);
-        if (res.success && res.data) {
-          this.course.set(res.data);
-          this.openChapters.set([0]);
-        } else {
-          this.error.set('Không tìm thấy thông tin khóa học.');
-        }
+        this.course.set(detail);
+        this.openChapters.set([0]);
+        this.reviewSummary.set({ average: detail.rating, total: Number(detail.ratingCount) || 0 });
+        this.reviewBreakdown.set(detail.ratingBreakdown ?? []);
+        if (reviews) this.applyReviewPage(reviews, true);
+        this.startCountdown();
       },
       error: () => {
         this.loading.set(false);
         this.error.set('Không thể tải khóa học. Vui lòng thử lại sau.');
       }
     });
+  }
+
+  private startCountdown(): void {
+    if (this.countdownTimer) return;
+    this.countdownTimer = setInterval(() => this.now.set(Date.now()), 60_000);
+  }
+
+  private applyReviewPage(page: CourseReviewPage, reset: boolean): void {
+    this.reviewSummary.set({ average: page.summary.average, total: page.summary.total });
+    this.reviewBreakdown.set(page.summary.breakdown);
+    if (page.filterOptions.length) this.reviewFilterOptions.set(page.filterOptions);
+    if (page.sortOptions.length) this.reviewSortOptions.set(page.sortOptions);
+    this.reviews.set(reset ? page.reviews : [...this.reviews(), ...page.reviews]);
+    this.reviewPage.set(page.pagination.page);
+    this.reviewHasNext.set(page.pagination.hasNext);
+  }
+
+  onReviewSortChange(event: Event): void {
+    this.reviewSort.set((event.target as HTMLSelectElement).value);
+    this.reloadReviews();
+  }
+
+  onReviewFilterChange(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    this.reviewFilter.set(value === 'all' ? 'all' : Number(value));
+    this.reloadReviews();
+  }
+
+  private reloadReviews(): void {
+    const id = this.courseId();
+    if (!id) return;
+    this.reviewsLoading.set(true);
+    this.courseService
+      .getCourseReviews(id, {
+        rating: this.reviewFilter(),
+        sort: this.reviewSort(),
+        page: 1,
+        limit: 5,
+      })
+      .subscribe({
+        next: page => {
+          this.reviewsLoading.set(false);
+          this.applyReviewPage(page, true);
+        },
+        error: () => {
+          this.reviewsLoading.set(false);
+          this.showToast('Không tải được danh sách đánh giá.');
+        }
+      });
+  }
+
+  loadMoreReviews(): void {
+    const id = this.courseId();
+    if (!id || this.reviewsLoadingMore() || !this.reviewHasNext()) return;
+    this.reviewsLoadingMore.set(true);
+    this.courseService
+      .getCourseReviews(id, {
+        rating: this.reviewFilter(),
+        sort: this.reviewSort(),
+        page: this.reviewPage() + 1,
+        limit: 5,
+      })
+      .subscribe({
+        next: page => {
+          this.reviewsLoadingMore.set(false);
+          this.applyReviewPage(page, false);
+        },
+        error: () => {
+          this.reviewsLoadingMore.set(false);
+          this.showToast('Không tải thêm được đánh giá.');
+        }
+      });
   }
 
   isChapterOpen(index: number): boolean {
@@ -104,6 +241,41 @@ export class CourseDetailComponent implements OnInit {
     const all = c.curriculum.map((_, i) => i);
     this.openChapters.update(current => {
       return current.length === all.length ? [] : all;
+    });
+  }
+
+  handlePrimaryAction(): void {
+    if (this.isPurchased()) {
+      this.continueLearning();
+      return;
+    }
+    this.handleBuyNow();
+  }
+
+  continueLearning(): void {
+    const c = this.course();
+    if (!c) return;
+    if (c.learningUrl) {
+      void this.router.navigateByUrl(c.learningUrl);
+      return;
+    }
+    void this.router.navigate(['/learning/learn', c.id]);
+  }
+
+  openPreview(): void {
+    const c = this.course();
+    if (!c) return;
+    if (c.previewVideoUrl) {
+      window.open(c.previewVideoUrl, '_blank', 'noopener');
+      return;
+    }
+    const lesson = this.trialLesson();
+    if (!lesson) {
+      this.showToast('Khóa học chưa có nội dung học thử.');
+      return;
+    }
+    void this.router.navigate(['/learning/learn', c.id], {
+      queryParams: { lesson: lesson.id, preview: true },
     });
   }
 

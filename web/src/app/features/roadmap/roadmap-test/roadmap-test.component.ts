@@ -1,5 +1,7 @@
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { catchError, of, switchMap } from 'rxjs';
 import {
   LucideArrowLeft,
   LucideCheck,
@@ -12,7 +14,7 @@ import {
   LucideX
 } from '@lucide/angular';
 import { ToastService } from '../../../core/services/toast.service';
-import { RoadmapTestQuestion } from '../models/roadmap.model';
+import { RoadmapTest, RoadmapTestQuestion } from '../models/roadmap.model';
 import { RoadmapTestService } from '../services/roadmap-test.service';
 import { RoadmapService } from '../services/roadmap.service';
 import { RoadmapSurveyStepsComponent } from '../components/roadmap-survey-steps/roadmap-survey-steps.component';
@@ -43,13 +45,17 @@ export class RoadmapTestComponent implements OnInit, OnDestroy {
   private readonly testService = inject(RoadmapTestService);
   private readonly toastService = inject(ToastService);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   private readonly params = inject(ActivatedRoute).snapshot.paramMap;
   readonly roadmapId = this.params.get('roadmapId') ?? '';
   readonly stageId = this.params.get('stageId') ?? '';
 
   readonly roadmap = computed(() => this.roadmapService.getRoadmapById(this.roadmapId));
-  readonly test = computed(() => this.testService.getTest(this.roadmapId, this.stageId));
+  readonly test = signal<RoadmapTest | null>(null);
+  readonly loading = signal(true);
+  readonly error = signal<string | null>(null);
+  readonly submitting = signal(false);
 
   readonly currentIndex = signal(0);
   readonly answers = signal<Record<string, string>>({});
@@ -82,12 +88,33 @@ export class RoadmapTestComponent implements OnInit, OnDestroy {
   readonly canSubmit = computed(() => this.totalQuestions() > 0 && this.answeredCount() === this.totalQuestions());
 
   ngOnInit(): void {
-    const test = this.test();
-    if (!test) return;
+    this.roadmapService
+      .loadRoadmap(this.roadmapId)
+      .pipe(
+        catchError(() => of(null)),
+        switchMap(() => this.testService.loadTest(this.roadmapId, this.stageId)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: test => {
+          this.loading.set(false);
+          this.test.set(test);
+          this.startTimer(test);
+        },
+        error: (error: { error?: { message?: string }; message?: string }) => {
+          this.loading.set(false);
+          this.error.set(
+            error?.error?.message ?? error?.message ?? 'Không tải được bài test. Vui lòng thử lại sau.'
+          );
+        }
+      });
+  }
 
+  private startTimer(test: RoadmapTest): void {
+    this.stopTimer();
     this.remainingSeconds.set(test.durationMinutes * 60);
     this.timerId = setInterval(() => {
-      this.remainingSeconds.update((value) => Math.max(0, value - 1));
+      this.remainingSeconds.update(value => Math.max(0, value - 1));
       if (this.remainingSeconds() === 0) {
         this.finish(true);
       }
@@ -156,6 +183,7 @@ export class RoadmapTestComponent implements OnInit, OnDestroy {
   }
 
   submit(): void {
+    if (this.submitting()) return;
     if (!this.canSubmit()) {
       this.showIncomplete.set(true);
       return;
@@ -165,15 +193,41 @@ export class RoadmapTestComponent implements OnInit, OnDestroy {
 
   private finish(auto: boolean): void {
     const test = this.test();
-    if (!test) return;
+    if (!test || this.submitting()) return;
 
-    this.stopTimer();
-    this.testService.submit(test, this.answers());
-
-    if (auto) {
-      this.toastService.showToast({ type: 'warning', message: 'Hết giờ làm bài. Hệ thống đã nộp bài của bạn.' });
+    const answeredCount = Object.keys(this.answers()).length;
+    if (answeredCount === 0) {
+      this.toastService.showToast({
+        type: 'warning',
+        message: 'Bạn chưa trả lời câu hỏi nào nên chưa thể nộp bài.'
+      });
+      return;
     }
 
-    this.router.navigate(['/learning/roadmap', this.roadmapId, 'test', this.stageId, 'processing']);
+    this.stopTimer();
+    this.submitting.set(true);
+
+    this.testService
+      .submit(test, this.answers())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.submitting.set(false);
+          if (auto) {
+            this.toastService.showToast({
+              type: 'warning',
+              message: 'Hết giờ làm bài. Hệ thống đã nộp bài của bạn.'
+            });
+          }
+          this.router.navigate(['/learning/roadmap', this.roadmapId, 'test', this.stageId, 'processing']);
+        },
+        error: (error: { error?: { message?: string } }) => {
+          this.submitting.set(false);
+          this.toastService.showToast({
+            type: 'warning',
+            message: error?.error?.message ?? 'Nộp bài thất bại. Vui lòng thử lại.'
+          });
+        }
+      });
   }
 }

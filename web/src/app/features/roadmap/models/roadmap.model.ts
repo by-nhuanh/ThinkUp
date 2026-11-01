@@ -96,7 +96,8 @@ export interface RoadmapTestQuestion {
   /** Ngôn ngữ của khối code (dùng cho nhãn / tô màu cú pháp đơn giản). */
   language?: string;
   options: RoadmapTestOption[];
-  correctOptionId: string;
+  /** Chỉ có ở đề mock cục bộ; API không trả về đáp án đúng. */
+  correctOptionId?: string;
   skillId: string;
   tag: string;
 }

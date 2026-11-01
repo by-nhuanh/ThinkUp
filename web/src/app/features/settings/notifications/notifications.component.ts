@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import {
   LucideGraduationCap,
@@ -58,9 +58,13 @@ interface CategoryRow {
   templateUrl: './notifications.component.html',
   styleUrl: './notifications.component.css',
 })
-export class NotificationsComponent {
+export class NotificationsComponent implements OnInit {
   private readonly settingsService = inject(SettingsService);
   private readonly router = inject(Router);
+
+  ngOnInit(): void {
+    this.settingsService.getNotificationPrefs().subscribe();
+  }
 
   readonly back = () => void this.router.navigate(['/main/settings']);
   readonly prefs = this.settingsService.notificationPrefs;
@@ -150,11 +154,7 @@ export class NotificationsComponent {
     return this.prefs()[key];
   }
 
-  /**
-   * Cập nhật trạng thái cục bộ ngay khi người dùng đổi tùy chọn.
-   * TODO(pre-deploy): gọi API lưu thay đổi khi backend chốt endpoint/spec thông báo.
-   */
   private updatePrefs(patch: Partial<NotificationPrefs>): void {
-    this.settingsService.setNotificationPrefs({ ...this.prefs(), ...patch });
+    this.settingsService.updateNotificationPrefs(patch).subscribe();
   }
 }

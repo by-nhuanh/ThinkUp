@@ -17,6 +17,17 @@
             <svg lucideTrash2 [size]="17" [strokeWidth]="1.8"></svg>
           </button>
 
+          @if (s.nodeId) {
+            <button
+              type="button"
+              class="rm-btn rm-btn--outline rm-btn--sm"
+              [disabled]="syncing()"
+              (click)="syncToRoadmap()"
+            >
+              {{ syncing() ? 'Đang đồng bộ...' : 'Đồng bộ lộ trình' }}
+            </button>
+          }
+
           <button type="button" class="rm-btn rm-btn--primary rm-btn--sm" (click)="addCard()">
             <svg lucidePlus aria-hidden="true" [size]="16" [strokeWidth]="2"></svg>
             Thêm thẻ

@@ -64,9 +64,9 @@
 
                 <button
                   type="button"
-                  (click)="toastMessage.set('Video giới thiệu khóa học sẽ sớm được cập nhật.')"
+                  (click)="openPreview()"
                   class="absolute right-8 top-1/2 hidden h-20 w-20 -translate-y-1/2 place-items-center rounded-full border border-[#155DFC]/40 bg-[#155DFC]/10 text-[#60A5FA] transition hover:scale-105 hover:bg-[#155DFC]/20 lg:grid"
-                  aria-label="Xem video giới thiệu khóa học"
+                  aria-label="Xem video giới thiệu hoặc học thử khóa học"
                 >
                   <svg class="ml-1 h-8 w-8 fill-current" viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M8 5v14l11-7z"></path>
@@ -162,25 +162,47 @@
               </div>
 
               <!-- What You Will Learn (Outcomes) -->
-              @if (c.outcomes && c.outcomes.length > 0) {
+              @if (c.outcomeGroups?.length || (c.outcomes && c.outcomes.length > 0)) {
                 <div class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm">
                   <h2 class="text-lg sm:text-xl font-bold mb-3 text-[#0D1C2D]">Mô tả khóa học</h2>
                   <p class="text-sm text-[#424754] leading-relaxed mb-6">
                     {{ c.description || c.shortDescription }}
                   </p>
-                  <h3 class="text-base font-bold mb-4 text-[#0D1C2D]">Mục tiêu khóa học</h3>
-                  <div class="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-3.5">
-                    @for (outcome of c.outcomes; track $index) {
-                      <div class="flex items-start gap-3">
-                        <div class="w-5 h-5 rounded-full bg-blue-50 text-[#155DFC] flex items-center justify-center shrink-0 mt-0.5">
-                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-                          </svg>
+                  @if (c.outcomeGroups && c.outcomeGroups.length > 0) {
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      @for (group of c.outcomeGroups; track group.title) {
+                        <div class="min-w-0">
+                          <h3 class="text-base font-bold mb-3 text-[#0D1C2D]">{{ group.title }}</h3>
+                          <div class="space-y-2.5">
+                            @for (outcome of group.items; track $index) {
+                              <div class="flex items-start gap-3">
+                                <div class="w-5 h-5 rounded-full bg-blue-50 text-[#155DFC] flex items-center justify-center shrink-0 mt-0.5">
+                                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                                  </svg>
+                                </div>
+                                <span class="text-sm text-[#424754] leading-relaxed">{{ outcome }}</span>
+                              </div>
+                            }
+                          </div>
                         </div>
-                        <span class="text-sm text-[#424754] leading-relaxed">{{ outcome }}</span>
-                      </div>
-                    }
-                  </div>
+                      }
+                    </div>
+                  } @else {
+                    <h3 class="text-base font-bold mb-4 text-[#0D1C2D]">Mục tiêu khóa học</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-3.5">
+                      @for (outcome of c.outcomes; track $index) {
+                        <div class="flex items-start gap-3">
+                          <div class="w-5 h-5 rounded-full bg-blue-50 text-[#155DFC] flex items-center justify-center shrink-0 mt-0.5">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                          </div>
+                          <span class="text-sm text-[#424754] leading-relaxed">{{ outcome }}</span>
+                        </div>
+                      }
+                    </div>
+                  }
                 </div>
               }
 
@@ -247,6 +269,13 @@
                                     >
                                       Học thử
                                     </a>
+                                  } @else if (lesson.isLocked) {
+                                    <span class="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">
+                                      <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                                      </svg>
+                                      Khóa
+                                    </span>
                                   }
                                   <span class="text-slate-400 text-xs">{{ lesson.duration }}</span>
                                 </div>
@@ -261,25 +290,25 @@
               }
 
               <!-- Reviews Section -->
-              @if (c.reviews && c.reviews.length > 0) {
+              @if (reviewSummary(); as summary) {
                 <div class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm">
                   <div class="flex items-center justify-between mb-6 flex-wrap gap-4">
                     <h2 class="text-lg sm:text-xl font-bold text-[#0D1C2D]">Đánh giá từ học viên</h2>
                     <div class="flex items-center gap-2 text-sm text-[#62748E]">
-                      <span class="text-2xl font-black text-[#0D1C2D]">{{ c.rating }}</span>
+                      <span class="text-2xl font-black text-[#0D1C2D]">{{ summary.average }}</span>
                       <span class="text-amber-400 text-lg">★★★★★</span>
-                      <span>({{ c.ratingCount }} nhận xét)</span>
+                      <span>({{ summary.total }} nhận xét)</span>
                     </div>
                   </div>
 
                   <div class="grid gap-6 rounded-xl border border-slate-100 bg-slate-50/60 p-4 sm:grid-cols-[140px_minmax(0,1fr)] sm:p-5">
                     <div class="text-center sm:text-left">
-                      <p class="text-4xl font-black leading-none text-[#0D1C2D]">{{ c.rating }}<span class="text-base font-semibold text-[#90A1B9]">/5</span></p>
+                      <p class="text-4xl font-black leading-none text-[#0D1C2D]">{{ summary.average }}<span class="text-base font-semibold text-[#90A1B9]">/5</span></p>
                       <div class="mt-2 text-amber-400">★★★★★</div>
-                      <p class="mt-1 text-[11px] text-[#62748E]">({{ c.ratingCount }} đánh giá)</p>
+                      <p class="mt-1 text-[11px] text-[#62748E]">({{ summary.total }} đánh giá)</p>
                     </div>
                     <div class="space-y-1.5">
-                      @for (row of reviewBreakdown; track row.stars) {
+                      @for (row of reviewBreakdown(); track row.stars) {
                         <div class="flex items-center gap-2 text-[11px] text-[#62748E]">
                           <span class="w-8 shrink-0">{{ row.stars }} sao</span>
                           <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-[#E2E8F0]">
@@ -291,29 +320,76 @@
                     </div>
                   </div>
 
-                  <div class="mt-5 space-y-4">
-                    @for (review of c.reviews; track review.id) {
-                      <div class="p-4 rounded-xl bg-slate-50 border border-slate-100">
-                        <div class="flex items-center justify-between mb-2">
-                          <div class="flex items-center gap-2.5">
-                            <div class="w-8 h-8 rounded-full bg-slate-200 text-slate-700 font-semibold text-xs flex items-center justify-center">
-                              {{ review.author.charAt(0) }}
-                            </div>
-                            <div>
-                              <div class="text-xs sm:text-sm font-semibold text-[#0D1C2D]">{{ review.author }}</div>
-                              <div class="text-[11px] text-[#62748E]">{{ review.date }}</div>
-                            </div>
-                          </div>
-                          <div class="text-amber-400 text-xs font-bold">
-                            ★ {{ review.rating }}
-                          </div>
-                        </div>
-                        <p class="text-xs sm:text-sm text-[#424754] leading-relaxed">
-                          {{ review.comment }}
-                        </p>
-                      </div>
+                  <div class="mt-5 flex flex-wrap items-end gap-3">
+                    <label class="flex min-w-0 flex-col gap-1 text-[11px] font-medium text-[#62748E]">
+                      <span>Sắp xếp</span>
+                      <select
+                        [value]="reviewSort()"
+                        (change)="onReviewSortChange($event)"
+                        class="h-10 min-w-[170px] rounded-lg border border-slate-200 bg-white px-3 text-xs text-[#0D1C2D]"
+                      >
+                        @for (option of reviewSortOptions(); track option.value) {
+                          <option [value]="option.value">{{ option.label }}</option>
+                        }
+                      </select>
+                    </label>
+                    @if (reviewFilterOptions().length > 0) {
+                      <label class="flex min-w-0 flex-col gap-1 text-[11px] font-medium text-[#62748E]">
+                        <span>Lọc theo số sao</span>
+                        <select
+                          [value]="reviewFilter()"
+                          (change)="onReviewFilterChange($event)"
+                          class="h-10 min-w-[150px] rounded-lg border border-slate-200 bg-white px-3 text-xs text-[#0D1C2D]"
+                        >
+                          @for (option of reviewFilterOptions(); track option.value) {
+                            <option [value]="option.value">{{ option.label }}</option>
+                          }
+                        </select>
+                      </label>
                     }
                   </div>
+
+                  @if (reviewsLoading()) {
+                    <p class="mt-5 rounded-xl bg-slate-50 p-4 text-center text-xs text-[#62748E]">Đang tải đánh giá...</p>
+                  } @else if (reviews().length === 0) {
+                    <p class="mt-5 rounded-xl bg-slate-50 p-4 text-center text-xs text-[#62748E]">Chưa có đánh giá phù hợp với bộ lọc.</p>
+                  } @else {
+                    <div class="mt-5 space-y-4">
+                      @for (review of reviews(); track review.id) {
+                        <div class="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                          <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-2.5">
+                              <div class="w-8 h-8 rounded-full bg-slate-200 text-slate-700 font-semibold text-xs flex items-center justify-center">
+                                {{ review.author.charAt(0) }}
+                              </div>
+                              <div>
+                                <div class="text-xs sm:text-sm font-semibold text-[#0D1C2D]">{{ review.author }}</div>
+                                <div class="text-[11px] text-[#62748E]">{{ review.date }}</div>
+                              </div>
+                            </div>
+                            <div class="text-amber-400 text-xs font-bold">
+                              ★ {{ review.rating }}
+                            </div>
+                          </div>
+                          <p class="text-xs sm:text-sm text-[#424754] leading-relaxed">
+                            {{ review.comment }}
+                          </p>
+                        </div>
+                      }
+                    </div>
+                    @if (reviewHasNext()) {
+                      <div class="mt-5 text-center">
+                        <button
+                          type="button"
+                          (click)="loadMoreReviews()"
+                          [disabled]="reviewsLoadingMore()"
+                          class="inline-flex h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-5 text-xs font-semibold text-[#0D1C2D] transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {{ reviewsLoadingMore() ? 'Đang tải...' : 'Xem thêm đánh giá' }}
+                        </button>
+                      </div>
+                    }
+                  }
                 </div>
               }
             </div>
@@ -408,14 +484,22 @@
               </span>
             }
           </div>
-          @if (c.countdown) {
+          @if (!c.isPurchased && countdown()) {
             <div class="flex items-center gap-1.5 text-xs text-red-500 font-semibold mt-2">
               <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="10" stroke-width="2"></circle>
                 <polyline points="12 6 12 12 16 14" stroke-width="2"></polyline>
               </svg>
-              <span>Ưu đãi kết thúc sau: {{ c.countdown }}</span>
+              <span>Ưu đãi kết thúc sau: {{ countdown() }}</span>
             </div>
+          }
+          @if (c.isPurchased) {
+            <p class="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+              </svg>
+              Bạn đã sở hữu khóa học này
+            </p>
           }
         </div>
 
@@ -423,33 +507,35 @@
         <div class="space-y-3">
           <button
             type="button"
-            (click)="handleBuyNow()"
+            (click)="handlePrimaryAction()"
             class="w-full h-12 bg-[#155DFC] hover:bg-[#0F4CD1] active:scale-[0.99] text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-[#155DFC]/20 flex items-center justify-center gap-2"
           >
-            Mua ngay
+            {{ c.isPurchased ? 'Tiếp tục học' : 'Mua ngay' }}
           </button>
 
-          <button
-            type="button"
-            (click)="handleAddToCart()"
-            class="w-full h-12 bg-[#EBF3FF] hover:bg-[#D8E8FF] active:scale-[0.99] text-[#155DFC] font-bold text-sm rounded-xl transition-all border border-[#D0E2FF] flex items-center justify-center gap-2"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
-            </svg>
-            {{ isInCart() ? '✓ Đã có trong giỏ hàng' : 'Thêm vào giỏ hàng' }}
-          </button>
+          @if (!c.isPurchased) {
+            <button
+              type="button"
+              (click)="handleAddToCart()"
+              class="w-full h-12 bg-[#EBF3FF] hover:bg-[#D8E8FF] active:scale-[0.99] text-[#155DFC] font-bold text-sm rounded-xl transition-all border border-[#D0E2FF] flex items-center justify-center gap-2"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
+              </svg>
+              {{ isInCart() ? '✓ Đã có trong giỏ hàng' : 'Thêm vào giỏ hàng' }}
+            </button>
 
-          <button
-            type="button"
-            (click)="handleToggleWishlist()"
-            class="w-full h-10 border border-slate-200 hover:border-slate-300 rounded-xl text-xs font-semibold text-slate-700 flex items-center justify-center gap-2 transition-colors"
-          >
-            <svg class="w-4 h-4" [class.fill-rose-500]="isWishlisted()" [class.text-rose-500]="isWishlisted()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
-            </svg>
-            {{ isWishlisted() ? 'Đã lưu vào danh sách yêu thích' : 'Lưu vào danh sách yêu thích' }}
-          </button>
+            <button
+              type="button"
+              (click)="handleToggleWishlist()"
+              class="w-full h-10 border border-slate-200 hover:border-slate-300 rounded-xl text-xs font-semibold text-slate-700 flex items-center justify-center gap-2 transition-colors"
+            >
+              <svg class="w-4 h-4" [class.fill-rose-500]="isWishlisted()" [class.text-rose-500]="isWishlisted()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+              </svg>
+              {{ isWishlisted() ? 'Đã lưu vào danh sách yêu thích' : 'Lưu vào danh sách yêu thích' }}
+            </button>
+          }
         </div>
 
         <!-- Course Includes List -->

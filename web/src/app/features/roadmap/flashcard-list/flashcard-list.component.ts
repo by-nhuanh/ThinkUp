@@ -53,6 +53,8 @@ export class FlashcardListComponent {
   readonly filters = FILTERS;
   readonly activeFilter = signal<FlashcardListFilter>('all');
   readonly keyword = signal('');
+  readonly loading = signal(true);
+  readonly error = signal<string | null>(null);
 
   readonly sets = this.flashcardService.sets;
   readonly counts = computed<Record<FlashcardListFilter, number>>(() => ({
@@ -75,7 +77,13 @@ export class FlashcardListComponent {
   });
 
   constructor() {
-    this.flashcardService.loadSets().subscribe({ error: () => undefined });
+    this.flashcardService.loadSets().subscribe({
+      next: () => this.loading.set(false),
+      error: () => {
+        this.loading.set(false);
+        this.error.set('Không tải được danh sách flashcard. Vui lòng thử lại sau.');
+      }
+    });
   }
 
   setFilter(filter: FlashcardListFilter): void {

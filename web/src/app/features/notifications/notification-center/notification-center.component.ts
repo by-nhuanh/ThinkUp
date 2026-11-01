@@ -319,7 +319,7 @@ export class NotificationCenterComponent {
 
     const key = item.category === 'learning' ? 'learning' : 'marketing';
     const next = !this.prefs()[key];
-    this.settings.setNotificationPrefs({ ...this.prefs(), [key]: next });
+    this.settings.updateNotificationPrefs({ [key]: next }).subscribe();
 
     const label = notificationCategoryMeta(item.category).label;
     this.toast.showToast({
