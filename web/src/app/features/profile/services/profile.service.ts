@@ -30,6 +30,27 @@ import {
 const PROFILE_STORAGE_KEY = 'thinkup_user_profile';
 const CURRENT_USER_KEY = 'thinkup_current_user';
 
+interface ApiProfileUser {
+  name?: string;
+  full_name?: string;
+  email?: string;
+  avatar?: string;
+  avatarUrl?: string;
+  avatar_url?: string;
+  headline?: string;
+  location?: string;
+  bio?: string;
+  phone?: string;
+  gender?: string;
+  birthDate?: string;
+}
+
+interface ProfileUpdateResponse {
+  success: boolean;
+  message?: string;
+  data?: ApiProfileUser | { user?: ApiProfileUser };
+}
+
 @Injectable({ providedIn: 'root' })
 export class ProfileService {
   private http = inject(HttpClient);
@@ -94,15 +115,23 @@ export class ProfileService {
           if (!res.success || !res.data) return;
 
           const data = res.data;
-          this.profile.set(data.profile);
-          this.learningStats.set(data.learningStats);
-          this.roadmapProgress.set(data.roadmapProgress);
-          this.currentCourses.set(data.currentCourses);
-          this.completedCourses.set(data.completedCourses ?? []);
-          this.achievements.set(data.achievements);
-          this.totalAwards.set(data.totalAwards);
-          this.recentActivities.set(data.recentActivities);
-          this.certificates.set(data.certificates ?? []);
+          // BE chỉ trả các trường hồ sơ cơ bản; merge để giữ dữ liệu form đã lưu cục bộ.
+          this.profile.set({ ...this.profile(), ...data.profile });
+          if (data.currentCourses) this.currentCourses.set(data.currentCourses);
+          if (data.completedCourses) this.completedCourses.set(data.completedCourses);
+          if (typeof data.totalCompletedCourses === 'number') {
+            this.totalCompletedCourses.set(data.totalCompletedCourses);
+          }
+          if (data.recentActivities) this.recentActivities.set(data.recentActivities);
+          if (data.certificates) this.certificates.set(data.certificates);
+          if (typeof data.totalCertificates === 'number') {
+            this.totalCertificates.set(data.totalCertificates);
+          }
+          // Các số liệu tổng hợp chưa có trong contract overview.
+          if (data.learningStats) this.learningStats.set(data.learningStats);
+          if (typeof data.roadmapProgress === 'number') this.roadmapProgress.set(data.roadmapProgress);
+          if (data.achievements) this.achievements.set(data.achievements);
+          if (typeof data.totalAwards === 'number') this.totalAwards.set(data.totalAwards);
         }),
         map((res) => res.data),
         catchError(() => {
@@ -113,10 +142,12 @@ export class ProfileService {
             roadmapProgress: this.roadmapProgress(),
             currentCourses: this.currentCourses(),
             completedCourses: this.completedCourses(),
+            totalCompletedCourses: this.totalCompletedCourses(),
             achievements: this.achievements(),
             totalAwards: this.totalAwards(),
             recentActivities: this.recentActivities(),
             certificates: this.certificates(),
+            totalCertificates: this.totalCertificates(),
           };
           return of(fallback);
         })
@@ -134,18 +165,37 @@ export class ProfileService {
       nextProfile.name;
 
     return this.http
-      .put<{ success: boolean; data: UserProfile }>(
+      .put<ProfileUpdateResponse>(
         `${this.apiUrl}/user/profile`,
         nextProfile,
         { withCredentials: true }
       )
       .pipe(
-        tap((res) => {
-          const saved = res?.success && res.data ? res.data : nextProfile;
+        map((res) => {
+          if (!res?.success) return nextProfile;
+          const saved: UserProfile = { ...nextProfile, ...this.normalizeApiUser(res.data) };
           this.applyProfile(saved);
-        }),
-        map((res) => (res?.success && res.data ? res.data : nextProfile))
+          return saved;
+        })
       );
+  }
+
+  private normalizeApiUser(payload: ProfileUpdateResponse['data']): Partial<UserProfile> {
+    const raw = (payload as { user?: ApiProfileUser })?.user ?? (payload as ApiProfileUser | undefined);
+    if (!raw) return {};
+
+    const result: Partial<UserProfile> = {};
+    const name = raw.name ?? raw.full_name;
+    if (typeof name === 'string' && name.trim()) result.name = name.trim();
+    if (typeof raw.email === 'string') result.email = raw.email;
+    const avatar = raw.avatar ?? raw.avatarUrl ?? raw.avatar_url;
+    if (typeof avatar === 'string') result.avatarUrl = avatar;
+
+    for (const key of ['headline', 'location', 'bio', 'phone', 'gender', 'birthDate'] as const) {
+      const value = raw[key];
+      if (typeof value === 'string') result[key] = value;
+    }
+    return result;
   }
 
   private applyProfile(nextProfile: UserProfile): void {

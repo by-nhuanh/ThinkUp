@@ -125,18 +125,20 @@
                   </button>
                 </div>
 
-                <div class="skill-status__options" role="group" aria-label="Cập nhật trạng thái kỹ năng">
+                <p class="rm-base skill-status__hint">
+                  Trạng thái được cập nhật tự động từ bài test giai đoạn và tiến độ khóa học.
+                </p>
+
+                <div class="skill-status__options" role="group" aria-label="Trạng thái hiện tại của kỹ năng">
                   @for (option of statusOptions; track option.id) {
-                    <button
-                      type="button"
-                      class="status-option"
+                    <span
+                      class="status-option status-option--readonly"
                       [class.status-option--completed]="option.id === 'completed'"
                       [class.status-option--in-progress]="option.id === 'in-progress'"
                       [class.status-option--review]="option.id === 'review'"
                       [class.status-option--not-started]="option.id === 'not-started'"
                       [class.is-active]="sk.status === option.id"
-                      [attr.aria-pressed]="sk.status === option.id"
-                      (click)="setStatus(option.id)"
+                      [attr.aria-current]="sk.status === option.id ? 'true' : null"
                     >
                       <span class="status-option__icon" aria-hidden="true">
                         @switch (option.id) {
@@ -155,7 +157,7 @@
                         }
                       </span>
                       {{ option.label }}
-                    </button>
+                    </span>
                   }
                 </div>
 
@@ -271,10 +273,14 @@
           </a>
         </div>
       }
+    } @else if (loading()) {
+      <div class="rm-card skill-empty">
+        <p class="rm-base">Đang tải thông tin kỹ năng...</p>
+      </div>
     } @else {
       <div class="rm-card skill-empty">
         <h1 class="rm-card-title">Không tìm thấy lộ trình</h1>
-        <p class="rm-base">Lộ trình bạn mở không tồn tại hoặc đã bị gỡ.</p>
+        <p class="rm-base">{{ error() ?? 'Lộ trình bạn mở không tồn tại hoặc đã bị gỡ.' }}</p>
         <a class="rm-btn rm-btn--primary rm-btn--sm" routerLink="/learning/roadmap">Về danh sách lộ trình</a>
       </div>
     }

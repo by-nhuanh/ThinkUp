@@ -13,6 +13,7 @@ import {
 } from '@lucide/angular';
 import { FlashcardCard, FlashcardStudyMode } from '../models/flashcard.model';
 import { FlashcardService } from '../services/flashcard.service';
+import { RoadmapService } from '../services/roadmap.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { RoadmapProgressComponent } from '../components/roadmap-progress/roadmap-progress.component';
 import { FlashcardSetIconComponent } from '../components/flashcard-set-icon/flashcard-set-icon.component';
@@ -41,6 +42,7 @@ const VALID_MODES: FlashcardStudyMode[] = ['shuffle', 'ordered', 'review-first']
 })
 export class FlashcardStudyComponent {
   private readonly flashcardService = inject(FlashcardService);
+  private readonly roadmapService = inject(RoadmapService);
   private readonly toastService = inject(ToastService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -100,7 +102,10 @@ export class FlashcardStudyComponent {
     if (!card) return;
 
     this.flashcardService.updateCardStatus(this.setId, card.id, status).subscribe({
-      next: () => {
+      next: roadmapSync => {
+        if (roadmapSync?.updated) {
+          this.roadmapService.refreshActiveRoadmap().subscribe({ error: () => undefined });
+        }
         if (status === 'review') this.toastService.showToast({ type: 'warning', message: 'Đã đưa thẻ vào danh sách cần ôn tập.' });
         if (this.isLast()) {
           this.router.navigate(['/learning/flashcards', this.setId, 'complete']);

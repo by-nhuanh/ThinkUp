@@ -638,3 +638,15 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.skill-status__hint {
+  margin: 8px 0 0;
+}
+
+.status-option--readonly {
+  cursor: default;
+}
+
+.status-option--readonly:hover {
+  border-color: var(--rm-border);
+}

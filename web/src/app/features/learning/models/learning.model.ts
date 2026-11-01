@@ -115,6 +115,7 @@ export interface LearningLesson {
   completed?: boolean;
   status?: LessonStatus;
   isPreview?: boolean;
+  isLocked?: boolean;
   summary?: string;
   videoUrl?: string;
   reading?: ReadingConfig;
@@ -126,6 +127,21 @@ export interface LearningChapter {
   id: string;
   title: string;
   lessons: LearningLesson[];
+}
+
+export interface LearningUpsell {
+  title: string;
+  message: string;
+  ctaLabel: string;
+  ctaUrl: string;
+}
+
+export interface LearningPlayerConfig {
+  allowMarkCompleted: boolean;
+  allowNotes: boolean;
+  allowQa: boolean;
+  qaMessage: string;
+  upsell: LearningUpsell | null;
 }
 
 export interface LearningCourse {
@@ -141,6 +157,8 @@ export interface LearningCourse {
   ratingCount: number;
   studentCount: number;
   chapters: LearningChapter[];
+  isPurchased?: boolean;
+  playerConfig?: LearningPlayerConfig;
 }
 
 export interface CommunityReply {
