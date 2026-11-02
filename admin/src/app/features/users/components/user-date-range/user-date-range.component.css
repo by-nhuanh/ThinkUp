@@ -1,0 +1,198 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.range-field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-top: 9px;
+}
+
+/* Nhãn nằm trên viền control, cùng ngôn ngữ với các ô lọc khác. */
+.range-label {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 12px;
+  max-width: calc(100% - 24px);
+  padding: 0 4px;
+  overflow: hidden;
+  background: var(--user-surface, #fff);
+  color: var(--user-muted, #66758f);
+  font: var(--admin-text-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.range-field:focus-within .range-label {
+  color: var(--user-primary, #266ee5);
+}
+
+.range-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  height: var(--user-control-height, 40px);
+  padding: 0 10px 0 12px;
+  border: 1px solid #c8ced6;
+  border-radius: var(--user-radius-control, 9px);
+  background: #fff;
+  color: var(--user-muted, #66758f);
+  font: var(--admin-text-control-input);
+  text-align: left;
+  cursor: pointer;
+}
+
+.range-trigger:hover {
+  border-color: #8fa8c5;
+}
+
+.range-trigger:focus-visible {
+  outline: none;
+  border-color: var(--user-primary, #266ee5);
+  box-shadow: var(--user-focus, 0 0 0 3px #266ee529);
+}
+
+.range-trigger.has-value {
+  color: #1f2b40;
+}
+
+.range-calendar {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: #8794a8;
+}
+
+.range-value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.range-chevron {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: #8794a8;
+}
+
+.range-popover {
+  position: fixed;
+  z-index: 60;
+  display: grid;
+  gap: 12px;
+  width: min(320px, calc(100vw - 24px));
+  padding: 12px;
+  overflow: auto;
+  border: 1px solid #dee5f0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 16px 36px #1f2b4026;
+  overscroll-behavior: contain;
+}
+
+.range-presets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.range-presets button {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid #e3e9f2;
+  border-radius: 8px;
+  background: #fff;
+  color: #33445c;
+  font: var(--admin-text-caption);
+  text-align: left;
+  cursor: pointer;
+}
+
+.range-presets button:hover {
+  border-color: #b9c9e8;
+}
+
+.range-presets button[aria-pressed='true'] {
+  border-color: #266ee5;
+  background: #eef6ff;
+  color: #1c5cc7;
+}
+
+.range-presets button:focus-visible {
+  outline: 2px solid #266ee5;
+  outline-offset: 2px;
+}
+
+.range-inputs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.range-inputs label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  color: #4a5b74;
+  font: var(--admin-text-caption);
+}
+
+.range-inputs input {
+  width: 100%;
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid #dee5f0;
+  border-radius: 8px;
+  background: #fff;
+  color: #1f2b40;
+  font: var(--admin-text-control-input);
+}
+
+.range-inputs input:focus {
+  outline: none;
+  border-color: #266ee5;
+  box-shadow: 0 0 0 3px #266ee529;
+}
+
+.range-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.range-footer button {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font: var(--admin-text-caption);
+  cursor: pointer;
+}
+
+.range-footer .btn--outline {
+  border: 1px solid #dee5f0;
+  background: #fff;
+  color: #33445c;
+}
+
+.range-footer .btn--primary {
+  border: 1px solid #266ee5;
+  background: #266ee5;
+  color: #fff;
+}
+
+@media (max-width: 480px) {
+  .range-inputs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

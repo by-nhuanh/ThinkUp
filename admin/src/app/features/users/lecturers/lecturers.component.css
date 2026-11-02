@@ -1,0 +1,28 @@
+/* Phần dùng riêng của trang Quản lý giảng viên. */
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.filter-field app-search-field {
+  width: 100%;
+}
+
+/* Bảng giảng viên hiển thị 2 dòng mỗi ô nên hàng cao hơn bảng học viên. */
+.user-table {
+  min-width: 1120px;
+}
+
+.user-table tbody td {
+  height: clamp(72px, 6vw, 112px);
+}
+
+/* Bảng trong hộp thoại hẹp: bỏ min-width để không phải cuộn ngang trong dialog. */
+.user-table--fluid {
+  min-width: 0;
+}
+
+.user-table--fluid tbody td {
+  height: auto;
+}

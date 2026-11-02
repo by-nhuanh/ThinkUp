@@ -1,0 +1,19 @@
+/* Phần dùng riêng của trang Quản lý học viên. */
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.filter-field app-search-field {
+  width: 100%;
+}
+
+/* Bảng 9 cột: rộng hơn bảng giảng viên, hàng một dòng nên thấp hơn. */
+.user-table {
+  min-width: 1160px;
+}
+
+.user-table tbody td {
+  height: clamp(56px, 4.6vw, 92px);
+}

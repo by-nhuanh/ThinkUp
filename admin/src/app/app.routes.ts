@@ -53,6 +53,9 @@ export const routes: Routes = [
     loadComponent: () => import('./layouts/admin-layout/admin-layout.component').then(m => m.AdminLayoutComponent),
     children: [
       { path: '', loadComponent: () => import('./features/dashboard/dashboard/dashboard.component').then(m => m.DashboardComponent) },
+      { path: 'users/lecturers', loadComponent: () => import('./features/users/lecturers/lecturers.component').then(m => m.LecturersComponent) },
+      { path: 'users/lecturers/:id', loadComponent: () => import('./features/users/lecturer-detail/lecturer-detail.component').then(m => m.LecturerDetailComponent) },
+      { path: 'users/students', loadComponent: () => import('./features/users/students/students.component').then(m => m.StudentsComponent) },
       { path: 'business/orders', loadComponent: () => import('./features/business/orders/orders.component').then(m => m.OrdersComponent) },
       { path: 'business/vouchers', loadComponent: () => import('./features/business/vouchers/vouchers.component').then(m => m.VouchersComponent) },
       { path: 'business/payouts', loadComponent: () => import('./features/business/payouts/payouts.component').then(m => m.PayoutsComponent) },

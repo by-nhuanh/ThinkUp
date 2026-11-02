@@ -1,5 +1,6 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
+import { ActivatedRoute } from '@angular/router';
 import { LucideRotateCcw } from '@lucide/angular';
 import { BusinessOrder, OrderStatus } from '../models/business.models';
 import { BusinessDemoService } from '../services/business-demo.service';
@@ -22,6 +23,7 @@ export class OrdersComponent {
   // TODO(pre-deploy): Nhớ xóa dữ liệu minh họa sau khi service đơn hàng dùng API chính thức; kết nối thanh toán và hóa đơn qua backend.
   private readonly data = inject(BusinessDemoService);
   private readonly invoicePdf = inject(InvoicePdfService);
+  private readonly route = inject(ActivatedRoute);
   private readonly document = inject(DOCUMENT);
   private readonly destroyRef = inject(DestroyRef);
   private detailTrigger: HTMLElement | null = null;
@@ -79,6 +81,9 @@ export class OrdersComponent {
   readonly cancelled = computed(() => this.orders().filter(order => order.status === 'cancelled').length);
 
   constructor() {
+    // Deep link từ module người dùng: /business/orders?q=<email>
+    const query = this.route.snapshot.queryParamMap.get('q');
+    if (query) this.search.set(query);
     this.destroyRef.onDestroy(() => this.removeDatePopoverListeners());
     this.destroyRef.onDestroy(() => { if (this.copiedTimeout) clearTimeout(this.copiedTimeout); });
   }

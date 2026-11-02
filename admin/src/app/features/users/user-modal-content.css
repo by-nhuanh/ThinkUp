@@ -1,0 +1,834 @@
+/* =========================================================================
+   Nội dung bên trong các hộp thoại của module quản lý người dùng.
+   Dùng kèm `user-page.css` (cùng bộ token --user-*). Các khối 2 cột tự
+   chuyển về 1 cột theo container query của .user-modal__body.
+   ========================================================================= */
+
+.modal-section {
+  margin: 0 0 18px;
+}
+
+.modal-section:last-child {
+  margin-bottom: 0;
+}
+
+.modal-section > h3 {
+  margin: 0 0 10px;
+  color: #14243b;
+  font: var(--admin-text-card-title);
+}
+
+.modal-section > h3 .required {
+  color: var(--user-danger);
+}
+
+.modal-section > p {
+  margin: 0 0 10px;
+  color: var(--user-muted);
+  font: var(--admin-text-caption);
+}
+
+/* ---------- Tóm tắt đối tượng bị thao tác ---------- */
+
+.subject-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--user-border-soft);
+  border-radius: 10px;
+  background: var(--user-surface-alt);
+}
+
+.subject-card .identity {
+  gap: 12px;
+}
+
+.subject-name {
+  display: block;
+  color: #14243b;
+  font: var(--admin-text-card-title);
+}
+
+.subject-meta {
+  display: block;
+  color: var(--user-muted);
+  font: var(--admin-text-caption);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Dải thông tin / cảnh báo ---------- */
+
+.info-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font: var(--admin-text-body-default);
+}
+
+.info-strip strong {
+  font-weight: var(--admin-font-weight-semibold);
+}
+
+.info-strip--amber {
+  border-color: #f2dfb4;
+  background: var(--user-warning-soft);
+  color: var(--user-warning);
+}
+
+.info-strip--danger {
+  border-color: #f6cdd1;
+  background: var(--user-danger-soft);
+  color: var(--user-danger-strong);
+}
+
+.info-strip--info {
+  border-color: #cfe3fb;
+  background: var(--user-info-soft);
+  color: var(--user-primary-strong);
+}
+
+.info-strip--neutral {
+  border-color: var(--user-border-soft);
+  background: var(--user-surface-alt);
+  color: var(--user-muted);
+}
+
+/* ---------- Thẻ chọn mức kỷ luật ---------- */
+
+.choice-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.choice-list legend {
+  padding: 0;
+  margin-bottom: 2px;
+  color: var(--user-ink);
+  font: var(--admin-text-control-label);
+}
+
+.choice-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--user-border);
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.choice-card:hover {
+  border-color: #b9c9e8;
+}
+
+.choice-card.is-selected {
+  border-color: var(--user-accent);
+  background: var(--user-accent-soft);
+  box-shadow: var(--user-focus);
+}
+
+.choice-card input {
+  width: 16px;
+  height: 16px;
+  margin: 3px 0 0;
+  accent-color: var(--user-primary);
+}
+
+.choice-card:focus-within {
+  outline: 2px solid var(--user-primary);
+  outline-offset: 2px;
+}
+
+.choice-copy {
+  min-width: 0;
+}
+
+.choice-copy strong {
+  display: block;
+  color: #14243b;
+  font: var(--admin-text-card-title);
+}
+
+.choice-copy p {
+  margin: 4px 0 0;
+  color: var(--user-muted);
+  font: var(--admin-text-caption);
+  overflow-wrap: anywhere;
+}
+
+.choice-meta {
+  display: block;
+  margin-top: 6px;
+  color: var(--user-muted-soft);
+  font: var(--admin-text-caption);
+}
+
+.choice-card.is-selected .choice-meta {
+  color: var(--user-primary-strong);
+}
+
+.choice-tag {
+  flex: none;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--user-primary-soft);
+  color: var(--user-primary-strong);
+  font: var(--admin-text-badge);
+  white-space: nowrap;
+}
+
+.choice-card.is-selected .choice-tag {
+  background: #fff;
+}
+
+/* ---------- Vùng nhập liệu ---------- */
+
+.field-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-block > label {
+  color: var(--user-ink);
+  font: var(--admin-text-control-label);
+}
+
+.field-block textarea,
+.field-block input,
+.field-block select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #c8ced6;
+  border-radius: var(--user-radius-control);
+  background: #fff;
+  color: var(--user-ink);
+  font: var(--admin-text-body-default);
+  outline: none;
+}
+
+.field-block textarea {
+  min-height: 84px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.field-block input,
+.field-block select {
+  height: var(--user-control-height);
+}
+
+.field-block textarea:hover,
+.field-block input:hover,
+.field-block select:hover {
+  border-color: #8fa8c5;
+}
+
+.field-block textarea:focus,
+.field-block input:focus,
+.field-block select:focus {
+  border-color: var(--user-primary);
+  box-shadow: var(--user-focus);
+}
+
+.field-block textarea[aria-invalid='true'],
+.field-block input[aria-invalid='true'] {
+  border-color: var(--user-danger);
+}
+
+.field-block .required {
+  color: var(--user-danger);
+}
+
+.char-count {
+  margin: 0;
+  color: var(--user-muted-soft);
+  font: var(--admin-text-caption);
+}
+
+.char-count.is-invalid {
+  color: var(--user-danger);
+}
+
+/* ---------- Tải tệp ---------- */
+
+.uploader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px dashed #c8d5e6;
+  border-radius: 10px;
+  background: var(--user-surface-alt);
+}
+
+.uploader svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: var(--user-primary);
+}
+
+.upload-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.upload-copy strong {
+  display: block;
+  color: #14243b;
+  font: var(--admin-text-control-label);
+  overflow-wrap: anywhere;
+}
+
+.upload-copy span {
+  display: block;
+  color: var(--user-muted-soft);
+  font: var(--admin-text-caption);
+}
+
+.uploader > button {
+  flex: none;
+}
+
+/* ---------- Danh sách checkbox (khóa học, giấy tờ) ---------- */
+
+.check-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* Bảng chọn khóa học của Mức 2 nằm trên nền xám nhạt để tách khỏi danh sách mức. */
+.course-panel {
+  margin: 10px 0 0;
+  padding: 12px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--user-neutral-surface);
+}
+
+.check-list--grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--user-border);
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.check-row:hover {
+  border-color: #b9c9e8;
+}
+
+.check-row.is-selected {
+  border-color: var(--user-accent);
+  background: var(--user-accent-soft);
+}
+
+.check-row input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--user-primary);
+}
+
+.check-row span.label {
+  flex: 1;
+  min-width: 0;
+  color: var(--user-ink);
+  overflow-wrap: anywhere;
+}
+
+.check-row:focus-within {
+  outline: 2px solid var(--user-primary);
+  outline-offset: 2px;
+}
+
+.doc-state {
+  flex: none;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font: var(--admin-text-badge);
+  white-space: nowrap;
+}
+
+.doc-state--missing { background: #eef1f6; color: var(--user-muted); }
+.doc-state--invalid { background: var(--user-danger-soft); color: var(--user-danger-strong); }
+.doc-state--pending { background: var(--user-warning-soft); color: var(--user-warning); }
+.doc-state--not-started { background: #eef1f6; color: var(--user-muted); }
+
+/* ---------- Phân đoạn (thời hạn bổ sung) ---------- */
+
+.segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.segmented button {
+  min-width: 84px;
+  height: var(--user-control-height);
+  padding: 0 14px;
+  border: 1px solid var(--user-border);
+  border-radius: var(--user-radius-control);
+  background: #fff;
+  color: #33445c;
+  font: var(--admin-text-control-label);
+  cursor: pointer;
+}
+
+.segmented button:hover {
+  border-color: #b9c9e8;
+}
+
+.segmented button[aria-pressed='true'] {
+  border-color: var(--user-accent);
+  background: var(--user-accent-soft);
+  color: var(--user-primary-strong);
+}
+
+.segmented button:focus-visible {
+  outline: 2px solid var(--user-primary);
+  outline-offset: 2px;
+}
+
+/* ---------- Hàng checkbox gửi email ---------- */
+
+.option-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #cfe3fb;
+  border-radius: 10px;
+  background: var(--user-info-soft);
+  color: var(--user-primary-strong);
+  font: var(--admin-text-body-default);
+  cursor: pointer;
+}
+
+.option-row input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--user-primary);
+}
+
+.option-row:focus-within {
+  outline: 2px solid var(--user-primary);
+  outline-offset: 2px;
+}
+
+/* ---------- Thẻ thống kê trong popup hồ sơ ---------- */
+
+.stat-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.stat-tile {
+  padding: 12px 14px;
+  border: 1px solid var(--user-border-soft);
+  border-radius: 10px;
+  background: var(--user-surface-alt);
+}
+
+.stat-tile strong {
+  display: block;
+  color: #14243b;
+  font: var(--admin-text-metric-secondary);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.stat-tile span {
+  display: block;
+  margin-top: 2px;
+  color: var(--user-muted);
+  font: var(--admin-text-caption);
+}
+
+/* ---------- Danh sách nhãn – giá trị ---------- */
+
+.kv-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+  margin: 0;
+  padding: 14px;
+  border-radius: 10px;
+  background: var(--user-surface-alt);
+}
+
+.kv-grid div {
+  min-width: 0;
+}
+
+.kv-grid dt {
+  color: var(--user-muted);
+  font: var(--admin-text-caption);
+}
+
+.kv-grid dd {
+  margin: 2px 0 0;
+  color: #14243b;
+  font: var(--admin-text-body-default);
+  overflow-wrap: anywhere;
+}
+
+.kv-rows {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.kv-rows > div {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.7fr) minmax(0, 1.3fr);
+  gap: 12px;
+}
+
+.kv-rows dt {
+  color: var(--user-muted);
+  font: var(--admin-text-body-default);
+}
+
+.kv-rows dd {
+  margin: 0;
+  color: #14243b;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Liên kết ngoài ---------- */
+
+.link-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.link-tile {
+  padding: 10px 12px;
+  border: 1px solid var(--user-border);
+  border-radius: var(--user-radius-control);
+  background: #fff;
+}
+
+.link-tile span {
+  display: block;
+  color: var(--user-muted);
+  font: var(--admin-text-caption);
+}
+
+.link-tile a {
+  display: block;
+  margin-top: 2px;
+  color: var(--user-primary);
+  font: var(--admin-text-body-default);
+  overflow-wrap: anywhere;
+}
+
+.link-tile a:focus-visible {
+  outline: 2px solid var(--user-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ---------- Hàng tệp tin ---------- */
+
+.file-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--user-border-soft);
+  border-radius: 10px;
+  background: var(--user-surface-alt);
+}
+
+.file-row svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  color: var(--user-danger-strong);
+}
+
+.file-row .file-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.file-row strong {
+  display: block;
+  color: #14243b;
+  font: var(--admin-text-control-label);
+  overflow-wrap: anywhere;
+}
+
+.file-row span {
+  display: block;
+  color: var(--user-muted);
+  font: var(--admin-text-caption);
+}
+
+.file-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: none;
+}
+
+/* ---------- Tiến độ khóa học ---------- */
+
+.progress-list {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.progress-item strong {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  color: #14243b;
+  font: var(--admin-text-control-label);
+}
+
+.progress-item strong em {
+  color: var(--user-primary);
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-track {
+  height: 6px;
+  margin-top: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e6edf6;
+}
+
+.progress-track i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--user-accent);
+}
+
+/* ---------- Thẻ đơn hàng ---------- */
+
+.order-tile {
+  padding: 12px 14px;
+  border: 1px solid var(--user-border);
+  border-radius: 10px;
+}
+
+.order-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.order-head strong {
+  color: #14243b;
+  font: var(--admin-text-control-label);
+  overflow-wrap: anywhere;
+}
+
+.order-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 16px;
+  margin-top: 8px;
+}
+
+.order-meta span {
+  display: block;
+  color: var(--user-muted);
+  font: var(--admin-text-caption);
+}
+
+.order-meta b {
+  color: #14243b;
+  font: var(--admin-text-control-label);
+  font-variant-numeric: tabular-nums;
+}
+
+.order-note {
+  margin: 10px 0 0;
+  color: var(--user-muted-soft);
+  font: var(--admin-text-caption);
+}
+
+/* ---------- Bố cục hai cột của hộp thoại ---------- */
+
+.profile-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.profile-columns > div {
+  min-width: 0;
+}
+
+/* ---------- Footer chia hai bên ---------- */
+
+.modal-footer-split {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+}
+
+.modal-footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-left: auto;
+}
+
+/* ---------- Nút ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: var(--user-radius-control);
+  font: var(--admin-text-control-label);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--user-primary);
+  outline-offset: 2px;
+}
+
+.btn--primary { background: #1473de; color: #fff; }
+.btn--primary:hover:not(:disabled) { background: #0f63c4; }
+
+.btn--danger { background: var(--user-danger); color: #fff; }
+.btn--danger:hover:not(:disabled) { background: var(--user-danger-strong); }
+
+/* Nút phá huỷ nhẹ: nền trắng, viền và chữ đỏ — dùng ở footer hồ sơ. */
+.btn--ghost-danger {
+  border-color: var(--user-danger-text);
+  background: #fff;
+  color: var(--user-danger-text);
+}
+
+.btn--ghost-danger:hover:not(:disabled) { background: var(--user-danger-soft-strong); }
+
+.btn--outline {
+  border-color: var(--user-border);
+  background: #fff;
+  color: #33445c;
+}
+
+.btn--outline:hover:not(:disabled) { border-color: #b9c9d8; }
+
+.btn--soft {
+  background: var(--user-primary-soft);
+  color: var(--user-primary-strong);
+}
+
+.btn--soft:hover:not(:disabled) { background: #dcecff; }
+
+.btn--sm {
+  min-height: 32px;
+  padding: 0 12px;
+  font: var(--admin-text-caption);
+}
+
+/* ---------- Container queries cho nội dung hộp thoại ---------- */
+
+@container (max-width: 760px) {
+  .stat-tiles,
+  .link-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .kv-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .modal-footer-split {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .modal-footer-actions {
+    margin-left: 0;
+  }
+
+  .modal-footer-actions .btn {
+    flex: 1 1 auto;
+  }
+}
+
+@container (max-width: 560px) {
+  .stat-tiles,
+  .link-grid,
+  .order-meta {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .profile-columns {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .check-list--grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .kv-rows > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .uploader,
+  .file-row {
+    flex-wrap: wrap;
+  }
+
+  .uploader > button,
+  .file-actions {
+    width: 100%;
+  }
+}

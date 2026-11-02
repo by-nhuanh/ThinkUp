@@ -1,0 +1,70 @@
+:host {
+  display: inline-flex;
+}
+
+.row-actions-trigger {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0 0 4px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #66758f;
+  font: var(--admin-text-body-default);
+  font-weight: var(--admin-font-weight-bold);
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+
+.row-actions-trigger:hover,
+.row-actions-trigger[aria-expanded="true"] {
+  background: #f0f5fb;
+  color: #1f293b;
+}
+
+.row-actions-menu {
+  position: fixed;
+  z-index: 65;
+  display: grid;
+  gap: 2px;
+  width: min(260px, calc(100vw - 24px));
+  padding: 8px;
+  border: 1px solid #dbe5f2;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(15, 35, 65, 0.16);
+}
+
+.row-actions-menu button {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #1f293b;
+  font: var(--admin-text-body-default);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.row-actions-menu button:hover,
+.row-actions-menu button:focus-visible {
+  background: #f5f7fb;
+}
+
+.row-actions-menu .is-danger {
+  color: #b82e38;
+}
+
+.row-actions-trigger:focus-visible,
+.row-actions-menu button:focus-visible {
+  outline: 2px solid #266ee5;
+  outline-offset: 1px;
+}
