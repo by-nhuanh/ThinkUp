@@ -1,14 +1,25 @@
-import { Component, DestroyRef, HostListener, computed, inject, signal } from '@angular/core';
-import { STUDENT_STATUS_LABELS, STUDENT_STATUS_TONE } from '../../../core/data/mock/user-management.mock';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { CustomSelectComponent, CustomSelectOption } from '../../../shared/components/custom-select/custom-select.component';
 import { ExportMenuComponent } from '../../../shared/components/export-menu/export-menu.component';
 import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
 import { ExportFormat, downloadTable } from '../../../shared/utils/export-formats';
+import { UserRowMenuItem, UserRowMenuComponent } from '../components/user-row-menu/user-row-menu.component';
 import { UserDateRangeComponent } from '../components/user-date-range/user-date-range.component';
 import { UserModalComponent } from '../components/user-modal/user-modal.component';
+import { UserToastComponent } from '../components/user-toast/user-toast.component';
+import { STUDENT_STATUS_LABELS, STUDENT_STATUS_TONE } from '../models/user-management.labels';
 import { DisciplineLevel, Student } from '../models/user-management.models';
 import { UserManagementService } from '../services/user-management.service';
-import { addDaysIso, formatCount, formatCurrency, formatDeadline, toIsoDate, todayIso } from '../user-management.utils';
+import { UserToastService } from '../services/user-toast.service';
+import {
+  formatCount,
+  formatCurrency,
+  formatDate,
+  formatDateTime,
+  formatDeadline,
+  lockDeadlineIso
+} from '../user-management.utils';
 
 type StudentModal = 'profile' | 'lock' | 'unlock';
 
@@ -17,14 +28,14 @@ const LEVELS: ReadonlyArray<{ level: DisciplineLevel; title: string; tag: string
   {
     level: 1,
     title: 'Mức 1 · Cảnh cáo vi phạm nhẹ',
-    tag: 'Tạm khóa 7 ngày',
+    tag: '7 ngày',
     description: 'Áp dụng cho spam bình luận, quấy rối thảo luận hoặc học viên gây mất trật tự phòng học ảo.',
     days: 7
   },
   {
     level: 2,
     title: 'Mức 2 · Đình chỉ có thời hạn',
-    tag: 'Tạm khóa 30 ngày',
+    tag: '30 ngày',
     description: 'Áp dụng khi chia sẻ tài khoản cho nhiều người dùng chung hoặc gian lận làm bài kiểm tra.',
     days: 30
   },
@@ -49,16 +60,19 @@ const LEVELS: ReadonlyArray<{ level: DisciplineLevel; title: string; tag: string
     CustomSelectComponent,
     ExportMenuComponent,
     UserDateRangeComponent,
-    UserModalComponent
+    UserModalComponent,
+    UserRowMenuComponent,
+    UserToastComponent
   ],
   templateUrl: './students.component.html',
   styleUrls: ['../user-page.css', '../user-modal-content.css', './students.component.css']
 })
 export class StudentsComponent {
   private readonly data = inject(UserManagementService);
+  private readonly toastService = inject(UserToastService);
+  private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private searchTimer?: ReturnType<typeof setTimeout>;
-  private toastTimer?: ReturnType<typeof setTimeout>;
 
   readonly students = this.data.students;
   readonly kpis = this.data.studentKpis;
@@ -68,6 +82,8 @@ export class StudentsComponent {
   readonly pageSize = 7;
   readonly formatCount = formatCount;
   readonly formatCurrency = formatCurrency;
+  readonly formatDate = formatDate;
+  readonly formatDateTime = formatDateTime;
 
   readonly searchInput = signal('');
   readonly query = signal('');
@@ -77,17 +93,14 @@ export class StudentsComponent {
   readonly to = signal('');
   readonly page = signal(1);
 
-  readonly menu = signal<{ id: string; left: number; top: number } | null>(null);
   readonly modal = signal<StudentModal | null>(null);
   readonly selected = signal<Student | null>(null);
   readonly selection = signal<ReadonlyArray<string>>([]);
-  readonly toast = signal('');
 
   readonly level = signal<DisciplineLevel>(1);
   readonly reason = signal('');
   readonly evidence = signal<ReadonlyArray<string>>([]);
   readonly unlockReason = signal('');
-  readonly sendEmail = signal(true);
 
   readonly statusOptions: ReadonlyArray<CustomSelectOption> = [
     { value: '', label: 'Tất cả trạng thái' },
@@ -117,7 +130,6 @@ export class StudentsComponent {
 
     return this.students().filter((item) => {
       const haystack = [item.id, item.name, item.email, item.phone].join(' ').toLocaleLowerCase('vi-VN');
-      const registered = toIsoDate(item.registeredAt);
       const courseOk = !courseCount
         || (courseCount === 'none' && item.courseCount === 0)
         || (courseCount === '1-3' && item.courseCount >= 1 && item.courseCount <= 3)
@@ -125,8 +137,8 @@ export class StudentsComponent {
       return (!query || haystack.includes(query))
         && (!status || item.status === status)
         && courseOk
-        && (!from || registered >= from)
-        && (!to || registered <= to);
+        && (!from || item.registeredAt >= from)
+        && (!to || item.registeredAt <= to);
     });
   });
 
@@ -154,6 +166,12 @@ export class StudentsComponent {
     return visible.length > 0 && visible.every((item) => this.selection().includes(item.id));
   });
 
+  /** Chọn một phần dòng trên trang — dùng cho trạng thái indeterminate của checkbox tổng. */
+  readonly someVisibleSelected = computed(() => {
+    const visible = this.visible();
+    return !this.allVisibleSelected() && visible.some((item) => this.selection().includes(item.id));
+  });
+
   readonly lockTargets = computed(() => {
     const selected = this.selected();
     return selected ? [selected.id] : this.selection();
@@ -166,36 +184,47 @@ export class StudentsComponent {
     return count > 1 ? `${count} học viên đã chọn` : '1 học viên đã chọn';
   });
 
-  readonly deadlinePreview = computed(() => {
-    const days = LEVELS.find((item) => item.level === this.level())?.days;
-    if (!days) return 'Tài khoản sẽ bị khóa vĩnh viễn.';
-    return `Mức ${this.level()}: Tài khoản sẽ bị khóa tới ${formatDeadline(addDaysIso(todayIso(), days))}.`;
-  });
+  readonly levelDays = computed(() => LEVELS.find((item) => item.level === this.level())?.days ?? null);
 
   readonly canSubmitLock = computed(() => this.reason().trim().length >= 10 && this.evidence().length > 0);
   readonly canSubmitUnlock = computed(() => this.unlockReason().trim().length >= 10);
 
+  private readonly baseMenuItems: readonly UserRowMenuItem[] = [
+    { key: 'profile', label: 'Chi tiết' },
+    { key: 'orders', label: 'Đơn hàng' },
+    { key: 'lock', label: 'Xử lý kỷ luật', danger: true }
+  ];
+
+  private readonly lockedMenuItems: readonly UserRowMenuItem[] = [
+    { key: 'profile', label: 'Chi tiết' },
+    { key: 'orders', label: 'Đơn hàng' },
+    { key: 'unlock', label: 'Mở khóa tài khoản' },
+    { key: 'lock', label: 'Xử lý kỷ luật', danger: true }
+  ];
+
   constructor() {
-    this.destroyRef.onDestroy(() => {
-      clearTimeout(this.searchTimer);
-      clearTimeout(this.toastTimer);
-    });
+    this.destroyRef.onDestroy(() => clearTimeout(this.searchTimer));
   }
 
-  @HostListener('document:click')
-  closeMenu(): void {
-    this.menu.set(null);
+  menuItemsFor(student: Student): readonly UserRowMenuItem[] {
+    return student.status === 'locked' ? this.lockedMenuItems : this.baseMenuItems;
   }
 
-  @HostListener('document:keydown.escape')
-  onEscape(): void {
-    this.menu.set(null);
-  }
-
-  @HostListener('window:scroll')
-  @HostListener('window:resize')
-  closeMenuOnViewportChange(): void {
-    if (this.menu()) this.menu.set(null);
+  onRowAction(key: string, student: Student): void {
+    switch (key) {
+      case 'profile':
+        this.openProfile(student);
+        break;
+      case 'orders':
+        this.openOrders(student);
+        break;
+      case 'lock':
+        this.openLock(student);
+        break;
+      case 'unlock':
+        this.openUnlock(student);
+        break;
+    }
   }
 
   setSearch(value: string): void {
@@ -242,24 +271,6 @@ export class StudentsComponent {
     this.page.set(Math.max(1, Math.min(this.pages(), value)));
   }
 
-  toggleMenu(id: string, event: Event): void {
-    event.stopPropagation();
-    if (this.menu()?.id === id) {
-      this.menu.set(null);
-      return;
-    }
-
-    // Menu dùng position: fixed để không bị cắt bởi vùng cuộn ngang của bảng.
-    const trigger = event.currentTarget as HTMLElement;
-    const rect = trigger.getBoundingClientRect();
-    const width = 210;
-    const height = 4 * 38 + 14;
-    const left = Math.max(12, Math.min(rect.right - width, window.innerWidth - width - 12));
-    const openAbove = rect.bottom + 6 + height > window.innerHeight - 12;
-    const top = openAbove ? Math.max(12, rect.top - 6 - height) : rect.bottom + 6;
-    this.menu.set({ id, left, top });
-  }
-
   isSelected(id: string): boolean {
     return this.selection().includes(id);
   }
@@ -284,7 +295,11 @@ export class StudentsComponent {
   openProfile(student: Student): void {
     this.selected.set(student);
     this.modal.set('profile');
-    this.menu.set(null);
+  }
+
+  /** Mở trang Đơn hàng đã lọc sẵn theo email học viên. */
+  openOrders(student: Student): void {
+    void this.router.navigate(['/business/orders'], { queryParams: { q: student.email } });
   }
 
   openLock(student: Student): void {
@@ -293,7 +308,6 @@ export class StudentsComponent {
     this.reason.set('');
     this.evidence.set([]);
     this.modal.set('lock');
-    this.menu.set(null);
   }
 
   openBulkLock(): void {
@@ -308,7 +322,6 @@ export class StudentsComponent {
     this.selected.set(student);
     this.unlockReason.set('');
     this.modal.set('unlock');
-    this.menu.set(null);
   }
 
   closeModal(): void {
@@ -322,9 +335,17 @@ export class StudentsComponent {
 
   /** Hạn khoá tương ứng từng mức, dùng chung cho thẻ chọn mức và banner nhắc. */
   deadlineLabel(days: number | null): string {
-    return days
-      ? `Tài khoản sẽ bị khóa tới ${formatDeadline(addDaysIso(todayIso(), days))}.`
+    const deadline = lockDeadlineIso(days);
+    return deadline
+      ? `Tài khoản sẽ bị khóa tới ${formatDeadline(deadline)}.`
       : 'Tài khoản sẽ bị khóa vĩnh viễn.';
+  }
+
+  /** Hạn khoá đang lưu trên hồ sơ học viên. */
+  lockExpiryLabel(student: Student): string {
+    return student.lockedUntil
+      ? `Hết hạn: ${formatDeadline(student.lockedUntil)}`
+      : 'Khóa vĩnh viễn, không có ngày hết hạn.';
   }
 
   setReasonFromEvent(event: Event): void {
@@ -346,7 +367,12 @@ export class StudentsComponent {
     if (!this.canSubmitLock()) return;
     const targets = this.lockTargets();
     if (!targets.length) return;
-    this.data.lockStudents(targets, this.level(), this.reason().trim());
+    this.data.lockStudents({
+      ids: targets,
+      level: this.level(),
+      reason: this.reason().trim(),
+      evidence: this.evidence()
+    });
     this.selection.set([]);
     this.modal.set(null);
     this.selected.set(null);
@@ -371,7 +397,7 @@ export class StudentsComponent {
         item.email,
         item.phone,
         item.courseCount,
-        item.registeredAt,
+        formatDate(item.registeredAt),
         STUDENT_STATUS_LABELS[item.status]
       ])
     ];
@@ -380,8 +406,6 @@ export class StudentsComponent {
   }
 
   notify(message: string): void {
-    this.toast.set(message);
-    clearTimeout(this.toastTimer);
-    this.toastTimer = setTimeout(() => this.toast.set(''), 3200);
+    this.toastService.show(message);
   }
 }

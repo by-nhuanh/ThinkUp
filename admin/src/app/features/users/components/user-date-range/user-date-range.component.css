@@ -7,13 +7,29 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 6px;
   min-width: 0;
+  padding-top: 9px;
 }
 
+/* Nhãn nằm trên viền control, cùng ngôn ngữ với các ô lọc khác. */
 .range-label {
-  color: #4a5b74;
-  font: var(--admin-text-control-label);
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 12px;
+  max-width: calc(100% - 24px);
+  padding: 0 4px;
+  overflow: hidden;
+  background: var(--user-surface, #fff);
+  color: var(--user-muted, #66758f);
+  font: var(--admin-text-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.range-field:focus-within .range-label {
+  color: var(--user-primary, #266ee5);
 }
 
 .range-trigger {
@@ -22,25 +38,25 @@
   gap: 8px;
   width: 100%;
   min-width: 0;
-  height: 40px;
+  height: var(--user-control-height, 40px);
   padding: 0 10px 0 12px;
-  border: 1px solid #dee5f0;
-  border-radius: 9px;
+  border: 1px solid #c8ced6;
+  border-radius: var(--user-radius-control, 9px);
   background: #fff;
-  color: #66758f;
+  color: var(--user-muted, #66758f);
   font: var(--admin-text-control-input);
   text-align: left;
   cursor: pointer;
 }
 
 .range-trigger:hover {
-  border-color: #b9c9d8;
+  border-color: #8fa8c5;
 }
 
 .range-trigger:focus-visible {
   outline: none;
-  border-color: #266ee5;
-  box-shadow: 0 0 0 3px #266ee529;
+  border-color: var(--user-primary, #266ee5);
+  box-shadow: var(--user-focus, 0 0 0 3px #266ee529);
 }
 
 .range-trigger.has-value {

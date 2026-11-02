@@ -1,12 +1,14 @@
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
-import { LECTURER_STATUS_LABELS, LECTURER_STATUS_TONE } from '../../../core/data/mock/user-management.mock';
 import { UserModalComponent } from '../components/user-modal/user-modal.component';
+import { UserToastComponent } from '../components/user-toast/user-toast.component';
+import { LECTURER_STATUS_LABELS, LECTURER_STATUS_TONE } from '../models/user-management.labels';
 import { Lecturer } from '../models/user-management.models';
 import { UserManagementService } from '../services/user-management.service';
-import { formatCount, formatCurrency, formatRevenueShort } from '../user-management.utils';
+import { UserToastService } from '../services/user-toast.service';
+import { formatCount, formatCurrency, formatDate, formatRevenueShort } from '../user-management.utils';
 
 type DetailModal = 'reject' | 'documents';
 
@@ -39,22 +41,22 @@ const DOC_STATE_TONE: Record<string, string> = {
 @Component({
   selector: 'app-lecturer-detail',
   standalone: true,
-  imports: [RouterLink, UserModalComponent],
+  imports: [RouterLink, UserModalComponent, UserToastComponent],
   templateUrl: './lecturer-detail.component.html',
   styleUrls: ['../user-page.css', '../user-modal-content.css', './lecturer-detail.component.css']
 })
 export class LecturerDetailComponent {
   private readonly data = inject(UserManagementService);
+  private readonly toastService = inject(UserToastService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly destroyRef = inject(DestroyRef);
-  private toastTimer?: ReturnType<typeof setTimeout>;
 
   readonly statusLabels = LECTURER_STATUS_LABELS;
   readonly statusTone = LECTURER_STATUS_TONE;
   readonly formatCurrency = formatCurrency;
   readonly formatCount = formatCount;
   readonly formatRevenueShort = formatRevenueShort;
+  readonly formatDate = formatDate;
 
   readonly lecturerId = toSignal(
     this.route.paramMap.pipe(map((params) => params.get('id') ?? '')),
@@ -64,7 +66,6 @@ export class LecturerDetailComponent {
   readonly lecturer = computed<Lecturer | undefined>(() => this.data.findLecturer(this.lecturerId()));
 
   readonly modal = signal<DetailModal | null>(null);
-  readonly toast = signal('');
 
   // Từ chối hồ sơ
   readonly rejectReason = signal('');
@@ -97,10 +98,6 @@ export class LecturerDetailComponent {
   readonly canRequestDocuments = computed(() =>
     this.documentSelection().length > 0 && this.documentGuidance().trim().length >= 20);
 
-  constructor() {
-    this.destroyRef.onDestroy(() => clearTimeout(this.toastTimer));
-  }
-
   openReject(): void {
     this.rejectReason.set('');
     this.rejectSendEmail.set(true);
@@ -130,7 +127,10 @@ export class LecturerDetailComponent {
   submitReject(): void {
     const lecturer = this.lecturer();
     if (!lecturer || !this.canReject()) return;
-    this.data.rejectLecturer(lecturer.id);
+    this.data.rejectLecturer(lecturer.id, {
+      reason: this.rejectReason().trim(),
+      sendEmail: this.rejectSendEmail()
+    });
     this.modal.set(null);
     this.notify(`Đã từ chối hồ sơ ${lecturer.name}.`);
     void this.router.navigate(['/users/lecturers']);
@@ -139,7 +139,12 @@ export class LecturerDetailComponent {
   submitDocuments(): void {
     const lecturer = this.lecturer();
     if (!lecturer || !this.canRequestDocuments()) return;
-    this.data.requestDocuments(lecturer.id, this.documentSelection(), this.documentGuidance().trim(), this.documentDeadline());
+    this.data.requestDocuments(lecturer.id, {
+      documentKeys: this.documentSelection(),
+      guidance: this.documentGuidance().trim(),
+      deadlineDays: this.documentDeadline(),
+      sendEmail: this.documentSendEmail()
+    });
     this.modal.set(null);
     this.notify(`Đã gửi yêu cầu bổ sung hồ sơ tới ${lecturer.name}.`);
     void this.router.navigate(['/users/lecturers']);
@@ -165,8 +170,6 @@ export class LecturerDetailComponent {
   }
 
   notify(message: string): void {
-    this.toast.set(message);
-    clearTimeout(this.toastTimer);
-    this.toastTimer = setTimeout(() => this.toast.set(''), 3200);
+    this.toastService.show(message);
   }
 }

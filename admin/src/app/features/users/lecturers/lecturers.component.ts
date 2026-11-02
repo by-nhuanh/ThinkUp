@@ -1,21 +1,18 @@
-import { Component, DestroyRef, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import {
-  LECTURER_COURSE_OPTIONS,
-  LECTURER_STATUS_LABELS,
-  LECTURER_STATUS_TONE,
-  USER_MODULE_QUICK_STATS,
-  coursesForLecturer
-} from '../../../core/data/mock/user-management.mock';
 import { CustomSelectComponent, CustomSelectOption } from '../../../shared/components/custom-select/custom-select.component';
 import { ExportMenuComponent } from '../../../shared/components/export-menu/export-menu.component';
 import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
 import { ExportFormat, downloadTable } from '../../../shared/utils/export-formats';
+import { UserRowMenuItem, UserRowMenuComponent } from '../components/user-row-menu/user-row-menu.component';
 import { UserDateRangeComponent } from '../components/user-date-range/user-date-range.component';
 import { UserModalComponent } from '../components/user-modal/user-modal.component';
-import { DisciplineLevel, Lecturer } from '../models/user-management.models';
+import { UserToastComponent } from '../components/user-toast/user-toast.component';
+import { LECTURER_COURSE_OPTIONS, LECTURER_STATUS_LABELS, LECTURER_STATUS_TONE } from '../models/user-management.labels';
+import { DisciplineLevel, DisciplineRecord, Lecturer } from '../models/user-management.models';
 import { UserManagementService } from '../services/user-management.service';
-import { formatCount, formatCurrency, formatRevenueShort, toIsoDate } from '../user-management.utils';
+import { UserToastService } from '../services/user-toast.service';
+import { formatCount, formatCurrency, formatDate, formatRevenueShort } from '../user-management.utils';
 
 type LecturerModal = 'profile' | 'courses' | 'discipline' | 'unlock';
 
@@ -31,27 +28,30 @@ type LecturerModal = 'profile' | 'courses' | 'discipline' | 'unlock';
     CustomSelectComponent,
     ExportMenuComponent,
     UserDateRangeComponent,
-    UserModalComponent
+    UserModalComponent,
+    UserRowMenuComponent,
+    UserToastComponent
   ],
   templateUrl: './lecturers.component.html',
   styleUrls: ['../user-page.css', '../user-modal-content.css', './lecturers.component.css']
 })
 export class LecturersComponent {
   private readonly data = inject(UserManagementService);
+  private readonly toastService = inject(UserToastService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
   private searchTimer?: ReturnType<typeof setTimeout>;
-  private toastTimer?: ReturnType<typeof setTimeout>;
 
   readonly lecturers = this.data.lecturers;
   readonly kpis = this.data.lecturerKpis;
-  readonly quickStats = USER_MODULE_QUICK_STATS;
+  readonly quickStats = this.data.quickStats;
   readonly statusLabels = LECTURER_STATUS_LABELS;
   readonly statusTone = LECTURER_STATUS_TONE;
   readonly pageSize = 5;
   readonly courseOptions = LECTURER_COURSE_OPTIONS;
   readonly formatCurrency = formatCurrency;
   readonly formatCount = formatCount;
+  readonly formatDate = formatDate;
   readonly formatRevenueShort = formatRevenueShort;
 
   readonly searchInput = signal('');
@@ -62,10 +62,8 @@ export class LecturersComponent {
   readonly to = signal('');
   readonly page = signal(1);
 
-  readonly menu = signal<{ id: string; left: number; top: number } | null>(null);
   readonly modal = signal<LecturerModal | null>(null);
   readonly selected = signal<Lecturer | null>(null);
-  readonly toast = signal('');
 
   readonly level = signal<DisciplineLevel>(1);
   readonly disciplineCourses = signal<readonly string[]>([]);
@@ -94,7 +92,7 @@ export class LecturersComponent {
 
   readonly selectedCourses = computed(() => {
     const lecturer = this.selected();
-    return lecturer ? coursesForLecturer(lecturer) : [];
+    return lecturer ? this.data.coursesForLecturer(lecturer) : [];
   });
 
   readonly filtered = computed(() => {
@@ -108,12 +106,11 @@ export class LecturersComponent {
       const haystack = [item.name, item.email, item.phone, item.id, item.specialty, item.kyc.taxCode]
         .join(' ')
         .toLocaleLowerCase('vi-VN');
-      const joined = toIsoDate(item.joinedAt);
       return (!query || haystack.includes(query))
         && (!status || item.status === status)
         && (!legal || item.legalStatus === legal)
-        && (!from || joined >= from)
-        && (!to || joined <= to);
+        && (!from || item.joinedAt >= from)
+        && (!to || item.joinedAt <= to);
     });
   });
 
@@ -135,30 +132,60 @@ export class LecturersComponent {
     return [1, 'gap', current, 'gap', total];
   });
 
-  readonly canSubmitDiscipline = computed(() => this.reason().trim().length >= 15 && this.evidence().length > 0);
+  readonly canSubmitDiscipline = computed(() =>
+    this.reason().trim().length >= 15
+    && this.evidence().length > 0
+    && (this.level() !== 2 || this.disciplineCourses().length > 0));
   readonly canSubmitUnlock = computed(() => this.unlockReason().trim().length >= 10);
 
+  private readonly baseMenuItems: readonly UserRowMenuItem[] = [
+    { key: 'profile', label: 'Chi tiết' },
+    { key: 'courses', label: 'Khóa học' },
+    { key: 'discipline', label: 'Xử lý kỷ luật', danger: true }
+  ];
+
+  private readonly pendingMenuItems: readonly UserRowMenuItem[] = [
+    { key: 'profile', label: 'Chi tiết' },
+    { key: 'courses', label: 'Khóa học' },
+    { key: 'verify', label: 'Thẩm định hồ sơ' },
+    { key: 'discipline', label: 'Xử lý kỷ luật', danger: true }
+  ];
+
+  private readonly unlockMenuItems: readonly UserRowMenuItem[] = [
+    { key: 'profile', label: 'Chi tiết' },
+    { key: 'courses', label: 'Khóa học' },
+    { key: 'discipline', label: 'Xử lý kỷ luật', danger: true },
+    { key: 'unlock', label: 'Mở khóa tài khoản' }
+  ];
+
   constructor() {
-    this.destroyRef.onDestroy(() => {
-      clearTimeout(this.searchTimer);
-      clearTimeout(this.toastTimer);
-    });
+    this.destroyRef.onDestroy(() => clearTimeout(this.searchTimer));
   }
 
-  @HostListener('document:click')
-  closeMenu(): void {
-    this.menu.set(null);
+  menuItemsFor(lecturer: Lecturer): readonly UserRowMenuItem[] {
+    if (lecturer.status === 'pending-review' || lecturer.status === 'pending-docs') return this.pendingMenuItems;
+    if (lecturer.status === 'warning' || lecturer.status === 'violation' || lecturer.status === 'frozen') return this.unlockMenuItems;
+    return this.baseMenuItems;
   }
 
-  @HostListener('document:keydown.escape')
-  onEscape(): void {
-    this.menu.set(null);
-  }
-
-  @HostListener('window:scroll')
-  @HostListener('window:resize')
-  closeMenuOnViewportChange(): void {
-    if (this.menu()) this.menu.set(null);
+  onRowAction(key: string, lecturer: Lecturer): void {
+    switch (key) {
+      case 'profile':
+        this.openProfile(lecturer);
+        break;
+      case 'courses':
+        this.openCourses(lecturer);
+        break;
+      case 'verify':
+        this.openVerification(lecturer);
+        break;
+      case 'discipline':
+        this.openDiscipline(lecturer);
+        break;
+      case 'unlock':
+        this.openUnlock(lecturer);
+        break;
+    }
   }
 
   setSearch(value: string): void {
@@ -205,39 +232,18 @@ export class LecturersComponent {
     this.page.set(Math.max(1, Math.min(this.pages(), value)));
   }
 
-  toggleMenu(id: string, event: Event): void {
-    event.stopPropagation();
-    if (this.menu()?.id === id) {
-      this.menu.set(null);
-      return;
-    }
-
-    // Menu dùng position: fixed để không bị cắt bởi vùng cuộn ngang của bảng.
-    const trigger = event.currentTarget as HTMLElement;
-    const rect = trigger.getBoundingClientRect();
-    const width = 210;
-    const height = 4 * 38 + 14;
-    const left = Math.max(12, Math.min(rect.right - width, window.innerWidth - width - 12));
-    const openAbove = rect.bottom + 6 + height > window.innerHeight - 12;
-    const top = openAbove ? Math.max(12, rect.top - 6 - height) : rect.bottom + 6;
-    this.menu.set({ id, left, top });
-  }
-
   openVerification(lecturer: Lecturer): void {
-    this.menu.set(null);
     void this.router.navigate(['/users/lecturers', lecturer.id]);
   }
 
   openProfile(lecturer: Lecturer): void {
     this.selected.set(lecturer);
     this.modal.set('profile');
-    this.menu.set(null);
   }
 
   openCourses(lecturer: Lecturer): void {
     this.selected.set(lecturer);
     this.modal.set('courses');
-    this.menu.set(null);
   }
 
   openDiscipline(lecturer: Lecturer): void {
@@ -248,14 +254,12 @@ export class LecturersComponent {
     this.ticket.set('');
     this.reason.set('');
     this.modal.set('discipline');
-    this.menu.set(null);
   }
 
   openUnlock(lecturer: Lecturer): void {
     this.selected.set(lecturer);
     this.unlockReason.set('');
     this.modal.set('unlock');
-    this.menu.set(null);
   }
 
   closeModal(): void {
@@ -276,6 +280,11 @@ export class LecturersComponent {
 
   isCourseSelected(name: string): boolean {
     return this.disciplineCourses().includes(name);
+  }
+
+  /** Vi phạm gần nhất của giảng viên — dùng cho dải cảnh báo khi mở khoá. */
+  latestViolation(lecturer: Lecturer): DisciplineRecord | undefined {
+    return lecturer.violations.length ? lecturer.violations[lecturer.violations.length - 1] : undefined;
   }
 
   toggleCourseFromEvent(name: string, event: Event): void {
@@ -304,7 +313,13 @@ export class LecturersComponent {
   submitDiscipline(): void {
     const lecturer = this.selected();
     if (!lecturer || !this.canSubmitDiscipline()) return;
-    this.data.disciplineLecturer(lecturer.id, this.level(), this.reason().trim(), this.disciplineCourses());
+    this.data.disciplineLecturer(lecturer.id, {
+      level: this.level(),
+      reason: this.reason().trim(),
+      courses: this.disciplineCourses(),
+      ticket: this.ticket().trim(),
+      evidence: this.evidence()
+    });
     this.modal.set(null);
     this.selected.set(null);
     this.notify(`Đã áp dụng kỷ luật cho ${lecturer.name}.`);
@@ -333,7 +348,7 @@ export class LecturersComponent {
         item.revenue,
         item.legalStatus === 'signed' ? 'Đã ký hợp đồng điện tử' : 'Chưa hoàn tất hợp đồng',
         LECTURER_STATUS_LABELS[item.status],
-        item.joinedAt
+        formatDate(item.joinedAt)
       ])
     ];
     void downloadTable(format, 'thinkup-giang-vien', rows);
@@ -341,8 +356,6 @@ export class LecturersComponent {
   }
 
   notify(message: string): void {
-    this.toast.set(message);
-    clearTimeout(this.toastTimer);
-    this.toastTimer = setTimeout(() => this.toast.set(''), 3200);
+    this.toastService.show(message);
   }
 }

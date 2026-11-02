@@ -3,7 +3,9 @@ import {
   DOCUMENT,
   ElementRef,
   HostListener,
+  Injector,
   OnDestroy,
+  afterNextRender,
   computed,
   inject,
   input,
@@ -42,6 +44,8 @@ const PRESETS = [
 export class UserDateRangeComponent implements OnDestroy {
   private readonly document = inject(DOCUMENT);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
+  private popoverObserver?: ResizeObserver;
 
   readonly label = input('Thời gian');
   readonly from = input('');
@@ -67,12 +71,13 @@ export class UserDateRangeComponent implements OnDestroy {
   private readonly reposition = (): void => this.measure();
 
   ngOnDestroy(): void {
+    this.popoverObserver?.disconnect();
     this.removeListeners();
   }
 
   @HostListener('document:keydown.escape')
   onEscape(): void {
-    if (this.open()) this.close();
+    if (this.open()) this.close(true);
   }
 
   /** Đóng khi bấm ra ngoài; trigger nằm trong host nên không tự đóng. */
@@ -81,7 +86,7 @@ export class UserDateRangeComponent implements OnDestroy {
     if (!this.open()) return;
     const target = event.target as Node | null;
     if (target && this.host.nativeElement.contains(target)) return;
-    this.close();
+    this.close(false);
   }
 
   onInput(kind: 'from' | 'to', event: Event): void {
@@ -92,7 +97,7 @@ export class UserDateRangeComponent implements OnDestroy {
 
   toggle(): void {
     if (this.open()) {
-      this.close();
+      this.close(true);
       return;
     }
     this.fromDraft.set(this.from());
@@ -103,14 +108,35 @@ export class UserDateRangeComponent implements OnDestroy {
     const view = this.document.defaultView;
     view?.addEventListener('resize', this.reposition);
     view?.addEventListener('scroll', this.reposition, true);
-    // Đo sau khi popover đã vào DOM.
-    setTimeout(() => this.measure());
+    // Đo sau khi popover đã vào DOM; setTimeout cũ chạy trước render nên đo trượt.
+    afterNextRender(
+      () => {
+        if (!this.open()) return;
+        this.measure();
+        this.observePopover();
+        // Popover chỉ hiện sau khi có toạ độ (visibility), nên phải chờ thêm một
+        // vòng render nữa mới focus được preset đầu tiên.
+        afterNextRender(
+          () => {
+            if (this.open()) this.focusFirstPreset();
+          },
+          { injector: this.injector }
+        );
+      },
+      { injector: this.injector }
+    );
   }
 
-  close(): void {
+  close(restoreFocus = false): void {
+    if (!this.open()) return;
     this.open.set(false);
     this.popoverPosition.set(null);
+    this.popoverObserver?.disconnect();
+    this.popoverObserver = undefined;
     this.removeListeners();
+    if (!restoreFocus) return;
+    const trigger = this.host.nativeElement.querySelector<HTMLElement>('.range-trigger');
+    if (trigger?.isConnected) trigger.focus();
   }
 
   setFrom(value: string): void {
@@ -137,12 +163,12 @@ export class UserDateRangeComponent implements OnDestroy {
     this.toDraft.set('');
     this.activePreset.set('');
     this.rangeChange.emit({ from: '', to: '' });
-    this.close();
+    this.close(true);
   }
 
   apply(): void {
     this.rangeChange.emit({ from: this.fromDraft(), to: this.toDraft() });
-    this.close();
+    this.close(true);
   }
 
   /** dd/mm/yyyy cho nhãn hiển thị; nhận cả giá trị ISO từ input date. */
@@ -169,17 +195,35 @@ export class UserDateRangeComponent implements OnDestroy {
     const gap = 8;
     const rect = trigger.getBoundingClientRect();
     const box = popover.getBoundingClientRect();
+    // scrollHeight giữ chiều cao thật kể cả khi max-height đã kẹp popover.
+    const height = Math.max(box.height, popover.scrollHeight);
     const width = Math.min(box.width || 320, view.innerWidth - margin * 2);
     const left = Math.max(margin, Math.min(rect.left, view.innerWidth - margin - width));
     const below = view.innerHeight - rect.bottom - gap - margin;
     const above = rect.top - gap - margin;
-    const openAbove = below < box.height && above > below;
+    const openAbove = height > below && above > below;
     const maxHeight = Math.max(200, openAbove ? above : below);
     const top = openAbove
-      ? Math.max(margin, rect.top - gap - Math.min(box.height, maxHeight))
+      ? Math.max(margin, rect.top - gap - Math.min(height, maxHeight))
       : rect.bottom + gap;
 
+    const current = this.popoverPosition();
+    if (current && current.left === left && current.top === top && current.maxHeight === maxHeight) return;
     this.popoverPosition.set({ left, top, maxHeight });
+  }
+
+  private focusFirstPreset(): void {
+    this.host.nativeElement.querySelector<HTMLElement>('.range-presets button')?.focus();
+  }
+
+  /** Popover có thể đổi kích thước khi đổi preset / nội dung, nên đo lại. */
+  private observePopover(): void {
+    const view = this.document.defaultView;
+    const popover = this.host.nativeElement.querySelector<HTMLElement>('.range-popover');
+    if (!view || !popover || typeof view.ResizeObserver !== 'function') return;
+    this.popoverObserver?.disconnect();
+    this.popoverObserver = new view.ResizeObserver(() => this.measure());
+    this.popoverObserver.observe(popover);
   }
 
   private removeListeners(): void {

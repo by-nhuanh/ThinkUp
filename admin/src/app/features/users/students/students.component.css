@@ -5,24 +5,15 @@
   min-width: 0;
 }
 
-.field--search app-search-field {
+.filter-field app-search-field {
   width: 100%;
 }
 
-/* Hồ sơ học viên: hai cột khi đủ rộng, tự xếp dọc khi hẹp. */
-.profile-columns {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
+/* Bảng 9 cột: rộng hơn bảng giảng viên, hàng một dòng nên thấp hơn. */
+.user-table {
+  min-width: 1160px;
 }
 
-.profile-columns > div {
-  min-width: 0;
-}
-
-@media (max-width: 980px) {
-  .profile-columns {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0;
-  }
+.user-table tbody td {
+  height: clamp(56px, 4.6vw, 92px);
 }

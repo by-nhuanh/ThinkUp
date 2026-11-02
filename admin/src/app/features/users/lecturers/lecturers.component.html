@@ -1,6 +1,9 @@
 <section class="user-page">
   <header class="page-heading">
-    <h1>Quản lý giảng viên</h1>
+    <div>
+      <h1>Quản lý giảng viên</h1>
+      <p>Thẩm định hồ sơ, theo dõi doanh thu và xử lý kỷ luật giảng viên trên toàn hệ thống.</p>
+    </div>
   </header>
 
   <div class="kpi-grid">
@@ -78,7 +81,7 @@
         <strong>Yêu cầu rút tiền</strong>
         <span>Đối soát pháp lý và giải ngân</span>
       </div>
-      <span class="quick-count">{{ quickStats.payoutRequests }} yêu cầu</span>
+      <span class="quick-count">{{ quickStats().payoutRequests }} yêu cầu</span>
     </div>
     <div class="quick-card quick-card--red">
       <span class="quick-icon" aria-hidden="true">!</span>
@@ -86,13 +89,13 @@
         <strong>Khiếu nại cần xử lý</strong>
         <span>Ticket đang chờ phản hồi</span>
       </div>
-      <span class="quick-count">{{ quickStats.openTickets }} ticket</span>
+      <span class="quick-count">{{ quickStats().openTickets }} ticket</span>
     </div>
   </div>
 
   <div class="panel filter-bar">
-    <div class="field field--search">
-      <span class="field-label">Tìm kiếm</span>
+    <div class="filter-field filter-field--search">
+      <span class="filter-label">Tìm kiếm</span>
       <app-search-field
         inputId="lecturer-search"
         label="Tìm giảng viên theo tên, email, SĐT, mã GV, MST, CCCD"
@@ -102,8 +105,8 @@
       />
     </div>
 
-    <div class="field">
-      <span class="field-label" id="lecturer-status-label">Trạng thái tài khoản</span>
+    <div class="filter-field">
+      <span class="filter-label" id="lecturer-status-label">Trạng thái tài khoản</span>
       <app-custom-select
         controlId="lecturer-status"
         labelId="lecturer-status-label"
@@ -115,8 +118,8 @@
       />
     </div>
 
-    <div class="field">
-      <span class="field-label" id="lecturer-legal-label">Hợp đồng &amp; thuế</span>
+    <div class="filter-field">
+      <span class="filter-label" id="lecturer-legal-label">Hợp đồng &amp; thuế</span>
       <app-custom-select
         controlId="lecturer-legal"
         labelId="lecturer-legal-label"
@@ -155,6 +158,17 @@
 
     <div class="table-wrap">
       <table class="user-table">
+        <caption class="sr-only">Danh sách giảng viên, mỗi dòng gồm thông tin liên hệ, số khóa học và học viên, doanh thu, tình trạng pháp lý, ngày tham gia, trạng thái và thao tác.</caption>
+        <colgroup>
+          <col class="col-identity" />
+          <col class="col-contact" />
+          <col class="col-courses" />
+          <col class="col-revenue" />
+          <col class="col-legal" />
+          <col class="col-joined" />
+          <col class="col-status" />
+          <col class="col-actions" />
+        </colgroup>
         <thead>
           <tr>
             <th scope="col">Giảng viên</th>
@@ -164,7 +178,7 @@
             <th scope="col">Pháp lý &amp; thuế</th>
             <th scope="col">Thời gian tham gia</th>
             <th scope="col">Trạng thái</th>
-            <th scope="col">Thao tác</th>
+            <th scope="col" class="col-actions">Thao tác</th>
           </tr>
         </thead>
         <tbody>
@@ -201,7 +215,7 @@
                   }
                 </div>
               </td>
-              <td class="cell-nowrap">{{ item.joinedAt }}</td>
+              <td class="cell-nowrap">{{ formatDate(item.joinedAt) }}</td>
               <td>
                 <span class="status-badge" [class]="'status-badge status-badge--' + statusTone[item.status]">
                   @switch (statusTone[item.status]) {
@@ -218,35 +232,12 @@
                   {{ statusLabels[item.status] }}
                 </span>
               </td>
-              <td>
-                <div class="row-actions">
-                  <button
-                    class="row-actions-trigger"
-                    type="button"
-                    [attr.aria-expanded]="menu()?.id === item.id"
-                    [attr.aria-label]="'Thao tác cho ' + item.name"
-                    (click)="toggleMenu(item.id, $event)"
-                  >•••</button>
-                  @if (menu()?.id === item.id) {
-                    <div
-                      class="row-actions-menu"
-                      role="menu"
-                      [attr.aria-label]="'Thao tác cho ' + item.name"
-                      [style.left.px]="menu()?.left"
-                      [style.top.px]="menu()?.top"
-                    >
-                      <button type="button" role="menuitem" (click)="openProfile(item)">Chi tiết</button>
-                      <button type="button" role="menuitem" (click)="openCourses(item)">Khóa học</button>
-                      @if (item.status === 'pending-review' || item.status === 'pending-docs') {
-                        <button type="button" role="menuitem" (click)="openVerification(item)">Thẩm định hồ sơ</button>
-                      }
-                      <button type="button" role="menuitem" class="is-danger" (click)="openDiscipline(item)">Xử lý kỷ luật</button>
-                      @if (item.status === 'warning' || item.status === 'violation' || item.status === 'frozen') {
-                        <button type="button" role="menuitem" (click)="openUnlock(item)">Mở khóa tài khoản</button>
-                      }
-                    </div>
-                  }
-                </div>
+              <td class="col-actions">
+                <app-user-row-menu
+                  [items]="menuItemsFor(item)"
+                  [label]="'Thao tác cho ' + item.name"
+                  (action)="onRowAction($event, item)"
+                />
               </td>
             </tr>
           } @empty {
@@ -320,9 +311,9 @@
         <section class="modal-section">
           <h3>Portfolio và liên kết</h3>
           <div class="link-grid">
-            <div class="link-box"><span>Portfolio</span><a [href]="'https://' + lecturer.links.portfolio" target="_blank" rel="noreferrer">{{ lecturer.links.portfolio }}</a></div>
-            <div class="link-box"><span>LinkedIn</span><a [href]="'https://' + lecturer.links.linkedin" target="_blank" rel="noreferrer">{{ lecturer.links.linkedin }}</a></div>
-            <div class="link-box"><span>GSAHub</span><a [href]="'https://' + lecturer.links.gsahub" target="_blank" rel="noreferrer">{{ lecturer.links.gsahub }}</a></div>
+            <div class="link-tile"><span>Portfolio</span><a [href]="'https://' + lecturer.links.portfolio" target="_blank" rel="noreferrer">{{ lecturer.links.portfolio }}</a></div>
+            <div class="link-tile"><span>LinkedIn</span><a [href]="'https://' + lecturer.links.linkedin" target="_blank" rel="noreferrer">{{ lecturer.links.linkedin }}</a></div>
+            <div class="link-tile"><span>GSAHub</span><a [href]="'https://' + lecturer.links.gsahub" target="_blank" rel="noreferrer">{{ lecturer.links.gsahub }}</a></div>
           </div>
         </section>
 
@@ -332,7 +323,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /></svg>
             <div class="file-copy">
               <strong>{{ lecturer.cv.fileName }} · {{ lecturer.cv.size }}</strong>
-              <span>Tải lên {{ lecturer.cv.uploadedAt }}</span>
+              <span>Tải lên {{ formatDate(lecturer.cv.uploadedAt) }}</span>
             </div>
             <!-- TODO(pre-deploy): Nhớ nối API tệp đính kèm để thay hai nút xem trước/tải xuống đang chạy demo. -->
             <div class="file-actions">
@@ -359,33 +350,35 @@
             <div class="file-row">
               <div class="file-copy">
                 <strong>Đã ký E-Sign · {{ lecturer.contractCode }}</strong>
-                <span>Hợp đồng có hiệu lực từ {{ lecturer.joinedAt }}</span>
+                <span>Hợp đồng có hiệu lực từ {{ formatDate(lecturer.joinedAt) }}</span>
               </div>
               <div class="file-actions">
                 <button class="btn btn--outline btn--sm" type="button" (click)="notify('Bản demo chưa kèm tệp hợp đồng thật.')">Tải hợp đồng PDF</button>
               </div>
             </div>
           } @else {
-            <div class="notice notice--warning">Chưa có hợp đồng điện tử. Cần hoàn tất bước pháp lý trước khi duyệt chi trả.</div>
+            <div class="info-strip info-strip--amber">Chưa có hợp đồng điện tử. Cần hoàn tất bước pháp lý trước khi duyệt chi trả.</div>
           }
         </section>
 
         <section class="modal-section">
           <h3>Lịch sử vi phạm</h3>
           @if (lecturer.violations.length) {
-            <div class="notice notice--warning">
+            <div class="info-strip info-strip--amber">
               @for (violation of lecturer.violations; track $index) {
-                <span><strong>{{ violation.level }}</strong> · {{ violation.appliedAt }} · {{ violation.reason }}</span>
+                <span><strong>{{ violation.level }}</strong> · {{ formatDate(violation.appliedAt) }} · {{ violation.reason }}</span>
               }
             </div>
           } @else {
-            <div class="notice notice--neutral">Chưa ghi nhận vi phạm.</div>
+            <div class="info-strip info-strip--neutral">Chưa ghi nhận vi phạm.</div>
           }
         </section>
 
-        <div modalFooter>
+        <div modalFooter class="modal-footer-split">
           <button class="btn btn--outline" type="button" (click)="openCourses(lecturer)">Khóa học</button>
-          <button class="btn btn--danger" type="button" (click)="openDiscipline(lecturer)">Xử lý kỷ luật</button>
+          <div class="modal-footer-actions">
+            <button class="btn btn--ghost-danger" type="button" (click)="openDiscipline(lecturer)">Xử lý kỷ luật</button>
+          </div>
         </div>
       </app-user-modal>
     }
@@ -416,7 +409,7 @@
                   </td>
                   <td class="cell-nowrap">{{ formatCount(course.learners) }}</td>
                   <td class="cell-amount">{{ formatCurrency(course.revenue) }}</td>
-                  <td class="cell-nowrap">{{ course.updatedAt }}</td>
+                  <td class="cell-nowrap">{{ formatDate(course.updatedAt) }}</td>
                 </tr>
               }
             </tbody>
@@ -438,53 +431,55 @@
         size="lg"
         (closed)="closeModal()"
       >
-        <div class="notice notice--warning modal-section">
+        <div class="info-strip info-strip--amber modal-section">
           <strong>Lịch sử xử lý trước đây</strong>
           <span>Đã bị nhắc nhở: {{ lecturer.disciplineHistory?.warnings ?? 0 }} lần · Khóa học từng bị khóa: {{ lecturer.disciplineHistory?.hiddenCourses ?? 0 }}</span>
         </div>
 
-        <fieldset class="level-list modal-section">
+        <fieldset class="choice-list modal-section">
           <legend>Chọn mức độ kỷ luật <span class="required">*</span></legend>
-          <label class="level-option" [class.is-selected]="level() === 1">
+          <label class="choice-card" [class.is-selected]="level() === 1">
             <input type="radio" name="discipline-level" [checked]="level() === 1" (change)="setLevel(1)" />
-            <span class="level-copy">
+            <span class="choice-copy">
               <strong>Mức 1 · Cảnh cáo &amp; nhắc nhở</strong>
               <p>Thông báo nội bộ và email; không ảnh hưởng khóa học hoặc rút tiền.</p>
-              <p class="level-deadline">Vi phạm nhẹ</p>
+              <span class="choice-meta">Vi phạm nhẹ</span>
             </span>
-            <span class="level-tag">Cảnh cáo</span>
+            <span class="choice-tag">Cảnh cáo</span>
           </label>
-          <label class="level-option" [class.is-selected]="level() === 2">
+          <label class="choice-card" [class.is-selected]="level() === 2">
             <input type="radio" name="discipline-level" [checked]="level() === 2" (change)="setLevel(2)" />
-            <span class="level-copy">
+            <span class="choice-copy">
               <strong>Mức 2 · Tạm khóa khóa học vi phạm</strong>
               <p>Ẩn khóa học đã chọn; học viên hiện tại vẫn học bình thường.</p>
-              <p class="level-deadline">Chọn ít nhất một khóa học</p>
+              <span class="choice-meta">Chọn ít nhất một khóa học</span>
             </span>
-            <span class="level-tag">Tạm khóa</span>
+            <span class="choice-tag">Tạm khóa</span>
           </label>
-          <label class="level-option" [class.is-selected]="level() === 3">
+          <label class="choice-card" [class.is-selected]="level() === 3">
             <input type="radio" name="discipline-level" [checked]="level() === 3" (change)="setLevel(3)" />
-            <span class="level-copy">
+            <span class="choice-copy">
               <strong>Mức 3 · Đóng băng dòng tiền &amp; khóa tài khoản</strong>
               <p>Đóng băng số dư, chặn rút tiền, ẩn toàn bộ khóa học, khóa đăng nhập.</p>
-              <p class="level-deadline">Cảnh báo ảnh hưởng toàn bộ tài khoản</p>
+              <span class="choice-meta">Cảnh báo ảnh hưởng toàn bộ tài khoản</span>
             </span>
-            <span class="level-tag">Khóa</span>
+            <span class="choice-tag">Khóa</span>
           </label>
         </fieldset>
 
         @if (level() === 2) {
           <div class="field-block modal-section">
             <span class="field-label">Khóa học bị ảnh hưởng <span class="required">*</span></span>
-            <fieldset class="check-list">
+            <fieldset class="course-panel">
               <legend class="sr-only">Chọn khóa học bị ảnh hưởng</legend>
-              @for (course of courseOptions; track course) {
-                <label class="check-row" [class.is-selected]="isCourseSelected(course)">
-                  <input type="checkbox" [checked]="isCourseSelected(course)" (change)="toggleCourseFromEvent(course, $event)" />
-                  <span class="label">{{ course }}</span>
-                </label>
-              }
+              <div class="check-list check-list--grid">
+                @for (course of courseOptions; track course) {
+                  <label class="check-row" [class.is-selected]="isCourseSelected(course)">
+                    <input type="checkbox" [checked]="isCourseSelected(course)" (change)="toggleCourseFromEvent(course, $event)" />
+                    <span class="label">{{ course }}</span>
+                  </label>
+                }
+              </div>
             </fieldset>
             @if (!disciplineCourses().length) {
               <p class="char-count is-invalid">Chọn ít nhất một khóa học để áp dụng Mức 2.</p>
@@ -494,14 +489,14 @@
 
         <div class="modal-section">
           <h3>Bằng chứng và hồ sơ đối soát <span class="required">*</span></h3>
-          <div class="upload-row">
+          <div class="uploader">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4" /><path d="m7 9 5-5 5 5" /><path d="M4 20h16" /></svg>
             <div class="upload-copy">
               <strong>{{ evidence().length ? evidence().join(', ') : 'Tải ảnh hoặc biên bản vi phạm' }}</strong>
               <span>PNG, JPG, PDF · tối đa 5 tệp · 20 MB/tệp</span>
             </div>
             <button class="btn btn--soft btn--sm" type="button" (click)="evidenceInput.click()">Chọn tệp</button>
-            <input #evidenceInput class="sr-only" type="file" accept=".png,.jpg,.jpeg,.pdf" multiple (change)="onEvidenceChange($event)" />
+            <input #evidenceInput class="sr-only" type="file" accept=".png,.jpg,.jpeg,.pdf" multiple aria-label="Tệp bằng chứng vi phạm" (change)="onEvidenceChange($event)" />
           </div>
         </div>
 
@@ -513,11 +508,19 @@
         <div class="field-block modal-section">
           <label for="discipline-reason">Lý do xử lý kỷ luật và hướng dẫn khắc phục <span class="required">*</span></label>
           <p class="field-help">Ghi rõ hành vi, điều khoản vi phạm và thời hạn khắc phục.</p>
-          <textarea id="discipline-reason" [value]="reason()" (input)="setReasonFromEvent($event)"></textarea>
-          <p class="char-count" [class.is-invalid]="reason().trim().length < 15">{{ reason().length }}/15 ký tự tối thiểu</p>
+          <textarea
+            id="discipline-reason"
+            required
+            aria-required="true"
+            aria-describedby="discipline-reason-hint"
+            [attr.aria-invalid]="reason().trim().length < 15"
+            [value]="reason()"
+            (input)="setReasonFromEvent($event)"
+          ></textarea>
+          <p id="discipline-reason-hint" class="char-count" [class.is-invalid]="reason().trim().length < 15">{{ reason().length }}/15 ký tự tối thiểu</p>
         </div>
 
-        <div modalFooter>
+        <div modalFooter class="modal-footer-actions">
           <button class="btn btn--outline" type="button" (click)="closeModal()">Hủy bỏ</button>
           <button class="btn btn--danger" type="button" [disabled]="!canSubmitDiscipline()" (click)="submitDiscipline()">Xác nhận áp dụng kỷ luật</button>
         </div>
@@ -528,31 +531,40 @@
   <!-- ================= Mở khoá tài khoản ================= -->
   @if (modal() === 'unlock') {
     @if (selected(); as lecturer) {
-      <app-user-modal title="Mở khóa tài khoản giảng viên" [subtitle]="lecturer.name + ' · ' + lecturer.id" size="lg" (closed)="closeModal()">
-        <div class="notice notice--warning modal-section">
+      <app-user-modal title="Mở khóa tài khoản giảng viên" [subtitle]="lecturer.name + ' · ' + lecturer.id" size="md" (closed)="closeModal()">
+        <div class="info-strip info-strip--amber modal-section">
           <strong>Tài khoản đang ở trạng thái {{ statusLabels[lecturer.status] }}</strong>
+          @if (latestViolation(lecturer); as violation) {
+            <span>Mức kỷ luật gần nhất: {{ violation.level }} · áp dụng {{ formatDate(violation.appliedAt) }}</span>
+          }
           <span>Mở khoá sẽ khôi phục quyền đăng nhập và hiển thị lại khóa học đang bị ẩn.</span>
         </div>
 
         <div class="field-block modal-section">
           <label for="unlock-reason">Lý do mở khóa <span class="required">*</span></label>
-          <textarea id="unlock-reason" placeholder="Nhập lý do khôi phục tài khoản" [value]="unlockReason()" (input)="setUnlockReasonFromEvent($event)"></textarea>
-          <p class="char-count" [class.is-invalid]="unlockReason().trim().length < 10">{{ unlockReason().length }}/10 ký tự tối thiểu</p>
+          <textarea
+            id="unlock-reason"
+            required
+            aria-required="true"
+            aria-describedby="unlock-reason-hint"
+            [attr.aria-invalid]="unlockReason().trim().length < 10"
+            placeholder="Nhập lý do khôi phục tài khoản"
+            [value]="unlockReason()"
+            (input)="setUnlockReasonFromEvent($event)"
+          ></textarea>
+          <p id="unlock-reason-hint" class="char-count" [class.is-invalid]="unlockReason().trim().length < 10">{{ unlockReason().length }}/10 ký tự tối thiểu</p>
         </div>
 
-        <div class="notice notice--info modal-section">
+        <div class="info-strip info-strip--info modal-section">
           Sau khi mở khoá, giảng viên đăng nhập lại, hiển thị khóa học và gửi yêu cầu rút tiền theo trạng thái pháp lý.
         </div>
 
-        <div modalFooter>
-          <button class="btn btn--outline" type="button" (click)="closeModal()">Hủy bỏ</button>
+        <div modalFooter class="modal-footer-actions">
           <button class="btn btn--primary" type="button" [disabled]="!canSubmitUnlock()" (click)="submitUnlock()">Xác nhận mở khóa</button>
         </div>
       </app-user-modal>
     }
   }
 
-  @if (toast()) {
-    <div class="toast" role="status" aria-live="polite">{{ toast() }}</div>
-  }
+  <app-user-toast />
 </section>

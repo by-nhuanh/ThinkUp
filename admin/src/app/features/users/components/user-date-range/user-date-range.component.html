@@ -7,6 +7,7 @@
     [attr.aria-expanded]="open()"
     [attr.aria-label]="label() + ' — chọn khoảng thời gian'"
     aria-haspopup="dialog"
+    aria-controls="user-range-popover"
     (click)="toggle()"
   >
     <svg class="range-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
@@ -21,9 +22,11 @@
 
   @if (open()) {
     <div
+      id="user-range-popover"
       class="range-popover"
       role="dialog"
       aria-label="Chọn khoảng thời gian"
+      [style.visibility]="popoverPosition() ? null : 'hidden'"
       [style.left.px]="popoverPosition()?.left ?? 12"
       [style.top.px]="popoverPosition()?.top ?? 12"
       [style.max-height.px]="popoverPosition()?.maxHeight ?? 420"

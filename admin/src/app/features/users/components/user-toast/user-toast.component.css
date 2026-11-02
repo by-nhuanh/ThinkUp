@@ -1,0 +1,19 @@
+:host {
+  display: contents;
+}
+
+.user-toast {
+  position: fixed;
+  z-index: 90;
+  left: 50%;
+  bottom: 24px;
+  max-width: calc(100vw - 32px);
+  padding: 12px 20px;
+  border-radius: 10px;
+  background: #0f1f38;
+  color: #fff;
+  font: var(--admin-text-body-default);
+  text-align: center;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+  transform: translateX(-50%);
+}

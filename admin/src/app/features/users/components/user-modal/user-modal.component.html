@@ -2,7 +2,6 @@
   #dialog
   [class]="'user-modal ' + sizeClass()"
   [attr.aria-labelledby]="titleId"
-  [attr.aria-describedby]="describedBy() || null"
   (cancel)="onCancel($event)"
   (click)="onBackdropClick($event)"
 >

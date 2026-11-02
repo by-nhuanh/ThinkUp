@@ -37,13 +37,14 @@
   border: 1px solid #dee5f0;
   border-radius: 16px;
   background: #fff;
-  box-shadow: 0 24px 70px #1f2b4033;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
 }
 
-.user-modal--sm .user-modal__surface { max-width: 480px; }
-.user-modal--md .user-modal__surface { max-width: 640px; }
-.user-modal--lg .user-modal__surface { max-width: 860px; }
-.user-modal--xl .user-modal__surface { max-width: 1120px; }
+/* Bốn mức kích thước theo độ phức tạp tác vụ; luôn chừa lề an toàn theo viewport. */
+.user-modal--sm .user-modal__surface { max-width: min(460px, calc(100vw - 32px)); }
+.user-modal--md .user-modal__surface { max-width: min(640px, calc(100vw - 32px)); }
+.user-modal--lg .user-modal__surface { max-width: min(840px, calc(100vw - 32px)); }
+.user-modal--xl .user-modal__surface { max-width: min(1120px, calc(100vw - 32px)); }
 
 .user-modal__header {
   display: flex;
@@ -102,6 +103,9 @@
   color: #1f2b40;
   font: var(--admin-text-body-default);
   overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  /* Cho phép nội dung modal tự chuyển 2 → 1 cột theo bề rộng thực của hộp thoại. */
+  container-type: inline-size;
 }
 
 .user-modal__footer {

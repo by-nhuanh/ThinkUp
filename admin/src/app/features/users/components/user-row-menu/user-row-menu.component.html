@@ -1,0 +1,35 @@
+<button
+  #trigger
+  class="row-actions-trigger"
+  type="button"
+  aria-haspopup="menu"
+  [attr.aria-expanded]="open()"
+  [attr.aria-controls]="open() ? menuId : null"
+  [attr.aria-label]="label()"
+  (click)="toggle()"
+  (keydown)="onTriggerKeydown($event)"
+>•••</button>
+
+@if (open()) {
+  <div
+    #menu
+    class="row-actions-menu"
+    role="menu"
+    [id]="menuId"
+    [attr.aria-label]="label()"
+    [style.left.px]="position()?.left"
+    [style.top.px]="position()?.top"
+    [style.visibility]="position() ? 'visible' : 'hidden'"
+    (keydown)="onMenuKeydown($event)"
+  >
+    @for (item of items(); track item.key) {
+      <button
+        type="button"
+        role="menuitem"
+        tabindex="-1"
+        [class.is-danger]="item.danger"
+        (click)="select(item)"
+      >{{ item.label }}</button>
+    }
+  </div>
+}

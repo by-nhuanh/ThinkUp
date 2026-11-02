@@ -2,10 +2,12 @@ import {
   DisciplineRecord,
   EnrolledCourse,
   Lecturer,
+  LecturerCourseRow,
   LecturerStatus,
   Student,
   StudentStatus
 } from '../../../features/users/models/user-management.models';
+import { LECTURER_COURSE_OPTIONS } from '../../../features/users/models/user-management.labels';
 
 /**
  * Dữ liệu demo cho module quản lý người dùng.
@@ -89,18 +91,18 @@ function lecturerStatus(index: number): LecturerStatus {
 
 function violationsFor(index: number, status: LecturerStatus): DisciplineRecord[] {
   if (index === 1) {
-    return [{ level: 'Cảnh cáo · Mức 1', appliedAt: '18/06/2026', reason: 'Chậm phản hồi thảo luận' }];
+    return [{ level: 'Cảnh cáo · Mức 1', appliedAt: '2026-06-18', reason: 'Chậm phản hồi thảo luận' }];
   }
   if (status === 'warning' || status === 'violation' || status === 'frozen') {
     return [{
       level: status === 'violation' ? 'Cảnh cáo · Mức 2' : 'Cảnh cáo · Mức 1',
-      appliedAt: `${String(4 + (index % 9)).padStart(2, '0')}/0${(index % 6) + 1}/2026`,
+      appliedAt: `2026-0${(index % 6) + 1}-${String(4 + (index % 9)).padStart(2, '0')}`,
       reason: VIOLATION_REASONS[index % VIOLATION_REASONS.length]
     }];
   }
   // 16 hồ sơ có lịch sử vi phạm (kể cả đã xử lý xong) — dùng cho KPI "Vi phạm & Cần rà soát".
   if (index % 18 === 0 && index > 0) {
-    return [{ level: 'Cảnh cáo · Mức 1', appliedAt: '12/03/2026', reason: VIOLATION_REASONS[index % VIOLATION_REASONS.length] }];
+    return [{ level: 'Cảnh cáo · Mức 1', appliedAt: '2026-03-12', reason: VIOLATION_REASONS[index % VIOLATION_REASONS.length] }];
   }
   return [];
 }
@@ -136,7 +138,7 @@ function buildLecturer(index: number): Lecturer {
     legalStatus: signed ? 'signed' : 'incomplete',
     taxVerified,
     contractCode: signed ? `HĐ-TU-2026-${String(seed).padStart(4, '0')}` : undefined,
-    joinedAt: `${day}/${month}/2026`,
+    joinedAt: `2026-${month}-${day}`,
     links: {
       portfolio: `${asciiName(name).split('.')[0]}.dev`,
       linkedin: `linkedin.com/in/${asciiName(name).replace(/\./g, '')}`,
@@ -145,7 +147,7 @@ function buildLecturer(index: number): Lecturer {
     cv: {
       fileName: `CV_${asciiName(name).replace(/\./g, '')}_2026.pdf`,
       size: '4,2 MB',
-      uploadedAt: `12/05/2026`
+      uploadedAt: '2026-05-12'
     },
     kyc: {
       cccd: `0${String(70 + (index % 20))}···${String(2841 + index)}`,
@@ -202,75 +204,22 @@ function buildStudent(index: number): Student {
     phone: `0${90 + (index % 9)}${String(1234567 + index * 13).slice(0, 7)}`,
     courseCount,
     orders: Math.max(courseCount, courseCount + (index % 3)),
-    registeredAt: `${day}/${month}/${year}`,
+    registeredAt: `${year}-${month}-${day}`,
     status,
     violations: status === 'locked'
-      ? [{ level: 'Cảnh cáo · Mức 1', appliedAt: '22/05/2026', reason: 'Spam bình luận trong khoá học' }]
+      ? [{ level: 'Cảnh cáo · Mức 1', appliedAt: '2026-05-22', reason: 'Spam bình luận trong khoá học' }]
       : [],
     enrolledCourses: index < 40
       ? [{ name: 'Lập trình Web cơ bản', progress: 75 }, { name: 'SQL và cơ sở dữ liệu', progress: 40 }]
         .slice(0, Math.min(2, Math.max(1, courseCount)))
       : [],
     recentOrder: index < 40
-      ? { id: `#ORD-2026-${String(1 + index).padStart(3, '0')}`, amount: 1250000 + index * 50000, paidAt: `13:05 11/7/2026`, status: 'Đã thanh toán' }
+      ? { id: `#ORD-2026-${String(1 + index).padStart(3, '0')}`, amount: 1250000 + index * 50000, paidAt: '2026-07-11T13:05:00+07:00', status: 'Đã thanh toán' }
       : undefined
   };
 }
 
 export const MOCK_STUDENTS: Student[] = Array.from({ length: 12480 }, (_, index) => buildStudent(index));
-
-export const LECTURER_STATUS_LABELS: Record<LecturerStatus, string> = {
-  'active': 'Đang hoạt động',
-  'pending-review': 'Chờ thẩm định hồ sơ',
-  'pending-docs': 'Chờ bổ sung hồ sơ',
-  'pending-contract': 'Chờ ký hợp đồng',
-  'warning': 'Cảnh cáo',
-  'violation': 'Khóa học vi phạm',
-  'frozen': 'Đóng băng và Khóa',
-  'rejected': 'Từ chối hợp tác'
-};
-
-/** Nhóm màu trạng thái: success / warning / danger / info / neutral. */
-export const LECTURER_STATUS_TONE: Record<LecturerStatus, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
-  'active': 'success',
-  'pending-review': 'warning',
-  'pending-docs': 'warning',
-  'pending-contract': 'info',
-  'warning': 'warning',
-  'violation': 'danger',
-  'frozen': 'danger',
-  'rejected': 'neutral'
-};
-
-export const STUDENT_STATUS_LABELS: Record<StudentStatus, string> = {
-  active: 'Đang hoạt động',
-  locked: 'Đang bị khóa',
-  inactive: 'Tạm ngưng'
-};
-
-export const STUDENT_STATUS_TONE: Record<StudentStatus, 'success' | 'danger' | 'neutral'> = {
-  active: 'success',
-  locked: 'danger',
-  inactive: 'neutral'
-};
-
-/** Tổng hợp nhanh dùng cho KPI của trang quản lý học viên. */
-export const STUDENT_MOCK_META = {
-  newInLast30Days: MOCK_STUDENTS.filter((student) => student.registeredAt.startsWith('05/2026') || student.registeredAt.startsWith('04/2026')).length
-};
-
-/** Khoá học cần chọn khi áp dụng kỷ luật Mức 2 cho giảng viên. */
-export const LECTURER_COURSE_OPTIONS = [
-  'React & Next.js từ Zero đến Production',
-  'Thiết kế hệ thống UI cho sản phẩm SaaS',
-  'SQL cho người mới bắt đầu',
-  'Kubernetes thực chiến cho đội Frontend'
-] as const;
-
-export const ADMIN_USERS_MODULE_PATHS = {
-  lecturers: '/users/lecturers',
-  students: '/users/students'
-} as const;
 
 /**
  * Số liệu của các module khác hiển thị trên dải "truy cập nhanh" của trang giảng viên.
@@ -285,14 +234,6 @@ export const USER_MODULE_QUICK_STATS = {
   openTickets: 3
 } as const;
 
-export interface LecturerCourseRow {
-  name: string;
-  status: 'published' | 'draft' | 'hidden';
-  learners: number;
-  revenue: number;
-  updatedAt: string;
-}
-
 /** Danh sách khoá học của một giảng viên — dùng cho popup "Khoá học" ở hồ sơ. */
 export function coursesForLecturer(lecturer: Lecturer): LecturerCourseRow[] {
   const statuses: LecturerCourseRow['status'][] = ['published', 'published', 'draft', 'hidden'];
@@ -303,7 +244,7 @@ export function coursesForLecturer(lecturer: Lecturer): LecturerCourseRow[] {
       status: statuses[index % statuses.length],
       learners: Math.max(12, Math.round(lecturer.learners / Math.max(1, lecturer.courses)) - index * 17),
       revenue: Math.round(lecturer.revenue / Math.max(1, lecturer.courses)),
-      updatedAt: `0${(index % 9) + 1}/0${(index % 6) + 4}/2026`
+      updatedAt: `2026-0${(index % 6) + 4}-0${(index % 9) + 1}`
     };
   });
 }
