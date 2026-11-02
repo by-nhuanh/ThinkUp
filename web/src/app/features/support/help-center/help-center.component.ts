@@ -38,6 +38,7 @@ export class HelpCenterComponent implements OnInit, OnDestroy {
   selectCategory(id: string): void { this.activeCategoryId.set(id); this.query.set(''); this.searched.set(false); this.openQuestion.set(0); this.updateSeo(); }
   search(value: string): void { this.query.set(value.trim()); this.searched.set(this.query().length >= 2); this.openQuestion.set(this.visibleItems.length ? 0 : -1); }
   toggleQuestion(index: number): void { this.openQuestion.set(this.openQuestion() === index ? -1 : index); }
+  questionId(index: number): string { return `faq-answer-${index}`; }
   private updateSeo(): void {
     this.title.setTitle(`Trung tâm trợ giúp ThinkUp - ${this.activeCategory.label}`);
     this.meta.updateTag({ name: 'description', content: `Giải đáp ${this.activeCategory.label} và hướng dẫn sử dụng ThinkUp.` });

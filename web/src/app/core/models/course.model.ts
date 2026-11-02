@@ -6,6 +6,7 @@ export interface Course {
   displayTitle?: string;
   description?: string;
   instructor: string;
+  instructorId?: string;
   instructorInitial?: string;
   category?: string;
   level?: string;
@@ -26,6 +27,7 @@ export interface Course {
   shortLabel?: string;
   icon?: string;
   shortDescription?: string;
+  coverSubtitle?: string;
   language?: string;
   updatedAtLabel?: string;
   outcomes?: string[];
@@ -178,6 +180,7 @@ export interface CourseReview {
 }
 
 export interface InstructorProfile {
+  id?: string;
   name: string;
   title: string;
   bio: string;

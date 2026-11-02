@@ -10,6 +10,7 @@ import { ToastService } from '../../../core/services/toast.service';
 import { CartItem } from '../../../core/models/commerce.model';
 import { Course } from '../../../core/models/course.model';
 import { CheckoutVoucher } from '../../../core/models/payment.model';
+import { InstructorTriggerDirective } from '../../../shared/directives/instructor-trigger.directive';
 
 interface CourseArt {
   gradient: string;
@@ -35,7 +36,7 @@ const COURSE_ART: Record<string, { title: string; subtitle: string; icon: string
 @Component({
   selector: 'app-cart',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, InstructorTriggerDirective],
   templateUrl: './cart.component.html',
   styleUrls: ['../../payment-ui.css', './cart.component.css'],
 })

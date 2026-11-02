@@ -14,6 +14,7 @@ import {
 import { Subscription } from 'rxjs';
 import { LearningCourse } from '../../learning/models/learning.model';
 import { LearningService } from '../../learning/services/learning.service';
+import { InstructorTriggerDirective } from '../../../shared/directives/instructor-trigger.directive';
 
 type SubmitState = 'idle' | 'submitting' | 'success' | 'error';
 
@@ -23,6 +24,7 @@ type SubmitState = 'idle' | 'submitting' | 'success' | 'error';
   imports: [
     FormsModule,
     RouterLink,
+    InstructorTriggerDirective,
     LucideBookOpen,
     LucideCheck,
     LucideCircleAlert,

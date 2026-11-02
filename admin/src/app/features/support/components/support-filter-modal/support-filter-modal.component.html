@@ -1,0 +1,6 @@
+<div class="support-filter-backdrop" (click)="close()"></div>
+<section class="support-filter-modal" role="dialog" aria-modal="true" aria-labelledby="support-filter-title">
+  <header><h2 id="support-filter-title">Tất cả bộ lọc</h2><button class="support-filter-close" type="button" aria-label="Đóng bộ lọc" title="Đóng" (click)="close()"><svg lucideX aria-hidden="true"></svg></button></header>
+  <div class="support-filter-body"><ng-content /></div>
+  <footer><button class="support-filter-clear" type="button" (click)="cleared.emit()">Đặt lại bộ lọc</button><button class="support-filter-apply" type="button" [disabled]="applyDisabled" (click)="applied.emit()">Xem {{ resultCount }} kết quả</button></footer>
+</section>

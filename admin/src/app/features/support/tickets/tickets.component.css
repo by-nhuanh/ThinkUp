@@ -58,6 +58,20 @@
 .date-apply-button:hover { border-color: #075acb; background: #075acb; }
 
 .table-scroll { border-top: 0; }
+.ticket-filter-actions { display: flex; align-items: flex-end; justify-content: flex-end; gap: 10px; align-self: end; }
+.ticket-filter-actions .ghost-button { min-height: 40px; white-space: nowrap; }
+.table-scroll table { min-width: 1320px; table-layout: fixed; }
+.table-scroll table:not(.has-custom-column-widths) th[data-column="id"] { width: 9%; }
+.table-scroll table:not(.has-custom-column-widths) th[data-column="sender"] { width: 13%; }
+.table-scroll table:not(.has-custom-column-widths) th[data-column="topic"] { width: 11%; }
+.table-scroll table:not(.has-custom-column-widths) th[data-column="content"] { width: 15%; }
+.table-scroll table:not(.has-custom-column-widths) th[data-column="evidence"] { width: 7%; }
+.table-scroll table:not(.has-custom-column-widths) th[data-column="priority"] { width: 7%; }
+.table-scroll table:not(.has-custom-column-widths) th[data-column="time"] { width: 8%; }
+.table-scroll table:not(.has-custom-column-widths) th[data-column="status"] { width: 9%; }
+.table-scroll table:not(.has-custom-column-widths) th[data-column="sla"] { width: 8%; }
+.table-scroll table:not(.has-custom-column-widths) th[data-column="assignee"] { width: 7%; }
+.table-scroll table:not(.has-custom-column-widths) th[data-column="action"] { width: 9%; }
 .table-scroll th { text-transform: none; letter-spacing: 0; }
 .table-scroll .status-badge { border-radius: 5px; font-size: 13px; line-height: 18px; font-weight: var(--admin-font-weight-medium); }
 .table-scroll .table-action {
@@ -109,3 +123,17 @@
 @media (max-width: 1100px) {
   .filter-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+.table-scroll th { text-align: center; }
+.table-scroll tbody td:is([data-column="evidence"], [data-column="priority"], [data-column="time"], [data-column="status"], [data-column="sla"], [data-column="assignee"], [data-column="action"]) { text-align: center; }
+.table-scroll tbody td:is([data-column="evidence"], [data-column="priority"], [data-column="time"], [data-column="status"], [data-column="sla"], [data-column="assignee"], [data-column="action"]) > * { margin-inline: auto; }
+.table-scroll tbody td[data-column="assignee"] .assignee-name,
+.table-scroll tbody td[data-column="assignee"] small { display: block; text-align: center; }
+.table-scroll tbody td[data-column="assignee"] .assignee-name { color: #294466; font-weight: var(--admin-font-weight-regular); }
+.ticket-time strong, .ticket-time small, .table-scroll td[data-column="sla"] small { display: block; text-align: center; white-space: nowrap; }
+.ticket-time small, .table-scroll td[data-column="sla"] small { margin-top: 3px; color: #64748b; font: var(--admin-text-caption); }
+.ticket-status-unassigned { background: #fff7e6; color: #8a5a00; }
+.ticket-status-processing { background: #eaf3ff; color: #095dac; }
+.ticket-status-waiting { background: #f3efff; color: #6546a8; }
+.ticket-status-reopened { background: #fff0f1; color: #b42336; }
+.ticket-status-closed { background: #e8f7ee; color: #13743b; }
+.metric-card.actionable.is-active { border-color: #0965e4; background: #eef6ff; box-shadow: 0 0 0 2px #0965e424; }

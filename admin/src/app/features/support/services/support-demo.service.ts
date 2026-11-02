@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
-import { MOCK_COMPLAINTS, MOCK_FAILED_SEARCHES, MOCK_FAQS, MOCK_STAFF, MOCK_TICKETS } from '../../../core/data/mock/support.mock';
-import { Attachment, ComplaintCase, FaqItem, FaqStatus, PendingOperation, ResolutionCategory, SupportTicket, ThreadMessage, TicketStatus } from '../models/support.models';
+import { MOCK_COMPLAINTS, MOCK_FAILED_SEARCHES, MOCK_FAQS, MOCK_REPLY_TEMPLATES, MOCK_STAFF, MOCK_TICKETS } from '../../../core/data/mock/support.mock';
+import { Attachment, ComplaintCase, EmailReplyMetadata, FaqItem, FaqStatus, PendingOperation, ReplyTemplate, ResolutionCategory, SupportTicket, ThreadMessage, TicketStatus } from '../models/support.models';
 
 // TODO(pre-deploy): Nhớ xóa adapter demo và thay bằng HttpClient adapter sau khi có endpoint, schema, quyền và error contract chính thức.
 @Injectable({ providedIn: 'root' })
@@ -10,7 +10,16 @@ export class SupportDemoService {
   readonly faqs = signal<FaqItem[]>(structuredClone(MOCK_FAQS));
   readonly staff = signal(structuredClone(MOCK_STAFF));
   readonly failedSearches = signal(structuredClone(MOCK_FAILED_SEARCHES));
+  // TODO(pre-deploy): Nhớ xóa kho mẫu cục bộ và nối API quản trị câu trả lời mẫu theo phân quyền.
+  readonly replyTemplates = signal<ReplyTemplate[]>(structuredClone(MOCK_REPLY_TEMPLATES));
   readonly pendingOperations = signal<PendingOperation[]>([]);
+
+  saveReplyTemplate(template: ReplyTemplate): void {
+    this.replyTemplates.update(items => items.some(item => item.id === template.id)
+      ? items.map(item => item.id === template.id ? template : item)
+      : [template, ...items]);
+    this.queue('reply_template_upsert', template.id, { template });
+  }
 
   acceptTicket(id: string): void {
     const ticket = this.tickets().find(item => item.id === id); if (!ticket || ticket.assignee) return;
@@ -18,32 +27,38 @@ export class SupportDemoService {
     const assignee = this.staff().filter(item => item.active && item.team === team).sort((a, b) => a.openTickets - b.openTickets)[0]
       ?? this.staff().filter(item => item.active).sort((a, b) => a.openTickets - b.openTickets)[0];
     if (!assignee) return;
-    this.tickets.update(items => items.map(item => item.id === id ? { ...item, assignee: assignee.name, status: 'processing' } : item));
-    this.queue('ticket_accept', id, { assignee: assignee.name, automatic: true });
+    this.tickets.update(items => items.map(item => item.id === id ? { ...item, assignee: assignee.name, assigneeId: assignee.id, status: 'processing' } : item));
+    this.queue('ticket_accept', id, { assignee: assignee.name, assigneeId: assignee.id, automatic: true });
   }
-  reply(id: string, body: string, status: Extract<TicketStatus, 'processing' | 'waiting'>, attachments: Attachment[] = []): void {
+  reply(id: string, body: string, status: Extract<TicketStatus, 'processing' | 'waiting'>, attachments: Attachment[] = [], emailMetadata?: EmailReplyMetadata): void {
     // TODO(pre-deploy): Nhớ thay tệp mock bằng kết quả upload từ API trước khi gửi phản hồi thật.
-    const message: ThreadMessage = { id: crypto.randomUUID(), sender: 'Gia Huy', role: 'agent', sentAt: new Date().toISOString(), body, attachments };
+    const message: ThreadMessage = { id: crypto.randomUUID(), sender: 'Gia Huy', role: 'agent', sentAt: new Date().toISOString(), body, attachments, emailMetadata };
     this.tickets.update(items => items.map(item => item.id === id ? { ...item, status, thread: [...item.thread, message] } : item));
-    this.queue('ticket_reply', id, { status, body, attachments });
+    this.queue('ticket_reply', id, { status, body, attachments, emailMetadata });
   }
-  resolveTicket(id: string, body: string, category: ResolutionCategory, internalNote: string, sendCsat: boolean, attachments: Attachment[] = []): void {
+  addInternalNote(id: string, body: string, attachments: Attachment[] = []): void {
+    const message: ThreadMessage = { id: crypto.randomUUID(), sender: 'Gia Huy', role: 'agent', source: 'internal', internalOnly: true, sentAt: new Date().toISOString(), body, attachments };
+    this.tickets.update(items => items.map(item => item.id === id ? { ...item, thread: [...item.thread, message] } : item));
+    this.queue('ticket_internal_note', id, { body, attachments });
+  }
+  resolveTicket(id: string, body: string, category: ResolutionCategory, internalNote: string, sendCsat: boolean, attachments: Attachment[] = [], emailMetadata?: EmailReplyMetadata): void {
     const resolvedAt = new Date().toISOString();
-    const message: ThreadMessage = { id: crypto.randomUUID(), sender: 'Gia Huy', role: 'agent', sentAt: resolvedAt, body, attachments };
+    const message: ThreadMessage = { id: crypto.randomUUID(), sender: 'Gia Huy', role: 'agent', sentAt: resolvedAt, body, attachments, emailMetadata };
     this.tickets.update(items => items.map(item => item.id === id ? { ...item, status: 'closed', resolvedAt, resolutionCategory: category, internalResolutionNote: internalNote, sendCsat, thread: [...item.thread, message] } : item));
-    this.queue('ticket_resolution', id, { body, category, internalNote, sendCsat, attachments });
+    this.queue('ticket_resolution', id, { body, category, internalNote, sendCsat, attachments, emailMetadata });
   }
   assignTicket(id: string, assignee: string, note: string): void {
     const ticket = this.tickets().find(item => item.id === id); const previous = ticket?.assignee ?? 'Chưa gán';
     const systemNote: ThreadMessage = { id: crypto.randomUUID(), sender: 'Hệ thống', role: 'system', source: 'internal', internalOnly: true, sentAt: new Date().toISOString(), body: `Admin ${previous} đã bàn giao ticket cho ${assignee}. Ghi chú: ${note}`, attachments: [] };
-    this.tickets.update(items => items.map(item => item.id === id ? { ...item, assignee, status: 'processing', thread: [...item.thread, { ...systemNote, source: 'internal', internalOnly: true }] } : item));
-    this.queue('ticket_assignment', id, { assignee, note, preserveOriginalSla: true, notifyByBellAndEmail: true });
+    const staff = this.staff().find(item => item.name === assignee);
+    this.tickets.update(items => items.map(item => item.id === id ? { ...item, assignee, assigneeId: staff?.id, status: 'processing', thread: [...item.thread, { ...systemNote, source: 'internal', internalOnly: true }] } : item));
+    this.queue('ticket_assignment', id, { assignee, assigneeId: staff?.id, note, preserveOriginalSla: true, notifyByBellAndEmail: true });
   }
-  escalateTicket(id: string, grounds: string, disputeGroup: string): string {
+  escalateTicket(id: string, grounds: string, disputeGroup: string, customDisputeType = '', customClassificationReason = ''): string {
     const ticket = this.tickets().find(item => item.id === id); if (!ticket) return '';
     const complaintId = `CP-${new Date().getFullYear()}-${String(this.complaints().length + 319).padStart(4, '0')}`;
-    const complaint: ComplaintCase = { id: complaintId, sourceTicketId: ticket.id, claimant: ticket.learner, respondent: 'Chờ xác định', type: disputeGroup, status: 'reviewing', amount: 0, createdAt: new Date().toISOString(), dueAt: new Date(Date.now() + 4 * 3_600_000).toISOString(), risk: 'high', evidence: ticket.attachments, learnerStatement: ticket.summary, course: 'Chờ đối soát', orderId: 'Chờ đối soát', purchasedAt: ticket.createdAt, progress: 0, refundEligibleUntil: ticket.createdAt };
-    this.complaints.update(items => [complaint, ...items]); this.tickets.update(items => items.map(item => item.id === id ? { ...item, linkedComplaintId: complaintId } : item)); this.queue('ticket_escalation', id, { complaintId, grounds, disputeGroup, preserveHistory: true, notifySupervisor: true }); return complaintId;
+    const complaint: ComplaintCase = { id: complaintId, sourceTicketId: ticket.id, claimant: ticket.learner, respondent: 'Chờ xác định', type: disputeGroup === 'other' ? customDisputeType : disputeGroup, disputeGroup, customDisputeType: disputeGroup === 'other' ? customDisputeType : undefined, customClassificationReason: disputeGroup === 'other' ? customClassificationReason : undefined, status: 'reviewing', amount: 0, createdAt: new Date().toISOString(), dueAt: this.addBusinessHours(new Date(), 4).toISOString(), risk: 'high', evidence: ticket.attachments, learnerStatement: ticket.summary, sourceThread: structuredClone(ticket.thread), course: 'Chờ xác minh', orderId: 'Chưa áp dụng', purchasedAt: ticket.createdAt, progress: 0, refundEligibleUntil: ticket.createdAt };
+    this.complaints.update(items => [complaint, ...items]); this.tickets.update(items => items.map(item => item.id === id ? { ...item, linkedComplaintId: complaintId } : item)); this.queue('ticket_escalation', id, { complaintId, grounds, disputeGroup, customDisputeType: disputeGroup === 'other' ? customDisputeType : undefined, customClassificationReason: disputeGroup === 'other' ? customClassificationReason : undefined, preserveHistory: true, notifySupervisor: true }); return complaintId;
   }
   async syncEmailReplies(id: string): Promise<void> {
     const ticket = this.tickets().find(item => item.id === id); if (!ticket) return;
@@ -59,27 +74,45 @@ export class SupportDemoService {
     this.queue('complaint_explanation', id, { deadlineHours, freezeCommission, directive, notifyByBellAndEmail: true });
   }
   approveComplaintRefund(id: string, amount: number, revokeAccess: boolean, revokeCertificate: boolean, conclusion: string): void {
-    this.complaints.update(items => items.map(item => item.id === id ? { ...item, status: 'resolved', conclusion } : item));
+    const instructorShare = Math.round(amount * .7);
+    this.complaints.update(items => items.map(item => item.id === id ? { ...item, status: 'resolved', conclusion, resolution: { type: 'refund', decidedAt: new Date().toISOString(), decidedBy: 'Quản trị viên', summary: conclusion, refundMode: amount === item.amount ? 'full' : 'partial', refundAmount: amount, instructorShare, platformShare: amount - instructorShare, revokeAccess, revokeCertificate } } : item));
     this.queue('complaint_refund', id, { amount, instructorShare: Math.round(amount * .7), platformShare: amount - Math.round(amount * .7), revokeAccess, revokeCertificate, requiresPaymentGatewayConfirmation: true });
   }
   dismissComplaint(id: string, basis: string, explanation: string, giftVoucher: boolean): void {
-    this.complaints.update(items => items.map(item => item.id === id ? { ...item, status: 'dismissed', conclusion: explanation } : item));
+    const basisLabels: Readonly<Record<string, string>> = {
+      progress_over_20: 'Học viên đã học quá 20% tiến độ',
+      refund_window_expired: 'Quá thời hạn đổi trả 7 ngày',
+      course_operational: 'Khóa học hoạt động bình thường',
+      invalid_evidence: 'Bằng chứng không xác thực'
+    };
+    this.complaints.update(items => items.map(item => item.id === id ? { ...item, status: 'dismissed', conclusion: explanation, resolution: { type: 'dismiss', decidedAt: new Date().toISOString(), decidedBy: 'Quản trị viên', summary: explanation, dismissalBasis: basisLabels[basis] ?? basis, giftVoucher } } : item));
     this.queue('complaint_dismissal', id, { basis, explanation, giftVoucher, releaseFrozenFunds: true, preserveLearningAccess: true });
   }
   disciplineInstructor(id: string, sanctions: string[], decisionText: string): void {
-    this.complaints.update(items => items.map(item => item.id === id ? { ...item, status: 'resolved', conclusion: decisionText } : item));
+    const sanctionLabels: Readonly<Record<string, string>> = {
+      strike: 'Ghi nhận 01 điểm cảnh cáo',
+      archive: 'Tạm ẩn khóa học trong 14 ngày',
+      freeze_wallet: 'Đóng băng quyền rút tiền trong 30 ngày',
+      terminate: 'Tước quyền giảng viên và chấm dứt hợp đồng'
+    };
+    this.complaints.update(items => items.map(item => item.id === id ? { ...item, status: 'resolved', conclusion: decisionText, resolution: { type: 'discipline', decidedAt: new Date().toISOString(), decidedBy: 'Quản trị viên', summary: decisionText, sanctions: sanctions.map(value => sanctionLabels[value] ?? value) } } : item));
     this.queue('complaint_discipline', id, { sanctions, decisionText, requiresInstructorAndWalletServices: true, persistAuditLog: true });
   }
   saveFaq(value: FaqItem): void {
+    const previous = this.faqs().find(item => item.id === value.id);
     this.faqs.update(items => {
-      const previous = items.find(item => item.id === value.id);
       const withoutCurrent = items.filter(item => item.id !== value.id);
       const normalizedPreviousCategory = previous && previous.category !== value.category
         ? this.normalizeFaqOrders(withoutCurrent, previous.category)
         : withoutCurrent;
       return this.insertFaqAtOrder(normalizedPreviousCategory, value);
     });
-    this.queue('faq_save', value.id, { value });
+    // TODO(pre-deploy): Nhớ thay người thao tác mô phỏng bằng admin lấy từ phiên đăng nhập và audit log của API.
+    this.queue('faq_save', value.id, {
+      operation: previous ? 'update' : 'create',
+      performedBy: 'Quản trị viên hiện tại',
+      value
+    });
   }
   reorderFaq(id: string, order: number): void {
     this.faqs.update(items => {
@@ -108,6 +141,20 @@ export class SupportDemoService {
   private normalizeFaqOrders(items: FaqItem[], category: string): FaqItem[] {
     let position = 0;
     return items.map(item => item.category === category ? { ...item, order: ++position } : item);
+  }
+  private addBusinessHours(start: Date, hours: number): Date {
+    const result = new Date(start); let remaining = hours;
+    while (remaining > 0) {
+      if (result.getDay() === 0 || result.getDay() === 6 || result.getHours() < 9 || result.getHours() >= 18) {
+        result.setMinutes(0, 0, 0);
+        if (result.getHours() >= 18) result.setDate(result.getDate() + 1);
+        result.setHours(9);
+        while (result.getDay() === 0 || result.getDay() === 6) result.setDate(result.getDate() + 1);
+        continue;
+      }
+      result.setHours(result.getHours() + 1); remaining--;
+    }
+    return result;
   }
   private suggestedTeam(topic: string): string {
     if (topic.includes('Kỹ thuật') || topic.includes('Coding')) return 'Đội Kỹ thuật và Coding Lab';

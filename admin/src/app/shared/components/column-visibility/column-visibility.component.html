@@ -1,0 +1,20 @@
+<div class="column-visibility">
+  <button class="column-visibility-trigger" type="button" [attr.aria-label]="buttonLabel" [title]="buttonLabel" [attr.aria-expanded]="open()" (click)="toggleOpen()"><svg lucideSlidersHorizontal aria-hidden="true"></svg></button>
+  @if (open()) {
+    <section class="column-visibility-popover" role="dialog" aria-modal="false" aria-label="Cột hiển thị" [style.top.px]="popoverPosition()?.top" [style.left.px]="popoverPosition()?.left" [style.max-height.px]="popoverPosition()?.maxHeight" [style.visibility]="popoverPosition() ? 'visible' : 'hidden'">
+      <header><div><strong>Cột hiển thị</strong><small>Kéo thả để thay đổi thứ tự trong bảng</small></div><button type="button" aria-label="Đóng" (click)="close()"><svg lucideX aria-hidden="true"></svg></button></header>
+      <div class="column-scroll"><div class="column-section-heading"><strong>Đang hiển thị</strong><button type="button" (click)="hideAll()">Ẩn tất cả</button></div>
+      <div class="column-list">
+        @for (item of shown(); track item.id) {
+          <div class="column-item" draggable="true" (dragstart)="dragStart($event, item.id)" (dragover)="$event.preventDefault()" (drop)="drop($event, item.id)"><svg class="drag-handle" lucideGripVertical aria-hidden="true"></svg><span>{{ item.label }}</span><button type="button" [disabled]="item.required" [attr.aria-label]="item.required ? item.label + ' là cột bắt buộc' : 'Ẩn cột ' + item.label" (click)="toggle(item.id)"><svg lucideEye aria-hidden="true"></svg></button></div>
+        }
+      </div>
+      <div class="column-section-heading hidden-heading"><strong>Đang ẩn</strong><button type="button" [disabled]="!hidden().length" (click)="showAll()">Hiện tất cả</button></div>
+      <div class="column-list">
+        @for (item of hidden(); track item.id) {
+          <div class="column-item is-hidden" draggable="true" (dragstart)="dragStart($event, item.id)" (dragover)="$event.preventDefault()" (drop)="drop($event, item.id)"><svg class="drag-handle" lucideGripVertical aria-hidden="true"></svg><span>{{ item.label }}</span><button type="button" [attr.aria-label]="'Hiện cột ' + item.label" (click)="toggle(item.id)"><svg lucideEyeOff aria-hidden="true"></svg></button></div>
+        } @empty { <p class="empty-columns">Không có cột đang ẩn.</p> }
+      </div></div>
+    </section>
+  }
+</div>

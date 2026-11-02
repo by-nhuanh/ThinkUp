@@ -167,7 +167,7 @@
                       </a>
                     </h2>
                     <p class="text-[14px] text-[#61738F]">
-                      Giảng viên: <span class="font-medium text-[#0F172B]">{{ course.instructor }}</span>
+                      Giảng viên: <span class="font-medium text-[#0F172B]" [appInstructorTrigger]="course.instructor">{{ course.instructor }}</span>
                     </p>
                     <p class="text-[13px] text-[#7A8AA1]">
                       {{ course.completedLessons }} / {{ course.totalLessons }} bài học hoàn thành

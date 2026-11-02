@@ -1,73 +1,78 @@
 import { DatePipe } from '@angular/common';
-import { DOCUMENT } from '@angular/common';
 import { Component, DestroyRef, HostListener, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { LucideCircleCheck, LucideClock, LucideEye, LucideFileText, LucideGauge, LucideImage, LucideMessagesSquare, LucidePaperclip, LucideRefreshCw, LucideSearch, LucideSmile, LucideTriangleAlert, LucideX } from '@lucide/angular';
-import { FAQ_CATEGORIES, SUPPORT_TOPICS } from '../../../core/data/mock/support.mock';
+import { LucideCircleCheck, LucideClock, LucideEye, LucideFilter, LucideGauge, LucidePaperclip, LucideRefreshCw, LucideSearch, LucideTriangleAlert, LucideX } from '@lucide/angular';
+import { SUPPORT_TOPICS } from '../../../core/data/mock/support.mock';
 import { AdminAuthService } from '../../../core/services/admin-auth.service';
-import { CustomSelectComponent, CustomSelectOption } from '../../../shared/components/custom-select/custom-select.component';
+import { ColumnVisibilityComponent, TableColumnOption } from '../../../shared/components/column-visibility/column-visibility.component';
+import { CustomSelectOption } from '../../../shared/components/custom-select/custom-select.component';
 import { DateTimePickerComponent } from '../../../shared/components/date-time-picker/date-time-picker.component';
+import { TableColumnResizeDirective } from '../../../shared/directives/table-column-resize.directive';
+import { SupportFilterModalComponent } from '../components/support-filter-modal/support-filter-modal.component';
+import { SupportPaginationComponent } from '../components/support-pagination/support-pagination.component';
 import { Priority, SupportTicket, TicketStatus } from '../models/support.models';
 import { SupportDemoService } from '../services/support-demo.service';
-import { SupportPaginationComponent } from '../components/support-pagination/support-pagination.component';
 
-@Component({ selector: 'app-support-tickets', standalone: true, imports: [FormsModule, DatePipe, SupportPaginationComponent, CustomSelectComponent, DateTimePickerComponent, LucideClock, LucideRefreshCw, LucideTriangleAlert, LucideCircleCheck, LucideGauge, LucideSearch, LucidePaperclip, LucideImage, LucideFileText, LucideSmile, LucideMessagesSquare, LucideEye, LucideX], templateUrl: './tickets.component.html', styleUrls: ['../support-page.css', './tickets.component.css'] })
+type FilterPeriod = 'today' | 'week' | 'month' | 'quarter' | 'year' | 'all' | '';
+type TicketQuickFilter = 'unassigned' | 'processing' | 'overdue' | 'resolvedToday' | 'onTime' | '';
+interface TicketFilters { topic: string; priority: Priority | ''; status: TicketStatus | 'overdue' | ''; assignee: string; from: string; to: string; period: FilterPeriod; quick: TicketQuickFilter; }
+interface FilterChip { key: keyof TicketFilters; label: string; }
+const EMPTY_TICKET_FILTERS: TicketFilters = { topic: '', priority: '', status: '', assignee: '', from: '', to: '', period: 'all', quick: '' };
+
+function filterTickets(items: SupportTicket[], filters: TicketFilters, query: string, currentAssignee: string, now: number): SupportTicket[] {
+  const q = query.trim().toLocaleLowerCase('vi-VN');
+  return items.filter(ticket => {
+    const overdue = new Date(ticket.dueAt).getTime() < now && ticket.status !== 'closed';
+    const created = ticket.createdAt.slice(0, 10);
+    const assigneeOk = !filters.assignee || (filters.assignee === 'unassigned' ? !ticket.assignee : ticket.assignee === currentAssignee);
+    const resolvedToday = !!ticket.resolvedAt && new Date(ticket.resolvedAt).toDateString() === new Date(now).toDateString();
+    const resolvedWithin24Hours = !!ticket.resolvedAt && new Date(ticket.resolvedAt).getTime() - new Date(ticket.createdAt).getTime() <= 24 * 3_600_000;
+    const quickOk = !filters.quick || (filters.quick === 'unassigned' && ticket.status === 'unassigned') || (filters.quick === 'processing' && ['processing', 'waiting', 'reopened'].includes(ticket.status)) || (filters.quick === 'overdue' && overdue) || (filters.quick === 'resolvedToday' && resolvedToday) || (filters.quick === 'onTime' && resolvedWithin24Hours);
+    return (!q || [ticket.id, ticket.learner, ticket.email, ticket.summary].some(value => value.toLocaleLowerCase('vi-VN').includes(q))) && (!filters.topic || ticket.topic === filters.topic) && (!filters.priority || ticket.priority === filters.priority) && (!filters.status || (filters.status === 'overdue' ? overdue : ticket.status === filters.status)) && assigneeOk && (!filters.from || created >= filters.from) && (!filters.to || created <= filters.to) && quickOk;
+  }).sort((a, b) => a.status === 'reopened' && b.status !== 'reopened' ? -1 : b.status === 'reopened' && a.status !== 'reopened' ? 1 : (b.reopenedAt ?? b.createdAt).localeCompare(a.reopenedAt ?? a.createdAt));
+}
+
+@Component({ selector: 'app-support-tickets', standalone: true, imports: [FormsModule, DatePipe, SupportPaginationComponent, ColumnVisibilityComponent, DateTimePickerComponent, SupportFilterModalComponent, TableColumnResizeDirective, LucideClock, LucideRefreshCw, LucideTriangleAlert, LucideCircleCheck, LucideGauge, LucideSearch, LucidePaperclip, LucideEye, LucideFilter, LucideX], templateUrl: './tickets.component.html', styleUrls: ['../support-page.css', './tickets.component.css'] })
 export class TicketsComponent {
-  private readonly data = inject(SupportDemoService); private readonly router = inject(Router);
-  private readonly auth = inject(AdminAuthService); private readonly document = inject(DOCUMENT); private readonly destroyRef = inject(DestroyRef);
-  readonly topics = SUPPORT_TOPICS; readonly faqCategories = FAQ_CATEGORIES; readonly tickets = this.data.tickets; readonly staff = this.data.staff;
-  readonly queryInput = signal(''); readonly query = signal(''); readonly topic = signal(''); readonly priority = signal<Priority | ''>(''); readonly status = signal<TicketStatus | 'overdue' | ''>(''); readonly assignee = signal(''); readonly page = signal(1); readonly pageSize = 8;
-  readonly from = signal(''); readonly to = signal(''); readonly fromDraft = signal(''); readonly toDraft = signal(''); readonly activePeriod = signal<'today' | 'week' | 'month' | 'quarter' | 'year' | 'all' | ''>('all'); readonly periodDraft = signal<'today' | 'week' | 'month' | 'quarter' | 'year' | 'all' | ''>('all');
-  readonly dateOpen = signal(false); readonly datePopoverPosition = signal<{ left: number; top: number; maxHeight: number } | null>(null); readonly learnerPreview = signal<SupportTicket | null>(null);
-  readonly selected = signal<SupportTicket | null>(null); readonly overlay = signal<'assign' | 'escalate' | 'close' | 'templates' | null>(null); readonly reply = signal(''); readonly note = signal(''); readonly selectedStaff = signal(''); readonly grounds = signal(''); readonly closeResult = signal(''); readonly toast = signal(''); readonly lightbox = signal<string | null>(null);
-  private searchTimer?: ReturnType<typeof setTimeout>;
-  private readonly repositionDatePopover = () => this.positionDatePopover();
-  readonly topicOptions: ReadonlyArray<CustomSelectOption> = [{ value: '', label: 'Tất cả chủ đề' }, ...this.topics.map(item => ({ value: item, label: item }))];
-  readonly priorityOptions: ReadonlyArray<CustomSelectOption> = [{ value: '', label: 'Tất cả' }, { value: 'high', label: 'Cao' }, { value: 'medium', label: 'Trung bình' }, { value: 'low', label: 'Thấp' }];
-  readonly statusOptions: ReadonlyArray<CustomSelectOption> = [{ value: '', label: 'Tất cả' }, { value: 'unassigned', label: 'Chờ tiếp nhận' }, { value: 'processing', label: 'Đang xử lý' }, { value: 'waiting', label: 'Chờ học viên phản hồi' }, { value: 'reopened', label: 'Cần xử lý tiếp' }, { value: 'overdue', label: 'Quá hạn' }, { value: 'closed', label: 'Đã đóng' }];
-  readonly assigneeOptions: ReadonlyArray<CustomSelectOption> = [{ value: '', label: 'Tất cả' }, { value: 'unassigned', label: 'Chưa gán' }, { value: 'me', label: 'Gán cho tôi' }];
+  private readonly data = inject(SupportDemoService); private readonly router = inject(Router); private readonly auth = inject(AdminAuthService); private readonly destroyRef = inject(DestroyRef);
+  readonly tickets = this.data.tickets; readonly queryInput = signal(''); readonly query = signal(''); readonly page = signal(1); readonly pageSize = 6;
+  readonly appliedFilters = signal<TicketFilters>({ ...EMPTY_TICKET_FILTERS }); readonly draftFilters = signal<TicketFilters>({ ...EMPTY_TICKET_FILTERS }); readonly filterOpen = signal(false);
+  readonly learnerPreview = signal<SupportTicket | null>(null); readonly now = signal(Date.now()); private searchTimer?: ReturnType<typeof setTimeout>;
   readonly currentAssignee = computed(() => this.auth.currentUser()?.fullName || 'Minh Anh');
-  readonly filtered = computed(() => this.tickets().filter(ticket => {
-    const q = this.query().trim().toLocaleLowerCase('vi-VN'); const overdue = new Date(ticket.dueAt).getTime() < Date.now() && ticket.status !== 'closed';
-    const created = ticket.createdAt.slice(0, 10); const periodOk = (!this.from() || created >= this.from()) && (!this.to() || created <= this.to());
-    const assigneeOk = !this.assignee() || (this.assignee() === 'unassigned' ? !ticket.assignee : ticket.assignee === this.currentAssignee());
-    return (!q || [ticket.id, ticket.learner, ticket.email, ticket.summary].some(value => value.toLocaleLowerCase('vi-VN').includes(q))) && (!this.topic() || ticket.topic === this.topic()) && (!this.priority() || ticket.priority === this.priority()) && (!this.status() || (this.status() === 'overdue' ? overdue : ticket.status === this.status())) && assigneeOk && periodOk;
-  }).sort((a, b) => {
-    if (a.status === 'reopened' && b.status !== 'reopened') return -1;
-    if (b.status === 'reopened' && a.status !== 'reopened') return 1;
-    return (b.reopenedAt ?? b.createdAt).localeCompare(a.reopenedAt ?? a.createdAt);
-  }));
+  readonly topicOptions: ReadonlyArray<CustomSelectOption> = [{ value: '', label: 'Tất cả chủ đề' }, ...SUPPORT_TOPICS.map(value => ({ value, label: value }))];
+  readonly priorityOptions: ReadonlyArray<CustomSelectOption> = [{ value: '', label: 'Tất cả' }, { value: 'high', label: 'Cao' }, { value: 'medium', label: 'Trung bình' }, { value: 'low', label: 'Thấp' }];
+  readonly statusOptions: ReadonlyArray<CustomSelectOption> = [{ value: '', label: 'Tất cả' }, { value: 'unassigned', label: 'Chờ tiếp nhận' }, { value: 'processing', label: 'Đang xử lý' }, { value: 'waiting', label: 'Chờ người gửi phản hồi' }, { value: 'reopened', label: 'Cần xử lý tiếp' }, { value: 'overdue', label: 'Quá hạn' }, { value: 'closed', label: 'Đã đóng' }];
+  readonly assigneeOptions: ReadonlyArray<CustomSelectOption> = [{ value: '', label: 'Tất cả' }, { value: 'unassigned', label: 'Chưa gán' }, { value: 'me', label: 'Gán cho tôi' }];
+  readonly tableColumns: ReadonlyArray<TableColumnOption> = [{ id: 'id', label: 'Mã ticket', required: true }, { id: 'sender', label: 'Người gửi' }, { id: 'topic', label: 'Chủ đề' }, { id: 'content', label: 'Nội dung' }, { id: 'evidence', label: 'Minh chứng' }, { id: 'priority', label: 'Ưu tiên' }, { id: 'time', label: 'Thời gian' }, { id: 'status', label: 'Trạng thái' }, { id: 'sla', label: 'SLA' }, { id: 'assignee', label: 'Phụ trách' }, { id: 'action', label: 'Xử lý' }];
+  readonly filtered = computed(() => filterTickets(this.tickets(), this.appliedFilters(), this.query(), this.currentAssignee(), this.now()));
+  readonly previewResults = computed(() => filterTickets(this.tickets(), this.draftFilters(), this.query(), this.currentAssignee(), this.now()));
   readonly pages = computed(() => Math.max(1, Math.ceil(this.filtered().length / this.pageSize))); readonly visible = computed(() => this.filtered().slice((this.page() - 1) * this.pageSize, this.page() * this.pageSize));
-  readonly unassigned = computed(() => this.tickets().filter(item => item.status === 'unassigned').length); readonly processing = computed(() => this.tickets().filter(item => ['processing', 'waiting', 'reopened'].includes(item.status)).length); readonly overdue = computed(() => this.tickets().filter(item => this.slaMs(item) < 0 && item.status !== 'closed').length); readonly resolvedToday = computed(() => this.tickets().filter(item => item.resolvedAt && new Date(item.resolvedAt).toDateString() === new Date().toDateString()).length); readonly onTime = computed(() => { const closed = this.tickets().filter(item => item.status === 'closed'); return closed.length ? Math.round(closed.filter(item => item.resolvedAt && new Date(item.resolvedAt) <= new Date(item.dueAt)).length / closed.length * 100) : 100; });
+  readonly activeFilterCount = computed(() => { const f = this.appliedFilters(); return [f.topic, f.priority, f.status, f.assignee, f.quick, f.from || f.to].filter(Boolean).length; });
+  readonly filterChips = computed<FilterChip[]>(() => { const f = this.appliedFilters(); const chips: FilterChip[] = []; if (f.quick) chips.push({ key: 'quick', label: this.quickLabel(f.quick) }); if (f.topic) chips.push({ key: 'topic', label: f.topic }); if (f.priority) chips.push({ key: 'priority', label: `Ưu tiên: ${this.optionLabel(this.priorityOptions, f.priority)}` }); if (f.status) chips.push({ key: 'status', label: `Trạng thái: ${this.optionLabel(this.statusOptions, f.status)}` }); if (f.assignee) chips.push({ key: 'assignee', label: `Phụ trách: ${this.optionLabel(this.assigneeOptions, f.assignee)}` }); if (f.from || f.to) chips.push({ key: 'from', label: `Thời gian: ${this.shortDate(f.from) || '...'} – ${this.shortDate(f.to) || '...'}` }); return chips; });
+  readonly unassigned = computed(() => this.tickets().filter(item => item.status === 'unassigned').length); readonly processing = computed(() => this.tickets().filter(item => ['processing', 'waiting', 'reopened'].includes(item.status)).length); readonly overdue = computed(() => this.tickets().filter(item => this.slaMs(item) < 0 && item.status !== 'closed').length); readonly resolvedToday = computed(() => this.tickets().filter(item => item.resolvedAt && new Date(item.resolvedAt).toDateString() === new Date(this.now()).toDateString()).length); readonly onTime = computed(() => { const all = this.tickets(); const count = all.filter(item => item.resolvedAt && new Date(item.resolvedAt).getTime() - new Date(item.createdAt).getTime() <= 24 * 3_600_000).length; return all.length ? Math.round(count / all.length * 1000) / 10 : 100; });
+
+  constructor() { const clock = setInterval(() => this.now.set(Date.now()), 60_000); this.destroyRef.onDestroy(() => clearInterval(clock)); }
   setSearch(value: string): void { this.queryInput.set(value); clearTimeout(this.searchTimer); this.searchTimer = setTimeout(() => { this.query.set(value); this.page.set(1); }, 300); }
-  reset(): void { this.queryInput.set(''); this.query.set(''); this.topic.set(''); this.priority.set(''); this.status.set(''); this.assignee.set(''); this.clearDateRange(); this.page.set(1); this.closeDatePopover(); }
+  openFilters(): void { this.draftFilters.set({ ...this.appliedFilters() }); this.filterOpen.set(true); }
+  closeFilters(): void { this.draftFilters.set({ ...this.appliedFilters() }); this.filterOpen.set(false); }
+  clearDraftFilters(): void { this.draftFilters.set({ ...EMPTY_TICKET_FILTERS }); }
+  applyFilters(): void { this.appliedFilters.set({ ...this.draftFilters() }); this.page.set(1); this.filterOpen.set(false); }
+  setDraft(key: keyof TicketFilters, value: string): void { this.draftFilters.update(filters => ({ ...filters, [key]: value, ...(key === 'status' ? { quick: '' } : {}) } as TicketFilters)); }
+  selectDraftPeriod(period: FilterPeriod): void { this.draftFilters.update(filters => ({ ...filters, ...this.periodRange(period), period })); }
+  setDraftDate(key: 'from' | 'to', value: string): void { this.draftFilters.update(filters => { const next = { ...filters, [key]: value, period: '' as FilterPeriod }; if (key === 'from' && next.to && value > next.to) next.to = value; if (key === 'to' && next.from && value < next.from) next.from = value; return next; }); }
+  applyQuickFilter(quick: Exclude<TicketQuickFilter, ''>): void { const current = this.appliedFilters(); this.appliedFilters.set({ ...current, quick: current.quick === quick ? '' : quick, status: '' }); this.page.set(1); }
+  removeFilterChip(key: keyof TicketFilters): void { this.appliedFilters.update(filters => key === 'from' ? { ...filters, from: '', to: '', period: 'all' } : { ...filters, [key]: '' } as TicketFilters); this.page.set(1); }
+  reset(): void { this.queryInput.set(''); this.query.set(''); this.appliedFilters.set({ ...EMPTY_TICKET_FILTERS }); this.draftFilters.set({ ...EMPTY_TICKET_FILTERS }); this.page.set(1); }
   open(ticket: SupportTicket): void { void this.router.navigate(['/support/tickets', ticket.id]); }
-  closeDrawer(): void { this.selected.set(null); this.overlay.set(null); }
-  slaMs(ticket: SupportTicket): number { return new Date(ticket.dueAt).getTime() - Date.now(); }
-  sla(ticket: SupportTicket): string { const ms = this.slaMs(ticket); const hours = Math.ceil(Math.abs(ms) / 3_600_000); return ms < 0 ? `Trễ ${hours} giờ` : `Còn ${hours} giờ`; }
-  send(close: boolean): void { const ticket = this.selected(); const body = this.reply().trim(); if (!ticket || body.length < 3) return; if (close) { this.closeResult.set(body); this.overlay.set('close'); return; } this.data.reply(ticket.id, body, 'waiting'); this.reply.set(''); this.refresh(ticket.id); this.notify('Phản hồi đã được xếp hàng gửi; ticket vẫn mở.'); }
-  confirmClose(): void { const ticket = this.selected(); if (!ticket || this.closeResult().trim().length < 10) return; this.data.resolveTicket(ticket.id, this.closeResult().trim(), 'code_guidance', '', true); this.notify('Đã lưu kết quả đóng ticket trong adapter; chờ backend đồng bộ email.'); this.closeDrawer(); }
-  confirmAssign(): void { const ticket = this.selected(); if (!ticket || !this.selectedStaff() || this.note().trim().length < 10) return; this.data.assignTicket(ticket.id, this.selectedStaff(), this.note().trim()); this.overlay.set(null); this.refresh(ticket.id); this.notify('Đã điều chuyển và giữ nguyên SLA gốc.'); }
-  confirmEscalate(): void { const ticket = this.selected(); if (!ticket || this.grounds().trim().length < 20) return; const id = this.data.escalateTicket(ticket.id, this.grounds().trim(), 'Khiếu nại cần phân loại'); this.closeDrawer(); this.router.navigate(['/support/complaints'], { queryParams: { case: id } }); }
-  useTemplate(value: string): void { this.reply.set(value); this.overlay.set(null); }
-  refresh(id: string): void { this.selected.set(this.tickets().find(item => item.id === id) ?? null); }
-  notify(message: string): void { this.toast.set(message); setTimeout(() => this.toast.set(''), 3500); }
+  slaMs(ticket: SupportTicket): number { const end = ticket.status === 'closed' && ticket.resolvedAt ? new Date(ticket.resolvedAt).getTime() : this.now(); return new Date(ticket.dueAt).getTime() - end; }
+  sla(ticket: SupportTicket): string { const ms = this.slaMs(ticket), hours = Math.ceil(Math.abs(ms) / 3_600_000); if (ticket.status === 'closed') return ms < 0 ? `Đóng trễ ${hours} giờ` : `Đúng hạn ${hours} giờ`; return ms < 0 ? `Trễ ${hours} giờ` : `Còn ${hours} giờ`; }
+  statusLabel(status: TicketStatus): string { return ({ unassigned: 'Chờ tiếp nhận', processing: 'Đang xử lý', waiting: 'Chờ phản hồi', reopened: 'Cần xử lý tiếp', closed: 'Đã đóng' })[status]; }
+  attachmentTitle(ticket: SupportTicket): string { return ticket.attachments.length ? ticket.attachments.map(file => file.name).join('\n') : 'Không có tệp'; }
   pageTo(value: number): void { this.page.set(Math.max(1, Math.min(this.pages(), value))); }
-  readonly dateLabel = computed(() => this.from() || this.to() ? `${this.shortDate(this.from()) || '...'} - ${this.shortDate(this.to()) || '...'}` : 'Tất cả');
-  readonly canClearDateRange = computed(() => !!(this.from() || this.to() || this.fromDraft() || this.toDraft()));
-  constructor() { this.destroyRef.onDestroy(() => this.removeDatePopoverListeners()); }
-  setFilter(target: 'topic' | 'priority' | 'status' | 'assignee', value: string): void { if (target === 'topic') this.topic.set(value); if (target === 'priority') this.priority.set(value as Priority | ''); if (target === 'status') this.status.set(value as TicketStatus | 'overdue' | ''); if (target === 'assignee') this.assignee.set(value); this.page.set(1); }
-  toggleDatePopover(): void { if (this.dateOpen()) { this.closeDatePopover(); return; } this.fromDraft.set(this.from()); this.toDraft.set(this.to()); this.periodDraft.set(this.activePeriod()); this.datePopoverPosition.set(null); this.dateOpen.set(true); const view = this.document.defaultView; view?.addEventListener('resize', this.repositionDatePopover); view?.addEventListener('scroll', this.repositionDatePopover, true); setTimeout(() => this.positionDatePopover()); }
-  closeDatePopover(): void { this.dateOpen.set(false); this.datePopoverPosition.set(null); this.removeDatePopoverListeners(); }
-  private removeDatePopoverListeners(): void { const view = this.document.defaultView; view?.removeEventListener('resize', this.repositionDatePopover); view?.removeEventListener('scroll', this.repositionDatePopover, true); }
-  private positionDatePopover(): void { if (!this.dateOpen()) return; const view = this.document.defaultView; const trigger = this.document.querySelector<HTMLElement>('.ticket-date-trigger'); const popover = this.document.getElementById('ticket-date-options'); if (!view || !trigger || !popover) return; const margin = 12; const gap = 8; const rect = trigger.getBoundingClientRect(); const popup = popover.getBoundingClientRect(); const width = Math.min(popup.width, view.innerWidth - margin * 2); const left = Math.max(margin, Math.min(rect.left, view.innerWidth - margin - width)); const below = view.innerHeight - rect.bottom - gap - margin; const above = rect.top - gap - margin; const openAbove = below < popup.height && above > below; const maxHeight = Math.max(0, openAbove ? above : below); const top = openAbove ? Math.max(margin, rect.top - gap - Math.min(popup.height, maxHeight)) : rect.bottom + gap; this.datePopoverPosition.set({ left, top, maxHeight }); }
-  selectFrom(value: string): void { this.fromDraft.set(value); if (this.toDraft() && value > this.toDraft()) this.toDraft.set(value); this.periodDraft.set(''); }
-  selectTo(value: string): void { this.toDraft.set(value); if (this.fromDraft() && value < this.fromDraft()) this.fromDraft.set(value); this.periodDraft.set(''); }
-  selectPeriod(value: string): void { const range = this.periodRange(value); this.fromDraft.set(range.from); this.toDraft.set(range.to); this.periodDraft.set(value as 'today' | 'week' | 'month' | 'quarter' | 'year' | 'all' | ''); }
-  applyDateRange(): void { this.from.set(this.fromDraft()); this.to.set(this.toDraft()); this.activePeriod.set(this.periodDraft()); this.page.set(1); this.closeDatePopover(); }
-  clearDateRange(): void { this.from.set(''); this.to.set(''); this.fromDraft.set(''); this.toDraft.set(''); this.activePeriod.set('all'); this.periodDraft.set('all'); this.page.set(1); }
   shortDate(value: string): string { return value ? `${value.slice(8, 10)}/${value.slice(5, 7)}/${value.slice(0, 4)}` : ''; }
-  private periodRange(value: string): { from: string; to: string } { const now = new Date(); const iso = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; if (value === 'today') return { from: iso(now), to: iso(now) }; if (value === 'week') { const start = new Date(now); start.setDate(now.getDate() - 6); return { from: iso(start), to: iso(now) }; } if (value === 'month') return { from: iso(new Date(now.getFullYear(), now.getMonth(), 1)), to: iso(now) }; if (value === 'quarter') return { from: iso(new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1)), to: iso(now) }; if (value === 'year') return { from: iso(new Date(now.getFullYear(), 0, 1)), to: iso(now) }; return { from: '', to: '' }; }
-  @HostListener('document:keydown.escape') onEscape(): void { if (this.learnerPreview()) this.learnerPreview.set(null); else if (this.dateOpen()) this.closeDatePopover(); else if (this.lightbox()) this.lightbox.set(null); else if (this.overlay()) this.overlay.set(null); else if (this.selected()) this.closeDrawer(); }
+  private optionLabel(options: ReadonlyArray<CustomSelectOption>, value: string): string { return options.find(option => option.value === value)?.label ?? value; }
+  private quickLabel(value: TicketQuickFilter): string { return ({ unassigned: 'Chờ tiếp nhận', processing: 'Đang xử lý', overdue: 'Quá hạn SLA', resolvedToday: 'Đã giải quyết hôm nay', onTime: 'Đúng hạn SLA', '': '' })[value]; }
+  private periodRange(value: FilterPeriod): { from: string; to: string } { const now = new Date(), iso = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; if (value === 'today') return { from: iso(now), to: iso(now) }; if (value === 'week') { const start = new Date(now); start.setDate(now.getDate() - 6); return { from: iso(start), to: iso(now) }; } if (value === 'month') return { from: iso(new Date(now.getFullYear(), now.getMonth(), 1)), to: iso(now) }; if (value === 'quarter') return { from: iso(new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1)), to: iso(now) }; if (value === 'year') return { from: iso(new Date(now.getFullYear(), 0, 1)), to: iso(now) }; return { from: '', to: '' }; }
+  @HostListener('document:keydown.escape') closePreview(): void { if (this.learnerPreview()) this.learnerPreview.set(null); }
 }

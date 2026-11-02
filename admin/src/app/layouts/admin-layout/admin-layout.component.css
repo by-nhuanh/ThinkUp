@@ -47,7 +47,7 @@
 .top-tool.icon-only { width: 46px; padding-inline: 0; }
 .top-tool > img, .top-icon-wrap > img { width: 21px; height: 21px; opacity: .88; }
 .top-icon-wrap { position: relative; display: grid; place-items: center; width: 21px; height: 21px; }
-.badge { position: absolute; right: -8px; top: -8px; display: grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: #ff778b; color: #fff; font: 700 11px Inter, Arial, sans-serif; }
+.badge { position: absolute; right: -8px; top: -8px; display: grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: #e8243e; color: #fff; font: 700 11px Inter, Arial, sans-serif; }
 .avatar { display: grid; place-items: center; flex: none; width: 30px; height: 30px; border-radius: 50%; border: 2px solid #d9eaff; background: #fff; color: #1570d1; font-size: 16px; font-weight: 700; }
 .avatar svg { width: 19px; height: 19px; }
 .account-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

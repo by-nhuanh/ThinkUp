@@ -126,3 +126,14 @@ body { margin: 0; font-family: Inter, Arial, sans-serif; }
   --admin-auth-card-shadow: 0 8px 24px #1429471a;
 }
 
+.business-resizable-table.has-custom-column-widths { table-layout: fixed !important; max-width: none; }
+.business-resizable-heading { position: relative; }
+.business-column-resizer { position: absolute; z-index: 5; top: 0; right: -5px; width: 10px; height: 100%; cursor: col-resize; touch-action: none; user-select: none; }
+.business-column-resizer::before { content: ''; position: absolute; top: 22%; bottom: 22%; left: 4px; width: 2px; border-radius: 2px; background: #a9b8ca; opacity: 0; transition: opacity .14s ease, background-color .14s ease; }
+.business-resizable-heading:hover > .business-column-resizer::before,
+.business-column-resizer:focus-visible::before,
+.business-column-resizer.is-resizing::before { opacity: 1; }
+.business-column-resizer:focus-visible { outline: 2px solid #0965e4; outline-offset: -2px; }
+.business-column-resizer:focus-visible::before,
+.business-column-resizer.is-resizing::before { background: #0965e4; }
+.business-resizable-table.is-column-resizing { cursor: col-resize; user-select: none; }

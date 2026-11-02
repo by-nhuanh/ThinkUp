@@ -146,7 +146,7 @@
               </span>
             </div>
             <h3 class="mt-3 text-[14px] font-bold leading-5">{{ currentCourse.title }}</h3>
-            <p class="mt-1 text-[11px] text-[#62748E]">Giảng viên: {{ currentCourse.instructor }}</p>
+            <p class="mt-1 text-[11px] text-[#62748E]">Giảng viên: <span [appInstructorTrigger]="currentCourse.instructor">{{ currentCourse.instructor }}</span></p>
             <div class="mt-3 flex items-center justify-between text-[11px]">
               <span class="text-[#62748E]">Hoàn thành: {{ progress }}%</span>
             </div>
