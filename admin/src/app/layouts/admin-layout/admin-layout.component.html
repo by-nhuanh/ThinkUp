@@ -22,16 +22,16 @@
     </nav>
   </aside>
   <div class="page-shell">
-    <header #utilityBar class="top-utility-bar" [class.is-dragging]="utilityDragging()" [style.right.px]="utilityRight()" aria-label="Tiện ích quản trị">
+    <header #utilityBar class="top-utility-bar" aria-label="Tiện ích quản trị" [class.is-dragging]="toolbarDragging()" [class.is-vertical]="toolbarDock() === 'left' || toolbarDock() === 'right'" [class.dock-top]="toolbarDock() === 'top'" [class.dock-right]="toolbarDock() === 'right'" [class.dock-bottom]="toolbarDock() === 'bottom'" [class.dock-left]="toolbarDock() === 'left'" [style]="toolbarStyle()">
       <div class="liquid-tools">
-        <button class="utility-drag-handle" type="button" aria-label="Kéo để đổi vị trí thanh tiện ích" title="Kéo để đổi vị trí · Dùng phím mũi tên trái/phải" (pointerdown)="beginUtilityDrag($event)" (pointermove)="moveUtilityDrag($event)" (pointerup)="endUtilityDrag($event)" (pointercancel)="endUtilityDrag($event)" (keydown)="moveUtilityByKeyboard($event)"><svg lucideGripVertical aria-hidden="true"></svg></button>
+        <button class="utility-drag-handle" type="button" aria-label="Kéo thanh tiện ích đến cạnh khác" title="Kéo để di chuyển · Alt + phím mũi tên để đổi cạnh" (pointerdown)="startToolbarDrag($event)" (keydown)="moveToolbarByKeyboard($event)"><svg lucideGripVertical aria-hidden="true"></svg></button>
         <button class="top-tool icon-only" type="button" aria-label="Cài đặt" title="Cài đặt"><img src="/assets/dashboard/header-0.svg" alt=""></button>
         <div class="top-popover-anchor">
           <button class="top-tool icon-only" type="button" aria-label="Thông báo" [attr.aria-expanded]="notificationsOpen()" title="Thông báo" (click)="notificationsOpen.set(!notificationsOpen())"><span class="top-icon-wrap"><img src="/assets/dashboard/header-1.svg" alt=""><span class="badge">2</span></span></button>
           @if (notificationsOpen()) { <div class="top-popover">Bạn có 2 thông báo mới.</div> }
         </div>
         <div class="top-popover-anchor">
-          <button class="top-tool account-tool" type="button" [attr.aria-expanded]="accountOpen()" aria-label="Tài khoản Admin" (click)="accountOpen.set(!accountOpen())"><span class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/></svg></span><span class="account-name">{{ user()?.fullName || 'Admin' }}</span><svg class="account-chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg></button>
+          <button class="top-tool account-tool icon-only" type="button" [attr.aria-expanded]="accountOpen()" aria-label="Mở menu tài khoản Admin" title="Tài khoản" (click)="accountOpen.set(!accountOpen())"><span class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/></svg></span></button>
           @if (accountOpen()) {
             <div class="top-popover account-popover">
               <div class="account-meta">
