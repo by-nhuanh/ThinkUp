@@ -4,9 +4,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: clamp(12px, 2vw, 28px);
-  min-height: 86px;
-  padding: 18px clamp(26px, 4.7vw, 82px);
+  gap: 24px;
+  height: 82px;
+  min-height: 82px;
+  max-width: 1920px;
+  margin-inline: auto;
+  padding: 0 24px;
   color: #fff;
 }
 .tu-landing-header a { text-decoration: none; }
@@ -17,36 +20,39 @@
   gap: 10px;
   color: white;
   font-family: Inter, sans-serif;
-  font-size: clamp(20px, 1.55vw, 26px);
-  font-weight: 800;
-  letter-spacing: -.035em;
+  font-size: 28.8px;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: -.025em;
   white-space: nowrap;
 }
-.tu-landing-header__logo { width: 34px; height: 34px; flex: none; }
+.tu-landing-header__logo { width: 32.8px; height: 32px; flex: none; }
 .tu-landing-header__brand-accent { color: #bde6ff; }
 .tu-landing-header__nav {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: clamp(8px, 1.25vw, 24px);
+  gap: 24px;
   min-width: 0;
 }
 .tu-landing-header__nav-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 42px;
-  border-radius: 999px;
-  padding: 8px clamp(8px, .8vw, 14px);
+  height: 26px;
+  align-items: flex-start;
+  border-bottom: 2px solid transparent;
+  padding: 0 0 4px;
+  line-height: 20px;
   color: rgba(255,255,255,.95);
-  font-size: clamp(12px, .86vw, 15px);
+  font-size: 16px;
   font-weight: 600;
   white-space: nowrap;
   transition: background-color .2s;
 }
 .tu-landing-header__nav-link:hover,
 .tu-landing-header__nav-link--active {
-  background: rgba(255,255,255,.19);
+  border-bottom-color: #c7eaff;
   color: white;
 }
 .tu-landing-header__actions { display: flex; align-items: center; gap: 12px; flex: none; }
@@ -59,12 +65,12 @@
   width: 44px;
   height: 44px;
   flex: none;
-  border: 1px solid rgba(255,255,255,.48);
+  border: 1px solid transparent;
   border-radius: 50%;
-  background: rgba(255,255,255,.07);
+  background: transparent;
   color: #fff;
 }
-.tu-landing-header__cart svg, .tu-landing-header__menu-toggle svg { width: 22px; height: 22px; }
+.tu-landing-header__cart svg, .tu-landing-header__menu-toggle svg { width: 26px; height: 26px; }
 .tu-landing-header__cart-count {
   position: absolute;
   top: -5px; right: -5px;
@@ -74,27 +80,39 @@
 }
 .tu-landing-header__login, .tu-landing-header__register {
   display: inline-flex; align-items: center; justify-content: center;
-  min-height: 44px; border-radius: 999px;
-  padding: 10px clamp(16px, 1.4vw, 26px);
-  font-size: 14px; font-weight: 700; white-space: nowrap;
+  height: 40px; min-height: 40px; border-radius: 999px;
+  padding: 0 24px;
+  font-size: 14px; font-weight: 600; white-space: nowrap;
 }
 .tu-landing-header__login {
+  width: 120px;
   border: 1px solid rgba(255,255,255,.75);
   color: #fff; background: rgba(255,255,255,.07);
 }
-.tu-landing-header__register { background: #fff; color: #0869cd; }
+.tu-landing-header__register { background: #fff; color: #0869cd; min-width: 122px; }
 .tu-landing-header a:focus-visible,
 .tu-landing-header button:focus-visible { outline: 3px solid #ffca42; outline-offset: 3px; }
 .tu-landing-header__mobile-controls { display: none; }
 .tu-landing-header__mobile-nav { display: none; }
-@media(max-width: 1279px) {
-  .tu-landing-header { padding-inline: clamp(26px, 3.2vw, 48px); }
-  .tu-landing-header__nav { gap: 3px; }
-  .tu-landing-header__nav-link { font-size: 12px; padding-inline: 7px; }
-  .tu-landing-header__actions { gap: 7px; }
+@media (max-width: 1399px) and (min-width: 1024px) {
+  .tu-landing-header { gap: 14px; }
+  .tu-landing-header__nav { gap: clamp(7px, 1.05vw, 18px); }
+  .tu-landing-header__actions { gap: 8px; }
+  .tu-landing-header__brand { font-size: 28.8px; }
+  .tu-landing-header__login { width: 110px; padding-inline: 12px; }
+  .tu-landing-header__register { min-width: 112px; padding-inline: 14px; }
 }
-@media(max-width: 1050px) {
-  .tu-landing-header { min-height: 76px; padding: 14px 28px; }
+@media (max-width: 1150px) and (min-width: 1024px) {
+  .tu-landing-header { gap: 10px; padding-inline: 18px; }
+  .tu-landing-header__nav { gap: 9px; }
+  .tu-landing-header__nav-link { font-size: 14px; }
+  .tu-landing-header__brand { font-size: 27px; }
+  .tu-landing-header__actions { gap: 5px; }
+  .tu-landing-header__login { width: 102px; }
+  .tu-landing-header__register { min-width: 100px; }
+}
+@media(max-width: 1023px) {
+  .tu-landing-header { height: 82px; min-height: 82px; padding: 0 24px; }
   .tu-landing-header__nav, .tu-landing-header__actions { display: none; }
   .tu-landing-header__mobile-controls { display: flex; align-items: center; gap: 12px; }
   .tu-landing-header__menu-toggle { cursor: pointer; }
@@ -120,9 +138,9 @@
   .tu-landing-header__mobile-auth a:last-child { background: #fff; color: #0869cd; }
 }
 @media(max-width: 480px) {
-  .tu-landing-header { padding: 12px 20px; min-height: 70px; }
-  .tu-landing-header__brand { font-size: 21px; }
-  .tu-landing-header__logo { width: 29px; height: 29px; }
+  .tu-landing-header { height: 82px; min-height: 82px; padding: 0 24px; }
+  .tu-landing-header__brand { font-size: 28.8px; }
+  .tu-landing-header__logo { width: 32.8px; height: 32px; }
 }
 @media(prefers-reduced-motion: reduce) {
   .tu-landing-header__nav-link { transition: none; }
