@@ -1,0 +1,610 @@
+<app-admin-dialog
+  title="Cấu hình không gian làm việc"
+  subtitle="Tùy chỉnh hiển thị và vận hành cá nhân cho Admin"
+  size="settings"
+  [flushBody]="true"
+  (closed)="cancel()"
+>
+  <form id="admin-settings-form" class="settings" (submit)="$event.preventDefault(); save()">
+    <nav class="settings-rail" role="tablist" aria-orientation="vertical" aria-label="Nhóm cài đặt">
+      @for (tab of tabs; track tab.id; let i = $index) {
+        <button
+          #tabButton
+          class="settings-tab"
+          type="button"
+          role="tab"
+          [id]="'settings-tab-' + tab.id"
+          [attr.aria-selected]="activeTab() === tab.id"
+          [attr.aria-controls]="'settings-panel-' + tab.id"
+          [attr.tabindex]="activeTab() === tab.id ? 0 : -1"
+          [class.is-active]="activeTab() === tab.id"
+          (click)="selectTab(tab.id)"
+          (keydown)="onTabKeydown($event, i)"
+        >
+          <span class="settings-tab__icon" aria-hidden="true">
+            @switch (tab.icon) {
+              @case ('monitor') {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="12" rx="2" />
+                  <path d="M8 20h8M12 16v4" />
+                </svg>
+              }
+              @case ('chart') {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+                </svg>
+              }
+              @case ('gear') {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="3.2" />
+                  <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.64 8.9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1Z" />
+                </svg>
+              }
+              @case ('bell') {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8" />
+                  <path d="M13.7 21a2 2 0 0 1-3.4 0" />
+                </svg>
+              }
+              @case ('keyboard') {
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="6" width="20" height="12" rx="2" />
+                  <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8" />
+                </svg>
+              }
+            }
+          </span>
+          <span class="settings-tab__copy">
+            <strong>{{ tab.label }}</strong>
+            <small>{{ tab.hint }}</small>
+          </span>
+        </button>
+      }
+    </nav>
+
+    <div
+      class="settings-panel"
+      [id]="'settings-panel-' + activeTab()"
+      role="tabpanel"
+      [attr.aria-labelledby]="'settings-tab-' + activeTab()"
+      tabindex="0"
+    >
+      @if (error(); as message) {
+        <div class="settings-error" role="alert">
+          <span>{{ message }}</span>
+          <button class="btn btn-quiet" type="button" (click)="reloadLatest()">Tải bản mới nhất</button>
+        </div>
+      }
+
+      @switch (activeTab()) {
+        @case ('general') {
+          <section class="settings-section" aria-labelledby="settings-general-theme">
+            <header class="settings-heading">
+              <h3 id="settings-general-theme">1. Chủ đề màu sắc</h3>
+              <p>Chọn giao diện hiển thị phù hợp với môi trường làm việc của bạn.</p>
+            </header>
+
+            <div class="theme-cards" role="radiogroup" aria-label="Chủ đề màu sắc">
+              @for (option of themeOptions; track option.value) {
+                <label class="theme-card" [class.is-selected]="draft().theme === option.value">
+                  <input
+                    type="radio"
+                    name="admin-theme"
+                    [value]="option.value"
+                    [checked]="draft().theme === option.value"
+                    (change)="onThemeChange(option.value)"
+                  >
+                  <span class="theme-card__icon" aria-hidden="true">
+                    @if (option.value === 'light') {
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                        <circle cx="12" cy="12" r="4" />
+                        <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+                      </svg>
+                    } @else {
+                      <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                        <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+                      </svg>
+                    }
+                  </span>
+                  <span class="theme-card__label">{{ option.label }}</span>
+                </label>
+              }
+            </div>
+          </section>
+
+          <section class="settings-section" aria-labelledby="settings-general-density">
+            <header class="settings-heading">
+              <h3 id="settings-general-density">2. Mật độ hiển thị</h3>
+              <p>Điều chỉnh khoảng cách hiển thị để tối ưu không gian trải nghiệm.</p>
+            </header>
+
+            <div class="density-cards" role="radiogroup" aria-label="Mật độ hiển thị">
+              @for (option of densityOptions; track option.value) {
+                <label
+                  class="density-card"
+                  [class.is-selected]="draft().density === option.value"
+                  [attr.title]="option.hint"
+                >
+                  <input
+                    type="radio"
+                    name="admin-density"
+                    [value]="option.value"
+                    [checked]="draft().density === option.value"
+                    (change)="onDensityChange(option.value)"
+                  >
+                  <span class="density-card__preview" aria-hidden="true">
+                    <span></span><span></span><span></span>
+                  </span>
+                  <span class="density-card__copy">
+                    <strong>{{ option.label }}</strong>
+                    <small>{{ option.hint }}</small>
+                  </span>
+                </label>
+              }
+            </div>
+          </section>
+
+          <section class="settings-section" aria-labelledby="settings-general-support">
+            <header class="settings-heading">
+              <h3 id="settings-general-support">3. Thành phần bổ trợ</h3>
+              <p>Bật hoặc tắt các khu vực hỗ trợ định vị thông tin trên màn hình.</p>
+            </header>
+
+            <label class="switch-row">
+              <span class="switch-copy">
+                <strong>Hiển thị thanh dẫn đường (Breadcrumb)</strong>
+                <small>Hiển đường dẫn vị trí trang hiện tại để dễ dàng quay lại thư mục cha.</small>
+              </span>
+              <input
+                class="switch"
+                type="checkbox"
+                role="switch"
+                [checked]="draft().breadcrumbsVisible"
+                (change)="onBreadcrumbsChange($event)"
+              >
+            </label>
+
+            <label class="switch-row">
+              <span class="switch-copy">
+                <strong>Hiển thị thanh trạng thái (Status bar)</strong>
+                <small>Hiển thị thông tin trạng thái, phiên bản hoặc thông báo nhanh ở cuối trang.</small>
+              </span>
+              <input
+                class="switch"
+                type="checkbox"
+                role="switch"
+                [checked]="draft().statusBarEnabled"
+                (change)="onStatusBarChange($event)"
+              >
+            </label>
+          </section>
+        }
+
+        @case ('data') {
+          <section class="settings-section" id="settings-display" aria-labelledby="settings-data-format">
+            <header class="settings-heading">
+              <h3 id="settings-data-format">1. Quy cách hiển thị số lượng</h3>
+              <p>Chọn cách hiển thị số liệu trên Dashboard và các bảng thống kê.</p>
+            </header>
+
+            <div class="format-cards" role="radiogroup" aria-label="Quy cách hiển thị số lượng">
+              @for (option of numberFormatOptions; track option.value) {
+                <label class="format-card" [class.is-selected]="display().numberFormat === option.value">
+                  <input
+                    type="radio"
+                    name="admin-number-format"
+                    [value]="option.value"
+                    [checked]="display().numberFormat === option.value"
+                    (change)="setNumberFormat(option.value)"
+                  >
+                  <span class="format-card__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                      <rect x="5" y="3" width="14" height="18" rx="2" />
+                      <path d="M8.5 8h7M8.5 12h7M8.5 16h4" />
+                    </svg>
+                  </span>
+                  <span class="format-card__copy">
+                    <strong>{{ option.label }}</strong>
+                    <small>{{ option.hint }}</small>
+                  </span>
+                </label>
+              }
+            </div>
+          </section>
+
+          <section class="settings-section" aria-labelledby="settings-data-privacy">
+            <header class="settings-heading">
+              <h3 id="settings-data-privacy">2. Ẩn số liệu nhạy cảm (Chế độ riêng tư)</h3>
+              <p>Tự động làm mờ các con số doanh thu và sử dụng khi Admin làm việc ở nơi công cộng.</p>
+            </header>
+
+            <label class="switch-row switch-row--boxed">
+              <span class="switch-row__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 3l18 18" />
+                  <path d="M10.6 10.7a3 3 0 0 0 4.2 4.2" />
+                  <path d="M9.9 5.2A10.4 10.4 0 0 1 12 5c5 0 9 4.5 9 7a12.4 12.4 0 0 1-2.5 3.3M6.2 6.2A12 12 0 0 0 3 12c0 2.5 4 7 9 7a10 10 0 0 0 4.1-.9" />
+                </svg>
+              </span>
+              <span class="switch-copy">
+                <strong>Chế độ riêng tư</strong>
+                <small>Khi bật, toàn bộ con số tiền tệ sẽ được làm mờ để tăng tính bảo mật.</small>
+              </span>
+              <input
+                class="switch"
+                type="checkbox"
+                role="switch"
+                name="admin-privacy"
+                [checked]="privacyEnabled()"
+                (change)="togglePrivacy($event)"
+              >
+            </label>
+          </section>
+        }
+
+        @case ('system') {
+          <section class="settings-section" aria-labelledby="settings-system-timezone">
+            <header class="settings-heading">
+              <h3 id="settings-system-timezone">1. Múi giờ làm việc &amp; Báo cáo</h3>
+              <p>Dùng để đồng bộ mốc thời gian chốt số doanh thu, lịch thi và trích xuất báo cáo học tập.</p>
+            </header>
+
+            <label class="field">
+              <span class="field-label">Múi giờ làm việc</span>
+              <span class="field-control">
+                <span class="field-control__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 7v5l3 2" />
+                  </svg>
+                </span>
+                <select class="field-select" [value]="draft().timezone" (change)="onTimezoneChange($event)">
+                  @if (!hasTimezone()) {
+                    <option [value]="draft().timezone">{{ timezoneLabel(draft().timezone) }}</option>
+                  }
+                  @for (zone of timezones; track zone) {
+                    <option [value]="zone">{{ timezoneLabel(zone) }}</option>
+                  }
+                </select>
+              </span>
+            </label>
+
+            <p class="field-hint">
+              <span class="field-preview">{{ timezonePreview() }}</span>
+              @if (timezoneOffset()) { <span class="field-offset">{{ timezoneOffset() }}</span> }
+            </p>
+          </section>
+
+          <section class="settings-section" aria-labelledby="settings-system-language">
+            <header class="settings-heading">
+              <h3 id="settings-system-language">2. Ngôn ngữ bảng điều khiển</h3>
+              <p>Thay đổi ngôn ngữ hiển thị trên toàn bộ Cổng Quản trị.</p>
+            </header>
+
+            <label class="field">
+              <span class="field-label">Ngôn ngữ hiển thị</span>
+              <span class="field-control">
+                <span class="field-control__icon" aria-hidden="true">🇻🇳</span>
+                <select class="field-select" [value]="language()" (change)="onLanguageChange($event)">
+                  @for (option of languages; track option.value) {
+                    <option [value]="option.value" [disabled]="option.disabled">
+                      {{ option.label }}{{ option.disabled ? ' (chưa sẵn sàng)' : '' }}
+                    </option>
+                  }
+                </select>
+              </span>
+            </label>
+          </section>
+
+          <section class="settings-section" aria-labelledby="settings-system-emergency">
+            <header class="settings-heading">
+              <h3 id="settings-system-emergency">3. Cảnh báo sự cố nền tảng</h3>
+              <p>Nhận cảnh báo nếu khi sập cổng thanh toán, lỗi máy chủ hoặc phát hiện tấn công đăng nhập bất thường.</p>
+            </header>
+
+            <label class="switch-row switch-row--inline">
+              <input
+                class="switch"
+                type="checkbox"
+                role="switch"
+                name="admin-emergency-alerts"
+                [checked]="notifications().emergencyAlerts"
+                (change)="onNotificationToggle('emergencyAlerts', $event)"
+              >
+              <span class="switch-copy">
+                <strong>Nhận thông báo sự cố khẩn cấp</strong>
+              </span>
+            </label>
+          </section>
+
+          <section class="settings-section" aria-labelledby="settings-system-report">
+            <header class="settings-heading">
+              <h3 id="settings-system-report">4. Báo cáo định kỳ qua Email</h3>
+              <p>Tự động gửi tệp tóm tắt báo cáo về email cá nhân.</p>
+            </header>
+
+            <div class="report-card">
+              <label class="report-check">
+                <input
+                  type="checkbox"
+                  name="admin-email-report"
+                  [checked]="notifications().emailReportEnabled"
+                  (change)="onEmailReportToggle($event)"
+                >
+                <span class="switch-copy">
+                  <strong>Tự động gửi tóm tắt báo cáo về email cá nhân</strong>
+                  <small>Email nhận báo cáo: {{ adminEmail() }} (email nội bộ)</small>
+                </span>
+              </label>
+
+              <div class="report-grid">
+                <label class="field">
+                  <span class="field-label">Tần suất gửi</span>
+                  <span class="field-control">
+                    <span class="field-control__icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                        <rect x="3" y="5" width="18" height="16" rx="2" />
+                        <path d="M8 3v4M16 3v4M3 10h18" />
+                      </svg>
+                    </span>
+                    <select
+                      class="field-select"
+                      [value]="notifications().emailReportFrequency"
+                      [disabled]="!notifications().emailReportEnabled"
+                      (change)="onReportFrequencyChange($event)"
+                    >
+                      @for (option of reportFrequencyOptions; track option.value) {
+                        <option [value]="option.value">{{ option.label }}</option>
+                      }
+                    </select>
+                  </span>
+                </label>
+
+                <fieldset class="field report-format">
+                  <legend class="field-label">Định dạng tệp đính kèm</legend>
+                  <div class="radio-row">
+                    @for (option of reportFormatOptions; track option.value) {
+                      <label class="radio-option" [class.is-selected]="notifications().emailReportFormat === option.value">
+                        <input
+                          type="radio"
+                          name="admin-report-format"
+                          [value]="option.value"
+                          [checked]="notifications().emailReportFormat === option.value"
+                          [disabled]="!notifications().emailReportEnabled"
+                          (change)="setReportFormat(option.value)"
+                        >
+                        <span class="radio-option__dot" aria-hidden="true"></span>
+                        <span>{{ option.label }}</span>
+                      </label>
+                    }
+                  </div>
+                </fieldset>
+              </div>
+
+              <p class="info-note">
+                Gửi email đang chờ máy chủ: bản này chỉ lưu lựa chọn trên trình duyệt, chưa có scheduler
+                báo cáo (B-21) nên chưa thể gửi thật.
+              </p>
+            </div>
+          </section>
+        }
+
+        @case ('notifications') {
+          <section
+            class="settings-section"
+            aria-labelledby="settings-notifications"
+          >
+            <header class="settings-heading">
+              <h3 id="settings-notifications">1. Âm thanh thông báo sự vụ</h3>
+              <p>Phát âm thanh chuông nhẹ khi có sự vụ mới như Ticket hỗ trợ khẩn cấp hoặc Đơn hàng mới.</p>
+            </header>
+
+            <div class="switch-row switch-row--boxed">
+              <input
+                class="switch"
+                type="checkbox"
+                role="switch"
+                name="admin-notification-sound"
+                [checked]="soundEnabled()"
+                (change)="onSoundChange($event)"
+              >
+              <span class="switch-row__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 5 6 9H3v6h3l5 4V5Z" />
+                  <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" />
+                </svg>
+              </span>
+              <span class="switch-copy">
+                <strong>Phát âm thanh khi có sự vụ mới</strong>
+                <small>Hệ thống sẽ phát âm thanh thông báo khi có Ticket hỗ trợ khẩn cấp hoặc Đơn hàng mới.</small>
+              </span>
+              <button class="btn btn-secondary btn-inline" type="button" [disabled]="!soundEnabled()" (click)="testSound()">
+                Nghe thử
+              </button>
+            </div>
+          </section>
+
+          <section class="settings-section" aria-labelledby="settings-sla">
+            <header class="settings-heading">
+              <h3 id="settings-sla">2. Nhắc nhở hạn SLA</h3>
+              <p>Tùy chọn nhận cảnh báo khi có các công việc sắp quá hạn.</p>
+            </header>
+
+            <label class="check-card">
+              <input
+                type="checkbox"
+                name="admin-sla-course"
+                [checked]="notifications().slaCoursePending"
+                (change)="onNotificationToggle('slaCoursePending', $event)"
+              >
+              <span class="check-card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 7v5l3 2" />
+                </svg>
+              </span>
+              <span class="switch-copy">
+                <strong>Cảnh báo khi khóa học chờ duyệt còn ≤ 8 giờ</strong>
+                <small>Thông báo khi có khóa học đang chờ duyệt và thời gian còn lại nhỏ hơn hoặc bằng 8 giờ.</small>
+              </span>
+            </label>
+
+            <label class="check-card">
+              <input
+                type="checkbox"
+                name="admin-sla-ticket"
+                [checked]="notifications().slaTicketOverdue"
+                (change)="onNotificationToggle('slaTicketOverdue', $event)"
+              >
+              <span class="check-card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 7v5l3 2" />
+                </svg>
+              </span>
+              <span class="switch-copy">
+                <strong>Cảnh báo khi Ticket quá hạn 4 giờ chưa xử lý</strong>
+                <small>Thông báo khi có Ticket hỗ trợ quá hạn 4 giờ chưa được xử lý.</small>
+              </span>
+            </label>
+
+            <p class="info-note">
+              Nhắc SLA cần dữ liệu thời gian thực từ module hỗ trợ/khóa học và scheduler máy chủ (B-22);
+              bản này chỉ lưu lựa chọn, chưa gửi cảnh báo thật.
+            </p>
+          </section>
+        }
+
+        @case ('shortcuts') {
+          <section class="settings-section" aria-labelledby="settings-shortcuts">
+            <header class="settings-heading">
+              <h3 id="settings-shortcuts">Danh sách phím tắt tiện ích</h3>
+              <p>Sử dụng các phím tắt để thao tác nhanh hơn trong quá trình quản trị hệ thống.</p>
+            </header>
+
+            <ul class="app-shortcut-list">
+              @for (shortcut of appShortcuts; track shortcut.label) {
+                <li class="app-shortcut" [class.is-inactive]="shortcut.status !== 'active'">
+                  <span class="app-shortcut__keys">
+                    @for (key of shortcut.keys; track key) { <kbd>{{ key }}</kbd> }
+                  </span>
+                  <span class="app-shortcut__icon" aria-hidden="true">
+                    @switch (shortcut.icon) {
+                      @case ('search') {
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                          <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+                        </svg>
+                      }
+                      @case ('home') {
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1Z" />
+                        </svg>
+                      }
+                      @case ('queue') {
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                          <rect x="4" y="4" width="16" height="16" rx="2" />
+                          <path d="M8 9h8M8 13h8M8 17h5" />
+                        </svg>
+                      }
+                      @case ('close') {
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                          <path d="M6 6l12 12M18 6 6 18" />
+                        </svg>
+                      }
+                    }
+                  </span>
+                  <span class="app-shortcut__copy">
+                    <strong>{{ shortcut.label }}</strong>
+                    <small>{{ shortcut.description }}</small>
+                  </span>
+                  <span class="shortcut-status" [attr.data-status]="shortcut.status">{{ shortcut.statusLabel }}</span>
+                </li>
+              }
+            </ul>
+
+            <p class="info-note">
+              Lưu ý: Các phím tắt hoạt động trên toàn bộ hệ thống. Vui lòng đảm bảo không bị trùng với
+              phím tắt của trình duyệt.
+            </p>
+
+            <div class="shortcut-subsection">
+              <header class="settings-heading">
+                <h4 id="settings-toolbar-shortcuts">Phím tắt neo thanh tiện ích (tùy chọn)</h4>
+                <p>Bật để dùng phím tắt thật sự có trong shell quản trị. Mặc định tắt để tránh chiếm phím toàn trang.</p>
+              </header>
+
+            <label class="switch-row">
+              <span class="switch-copy">
+                <strong>Tùy chỉnh phím tắt</strong>
+                <small>Khi bật, phím tắt neo thanh tiện ích hoạt động toàn trang, trừ khi đang gõ trong ô nhập.</small>
+              </span>
+              <input
+                class="switch"
+                type="checkbox"
+                role="switch"
+                [checked]="shortcutsEnabled()"
+                (change)="onShortcutsToggle($event)"
+              >
+            </label>
+
+            @if (shortcutsEnabled()) {
+              <ul class="app-shortcut-list shortcut-list--editable">
+                @for (row of shortcutRows(); track row.action) {
+                  <li class="app-shortcut shortcut-row">
+                    <span class="app-shortcut__keys">
+                      @for (key of row.chord.split('+'); track key) { <kbd>{{ key }}</kbd> }
+                    </span>
+                    <span class="app-shortcut__copy">
+                      <strong>{{ row.label }}</strong>
+                      <small>{{ row.chord }}</small>
+                    </span>
+                    <button
+                      class="btn btn-secondary btn-inline"
+                      type="button"
+                      (click)="startCapture(row.action)"
+                      (keydown)="captureKey($event, row.action)"
+                    >
+                      {{ capturingAction() === row.action ? 'Nhấn tổ hợp…' : 'Ghi lại' }}
+                    </button>
+                  </li>
+                }
+              </ul>
+              @if (shortcutError(); as message) {
+                <p class="settings-error" role="alert">{{ message }}</p>
+              }
+              <div class="settings-action-row">
+                <button class="btn btn-quiet" type="button" (click)="resetShortcuts()">Khôi phục phím tắt mặc định</button>
+              </div>
+            }
+            </div>
+          </section>
+        }
+      }
+
+      @if (resetConfirming()) {
+        <div class="reset-confirm" role="group" aria-labelledby="settings-reset-title">
+          <p id="settings-reset-title">Khôi phục toàn bộ tuỳ chọn về mặc định? Bạn vẫn cần bấm Lưu cấu hình để ghi thay đổi máy chủ.</p>
+          <div class="reset-actions">
+            <button class="btn btn-quiet" type="button" (click)="cancelReset()">Giữ nguyên</button>
+            <button #confirmResetButton class="btn btn-danger" type="button" (click)="confirmReset()">Khôi phục</button>
+          </div>
+        </div>
+      }
+    </div>
+  </form>
+
+  <div dialogFooter class="settings-footer">
+    <button class="btn btn-quiet btn-reset" type="button" [disabled]="saving()" (click)="requestReset()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+        <path d="M3 3v5h5" />
+      </svg>
+      Khôi phục mặc định
+    </button>
+    <span class="settings-footer__spacer"></span>
+    <button class="btn btn-secondary" type="button" [disabled]="saving()" (click)="cancel()">Hủy bỏ</button>
+    <button class="btn btn-primary" type="submit" form="admin-settings-form" [disabled]="!dirty() || saving()">
+      {{ saving() ? 'Đang lưu…' : 'Lưu cấu hình' }}
+    </button>
+  </div>
+</app-admin-dialog>

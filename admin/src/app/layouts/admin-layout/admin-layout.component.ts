@@ -1,19 +1,91 @@
-import { Component, ElementRef, HostListener, ViewChild, inject, signal } from '@angular/core';
+import { Component, ElementRef, HostListener, Injector, ViewChild, afterNextRender, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
 import { LucideGripVertical, LucideHeadphones } from '@lucide/angular';
 import { AdminAuthService } from '../../core/services/admin-auth.service';
+import { AdminNotificationsService } from '../../core/services/admin-notifications.service';
+import { AdminPreferencesService } from '../../core/services/admin-preferences.service';
+import { AdminDisplayPreferencesService } from '../../core/services/admin-display-preferences.service';
+import { AdminNotificationSoundService } from '../../core/services/admin-notification-sound.service';
+import { AdminShortcutsService } from '../../core/services/admin-shortcuts.service';
+import { roleLabel } from '../../core/services/admin-profile.presenter';
+import { AdminProfileDialogComponent } from './components/admin-profile-dialog/admin-profile-dialog.component';
+import { AdminSettingsDialogComponent } from './components/admin-settings-dialog/admin-settings-dialog.component';
+import { AdminNotificationsPanelComponent } from './components/admin-notifications-panel/admin-notifications-panel.component';
+import { AdminStatusBarComponent } from './components/admin-status-bar/admin-status-bar.component';
+
+interface Breadcrumb {
+  label: string;
+  path?: string;
+}
+
+const BREADCRUMB_TITLES: Record<string, string> = {
+  '/': 'Dashboard',
+  '/users/lecturers': 'Giảng viên',
+  '/users/students': 'Học viên',
+  '/business/orders': 'Đơn hàng',
+  '/business/vouchers': 'Voucher',
+  '/business/payouts': 'Chi trả giảng viên',
+  '/support/tickets': 'Ticket hỗ trợ',
+  '/support/complaints': 'Khiếu nại & Sự cố',
+  '/support/faq': 'FAQ',
+  '/auth/change-password': 'Đổi mật khẩu',
+  '/auth/setup-2fa': 'Thiết lập xác thực hai lớp',
+  '/auth/backup-codes': 'Mã dự phòng',
+  '/auth/password-expiring': 'Mật khẩu sắp hết hạn',
+  '/auth/password-expired': 'Mật khẩu đã hết hạn'
+};
+
+const SECTION_TITLES: Record<string, string> = {
+  users: 'Quản lý người dùng',
+  business: 'Quản lý kinh doanh',
+  support: 'Quản lý hỗ trợ',
+  auth: 'Bảo mật tài khoản'
+};
+
+function buildBreadcrumbs(url: string): Breadcrumb[] {
+  const path = url.split('?')[0].split('#')[0] || '/';
+  const title = BREADCRUMB_TITLES[path];
+  if (title) {
+    if (path === '/') return [{ label: title }];
+    const [section] = path.split('/').filter(Boolean);
+    const parent = SECTION_TITLES[section];
+    return parent ? [{ label: parent }, { label: title }] : [{ label: title }];
+  }
+  const segments = path.split('/').filter(Boolean);
+  if (!segments.length) return [{ label: 'Dashboard' }];
+  const crumbs: Breadcrumb[] = [{ label: 'Dashboard', path: '/' }];
+  const section = SECTION_TITLES[segments[0]];
+  if (section) crumbs.push({ label: section, path: `/${segments[0]}` });
+  // Route con chưa có tiêu đề tĩnh (ví dụ trang chi tiết) thì dùng id đã giải mã.
+  crumbs.push({ label: decodeURIComponent(segments[segments.length - 1]) });
+  return crumbs;
+}
 
 @Component({
   selector: 'app-admin-layout',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, LucideHeadphones, LucideGripVertical],
+  imports: [
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    LucideHeadphones,
+    LucideGripVertical,
+    AdminProfileDialogComponent,
+    AdminSettingsDialogComponent,
+    AdminNotificationsPanelComponent,
+    AdminStatusBarComponent
+  ],
   templateUrl: './admin-layout.component.html',
   styleUrl: './admin-layout.component.css'
 })
 export class AdminLayoutComponent {
   @ViewChild('utilityBar') private utilityBar?: ElementRef<HTMLElement>;
+  @ViewChild('accountButton') private accountButton?: ElementRef<HTMLButtonElement>;
+  @ViewChild('accountPopover') private accountPopover?: ElementRef<HTMLElement>;
+  @ViewChild('settingsButton') private settingsButton?: ElementRef<HTMLButtonElement>;
+  @ViewChild('bellButton') private bellButton?: ElementRef<HTMLButtonElement>;
 
   private readonly toolbarDockStorageKey = 'thinkup_admin_toolbar_dock';
   private readonly toolbarOffsetStorageKey = 'thinkup_admin_toolbar_offset';
@@ -22,15 +94,40 @@ export class AdminLayoutComponent {
   private dragSize = { width: 0, height: 0 };
   private readonly auth = inject(AdminAuthService);
   private readonly router = inject(Router);
+  private readonly preferences = inject(AdminPreferencesService);
+  private readonly displayPreferences = inject(AdminDisplayPreferencesService);
+  private readonly notifications = inject(AdminNotificationsService);
+  private readonly notificationSound = inject(AdminNotificationSoundService);
+  private readonly shortcuts = inject(AdminShortcutsService);
+  private readonly injector = inject(Injector);
+  private lastUnread: number | null = null;
 
   readonly user = this.auth.currentUser;
+  readonly roleLabel = roleLabel;
+  readonly appliedPreferences = this.preferences.applied;
+  readonly displayPrivacy = this.displayPreferences.privacyMode;
+  readonly unreadNotifications = this.notifications.unread;
+  readonly notificationBadge = this.notifications.badgeText;
   readonly collapsed = signal(false);
   readonly accountOpen = signal(false);
   readonly notificationsOpen = signal(false);
+  readonly settingsOpen = signal(false);
+  readonly profileOpen = signal(false);
+  readonly profileLoading = signal(false);
+  readonly profileError = signal<string | null>(null);
+  readonly accountPopoverStyle = signal<Record<string, string> | null>(null);
   readonly toolbarDock = signal<ToolbarDock>(this.restoreToolbarDock());
   readonly toolbarOffset = signal(this.restoreToolbarOffset());
   readonly toolbarDragging = signal(false);
   readonly toolbarDragPosition = signal({ x: 0, y: 0 });
+  private readonly currentUrl = toSignal(
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map((event) => event.urlAfterRedirects)
+    ),
+    { initialValue: this.router.url }
+  );
+  readonly breadcrumbs = computed(() => buildBreadcrumbs(this.currentUrl()));
   readonly businessOpen = signal(typeof window !== 'undefined' && window.location.pathname.startsWith('/business/'));
   readonly supportOpen = signal(typeof window !== 'undefined' && window.location.pathname.startsWith('/support/'));
   readonly usersOpen = signal(typeof window !== 'undefined' && window.location.pathname.startsWith('/users/'));
@@ -69,6 +166,61 @@ export class AdminLayoutComponent {
     { label: 'Giảng viên', path: '/users/lecturers' },
     { label: 'Học viên', path: '/users/students' }
   ];
+
+  constructor() {
+    // Nạp tuỳ chọn của admin đang đăng nhập; lỗi được service ghi nhận, layout giữ mặc định.
+    this.preferences.load().subscribe({ error: () => undefined });
+    // Badge phải có số thật ngay khi vào layout, không chờ mở panel.
+    this.notifications.refresh(true, false);
+    // P8 — chime chỉ khi unread tăng sau lần đồng bộ đầu; bỏ qua thông báo bảo mật.
+    effect(() => {
+      const unread = this.notifications.unread();
+      if (!this.notifications.initialized()) return;
+      if (this.lastUnread === null) {
+        this.lastUnread = unread;
+        return;
+      }
+      if (unread > this.lastUnread) {
+        const newest = this.notifications.items()[0];
+        if (newest?.type !== 'security') this.notificationSound.play();
+      }
+      this.lastUnread = unread;
+    });
+  }
+
+  toggleNotifications(): void {
+    if (this.notificationsOpen()) {
+      this.closeNotifications();
+      return;
+    }
+    this.closeAccountMenu(false);
+    this.notificationsOpen.set(true);
+    this.notifications.openPanel();
+  }
+
+  closeNotifications(returnFocus = true): void {
+    if (!this.notificationsOpen()) return;
+    this.notificationsOpen.set(false);
+    if (returnFocus) setTimeout(() => this.bellButton?.nativeElement.focus());
+  }
+
+  openSettings(): void {
+    this.closeAccountMenu(false);
+    this.notificationsOpen.set(false);
+    this.preferences.beginEditing();
+    this.settingsOpen.set(true);
+    // Làm mới nền; linkedSignal trong hộp thoại sẽ đồng bộ khi dữ liệu về.
+    this.preferences.load(true).subscribe({ error: () => undefined });
+  }
+
+  closeSettings(): void {
+    this.settingsOpen.set(false);
+    // Huỷ hộp thoại có thể đổi lại breadcrumb/thanh trạng thái và dựng lại thanh công cụ,
+    // nên trả focus sau khi render xong để không bám vào nút đã bị thay thế.
+    afterNextRender(() => {
+      if (this.settingsButton?.nativeElement.isConnected) this.settingsButton.nativeElement.focus();
+    }, { injector: this.injector });
+  }
 
   startToolbarDrag(event: PointerEvent): void {
     if (event.button !== 0) return;
@@ -152,6 +304,7 @@ export class AdminLayoutComponent {
   @HostListener('window:resize')
   keepToolbarInViewport(): void {
     this.toolbarOffset.set(this.clampToolbarOffset(this.toolbarDock(), this.toolbarOffset()));
+    if (this.accountOpen()) this.positionAccountPopover();
   }
 
   toolbarStyle(): Record<string, string> {
@@ -184,10 +337,203 @@ export class AdminLayoutComponent {
     this.usersOpen.update(value => !value);
   }
 
-  logout(): void {
-    this.auth.logout();
+  toggleAccountMenu(): void {
+    if (this.accountOpen()) {
+      this.closeAccountMenu(false);
+      return;
+    }
+
+    this.notificationsOpen.set(false);
+    this.accountOpen.set(true);
+    // Chạy sau khi popover đã render để focus và đo vị trí không phụ thuộc timing.
+    afterNextRender(() => {
+      this.focusAccountItem(0);
+      this.positionAccountPopover();
+    }, { injector: this.injector });
+  }
+
+  closeAccountMenu(returnFocus: boolean): void {
+    if (!this.accountOpen()) return;
     this.accountOpen.set(false);
-    this.router.navigate(['/login']);
+    this.accountPopoverStyle.set(null);
+    if (returnFocus) {
+      setTimeout(() => this.accountButton?.nativeElement.focus());
+    }
+  }
+
+  onAccountMenuKeydown(event: KeyboardEvent): void {
+    const items = this.accountMenuItems();
+    if (!items.length) return;
+
+    if (event.key === 'Tab') {
+      this.closeAccountMenu(false);
+      return;
+    }
+
+    const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement);
+    let nextIndex: number | null = null;
+
+    if (event.key === 'ArrowDown') nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % items.length;
+    if (event.key === 'ArrowUp') nextIndex = currentIndex <= 0 ? items.length - 1 : currentIndex - 1;
+    if (event.key === 'Home') nextIndex = 0;
+    if (event.key === 'End') nextIndex = items.length - 1;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.closeAccountMenu(true);
+      return;
+    }
+
+    if (nextIndex === null) return;
+    event.preventDefault();
+    items[nextIndex].focus();
+  }
+
+  /*
+   * Một listener duy nhất cho pointerdown: nhiều @HostListener cùng tên sự kiện
+   * trên cùng component có thể bị ghi đè, làm mất hành vi đóng menu tài khoản.
+   */
+  @HostListener('document:pointerdown', ['$event'])
+  closePopoversOnOutsidePointer(event: PointerEvent): void {
+    // Web Audio chỉ mở được trong một gesture thật.
+    this.notificationSound.unlock();
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (this.accountOpen() && !target.closest('.account-tool, .account-popover')) {
+      this.closeAccountMenu(false);
+    }
+    if (this.notificationsOpen() && !target.closest('.notifications-popover, .top-tool[aria-label="Thông báo"]')) {
+      this.closeNotifications(false);
+    }
+  }
+
+  /** P10 — opt-in global dock shortcuts; no-op while the service is disabled. */
+  @HostListener('document:keydown', ['$event'])
+  runGlobalShortcut(event: KeyboardEvent): void {
+    const target = event.target;
+    if (target instanceof HTMLElement) {
+      const tag = target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable) return;
+    }
+    const action = this.shortcuts.actionFor(event);
+    if (!action) return;
+    event.preventDefault();
+    const dock: ToolbarDock = action.replace('dock-', '') as ToolbarDock;
+    this.toolbarDock.set(dock);
+    this.toolbarOffset.set(this.clampToolbarOffset(dock, this.toolbarOffset()));
+    this.persistToolbarPosition();
+  }
+
+  @HostListener('document:keydown.escape')
+  closeAccountOnEscape(): void {
+    this.closeAccountMenu(true);
+    this.closeNotifications(true);
+  }
+
+  openProfile(): void {
+    this.closeAccountMenu(false);
+    this.profileOpen.set(true);
+    this.loadProfile();
+  }
+
+  retryProfile(): void {
+    this.loadProfile();
+  }
+
+  closeProfile(): void {
+    this.profileOpen.set(false);
+    setTimeout(() => this.accountButton?.nativeElement.focus());
+  }
+
+  openSecuritySettings(): void {
+    this.closeAccountMenu(false);
+    void this.router.navigate(['/auth/change-password'], {
+      queryParams: { returnUrl: this.router.url }
+    });
+  }
+
+  signOut(): void {
+    this.closeAccountMenu(false);
+    this.closeNotifications(false);
+    this.notifications.reset();
+    this.auth.signOut().subscribe({
+      next: () => void this.router.navigate(['/login']),
+      error: () => void this.router.navigate(['/login'])
+    });
+  }
+
+  private loadProfile(): void {
+    if (!this.user()) return;
+    this.profileError.set(null);
+    this.profileLoading.set(true);
+    this.auth.refreshCurrentUser().subscribe({
+      next: () => this.profileLoading.set(false),
+      error: (error: unknown) => {
+        this.profileLoading.set(false);
+        this.profileError.set(error instanceof Error && error.message
+          ? error.message
+          : 'Không thể tải hồ sơ mới. Đang hiển thị dữ liệu phiên hiện tại.');
+      }
+    });
+  }
+
+  private accountMenuItems(): HTMLButtonElement[] {
+    const popover = this.accountPopover?.nativeElement;
+    if (!popover) return [];
+    return Array.from(popover.querySelectorAll<HTMLButtonElement>('[data-account-item]'));
+  }
+
+  private focusAccountItem(index: number): void {
+    this.accountMenuItems()[index]?.focus();
+  }
+
+  /**
+   * Đặt popover tài khoản theo viewport thay vì để CSS tràn khỏi màn hình.
+   * Vị trí ở viewport đủ lớn giữ nguyên hướng mở hiện tại của từng dock.
+   */
+  private positionAccountPopover(): void {
+    const trigger = this.accountButton?.nativeElement;
+    const popover = this.accountPopover?.nativeElement;
+    if (!trigger || !popover) return;
+
+    const anchor = trigger.getBoundingClientRect();
+    const panel = popover.getBoundingClientRect();
+    const anchorBox = popover.parentElement?.getBoundingClientRect();
+    if (!anchorBox) return;
+    const gap = 10;
+    const margin = 12;
+    let left = anchor.left;
+    let top = anchor.top;
+
+    switch (this.toolbarDock()) {
+      case 'left':
+        left = anchor.right + gap;
+        top = anchor.top;
+        break;
+      case 'right':
+        left = anchor.left - panel.width - gap;
+        top = anchor.top;
+        break;
+      case 'top':
+        left = anchor.right - panel.width;
+        top = anchor.bottom + gap;
+        break;
+      case 'bottom':
+        left = anchor.right - panel.width;
+        top = anchor.top - panel.height - gap;
+        break;
+    }
+
+    left = this.clamp(left, margin, Math.max(margin, window.innerWidth - panel.width - margin));
+    top = this.clamp(top, margin, Math.max(margin, window.innerHeight - panel.height - margin));
+    // Popover nằm trong vùng có backdrop-filter nên `fixed` sẽ bị neo vào ancestor;
+    // dùng absolute theo anchor và quy đổi từ toạ độ viewport.
+    this.accountPopoverStyle.set({
+      position: 'absolute',
+      left: `${left - anchorBox.left}px`,
+      top: `${top - anchorBox.top}px`,
+      right: 'auto',
+      bottom: 'auto'
+    });
   }
 
   private restoreToolbarDock(): ToolbarDock {

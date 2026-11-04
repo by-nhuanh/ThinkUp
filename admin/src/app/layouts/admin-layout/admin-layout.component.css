@@ -1,5 +1,5 @@
 :host { display: block; }
-.admin-shell { --sidebar-width: 256px; display: grid; grid-template-columns: var(--sidebar-width) minmax(0,1fr); min-height: 100vh; background: #f4f8ff; }
+.admin-shell { --sidebar-width: 256px; display: grid; grid-template-columns: var(--sidebar-width) minmax(0,1fr); min-height: 100vh; background: var(--admin-canvas, #f4f8ff); color: var(--admin-text-body, #123260); }
 .admin-shell.is-collapsed { --sidebar-width: 72px; }
 .sidebar { position: sticky; top: 0; align-self: start; display: flex; flex-direction: column; height: 100vh; overflow: visible; background: #051638; color: #eef6ff; padding: 12px 9px; }
 .brand { display: flex; align-items: flex-start; gap: 8px; height: 58px; padding: 0 7px; position: relative; }
@@ -30,7 +30,7 @@
 .is-collapsed .brand:hover > img, .is-collapsed .brand:focus-within > img { opacity: 0; }
 .is-collapsed .brand:hover .collapse-button, .is-collapsed .brand:focus-within .collapse-button { opacity: 1; pointer-events: auto; }
 .is-collapsed .nav-item { justify-content: center; }
-.page-shell { min-width: 0; }
+.page-shell { min-width: 0; background: var(--admin-canvas, #f4f8ff); }
 .top-utility-bar { position: fixed; z-index: 25; display: block; width: max-content; padding: 0; border: 0; background: transparent; transition: left .22s ease, right .22s ease, top .22s ease, bottom .22s ease; }
 .top-utility-bar.is-dragging { z-index: 40; user-select: none; transition: none; }
 .liquid-tools { display: flex; align-items: center; gap: 2px; padding: 4px; border: 1px solid #cbdced80; border-radius: 18px; background: linear-gradient(135deg, #ffffffa8, #edf5ff78); box-shadow: inset 0 1px 0 #ffffffcc, 0 7px 20px #163c6d12; backdrop-filter: blur(20px) saturate(155%); -webkit-backdrop-filter: blur(20px) saturate(155%); }
@@ -55,17 +55,43 @@
 .avatar svg { width: 19px; height: 19px; }
 .account-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .account-chevron { width: 15px; height: 15px; flex: none; }
-.top-popover { position: absolute; z-index: 30; top: calc(100% + 10px); right: 0; width: 230px; padding: 14px; border: 1px solid #d7e2ef; border-radius: 12px; background: #fff; color: #123260; box-shadow: 0 14px 35px #061a3a29; font-size: 14px; }
+.top-popover { position: absolute; z-index: 30; top: calc(100% + 10px); right: 0; width: 230px; padding: 14px; border: 1px solid var(--admin-border, #d7e2ef); border-radius: 12px; background: var(--admin-surface, #fff); color: var(--admin-text-body, #123260); box-shadow: 0 14px 35px #061a3a29; font-size: 14px; }
 .dock-bottom .top-popover { top: auto; bottom: calc(100% + 10px); }
 .dock-left .top-popover { top: 0; left: calc(100% + 10px); right: auto; }
 .dock-right .top-popover { top: 0; right: calc(100% + 10px); }
 .account-popover { display: grid; gap: 10px; }
 .account-meta { display: grid; gap: 2px; min-width: 0; }
 .account-meta strong { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.account-meta span { color: #5b708c; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.account-logout { min-height: 36px; border: 1px solid #d7e2ef; border-radius: 9px; background: #f6f9fe; color: #c0392b; font: 600 13.5px Inter, Arial, sans-serif; cursor: pointer; transition: background-color .15s ease, border-color .15s ease; }
-.account-logout:hover { background: #fdeceb; border-color: #f2c4c0; }
+.account-meta span { color: var(--admin-text-secondary, #5b708c); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-logout { min-height: 36px; border: 1px solid var(--admin-border, #d7e2ef); border-radius: 9px; background: var(--admin-surface-sunken, #f6f9fe); color: var(--admin-danger-strong, #c0392b); font: 600 13.5px Inter, Arial, sans-serif; cursor: pointer; transition: background-color .15s ease, border-color .15s ease; }
+.account-logout:hover { background: var(--admin-danger-soft, #fdeceb); border-color: var(--admin-danger-border, #f2c4c0); }
 .account-logout:focus-visible { outline: 2px solid #4388e8; outline-offset: 2px; }
+.account-popover { width: min(300px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); overflow: auto; }
+.account-meta .account-role { display: inline-flex; width: fit-content; margin-top: 2px; padding: 2px 8px; border-radius: 999px; background: var(--admin-accent-soft-strong, #e8f2ff); color: var(--admin-accent-ink, #0b5fc2); font-size: 11px; font-weight: 600; line-height: 16px; overflow: visible; text-overflow: clip; white-space: nowrap; }
+.account-menu { display: grid; gap: 2px; }
+.account-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 8px 6px; border: 0; border-radius: 8px; background: transparent; color: var(--admin-text, #183a67); text-align: left; cursor: pointer; }
+.account-menu-item:hover { background: var(--admin-surface-hover, #f4f8ff); }
+.account-menu-item:focus-visible { outline: 2px solid var(--admin-focus, #4388e8); outline-offset: 2px; }
+.account-menu-icon { width: 18px; height: 18px; flex: none; color: var(--admin-link, #1570d1); }
+.account-menu-copy { display: grid; gap: 1px; min-width: 0; }
+.account-menu-copy strong { color: var(--admin-text, #183a67); font-size: 13.5px; font-weight: 600; }
+.account-menu-copy small { color: var(--admin-text-muted, #64748b); font-size: 11.5px; line-height: 15px; white-space: normal; }
+.account-menu-arrow { width: 15px; height: 15px; flex: none; margin-left: auto; color: var(--admin-text-subtle, #89a3c0); }
+.account-menu-divider { height: 1px; margin: 4px 2px; background: var(--admin-border-subtle, #e6edf6); }
+.account-popover .account-logout { min-height: 40px; }
+/* P3 — panel thông báo dùng lại khung .top-popover để giữ nguyên vị trí theo dock. */
+.notifications-popover { width: min(380px, calc(100vw - 24px)); padding: 0; max-height: calc(100dvh - 32px); overflow: hidden; }
 @media (max-width: 1440px) { .admin-shell { --sidebar-width: 230px; } .nav-item { font-size: 14px; } .brand-copy strong { font-size: 22px; } }
 @media (prefers-reduced-motion: reduce) { .top-utility-bar, .utility-drag-handle { transition: none; } }
+
+/* P2 — Breadcrumb (tuỳ chọn, mặc định tắt). Không đụng tới Header/.liquid-tools. */
+.admin-breadcrumb { max-width: 1800px; margin: 0 auto; padding: 18px 24px 0; }
+.admin-breadcrumb ol { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.admin-breadcrumb li { display: flex; align-items: center; gap: 6px; color: var(--admin-text-secondary, #5b708c); font: var(--admin-text-body-compact); }
+.admin-breadcrumb a { color: var(--admin-link, #1570d1); text-decoration: none; }
+.admin-breadcrumb a:hover { text-decoration: underline; }
+.admin-breadcrumb a:focus-visible { outline: 2px solid var(--admin-focus, #4388e8); outline-offset: 2px; border-radius: 4px; }
+.admin-breadcrumb [aria-current='page'] { color: var(--admin-text, #183a67); font-weight: var(--admin-font-weight-semibold); }
+.admin-breadcrumb__separator { color: var(--admin-text-subtle, #a9b8ca); }
+@media (max-width: 720px) { .admin-breadcrumb { padding: 14px 16px 0; } }
 
