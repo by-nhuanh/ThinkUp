@@ -17,6 +17,7 @@ import { CourseCardComponent } from '../../shared/components/course-card/course-
 import { CourseCardView } from '../../shared/components/course-card/course-card.model';
 import { formatMoney, toCourseCardView } from '../../shared/components/course-card/course-card.mapper';
 import { IconComponent, IconName } from '../../shared/components/icon/icon.component';
+import { LandingHeaderComponent } from './components/landing-header.component';
 
 interface LandingTool {
   label: string;
@@ -98,7 +99,7 @@ function seedToCard(seed: FeaturedCourseSeed, index: number): CourseCardView {
 @Component({
   selector: 'app-landing-view',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, CourseCardComponent, IconComponent],
+  imports: [CommonModule, RouterLink, FormsModule, CourseCardComponent, IconComponent, LandingHeaderComponent],
   templateUrl: './landing.component.html',
   styleUrls: ['./styles/landing-ui.css', './landing.component.css'],
 })
