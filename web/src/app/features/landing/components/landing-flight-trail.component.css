@@ -1,0 +1,50 @@
+:host {
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+  z-index: 3;
+  overflow: hidden;
+}
+.tu-flight-layer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.tu-flight-route {
+  display: block;
+  overflow: visible;
+}
+.tu-flight-route__line {
+  fill: none;
+  stroke: #16B8DE;
+  stroke-width: 3px;
+  stroke-dasharray: 9 15;
+  stroke-linecap: round;
+  opacity: .52;
+  vector-effect: non-scaling-stroke;
+}
+.tu-flight-plane {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: 42px;
+  height: 42px;
+  margin-left: -21px;
+  margin-top: -21px;
+  transform-origin: 50% 50%;
+  will-change: transform;
+  filter: drop-shadow(0 4px 5px rgba(4,86,140,.22));
+}
+.tu-flight-plane[hidden] { display: none; }
+.tu-flight-plane svg { display: block; width: 100%; height: 100%; }
+@media(max-width: 767px) {
+  .tu-flight-route__line { stroke-width: 2.2px; stroke-dasharray: 6 12; opacity: .3; }
+  .tu-flight-plane { width: 30px; height: 30px; margin: -15px 0 0 -15px; }
+}
+@media(prefers-reduced-motion: reduce) {
+  .tu-flight-plane { display: none; }
+  .tu-flight-route__line { opacity: .25; }
+}
