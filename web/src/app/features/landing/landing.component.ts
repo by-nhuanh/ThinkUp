@@ -155,8 +155,10 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     const page = this.host.nativeElement.querySelector<HTMLElement>('.tu-landing-page');
     if (!page) return;
 
-    const sections = Array.from(page.querySelectorAll<HTMLElement>('main > section:not(:first-child)'));
-    if (!sections.length) return;
+    const sections: NodeListOf<HTMLElement> = page.querySelectorAll<HTMLElement>(
+      'main > section:not(:first-child)'
+    );
+    if (sections.length === 0) return;
 
     this.revealObserver = new IntersectionObserver((entries, observer) => {
       entries.forEach((entry) => {
