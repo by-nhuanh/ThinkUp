@@ -246,16 +246,18 @@
 
 /* Guest landing: header and Hero are a single responsive visual surface. */
 .tu-hero-wrap {
-  padding: clamp(12px, 1.55vw, 28px);
-  background: #e0f0ff;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  background: #0872d3;
 }
 .tu-hero-shell {
   position: relative;
   isolation: isolate;
-  width: min(100%, 1640px);
-  margin-inline: auto;
+  width: 100%;
+  margin: 0;
   overflow: hidden;
-  border-radius: clamp(26px, 3.2vw, 48px);
+  border-radius: 0;
   background: linear-gradient(113deg, #0065c9 0%, #2389e8 49%, #8bc5ff 100%);
   color: #fff;
 }
@@ -379,8 +381,8 @@
   .tu-hero__highlights { gap: 12px; }
 }
 @media (max-width: 767px) {
-  .tu-hero-wrap { padding: 12px; }
-  .tu-hero-shell { border-radius: 25px; }
+  .tu-hero-wrap { padding: 0; }
+  .tu-hero-shell { border-radius: 0; }
   .tu-hero { display: flex; min-height: 0; flex-direction: column; align-items: stretch; }
   .tu-hero__copy { padding: 32px 25px 10px; }
   .tu-hero__title { font-size: clamp(43px, 10.7vw, 66px); }
