@@ -31,6 +31,7 @@ export class AppComponent {
   readonly hideFooter = signal(false);
   readonly hideShell = signal(false);
   readonly isStudyLobby = signal(false);
+  readonly isGuestLanding = signal(false);
 
   constructor() {
     injectSpeedInsights();
@@ -43,6 +44,7 @@ export class AppComponent {
 
   private updateShell(url: string): void {
     this.instructorCardService.close();
+    this.isGuestLanding.set(!this.authService.isAuthenticated() && /^\/main\/?(?:[?#].*)?$/.test(url));
     this.isAuthPage.set(url.startsWith('/auth') || url.startsWith('/api/auth/verify'));
     this.isOnboardingPage.set(url.startsWith('/onboarding'));
     this.isStudyLobby.set(url.startsWith('/learning/study-room') && !/^\/learning\/study-room\/[^/]+/.test(url));
