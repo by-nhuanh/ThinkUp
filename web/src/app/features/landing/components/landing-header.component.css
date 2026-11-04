@@ -116,6 +116,9 @@
   .tu-landing-header__nav, .tu-landing-header__actions { display: none; }
   .tu-landing-header__mobile-controls { display: flex; align-items: center; gap: 12px; }
   .tu-landing-header__menu-toggle { cursor: pointer; }
+  .tu-landing-header__mobile-controls .tu-landing-header__cart { width: 36px; height: 36px; }
+  .tu-landing-header__mobile-controls .tu-landing-header__cart svg { width: 20px; height: 20px; }
+  .tu-landing-header__menu-toggle svg { width: 24px; height: 24px; }
   .tu-landing-header__mobile-nav {
     position: absolute; z-index: 12; top: calc(100% - 2px); left: 18px; right: 18px;
     display: flex; flex-direction: column; gap: 3px;
