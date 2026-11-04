@@ -94,7 +94,7 @@ export const routes: Routes = [
       { path: 'contact', loadComponent: () => import('./features/support/contact/contact.component').then(m => m.ContactComponent) },
       { path: 'help-center', loadComponent: () => import('./features/support/help-center/help-center.component').then(m => m.HelpCenterComponent) },
       { path: 'instructors/:slug', loadComponent: () => import('./features/instructors/instructor-profile/instructor-profile.component').then(m => m.InstructorProfileComponent) },
-      { path: 'instructors', loadComponent: () => import('./features/support/contact/contact.component').then(m => m.ContactComponent) },
+      { path: 'instructors', loadComponent: () => import('./features/instructors/instructor-landing/instructor-landing.component').then(m => m.InstructorLandingComponent) },
       {
         path: '',
         pathMatch: 'full',
