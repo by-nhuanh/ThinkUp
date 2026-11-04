@@ -53,6 +53,24 @@
     opacity: 1 !important;
   }
 }
+/* Subtle one-time hero entrance; no motion dependency for reading content. */
+@media (prefers-reduced-motion: no-preference) {
+  .tu-hero__copy {
+    animation: tu-hero-enter 520ms var(--tu-motion-ease) both;
+  }
+  .tu-hero__art {
+    animation: tu-art-enter 650ms var(--tu-motion-ease) 80ms both;
+  }
+}
+@keyframes tu-hero-enter {
+  from { opacity: .65; translate: 0 12px; }
+  to { opacity: 1; translate: 0 0; }
+}
+@keyframes tu-art-enter {
+  from { opacity: .7; translate: 12px 0; }
+  to { opacity: 1; translate: 0 0; }
+}
+
 /* ---------- Đánh giá học viên ---------- */
 .ln-reviews {
   padding-block: clamp(40px, 5.208vw, 100px);
