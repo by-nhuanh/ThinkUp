@@ -1,3 +1,10 @@
+/* Scope the scroll route to the landing page instead of the viewport. */
+.tu-landing-page {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+}
+
 /* ---------- Đánh giá học viên ---------- */
 .ln-reviews {
   padding-block: clamp(40px, 5.208vw, 100px);
