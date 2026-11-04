@@ -324,17 +324,29 @@ export class AdminLayoutComponent {
 
   toggleBusiness(): void {
     if (this.collapsed()) this.collapsed.set(false);
-    this.businessOpen.update(value => !value);
+    const open = !this.businessOpen();
+    this.businessOpen.set(open);
+    if (open) { this.usersOpen.set(false); this.supportOpen.set(false); }
   }
 
   toggleSupport(): void {
     if (this.collapsed()) this.collapsed.set(false);
-    this.supportOpen.update(value => !value);
+    const open = !this.supportOpen();
+    this.supportOpen.set(open);
+    if (open) { this.usersOpen.set(false); this.businessOpen.set(false); }
+  }
+
+  navigatePage(): void {
+    this.usersOpen.set(false);
+    this.businessOpen.set(false);
+    this.supportOpen.set(false);
   }
 
   toggleUsers(): void {
     if (this.collapsed()) this.collapsed.set(false);
-    this.usersOpen.update(value => !value);
+    const open = !this.usersOpen();
+    this.usersOpen.set(open);
+    if (open) { this.businessOpen.set(false); this.supportOpen.set(false); }
   }
 
   toggleAccountMenu(): void {

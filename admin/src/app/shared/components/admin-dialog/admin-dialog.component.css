@@ -46,7 +46,10 @@
 .admin-dialog--md .admin-dialog__surface { max-width: min(640px, calc(100vw - 32px)); }
 .admin-dialog--lg .admin-dialog__surface { max-width: min(840px, calc(100vw - 32px)); }
 .admin-dialog--xl .admin-dialog__surface { max-width: min(1120px, calc(100vw - 32px)); }
-.admin-dialog--settings .admin-dialog__surface { max-width: min(1040px, calc(100vw - 48px)); }
+.admin-dialog--settings .admin-dialog__surface {
+  width: min(1040px, calc(100vw - 48px));
+  height: min(800px, calc(100dvh - 32px));
+}
 
 .admin-dialog__header {
   display: flex;

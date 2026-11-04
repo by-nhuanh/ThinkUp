@@ -6,7 +6,9 @@
 .settings {
   display: grid;
   grid-template-columns: minmax(232px, 288px) minmax(0, 1fr);
-  min-height: 520px;
+  grid-template-rows: auto 1fr;
+  height: 100%;
+  min-height: 0;
   color: var(--admin-text-strong, #1f2b40);
 }
 
@@ -28,7 +30,7 @@
   padding: 12px 14px;
   border: 0;
   border-left: 3px solid transparent;
-  border-radius: 10px;
+  border-radius: 0;
   background: transparent;
   color: var(--admin-text-body, #123260);
   text-align: left;
@@ -88,6 +90,7 @@
 
 .settings-panel {
   min-width: 0;
+  min-height: 0;
   padding: 22px 26px 24px;
   outline: none;
 }
