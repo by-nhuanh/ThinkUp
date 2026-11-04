@@ -27,6 +27,8 @@
   white-space: nowrap;
 }
 .tu-landing-header__logo { width: 32.8px; height: 32px; flex: none; }
+.tu-landing-header__brand-text { display: inline-flex; align-items: center; line-height: 1; }
+.tu-landing-header__think { color: #fff; }
 .tu-landing-header__brand-accent { color: #bde6ff; }
 .tu-landing-header__nav {
   display: flex;
@@ -105,8 +107,8 @@
 @media (max-width: 1150px) and (min-width: 1024px) {
   .tu-landing-header { gap: 10px; padding-inline: 18px; }
   .tu-landing-header__nav { gap: 9px; }
-  .tu-landing-header__nav-link { font-size: 14px; }
-  .tu-landing-header__brand { font-size: 27px; }
+  .tu-landing-header__nav-link { font-size: 16px; }
+  .tu-landing-header__brand { font-size: 28.8px; }
   .tu-landing-header__actions { gap: 5px; }
   .tu-landing-header__login { width: 102px; }
   .tu-landing-header__register { min-width: 100px; }
