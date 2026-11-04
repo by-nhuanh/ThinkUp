@@ -1,58 +1,39 @@
 
     <div class="min-h-screen bg-white text-[#0D111B] font-sans">
       <main>
-        <!-- 1. Hero Section -->
-        <section class="relative isolate overflow-hidden bg-[#1D93D8] text-white">
-          <div class="relative z-10 mx-auto flex min-h-[640px] flex-col justify-center gap-8 px-6 py-12 sm:px-12 md:px-16 lg:hidden">
-            <div class="pointer-events-none absolute left-1/2 top-[150px] -z-10 h-[360px] w-[2020px] -translate-x-1/2 opacity-70 md:top-[160px] md:h-[430px] md:w-[2400px]" aria-hidden="true">
-              <img src="/assets/landing/hero-wave.svg" alt="" class="h-full w-full object-cover" />
-            </div>
-            <div class="z-10 flex max-w-[650px] flex-col items-start gap-[42px]">
-              <div class="flex max-w-[650px] flex-col gap-6">
-                <h1 class="font-['Inter'] text-[56px] font-bold leading-[0.98] tracking-normal md:text-[86px]">
-                  <span class="text-[#071027]">Think</span>UP
-                </h1>
-                <p class="max-w-[590px] font-['Inter'] text-[16px] font-semibold leading-[24px] text-white md:text-[18px] md:leading-[27px]">
-                  Nền tảng học IT thông minh giúp bạn xây dựng lộ trình rõ ràng từ lập trình cơ bản đến việc làm đầu tiên, thực hành qua dự án và phát triển kỹ năng cùng mentor.
-                </p>
-              </div>
-              <a
-                routerLink="/auth/sign-up"
-                class="inline-flex h-[56px] items-center justify-center rounded-[33.5px] bg-[#FDC357] px-[39px] font-['Inter'] text-[16px] font-extrabold leading-6 text-[#09131A] shadow-lg transition-transform hover:scale-[1.02] active:scale-[0.98]"
-              >
-                KHÁM PHÁ NGAY
+        <!-- 1. ThinkUp learner-first Hero. Header stays in the existing shared shell. -->
+        <section class="tu-hero-wrap" aria-labelledby="tu-hero-title">
+          <div class="tu-hero">
+            <div class="tu-hero__copy">
+              <h1 id="tu-hero-title" class="tu-hero__title">Học IT<br />thực chiến</h1>
+              <p class="tu-hero__description">
+                Nền tảng học IT trực tuyến từ cơ bản đến nâng cao,
+                kết hợp thực hành và dự án thực tế.
+              </p>
+              <a routerLink="/main/courses" class="tu-hero__cta">
+                Khám phá khóa học
+                <span aria-hidden="true">→</span>
               </a>
-            </div>
-            <div class="relative z-10 mx-auto w-full max-w-[520px] self-end">
-              <img
-                src="/assets/landing/hero-people.png"
-                alt="Học viên cùng học trên nền tảng ThinkUp"
-                class="h-auto w-full object-contain"
-              />
-            </div>
-          </div>
 
-          <div class="relative z-10 mx-auto hidden aspect-[1906/727] w-full max-w-[1906px] lg:block">
-            <div class="pointer-events-none absolute left-[-19.1%] top-[23.2%] -z-10 h-[66%] w-[142.2%] opacity-70" aria-hidden="true">
-              <img src="/assets/landing/hero-wave.svg" alt="" class="h-full w-full object-cover" />
+              <ul class="tu-hero__highlights" aria-label="Điểm nổi bật của ThinkUp">
+                <li><app-icon name="book-open" class="tu-hero__highlight-icon" /><span>Khóa học IT</span></li>
+                <li><app-icon name="code" class="tu-hero__highlight-icon" /><span>Thực hành</span></li>
+                <li><app-icon name="users" class="tu-hero__highlight-icon" /><span>Học cùng nhau</span></li>
+              </ul>
             </div>
-            <h1 class="absolute left-[11.44%] top-[22.65%] font-['Inter'] text-[min(4.83vw,92px)] font-bold leading-[0.98] tracking-normal">
-              <span class="text-[#071027]">Think</span>UP
-            </h1>
-            <p class="absolute left-[11.44%] top-[49.84%] w-[40.58%] font-['Inter'] text-[min(0.94vw,18px)] font-semibold leading-[1.5] text-white">
-              Nền tảng học IT thông minh giúp bạn xây dựng lộ trình rõ ràng từ lập trình cơ bản đến việc làm đầu tiên, thực hành qua dự án và phát triển kỹ năng cùng mentor.
-            </p>
-            <a
-              routerLink="/auth/sign-up"
-              class="absolute left-[11.44%] top-[69.7%] inline-flex h-[7.67%] min-h-[42px] w-[12.13%] min-w-[175px] items-center justify-center rounded-[33.5px] bg-[#FDC357] font-['Inter'] text-[min(0.84vw,16px)] font-extrabold leading-6 text-[#09131A] shadow-lg transition-transform hover:scale-[1.02] active:scale-[0.98]"
-            >
-              KHÁM PHÁ NGAY
-            </a>
-            <img
-              src="/assets/landing/hero-people.png"
-              alt="Học viên cùng học trên nền tảng ThinkUp"
-              class="absolute bottom-0 left-[49.5%] z-10 h-[89%] w-auto max-w-none object-contain"
-            />
+            <div class="tu-hero__art">
+              <picture>
+                <source srcset="/assets/landing/hero-mascots-transparent.webp" type="image/webp" />
+                <img
+                  src="/assets/landing/hero-mascots-transparent.png"
+                  width="1622"
+                  height="750"
+                  alt="Các linh vật ThinkUp cùng học lập trình bên máy tính"
+                  class="tu-hero__mascots"
+                  fetchpriority="high"
+                />
+              </picture>
+            </div>
           </div>
         </section>
 
