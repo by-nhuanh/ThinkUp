@@ -1,25 +1,58 @@
-/* Scope the scroll route to the landing page instead of the viewport. */
+/* Landing UX motion tokens — scoped to the public homepage only. */
 .tu-landing-page {
-  position: relative;
-  isolation: isolate;
-  overflow: clip;
+  --tu-motion-fast: 160ms;
+  --tu-motion-normal: 240ms;
+  --tu-motion-reveal: 480ms;
+  --tu-motion-ease: cubic-bezier(.22, 1, .36, 1);
 }
 
-/*
- * The route belongs to the page background, never the foreground.
- * Keep section content above it, while allowing it to show only through
- * otherwise white/empty section surfaces. Cards retain their own opaque
- * backgrounds and naturally occlude the flight path.
- */
-.tu-landing-page > main {
-  position: relative;
-  z-index: 1;
+/* Progressive enhancement: page content is always visible without JavaScript. */
+.tu-landing-page.tu-motion-ready .tu-reveal > :first-child {
+  transition: opacity var(--tu-motion-reveal) var(--tu-motion-ease),
+              translate var(--tu-motion-reveal) var(--tu-motion-ease);
 }
-.tu-landing-page > main > section.bg-white,
-.tu-landing-page > main > section.ln-reviews {
-  background-color: transparent;
+.tu-landing-page.tu-motion-ready .tu-reveal:not(.tu-reveal--visible) > :first-child {
+  opacity: .76;
+  translate: 0 14px;
+}
+.tu-landing-page.tu-motion-ready .tu-reveal--visible > :first-child {
+  opacity: 1;
+  translate: 0 0;
 }
 
+/* Hover/focus feedback without layout-shifting geometry. */
+.tu-landing-page .ln-tool,
+.tu-landing-page .ln-review__body,
+.tu-landing-page .ln-faq__item,
+.tu-landing-page .ln-courses__more {
+  transition: box-shadow var(--tu-motion-normal) ease,
+              border-color var(--tu-motion-normal) ease,
+              background-color var(--tu-motion-normal) ease,
+              translate var(--tu-motion-normal) var(--tu-motion-ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .tu-landing-page .ln-tool:hover,
+  .tu-landing-page .ln-review__body:hover {
+    translate: 0 -3px;
+    box-shadow: 0 12px 30px rgba(12, 71, 132, .10);
+  }
+  .tu-landing-page .ln-faq__item:hover { border-color: #9ad5f7; }
+}
+.tu-landing-page :is(a, button):focus-visible {
+  outline: 3px solid #ffca42;
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tu-landing-page .tu-reveal > :first-child,
+  .tu-landing-page .ln-tool,
+  .tu-landing-page .ln-review__body,
+  .tu-landing-page .ln-faq__item,
+  .tu-landing-page .ln-courses__more {
+    transition: none !important;
+    translate: none !important;
+    opacity: 1 !important;
+  }
+}
 /* ---------- Đánh giá học viên ---------- */
 .ln-reviews {
   padding-block: clamp(40px, 5.208vw, 100px);
