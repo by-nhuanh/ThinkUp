@@ -106,7 +106,7 @@ function seedToCard(seed: FeaturedCourseSeed, index: number): CourseCardView {
 export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly courseService = inject(CourseService);
   private readonly router = inject(Router);
-  private readonly host = inject(ElementRef<HTMLElement>);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly platformId = inject(PLATFORM_ID);
   private revealObserver?: IntersectionObserver;
 
