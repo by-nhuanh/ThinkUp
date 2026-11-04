@@ -1,9 +1,11 @@
 
     <div class="min-h-screen bg-white text-[#0D111B] font-sans">
       <main>
-        <!-- 1. ThinkUp learner-first Hero. Header stays in the existing shared shell. -->
+        <!-- 1. Guest landing header and hero share a single visual surface. -->
         <section class="tu-hero-wrap" aria-labelledby="tu-hero-title">
-          <div class="tu-hero">
+          <div class="tu-hero-shell">
+            <app-landing-header />
+            <div class="tu-hero">
             <div class="tu-hero__copy">
               <h1 id="tu-hero-title" class="tu-hero__title">Học IT<br />thực chiến</h1>
               <p class="tu-hero__description">
@@ -36,6 +38,7 @@
                 />
               </picture>
             </div>
+          </div>
           </div>
         </section>
 
