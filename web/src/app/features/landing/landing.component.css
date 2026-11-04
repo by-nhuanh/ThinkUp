@@ -5,6 +5,21 @@
   overflow: clip;
 }
 
+/*
+ * The route belongs to the page background, never the foreground.
+ * Keep section content above it, while allowing it to show only through
+ * otherwise white/empty section surfaces. Cards retain their own opaque
+ * backgrounds and naturally occlude the flight path.
+ */
+.tu-landing-page > main {
+  position: relative;
+  z-index: 1;
+}
+.tu-landing-page > main > section.bg-white,
+.tu-landing-page > main > section.ln-reviews {
+  background-color: transparent;
+}
+
 /* ---------- Đánh giá học viên ---------- */
 .ln-reviews {
   padding-block: clamp(40px, 5.208vw, 100px);
