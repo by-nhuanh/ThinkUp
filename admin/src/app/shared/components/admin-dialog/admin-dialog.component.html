@@ -1,0 +1,29 @@
+<dialog
+  #dialog
+  [class]="'admin-dialog ' + sizeClass()"
+  [attr.aria-labelledby]="titleId"
+  (cancel)="onCancel($event)"
+  (click)="onBackdropClick($event)"
+>
+  <div class="admin-dialog__surface">
+    <header class="admin-dialog__header">
+      <div class="admin-dialog__heading">
+        <h2 [id]="titleId">{{ title() }}</h2>
+        @if (subtitle()) {
+          <p>{{ subtitle() }}</p>
+        }
+      </div>
+      <button class="admin-dialog__close" type="button" aria-label="Đóng hộp thoại" (click)="close()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+      </button>
+    </header>
+    <div class="admin-dialog__body" [class.admin-dialog__body--flush]="flushBody()">
+      <ng-content />
+    </div>
+    <footer class="admin-dialog__footer">
+      <ng-content select="[dialogFooter]" />
+    </footer>
+  </div>
+</dialog>

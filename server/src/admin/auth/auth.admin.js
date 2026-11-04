@@ -3,6 +3,7 @@ import { readAuthToken, verifyAccessToken, setAuthCookie, clearAuthCookie, creat
 import bcrypt from 'bcryptjs';
 import { ObjectId } from 'mongodb';
 import { getMongoDb, signJwt, verifyJwt, sendEmail } from '../../user/db.js';
+import { createAdminNotification } from '../notifications/notifications.admin.js';
 
 // ==========================================
 // CẤU HÌNH HỆ THỐNG THEO SPEC & WRITING-BLOCK
@@ -172,8 +173,25 @@ export async function recordAuditLog(db, { adminId, action, ip, userAgent, detai
       details,
       created_at: new Date(),
     });
+    return true;
   } catch (err) {
     console.error('[Admin Audit Log Error]:', err.message);
+    return false;
+  }
+}
+
+/**
+ * P4 — Phát thông báo quản trị từ sự kiện bảo mật có backend thật.
+ *
+ * Chỉ những sự kiện đã được ghi audit log mới phát thông báo. Lỗi thông báo
+ * (collection/index chưa sẵn sàng) không bao giờ được làm hỏng luồng xác thực.
+ */
+export async function publishAdminSecurityNotification(db, adminId, payload) {
+  try {
+    return await createAdminNotification(adminId, payload, { db });
+  } catch (error) {
+    console.error('[Admin Notification Error]:', error.message);
+    return { created: false, id: null };
   }
 }
 
@@ -247,6 +265,16 @@ export async function setupAdminPassword({ inviteToken, newPassword, confirmPass
     ip: options.ip,
     userAgent: options.userAgent,
     details: { email: admin.email },
+  });
+
+  await publishAdminSecurityNotification(db, admin._id, {
+    type: 'security',
+    severity: 'info',
+    title: 'Mật khẩu quản trị đã được thiết lập',
+    message: `${admin.email} vừa hoàn tất thiết lập mật khẩu. Bước tiếp theo là bật xác thực hai lớp.`,
+    href: '/auth/setup-2fa',
+    eventKey: 'admin.security.password-initialized',
+    dedupeKey: `admin.security.password-initialized:${String(admin._id)}`,
   });
 
   // Sinh token phiên Onboarding để FE chuyển sang Màn 2
@@ -343,6 +371,16 @@ export async function confirmAdmin2FASetup({ onboardingToken, otp }, options = {
     ip: options.ip,
     userAgent: options.userAgent,
     details: { email: admin.email },
+  });
+
+  await publishAdminSecurityNotification(db, admin._id, {
+    type: 'security',
+    severity: 'info',
+    title: 'Xác thực hai lớp đã được bật',
+    message: `Tài khoản ${admin.email} đã bật xác thực hai lớp và nhận bộ mã dự phòng mới.`,
+    href: '/auth/backup-codes',
+    eventKey: 'admin.security.2fa-enabled',
+    dedupeKey: `admin.security.2fa-enabled:${String(admin._id)}`,
   });
 
   const nextOnboardingToken = signJwt(
@@ -507,6 +545,16 @@ export async function loginAdminCredentials({ email, password }, options = {}) {
           ip: options.ip,
           userAgent: options.userAgent,
           details: { email: admin.email, attempts },
+        });
+
+        await publishAdminSecurityNotification(db, admin._id, {
+          type: 'security',
+          severity: 'critical',
+          title: 'Tài khoản quản trị bị khóa tạm thời',
+          message: `Phát hiện ${attempts} lần đăng nhập sai liên tiếp cho ${admin.email}. Tài khoản bị khóa đến ${lockedUntil.toISOString()}.`,
+          href: null,
+          eventKey: 'admin.security.account-locked',
+          dedupeKey: `admin.security.account-locked:${String(admin._id)}:${lockedUntil.toISOString()}`,
         });
 
         // Gửi email cảnh báo khẩn cấp tới Admin
@@ -928,6 +976,16 @@ export async function rotateAdminPassword(
     details: { email: admin.email },
   });
 
+  await publishAdminSecurityNotification(db, admin._id, {
+    type: 'security',
+    severity: 'warning',
+    title: 'Mật khẩu quản trị vừa được đổi',
+    message: `Mật khẩu của ${admin.email} đã được đổi lúc ${now.toISOString()}. Nếu không phải bạn, hãy liên hệ bộ phận an toàn thông tin ngay.`,
+    href: '/auth/change-password',
+    eventKey: 'admin.security.password-rotated',
+    dedupeKey: `admin.security.password-rotated:${String(admin._id)}:${now.toISOString()}`,
+  });
+
   // Thu hồi session cũ, cấp phiên mới tinh vào Dashboard
   const newAccessToken = signJwt(
     {
@@ -948,7 +1006,38 @@ export async function rotateAdminPassword(
 }
 
 /**
- * Lấy thông tin tài khoản Admin hiện tại & kiểm tra hiệu lực phiên
+ * Che một phần địa chỉ IP trước khi trả ra ngoài. IPv4 giữ ba octet đầu,
+ * IPv6 giữ các nhóm đầu và che nhóm cuối. Giá trị không parse được trả null.
+ */
+export function maskIpAddress(ip) {
+  if (typeof ip !== 'string') return null;
+  const value = ip.trim().replace(/^::ffff:/i, '');
+  if (!value) return null;
+
+  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(value)) {
+    return value.replace(/\.\d{1,3}$/, '.xxx');
+  }
+
+  if (value.includes(':')) {
+    const parts = value.split(':');
+    if (parts.length < 2) return null;
+    parts[parts.length - 1] = 'xxxx';
+    return parts.join(':');
+  }
+
+  return null;
+}
+
+/** Chuyển Date/string sang ISO; trả null nếu không hợp lệ. */
+function isoTimestamp(value) {
+  if (value === null || value === undefined) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+}
+
+/**
+ * Lấy thông tin tài khoản Admin hiện tại & kiểm tra hiệu lực phiên.
+ * Các field mới là additive; client cũ bỏ qua an toàn.
  */
 export async function getAdminProfile(adminId, options = {}) {
   const db = options.db || (await getMongoDb());
@@ -975,6 +1064,32 @@ export async function getAdminProfile(adminId, options = {}) {
 
   const passwordStatus = checkPasswordExpiry(admin.password_changed_at);
 
+  // Audit chỉ để bổ sung thông tin phiên; lỗi audit không được làm hỏng /me.
+  let lastLogin = null;
+  try {
+    const audit = await db.collection('admin_audit_logs').findOne(
+      { admin_id: new ObjectId(adminId), action: 'ADMIN_LOGIN_SUCCESS' },
+      { sort: { created_at: -1 }, projection: { ip: 1, user_agent: 1, created_at: 1 } }
+    );
+    const at = isoTimestamp(audit?.created_at);
+    if (at) {
+      lastLogin = {
+        at,
+        ipMasked: maskIpAddress(audit.ip),
+        userAgent: typeof audit.user_agent === 'string' ? audit.user_agent : null,
+      };
+    }
+  } catch {
+    lastLogin = null;
+  }
+
+  const currentSession = options.ip !== undefined || options.userAgent !== undefined
+    ? {
+      ipMasked: maskIpAddress(options.ip),
+      userAgent: typeof options.userAgent === 'string' ? options.userAgent : null,
+    }
+    : null;
+
   return {
     success: true,
     admin: {
@@ -984,9 +1099,42 @@ export async function getAdminProfile(adminId, options = {}) {
       role: admin.role || 'ADMIN',
       status: admin.status,
       is_2fa_enabled: Boolean(admin.is_2fa_enabled),
+      created_at: isoTimestamp(admin.created_at),
+      last_login_at: isoTimestamp(admin.last_login_at),
+      lastLogin,
+      currentSession,
       passwordStatus,
     },
   };
+}
+
+/**
+ * Ghi audit đăng xuất theo kiểu best-effort.
+ * Token không hợp lệ hoặc DB lỗi đều trả false và không chặn logout.
+ */
+export async function recordAdminLogoutAudit(token, meta = {}, options = {}) {
+  if (!token) return false;
+
+  let payload;
+  try {
+    payload = verifyAccessToken(token, 'admin');
+  } catch {
+    return false;
+  }
+  if (!payload?.adminId) return false;
+
+  try {
+    const db = options.db || (await getMongoDb());
+    return await recordAuditLog(db, {
+      adminId: payload.adminId,
+      action: 'ADMIN_LOGOUT',
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+      details: {},
+    });
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -1141,7 +1289,10 @@ export function createAdminAuthRouter(express) {
 
   router.get('/me', requireAdminAuth, checkPasswordHardBlock, async (req, res, next) => {
     try {
-      const result = await getAdminProfile(req.adminId);
+      const result = await getAdminProfile(req.adminId, {
+        ip: getClientIp(req),
+        userAgent: req.headers['user-agent'],
+      });
       res.set('Cache-Control', 'no-store');
       res.json(result);
     } catch (err) {
@@ -1155,6 +1306,11 @@ export function createAdminAuthRouter(express) {
   });
 
   router.post('/logout', (req, res) => {
+    // Audit chạy nền: không được làm chậm hoặc làm hỏng phản hồi đăng xuất.
+    void recordAdminLogoutAudit(readAuthToken(req, 'admin'), {
+      ip: getClientIp(req),
+      userAgent: req.headers['user-agent'],
+    }).catch(() => {});
     clearAuthCookie(res, 'admin');
     res.json({ success: true, message: 'Đăng xuất thành công' });
   });

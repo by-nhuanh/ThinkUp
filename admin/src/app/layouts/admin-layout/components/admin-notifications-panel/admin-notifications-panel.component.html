@@ -1,0 +1,65 @@
+<div class="notifications" role="region" aria-label="Danh sách thông báo">
+  <header class="notifications__header">
+    <div class="notifications__heading">
+      <strong>Thông báo</strong>
+      <span>{{ countLabel() }}</span>
+    </div>
+    <button
+      class="notifications__mark-all"
+      type="button"
+      [disabled]="unread() === 0"
+      (click)="markAllRead()"
+    >Đánh dấu tất cả đã đọc</button>
+  </header>
+
+  @if (loading() && items().length === 0) {
+    <div class="notifications__state" role="status">
+      <span class="notifications__spinner" aria-hidden="true"></span>
+      Đang tải thông báo…
+    </div>
+  } @else if (error(); as message) {
+    <div class="notifications__state notifications__state--error" role="alert">
+      <span>{{ message }}</span>
+      <button class="notifications__retry" type="button" (click)="retry()">Thử lại</button>
+    </div>
+  } @else if (items().length === 0) {
+    <div class="notifications__state">
+      <strong>Chưa có thông báo</strong>
+      <span>Các sự kiện quan trọng sẽ xuất hiện ở đây.</span>
+    </div>
+  } @else {
+    <ul class="notifications__list">
+      @for (item of items(); track item.id) {
+        <li>
+          <button
+            class="notification"
+            type="button"
+            [class.is-unread]="!item.readAt"
+            [attr.data-severity]="item.severity"
+            (click)="select(item)"
+          >
+            <span class="notification__top">
+              <span class="notification__type">{{ typeLabel(item.type) }}</span>
+              <span class="notification__time">{{ timeLabel(item) }}</span>
+            </span>
+            <strong class="notification__title">{{ item.title }}</strong>
+            <span class="notification__message">{{ item.message }}</span>
+            @if (!item.readAt) {
+              <span class="notification__dot" aria-label="Chưa đọc"></span>
+            }
+          </button>
+        </li>
+      }
+    </ul>
+
+    @if (hasMore()) {
+      <button class="notifications__more" type="button" [disabled]="loadingMore()" (click)="loadMore()">
+        {{ loadingMore() ? 'Đang tải thêm…' : 'Tải thêm' }}
+      </button>
+    }
+  }
+
+  <footer class="notifications__footer">
+    <button class="notifications__close" type="button" (click)="close()">Đóng</button>
+  </footer>
+</div>

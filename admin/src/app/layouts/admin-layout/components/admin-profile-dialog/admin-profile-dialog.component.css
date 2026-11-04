@@ -1,0 +1,273 @@
+:host {
+  display: contents;
+}
+
+/* Chỉ dùng token --admin-* để Light/Dark do theme của app quyết định. */
+
+.profile-skeleton {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.profile-skeleton span {
+  display: block;
+  height: 14px;
+  border-radius: 6px;
+  background: var(--admin-surface-muted);
+}
+
+.profile-skeleton span:nth-child(1) { width: 42%; }
+.profile-skeleton span:nth-child(2) { width: 68%; }
+.profile-skeleton span:nth-child(3) { width: 55%; }
+
+.profile-alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--admin-danger-border);
+  border-radius: 9px;
+  background: var(--admin-danger-soft);
+  color: var(--admin-danger-ink);
+  font: var(--admin-text-body-default);
+}
+
+.profile-text-button {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--admin-danger-border);
+  border-radius: 7px;
+  background: var(--admin-surface-raised);
+  color: var(--admin-danger-ink);
+  font: var(--admin-text-control-label);
+  cursor: pointer;
+}
+
+.profile-text-button:hover {
+  background: var(--admin-surface-hover);
+}
+
+.profile-hero {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--admin-border-subtle);
+}
+
+.profile-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border: 1px solid var(--admin-accent-soft-strong);
+  border-radius: 50%;
+  background: var(--admin-accent-soft);
+  color: var(--admin-accent-ink);
+  font: 700 18px/1 var(--admin-font-family);
+}
+
+.profile-hero-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.profile-hero-copy h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--admin-text-strong);
+  font: var(--admin-text-panel-title);
+}
+
+.profile-email {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--admin-text-secondary);
+  font: var(--admin-text-body-default);
+}
+
+.profile-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.profile-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font: var(--admin-text-badge);
+}
+
+.profile-badge--role {
+  background: var(--admin-accent-soft);
+  color: var(--admin-accent-ink);
+}
+
+.profile-badge--status {
+  background: var(--admin-success-soft);
+  color: var(--admin-success);
+}
+
+.profile-badge--demo {
+  border: 1px solid var(--admin-warning-border);
+  background: var(--admin-warning-soft);
+  color: var(--admin-warning-ink);
+}
+
+.profile-demo-note {
+  margin: 12px 0 0;
+  padding: 8px 12px;
+  border: 1px solid var(--admin-warning-border);
+  border-radius: 8px;
+  background: var(--admin-warning-soft);
+  color: var(--admin-warning-ink);
+  font: var(--admin-text-caption);
+}
+
+.profile-section {
+  padding-top: 18px;
+}
+
+.profile-section h3 {
+  margin: 0 0 10px;
+  color: var(--admin-text-strong);
+  font: var(--admin-text-card-title);
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.profile-card {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--admin-border-subtle);
+  border-radius: 10px;
+  background: var(--admin-surface-subtle);
+}
+
+.profile-card dt {
+  color: var(--admin-text-muted);
+  font: var(--admin-text-caption);
+}
+
+.profile-card dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+}
+
+.profile-value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--admin-text-body);
+  font: var(--admin-text-body-default);
+}
+
+.profile-value--mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 18px;
+}
+
+.profile-value--muted {
+  color: var(--admin-text-subtle);
+}
+
+.profile-note {
+  flex-basis: 100%;
+  color: var(--admin-text-muted);
+  font: var(--admin-text-caption);
+}
+
+.profile-copy {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--admin-border);
+  border-radius: 7px;
+  background: var(--admin-surface-raised);
+  color: var(--admin-accent);
+  cursor: pointer;
+}
+
+.profile-copy:hover {
+  background: var(--admin-accent-soft);
+}
+
+.profile-copy--done {
+  border-color: var(--admin-success);
+  color: var(--admin-success);
+}
+
+.profile-copy svg {
+  width: 15px;
+  height: 15px;
+}
+
+.profile-copy-error {
+  flex-basis: 100%;
+  color: var(--admin-danger);
+  font: var(--admin-text-caption);
+}
+
+.profile-section-note {
+  margin: 10px 0 0;
+  color: var(--admin-text-muted);
+  font: var(--admin-text-caption);
+}
+
+.profile-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.profile-text-button:focus-visible,
+.profile-copy:focus-visible {
+  outline: 2px solid var(--admin-focus);
+  outline-offset: 2px;
+}
+
+/* Dựa trên bề rộng thân dialog (container query) thay vì bề rộng màn hình:
+   khi viewport hoặc zoom làm modal hẹp lại, lưới tự chuyển về 1 cột. */
+@container (max-width: 560px) {
+  .profile-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .profile-hero {
+    align-items: flex-start;
+  }
+}

@@ -1,0 +1,148 @@
+{
+  "version": 1,
+  "baselineCommit": "81a5ab206d7066032a4c9decc3cc7988a6775312",
+  "description": "P0 header contract for the admin utility pill. Source of truth is the repository UI at the baseline commit; this file only freezes the approved structure and design values that must not change.",
+  "app": {
+    "baseUrl": "http://127.0.0.1:4211",
+    "route": "/",
+    "session": {
+      "token": "demo-local-access-token",
+      "user": {
+        "id": "demo-admin@thinkup.edu.vn",
+        "email": "admin@thinkup.edu.vn",
+        "fullName": "Quản trị viên ThinkUp",
+        "role": "admin",
+        "avatar": null,
+        "passwordExpiresAt": null,
+        "mustChangePassword": false,
+        "twoFactorSetupRequired": false
+      }
+    }
+  },
+  "isolation": {
+    "hideSelectors": [".page-shell > :not(header)", "aside.sidebar"],
+    "background": "#f4f8ff",
+    "hideMode": "visibility"
+  },
+  "order": {
+    "container": ".liquid-tools",
+    "children": [
+      { "selector": ".liquid-tools > button.utility-drag-handle", "className": "utility-drag-handle", "tag": "BUTTON" },
+      { "selector": ".liquid-tools > button[aria-label=\"Cài đặt\"]", "className": "top-tool icon-only", "tag": "BUTTON" },
+      { "selector": ".liquid-tools > .top-popover-anchor:nth-child(3) > button[aria-label=\"Thông báo\"]", "className": "top-tool icon-only", "tag": "BUTTON" },
+      { "selector": ".liquid-tools > .top-popover-anchor:nth-child(4) > button[aria-label=\"Mở menu tài khoản Admin\"]", "className": "top-tool account-tool icon-only", "tag": "BUTTON" }
+    ],
+    "triggerLabels": [
+      "Kéo thanh tiện ích đến cạnh khác",
+      "Cài đặt",
+      "Thông báo",
+      "Mở menu tài khoản Admin"
+    ],
+    "headerAriaLabel": "Tiện ích quản trị"
+  },
+  "styleTargets": [
+    {
+      "selector": ".liquid-tools",
+      "properties": [
+        "display",
+        "gap",
+        "paddingTop",
+        "paddingRight",
+        "paddingBottom",
+        "paddingLeft",
+        "borderTopWidth",
+        "borderTopLeftRadius",
+        "backgroundImage",
+        "boxShadow",
+        "backdropFilter"
+      ]
+    },
+    {
+      "selector": ".utility-drag-handle",
+      "properties": ["minWidth", "minHeight", "borderTopLeftRadius", "color"]
+    },
+    {
+      "selector": ".top-tool",
+      "all": true,
+      "properties": ["width", "minHeight", "borderTopLeftRadius", "paddingLeft", "paddingRight"]
+    },
+    {
+      "selector": ".badge",
+      "properties": [
+        "width",
+        "height",
+        "top",
+        "right",
+        "backgroundColor",
+        "color",
+        "fontSize",
+        "fontWeight",
+        "lineHeight"
+      ]
+    },
+    {
+      "selector": ".avatar",
+      "properties": ["width", "height", "borderTopWidth", "backgroundColor", "color"]
+    },
+    {
+      "selector": "header.top-utility-bar",
+      "properties": ["position", "zIndex", "display"]
+    }
+  ],
+  "assertions": [
+    { "selector": ".liquid-tools", "property": "display", "equals": "flex" },
+    { "selector": ".liquid-tools", "property": "gap", "equals": "2px" },
+    { "selector": ".liquid-tools", "property": "paddingTop", "equals": "4px" },
+    { "selector": ".liquid-tools", "property": "paddingRight", "equals": "4px" },
+    { "selector": ".liquid-tools", "property": "paddingBottom", "equals": "4px" },
+    { "selector": ".liquid-tools", "property": "paddingLeft", "equals": "4px" },
+    { "selector": ".liquid-tools", "property": "borderTopWidth", "equals": "1px" },
+    { "selector": ".liquid-tools", "property": "borderTopLeftRadius", "equals": "18px" },
+    { "selector": ".utility-drag-handle", "property": "minWidth", "equals": "28px" },
+    { "selector": ".utility-drag-handle", "property": "minHeight", "equals": "28px" },
+    { "selector": ".top-tool.icon-only", "property": "width", "equals": "46px" },
+    { "selector": ".top-tool.icon-only", "property": "minHeight", "equals": "44px" },
+    { "selector": ".top-tool.icon-only", "property": "borderTopLeftRadius", "equals": "12px" },
+    { "selector": ".badge", "property": "width", "equals": "17px" },
+    { "selector": ".badge", "property": "height", "equals": "17px" },
+    { "selector": ".badge", "property": "top", "equals": "-8px" },
+    { "selector": ".badge", "property": "right", "equals": "-8px" },
+    { "selector": ".badge", "property": "fontSize", "equals": "11px" },
+    { "selector": ".badge", "property": "fontWeight", "equals": "700" },
+    { "selector": ".avatar", "property": "width", "equals": "30px" },
+    { "selector": ".avatar", "property": "height", "equals": "30px" },
+    { "selector": ".avatar", "property": "borderTopWidth", "equals": "2px" },
+    { "selector": "header.top-utility-bar", "property": "position", "equals": "fixed" },
+    { "selector": "header.top-utility-bar", "property": "zIndex", "equals": "25" }
+  ],
+  "masks": [
+    {
+      "selector": ".badge",
+      "inset": 4,
+      "note": "Only the digit area is masked. Badge box, border, size and position remain compared."
+    }
+  ],
+  "tolerance": {
+    "channel": 8,
+    "maxDiffRatio": 0.001,
+    "maxDiffPixelsFloor": 12
+  },
+  "viewports": [
+    { "label": "1920x1080", "width": 1920, "height": 1080 },
+    { "label": "1440x900", "width": 1440, "height": 900 },
+    { "label": "1366x768", "width": 1366, "height": 768 },
+    { "label": "1280x800", "width": 1280, "height": 800 },
+    { "label": "1100x800", "width": 1100, "height": 800 },
+    { "label": "1024x768", "width": 1024, "height": 768 },
+    { "label": "900x700", "width": 900, "height": 700 },
+    { "label": "768x700", "width": 768, "height": 700 }
+  ],
+  "zoomViewports": [
+    { "label": "1920@125", "width": 1536, "height": 864, "note": "Effective CSS viewport for 1920px at 125% zoom" },
+    { "label": "1920@150", "width": 1280, "height": 720, "note": "Effective CSS viewport for 1920px at 150% zoom" },
+    { "label": "1920@200", "width": 960, "height": 540, "note": "Effective CSS viewport for 1920px at 200% zoom" },
+    { "label": "1366@200", "width": 683, "height": 384, "note": "Effective CSS viewport for 1366px at 200% zoom" }
+  ],
+  "docks": ["right", "top", "bottom", "left"],
+  "captureMargin": 24
+}

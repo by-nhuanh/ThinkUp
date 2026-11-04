@@ -4,6 +4,8 @@ import { CustomSelectComponent, CustomSelectOption } from '../../../shared/compo
 import { ExportMenuComponent } from '../../../shared/components/export-menu/export-menu.component';
 import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
 import { ExportFormat, downloadTable } from '../../../shared/utils/export-formats';
+import { AdminNumberPipe } from '../../../shared/pipes/admin-number.pipe';
+import { AdminPrivacyPipe } from '../../../shared/pipes/admin-privacy.pipe';
 import { UserRowMenuItem, UserRowMenuComponent } from '../components/user-row-menu/user-row-menu.component';
 import { UserDateRangeComponent } from '../components/user-date-range/user-date-range.component';
 import { UserModalComponent } from '../components/user-modal/user-modal.component';
@@ -62,7 +64,9 @@ const LEVELS: ReadonlyArray<{ level: DisciplineLevel; title: string; tag: string
     UserDateRangeComponent,
     UserModalComponent,
     UserRowMenuComponent,
-    UserToastComponent
+    UserToastComponent,
+    AdminNumberPipe,
+    AdminPrivacyPipe
   ],
   templateUrl: './students.component.html',
   styleUrls: ['../user-page.css', '../user-modal-content.css', './students.component.css']

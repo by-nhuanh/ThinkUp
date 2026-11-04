@@ -1,6 +1,19 @@
 /** Vai trò được phép truy cập phân hệ quản trị. */
 export type AdminRole = 'admin';
 
+/** Thông tin lần đăng nhập gần nhất, lấy từ audit log nếu có. */
+export interface AdminLastLogin {
+  at: string;
+  ipMasked: string | null;
+  userAgent: string | null;
+}
+
+/** Thông tin phiên đang thực hiện request `/me`. */
+export interface AdminCurrentSession {
+  ipMasked: string | null;
+  userAgent: string | null;
+}
+
 /** Hồ sơ quản trị đang đăng nhập. */
 export interface AdminUser {
   id: string;
@@ -14,6 +27,39 @@ export interface AdminUser {
   mustChangePassword?: boolean;
   /** Bắt buộc hoàn tất thiết lập ứng dụng 2FA và lưu mã dự phòng. */
   twoFactorSetupRequired?: boolean;
+  /** Trạng thái tài khoản do backend trả về; chỉ hiển thị khi có giá trị. */
+  status?: string;
+  /** Trạng thái 2FA do backend trả về; chỉ hiển thị khi có giá trị. */
+  is2faEnabled?: boolean;
+  /** Thời điểm tạo tài khoản (ISO) nếu backend có lưu. */
+  createdAt?: string | null;
+  /** Lần đăng nhập gần nhất từ audit log. */
+  lastLogin?: AdminLastLogin | null;
+  /** Phiên hiện tại theo request `/me`. */
+  currentSession?: AdminCurrentSession | null;
+}
+
+/** Phản hồi additive của `GET /api/admin/auth/me`. */
+export interface AdminProfileResponse {
+  success: boolean;
+  admin: {
+    id: string;
+    email: string;
+    full_name: string;
+    role: string;
+    status?: string;
+    is_2fa_enabled?: boolean;
+    created_at?: string | null;
+    last_login_at?: string | null;
+    lastLogin?: AdminLastLogin | null;
+    currentSession?: AdminCurrentSession | null;
+    passwordStatus?: {
+      isExpired: boolean;
+      isWarning: boolean;
+      daysLeft: number;
+      message?: string;
+    };
+  };
 }
 
 /** Payload gửi lên API đăng nhập. */

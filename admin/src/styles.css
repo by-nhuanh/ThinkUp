@@ -126,6 +126,155 @@ body { margin: 0; font-family: Inter, Arial, sans-serif; }
   --admin-auth-card-shadow: 0 8px 24px #1429471a;
 }
 
+/* 4. P6 — Semantic surface/text tokens cho shell quản trị.
+   Light dùng đúng các giá trị đang thấy trong giao diện cũ; dark chỉ đổi giá trị
+   token nên không cần sửa từng module. Phạm vi `.admin-shell` để không ảnh hưởng
+   trang đăng nhập/2FA và không đụng tới Header `.liquid-tools`. */
+.admin-shell {
+  --admin-canvas: #f4f8ff;
+  --admin-surface: #ffffff;
+  --admin-surface-raised: #ffffff;
+  --admin-surface-muted: #f7f9fc;
+  --admin-surface-subtle: #fbfcfe;
+  --admin-surface-sunken: #f6f9fe;
+  --admin-surface-hover: #f4f8ff;
+
+  --admin-text-strong: #1f2b40;
+  --admin-text: #183a67;
+  --admin-text-body: #123260;
+  --admin-text-muted: #66758f;
+  --admin-text-secondary: #5b708c;
+  --admin-text-subtle: #89a3c0;
+  --admin-text-label: #425b7d;
+
+  --admin-border: #d7e2ef;
+  --admin-border-subtle: #e6ecf5;
+  --admin-border-strong: #cbd7e8;
+
+  --admin-accent: #266ee5;
+  --admin-accent-hover: #1f5cc4;
+  --admin-accent-soft: #eef4ff;
+  --admin-accent-ink: #0b5fc2;
+  --admin-accent-soft-strong: #e8f2ff;
+  --admin-link: #1570d1;
+  --admin-danger: #e8243e;
+  --admin-danger-strong: #c0392b;
+  --admin-danger-soft: #fff4f4;
+  --admin-danger-border: #f2c4c0;
+  --admin-danger-solid: #b42318;
+  --admin-danger-solid-hover: #972015;
+  --admin-info-soft: #f2f7ff;
+  --admin-info-ink: #1c4f9c;
+  --admin-info-border: #cfe0fb;
+  --admin-switch-track: #c7d3e4;
+  --admin-danger-ink: #8a1c1c;
+  --admin-success: #13743b;
+  --admin-success-soft: #e7f8ef;
+  --admin-warning: #b55b00;
+  --admin-warning-soft: #fff8f0;
+  --admin-warning-border: #f0c9a8;
+  --admin-warning-ink: #7a4a12;
+  --admin-focus: #4388e8;
+  --admin-shadow: 0 10px 24px rgba(0, 0, 0, .22);
+}
+
+.admin-shell.theme-dark {
+  color-scheme: dark;
+
+  --admin-canvas: #0b1220;
+  --admin-surface: #121c2e;
+  --admin-surface-raised: #16233a;
+  --admin-surface-muted: #1a2942;
+  --admin-surface-subtle: #141f33;
+  --admin-surface-sunken: #1a2942;
+  --admin-surface-hover: #1a2942;
+
+  --admin-text-strong: #eef4ff;
+  --admin-text: #dbe7f8;
+  --admin-text-body: #dbe7f8;
+  --admin-text-muted: #a9bcd6;
+  --admin-text-secondary: #a9bcd6;
+  --admin-text-subtle: #8fa6c2;
+  --admin-text-label: #b8c9de;
+
+  --admin-border: #2a3b55;
+  --admin-border-subtle: #243449;
+  --admin-border-strong: #3a4e6c;
+
+  --admin-accent: #7fb3ff;
+  --admin-accent-hover: #a2c8ff;
+  --admin-accent-soft: #1c3355;
+  --admin-accent-ink: #bcd7ff;
+  --admin-accent-soft-strong: #1c3355;
+  --admin-link: #8ec8ff;
+  --admin-danger: #ff8a97;
+  --admin-danger-strong: #ff8a97;
+  --admin-danger-soft: #3a1c24;
+  --admin-danger-border: #5a2a33;
+  --admin-danger-solid: #b4232b;
+  --admin-danger-solid-hover: #d02f38;
+  --admin-info-soft: #16243a;
+  --admin-info-ink: #bcd7ff;
+  --admin-info-border: #2f4a6e;
+  --admin-switch-track: #3a4e6c;
+  --admin-danger-ink: #ffc3c9;
+  --admin-success: #7ad9a3;
+  --admin-success-soft: #16301f;
+  --admin-warning: #f0b45c;
+  --admin-warning-soft: #33240f;
+  --admin-warning-border: #5c431f;
+  --admin-warning-ink: #ffd8a3;
+  --admin-focus: #8ec8ff;
+  --admin-shadow: 0 14px 35px #00000066;
+}
+
+/* P6b — mật độ. Standard không khai báo token nên mỗi bảng/danh sách giữ đúng
+   padding gốc; compact/comfortable chỉ đổi giá trị token. Consumer nằm ngay
+   dưới đây (bảng nội dung, danh sách thông báo) nên không cần `!important`
+   và không đụng tới Header, dock hay vùng ngoài `.page-shell`. */
+.admin-shell[data-density='compact'] {
+  --admin-density-table-pad-block: 6px;
+  --admin-density-list-gap: 0px;
+  --admin-density-list-pad: 4px;
+  --admin-density-list-item-pad-block: 6px;
+}
+
+.admin-shell[data-density='comfortable'] {
+  --admin-density-table-pad-block: 16px;
+  --admin-density-list-gap: 4px;
+  --admin-density-list-pad: 10px;
+  --admin-density-list-item-pad-block: 14px;
+}
+
+.admin-shell[data-density='compact'] .page-shell :is(table th, table td),
+.admin-shell[data-density='comfortable'] .page-shell :is(table th, table td) {
+  padding-block: var(--admin-density-table-pad-block);
+}
+
+.admin-shell[data-density='compact'] .notifications__list,
+.admin-shell[data-density='comfortable'] .notifications__list {
+  gap: var(--admin-density-list-gap);
+  padding: var(--admin-density-list-pad);
+}
+
+.admin-shell[data-density='compact'] .notification,
+.admin-shell[data-density='comfortable'] .notification {
+  padding-block: var(--admin-density-list-item-pad-block);
+}
+
+/* P7 — chế độ riêng tư. `.sensitive` chỉ được đặt trên nội dung nhạy cảm
+   (email/số điện thoại/IP/số liệu chi tiết) và chỉ áp dụng blur khi người
+   dùng chủ động bật. Mask được xử lý ở pipe nên không cần CSS. */
+.admin-shell[data-privacy='blur'] .sensitive {
+  filter: blur(4px);
+  user-select: none;
+}
+
+.admin-shell[data-privacy='blur'] .sensitive:hover,
+.admin-shell[data-privacy='blur'] .sensitive:focus-visible {
+  filter: none;
+}
+
 .business-resizable-table.has-custom-column-widths { table-layout: fixed !important; max-width: none; }
 .business-resizable-heading { position: relative; }
 .business-column-resizer { position: absolute; z-index: 5; top: 0; right: -5px; width: 10px; height: 100%; cursor: col-resize; touch-action: none; user-select: none; }
