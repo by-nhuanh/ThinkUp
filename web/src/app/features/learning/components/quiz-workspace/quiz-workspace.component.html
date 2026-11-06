@@ -431,12 +431,14 @@
                   <div class="flex items-center gap-2">
                     <span class="h-2 w-2 shrink-0 rounded-full bg-[#2076FF]"></span>
                     <dt class="min-w-0 flex-1">Điểm cao nhất</dt>
-                    <dd class="shrink-0 font-bold">-- / 100</dd>
+                    <dd class="shrink-0 font-bold">
+                      {{ overview ? (overview.total_attempts > 0 ? overview.best_score_percent : '--') : (loading ? '…' : '--') }} / 100
+                    </dd>
                   </div>
                   <div class="flex items-center gap-2">
                     <span class="h-2 w-2 shrink-0 rounded-full bg-[#56647A]/40"></span>
                     <dt class="min-w-0 flex-1">Số lần làm</dt>
-                    <dd class="shrink-0 font-bold">0 lần</dd>
+                    <dd class="shrink-0 font-bold">{{ overview?.total_attempts ?? (loading ? '…' : 0) }} lần</dd>
                   </div>
                 </dl>
               </div>

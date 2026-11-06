@@ -35,10 +35,10 @@ export class CertificateService {
     });
   }
 
-  claimCertificate(courseId: string): Observable<{ success: boolean; message: string; certificate: Certificate }> {
+  claimCertificate(courseId: string): Observable<{ success: boolean; issued: boolean; message: string; certificate: Certificate }> {
     return defer(() => {
       const token = this.auth.getToken();
-      return this.http.post<{ success: boolean; message: string; certificate: Certificate }>(
+      return this.http.post<{ success: boolean; issued: boolean; message: string; certificate: Certificate }>(
         this.apiUrl + '/certificates/claim',
         { courseId }
       ).pipe(map(response => {

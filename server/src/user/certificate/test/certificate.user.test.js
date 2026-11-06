@@ -244,11 +244,13 @@ test('Certificate Backend Service Test Suite (SPEC-CERT-MNG-01 & SPEC-CERT-VERIF
     const newCert = await issueCertificateForUser({ userId: newClaimUserId, courseId: claimCourseId });
     assert.ok(newCert.code);
     assert.equal(newCert.status, 'valid');
+    assert.equal(newCert.newly_issued, true);
     assert.equal(await certColl.countDocuments({ user_id: newClaimUserId, course_id: claimCourseId }), 1);
 
     // Hai request đồng thời trả cùng chứng chỉ và chỉ tạo 1 bản ghi
     const sameCert = await issueCertificateForUser({ userId: newClaimUserId, courseId: claimCourseId });
     assert.equal(sameCert.code, newCert.code);
+    assert.equal(sameCert.newly_issued, false);
     assert.equal(await certColl.countDocuments({ user_id: newClaimUserId, course_id: claimCourseId }), 1);
 
     // Chứng chỉ hợp lệ đã phát hành được giữ nguyên, không tính lại điều kiện.

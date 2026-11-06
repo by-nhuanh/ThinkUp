@@ -60,7 +60,7 @@ export class QuizWorkspaceComponent implements OnChanges, OnDestroy {
   busy = false;
   loading = false;
   errorMessage = '';
-  private overview?: QuizOverviewDto;
+  overview?: QuizOverviewDto;
   private apiQuestions: QuizQuestion[] = [];
   private attemptId = '';
   private revision = 0;

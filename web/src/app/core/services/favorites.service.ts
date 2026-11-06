@@ -4,14 +4,16 @@ import { Observable, defer, map, of, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Course } from '../models/course.model';
 import { AuthService } from './auth.service';
+import { formatCourseLevel } from './course.service';
 
 export interface FavoritesQuery {
   sort?: string; page?: number; limit?: number | 'all'; search?: string; category_id?: string; level?: string;
 }
 interface FavoriteDto {
   id?: string; course_id: string; title: string; slug?: string; thumbnail_url?: string;
-  instructor?: { id?: string; name?: string }; rating: number; total_reviews: number; total_students: number;
-  price: { sale: number; original: number }; level?: string; tag_names?: string[];
+  instructor?: { id?: string; name?: string; avatar_url?: string; avatar?: string; headline?: string };
+  rating: number; total_reviews: number; total_students: number;
+  price: { sale: number; original: number }; level?: string; duration_minutes?: number | string; duration_formatted?: string; tag_names?: string[];
   is_in_cart?: boolean; is_purchased?: boolean;
 }
 interface Result<T> { success: boolean; data: T; }
@@ -150,10 +152,30 @@ export class FavoritesService {
   }
 
   private mapCourse(dto: FavoriteDto): Course {
+    const durationMinutes = Number(dto.duration_minutes) || 0;
+    const duration = dto.duration_formatted || this.formatDuration(durationMinutes);
+    const instructorName = dto.instructor?.name || 'Giảng viên ThinkUp';
+    const instructorAvatar = dto.instructor?.avatar_url || dto.instructor?.avatar;
     return { id: dto.course_id || dto.id!, courseId: dto.course_id, slug: dto.slug, title: dto.title,
-      instructor: dto.instructor?.name || '', instructorId: dto.instructor?.id, level: dto.level,
+      instructor: instructorName, instructorId: dto.instructor?.id,
+      instructorInitial: instructorName.charAt(0).toUpperCase(),
+      instructorProfile: {
+        id: dto.instructor?.id, name: instructorName, title: dto.instructor?.headline || 'Giảng viên chuyên môn',
+        bio: '', rating: Number(dto.rating) || 0, studentsCount: Number(dto.total_students) || 0,
+        coursesCount: 0, avatar: instructorAvatar,
+      },
+      level: formatCourseLevel(dto.level), duration, durationMinutes,
       rating: dto.rating, ratingCount: dto.total_reviews, studentsCount: dto.total_students,
       salePrice: dto.price.sale, originalPrice: dto.price.original, thumbnailUrl: dto.thumbnail_url,
       tags: dto.tag_names, isInWishlist: true, isInCart: dto.is_in_cart, isPurchased: dto.is_purchased };
+  }
+
+  private formatDuration(minutes: number): string {
+    if (!Number.isFinite(minutes) || minutes <= 0) return '';
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    if (hours && remainingMinutes) return `${hours} giờ ${remainingMinutes} phút`;
+    if (hours) return `${hours} giờ`;
+    return `${remainingMinutes} phút`;
   }
 }

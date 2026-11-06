@@ -440,7 +440,7 @@ export async function issueCertificateForUser({ userId, courseId }) {
   });
 
   if (existingCert) {
-    return certificateClaimResult(existingCert);
+    return { ...certificateClaimResult(existingCert), newly_issued: false };
   }
 
   const [enrollment, ownedCourse, directLessons, sections] = await Promise.all([
@@ -521,7 +521,7 @@ export async function issueCertificateForUser({ userId, courseId }) {
     ],
   });
   if (doubleCheck) {
-    return certificateClaimResult(doubleCheck);
+    return { ...certificateClaimResult(doubleCheck), newly_issued: false };
   }
 
   const newCode = generateCertificateCode();
@@ -591,7 +591,7 @@ export async function issueCertificateForUser({ userId, courseId }) {
     console.warn('[Certificate Sync Warning]:', syncErr.message);
   }
 
-  return formatCertificateDto(certRecord);
+  return { ...formatCertificateDto(certRecord), newly_issued: true };
 }
 
 // ─── 3. Tạo Express Router Module ──────────────────────────────────────────
@@ -636,10 +636,12 @@ export function createCertificateRouter(expressLib, requireAuthMiddleware) {
       const userId = req.userId || req.user?.id || req.user?._id;
       const { courseId } = req.body || {};
       const certificate = await issueCertificateForUser({ userId, courseId });
-      res.status(201).json({
+      const { newly_issued: issued, ...certificateDto } = certificate;
+      res.status(issued === true ? 201 : 200).json({
         success: true,
-        message: 'Chứng chỉ đã được cấp thành công.',
-        certificate,
+        issued: issued === true,
+        message: issued === true ? 'Chứng chỉ đã được cấp thành công.' : 'Khóa học đã có chứng chỉ.',
+        certificate: certificateDto,
       });
     } catch (err) {
       next(err);

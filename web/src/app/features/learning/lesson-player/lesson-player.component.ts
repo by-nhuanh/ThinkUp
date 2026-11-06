@@ -294,7 +294,8 @@ export class LessonPlayerComponent implements OnDestroy {
           const lessons = chapters.flatMap(chapter => chapter.lessons);
           const completed = lessons.filter(item => item.completed).length;
           const percent = Math.round(completed / Math.max(1, lessons.length) * 100);
-          if (percent === 100) this.checkAndAutoClaimCertificate(course.id, percent);
+          const previousPercent = current.progress ?? 0;
+          if (percent === 100 && previousPercent < 100) this.checkAndAutoClaimCertificate(course.id, percent, previousPercent);
           return { ...current, chapters, progress: percent, enrollment: current.enrollment ? {
             ...current.enrollment, completedLessons: completed, completed, remaining: lessons.length - completed, percent,
           } : undefined };
@@ -307,8 +308,8 @@ export class LessonPlayerComponent implements OnDestroy {
     }));
   }
 
-  private checkAndAutoClaimCertificate(courseId: string, currentPercent: number): void {
-    if (currentPercent < 100 || this.claimedCourses.has(courseId) || this.claimingCertificate) return;
+  private checkAndAutoClaimCertificate(courseId: string, currentPercent: number, previousPercent: number): void {
+    if (currentPercent < 100 || previousPercent >= 100 || this.claimedCourses.has(courseId) || this.claimingCertificate) return;
     this.claimingCertificate = true;
     this.subscriptions.add(
       this.certificateService.claimCertificate(courseId).pipe(
@@ -316,10 +317,12 @@ export class LessonPlayerComponent implements OnDestroy {
       ).subscribe({
         next: (res) => {
           this.claimedCourses.add(courseId);
-          this.toast.showToast({
-            type: 'success',
-            message: `Chúc mừng bạn đã hoàn thành khóa học! Chứng chỉ ThinkUp đã được cấp thành công (Mã: ${res.certificate.code}).`,
-          });
+          if (res.issued) {
+            this.toast.showToast({
+              type: 'success',
+              message: `Chúc mừng bạn đã hoàn thành khóa học! Chứng chỉ ThinkUp đã được cấp thành công (Mã: ${res.certificate.code}).`,
+            });
+          }
         },
         error: (err) => {
           if (err?.error?.code === 'CERTIFICATE_REVOKED') {
@@ -334,7 +337,9 @@ export class LessonPlayerComponent implements OnDestroy {
     this.course.update(current => {
       if (!current || current.id !== updated.id) return current;
       const progress = new Map(updated.chapters.flatMap(chapter => chapter.lessons).map(lesson => [lesson.id, lesson]));
-      if (updated.progress === 100) this.checkAndAutoClaimCertificate(updated.id, updated.progress);
+      if (updated.progress === 100 && (current.progress ?? 0) < 100) {
+        this.checkAndAutoClaimCertificate(updated.id, updated.progress, current.progress ?? 0);
+      }
       return { ...current, progress: updated.progress, enrollment: updated.enrollment,
         chapters: current.chapters.map(chapter => ({ ...chapter, lessons: chapter.lessons.map(lesson => {
           const saved = progress.get(lesson.id);
