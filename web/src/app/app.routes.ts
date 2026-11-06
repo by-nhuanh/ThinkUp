@@ -1,4 +1,3 @@
-import { studyRoomEntryGuard } from './features/study-room/guards/study-room-entry.guard';
 import { Routes } from '@angular/router';
 import { onboardingRequiredGuard, onboardingCompletedGuard } from './core/guards/onboarding.guard';
 import { guestGuard } from './core/guards/guest.guard';
@@ -94,9 +93,9 @@ export const routes: Routes = [
         ]
       },
       { path: 'contact', loadComponent: () => import('./features/support/contact/contact.component').then(m => m.ContactComponent) },
-      { path: 'help-center', loadComponent: () => import('./features/support/contact/contact.component').then(m => m.ContactComponent) },
+      { path: 'help-center', loadComponent: () => import('./features/support/help-center/help-center.component').then(m => m.HelpCenterComponent) },
       { path: 'instructors/:slug', loadComponent: () => import('./features/instructors/instructor-profile/instructor-profile.component').then(m => m.InstructorProfileComponent) },
-      { path: 'instructors', loadComponent: () => import('./features/support/contact/contact.component').then(m => m.ContactComponent) },
+      { path: 'instructors', loadComponent: () => import('./features/instructors/instructor-landing/instructor-landing.component').then(m => m.InstructorLandingComponent) },
       {
         path: '',
         pathMatch: 'full',
@@ -112,7 +111,7 @@ export const routes: Routes = [
     children: [
       { path: 'learn/:courseId', data: { hideFooter: true }, loadComponent: () => import('./features/learning/lesson-player/lesson-player.component').then(m => m.LessonPlayerComponent) },
       { path: 'study-room', loadComponent: () => import('./features/study-room/study-room-lobby/study-room-lobby.component').then(m => m.StudyRoomLobbyComponent) },
-      { path: 'study-room/:roomId', canActivate: [studyRoomEntryGuard], data: { hideShell: true }, loadComponent: () => import('./features/study-room/study-room-view/study-room-view.component').then(m => m.StudyRoomViewComponent) },
+      { path: 'study-room/:roomId', canActivate: [() => import('./features/study-room/guards/study-room-entry.guard').then(m => m.studyRoomEntryGuard)], data: { hideShell: true }, loadComponent: () => import('./features/study-room/study-room-view/study-room-view.component').then(m => m.StudyRoomViewComponent) },
       { path: 'roadmap', loadComponent: () => import('./features/roadmap/roadmap-list/roadmap-list.component').then(m => m.RoadmapListComponent) },
       { path: 'roadmap/:id', loadComponent: () => import('./features/roadmap/roadmap-detail/roadmap-detail.component').then(m => m.RoadmapDetailComponent) },
       { path: 'roadmap/:roadmapId/test/:stageId', loadComponent: () => import('./features/roadmap/roadmap-test/roadmap-test.component').then(m => m.RoadmapTestComponent) },

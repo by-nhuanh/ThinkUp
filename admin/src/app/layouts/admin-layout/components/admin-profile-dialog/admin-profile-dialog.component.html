@@ -1,0 +1,99 @@
+<app-admin-dialog
+  title="Hồ sơ Quản trị viên"
+  subtitle="Thông tin định danh, quyền hạn và bảo mật tài khoản"
+  size="lg"
+  (closed)="closed.emit()"
+>
+  @if (loading()) {
+    <div class="profile-skeleton" aria-label="Đang tải hồ sơ">
+      <span></span><span></span><span></span>
+    </div>
+  }
+
+  @if (error()) {
+    <div class="profile-alert" role="alert">
+      <span>{{ error() }}</span>
+      <button type="button" class="profile-text-button" (click)="retry.emit()">Thử lại</button>
+    </div>
+  }
+
+  <section class="profile-hero" aria-labelledby="profile-hero-title">
+    <span class="profile-avatar" aria-hidden="true">{{ avatarText() }}</span>
+    <div class="profile-hero-copy">
+      <h3 id="profile-hero-title">{{ user().fullName }}</h3>
+      <p class="profile-email">{{ user().email }}</p>
+      <div class="profile-badges">
+        <span class="profile-badge profile-badge--role">{{ roleText() }}</span>
+        @if (accountStatus(); as status) {
+          <span class="profile-badge profile-badge--status">{{ status }}</span>
+        }
+        @if (isDemo()) {
+          <span class="profile-badge profile-badge--demo">Dữ liệu demo</span>
+        }
+      </div>
+    </div>
+  </section>
+
+  @if (isDemo()) {
+    <p class="profile-demo-note" role="note">
+      Đang xem dữ liệu demo cục bộ — không phải tài khoản vận hành thật.
+    </p>
+  }
+
+  @for (section of sections(); track section.id) {
+    <section class="profile-section" [attr.aria-labelledby]="'profile-section-' + section.id">
+      <h3 [id]="'profile-section-' + section.id">{{ section.title }}</h3>
+
+      <dl class="profile-grid">
+        @for (field of section.fields; track field.key) {
+          <div class="profile-card">
+            <dt>{{ field.label }}</dt>
+            <dd>
+              <span
+                class="profile-value"
+                [class.profile-value--mono]="field.mono"
+                [class.profile-value--muted]="field.unavailable"
+              >{{ field.value }}</span>
+
+              @if (field.copyable) {
+                <button
+                  type="button"
+                  class="profile-copy"
+                  [class.profile-copy--done]="isCopied(field)"
+                  [attr.aria-label]="'Sao chép ' + field.label"
+                  [attr.title]="isCopied(field) ? 'Đã sao chép' : 'Sao chép ' + field.label"
+                  (click)="copyField(field)"
+                >
+                  @if (isCopied(field)) {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="m20 6-11 11-5-5" />
+                    </svg>
+                  } @else {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <rect x="9" y="9" width="12" height="12" rx="2"></rect>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                  }
+                </button>
+              }
+
+              @if (hasCopyError(field)) {
+                <span class="profile-copy-error">{{ copyAnnouncement() }}</span>
+              }
+
+              @if (field.note) {
+                <span class="profile-note">{{ field.note }}</span>
+              }
+            </dd>
+          </div>
+        }
+      </dl>
+
+      @if (section.note) {
+        <p class="profile-section-note">{{ section.note }}</p>
+      }
+    </section>
+  }
+
+  <span class="profile-sr" aria-live="polite">{{ copyAnnouncement() }}</span>
+</app-admin-dialog>

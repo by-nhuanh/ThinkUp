@@ -46,6 +46,9 @@ export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = environment.apiUrl;
   private readonly userState = signal<User | null>(null);
+  private sessionVerifiedAt = 0;
+  private verifiedSessionToken: string | null = null;
+  private readonly sessionVerificationCacheMs = 10_000;
   readonly currentUser = this.userState.asReadonly();
 
   constructor() {
@@ -162,6 +165,10 @@ export class AuthService {
       this.clearSession();
       return of(false);
     }
+    if (this.sessionVerifiedAt && this.verifiedSessionToken === this.getToken() &&
+        Date.now() - this.sessionVerifiedAt < this.sessionVerificationCacheMs && this.userState()) {
+      return of(true);
+    }
     return this.http.get<BackendSessionResponse>(`${this.apiUrl}/auth/session`).pipe(
       map(response => {
         if (!response.isAuthenticated || !response.user) {
@@ -169,6 +176,8 @@ export class AuthService {
           return false;
         }
         this.updateUser(this.mapUser(response.user));
+        this.sessionVerifiedAt = Date.now();
+        this.verifiedSessionToken = this.getToken();
         return true;
       }),
       catchError(error => {
@@ -200,6 +209,8 @@ export class AuthService {
 
   clearSession(): void {
     this.userState.set(null);
+    this.sessionVerifiedAt = 0;
+    this.verifiedSessionToken = null;
     if (typeof localStorage !== 'undefined') {
       for (const key of [TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY, 'thinkup_user_logged_in', 'thinkup_token', 'token', 'user', 'thinkup_mock_db_users', 'thinkup_mock_social_users']) {
         localStorage.removeItem(key);
@@ -239,6 +250,8 @@ export class AuthService {
     if (!storage) throw new Error('Phiên đã kết thúc.');
     storage.setItem(TOKEN_KEY, data.accessToken);
     storage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
+    this.sessionVerifiedAt = Date.now();
+    this.verifiedSessionToken = data.accessToken;
   }
 
   private saveSession(response: AuthResponse, rememberMe: boolean): void {
@@ -249,6 +262,8 @@ export class AuthService {
     if (response.refreshToken) storage.setItem(REFRESH_TOKEN_KEY, response.refreshToken);
     storage.setItem(USER_KEY, JSON.stringify(response.user));
     this.userState.set(response.user);
+    this.sessionVerifiedAt = Date.now();
+    this.verifiedSessionToken = response.token;
   }
 
   private mapLoginResponse(response: BackendLoginResponse): AuthResponse {

@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal, Input, HostListener, ElementRef } from '@angular/core';
+import { Component, computed, inject, signal, Input, HostListener, ElementRef, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -19,7 +19,7 @@ export interface MenuItem {
   templateUrl: './account-menu.component.html',
   styleUrl: './account-menu.component.css'
 })
-export class AccountMenuComponent {
+export class AccountMenuComponent implements OnChanges {
   private router = inject(Router);
   private el = inject(ElementRef);
   private authService = inject(AuthService);
@@ -31,6 +31,15 @@ export class AccountMenuComponent {
   @Input() roleLabel = 'Học viên';
 
   readonly isOpen = signal(false);
+  readonly avatarFailed = signal(false);
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['avatarUrl']) this.avatarFailed.set(false);
+  }
+
+  onAvatarError(): void {
+    this.avatarFailed.set(true);
+  }
 
   readonly menuItems = computed<MenuItem[]>(() => {
     const unread = this.notifications.unreadCount();

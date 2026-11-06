@@ -29,7 +29,8 @@ yarn-error.log*
 
 # local env files
 .env*.local
-
+.env
+web/.env
 # vercel
 .vercel
 
@@ -52,6 +53,10 @@ next-env.d.ts
 scripts/
 server/scripts/
 
+# Web build scripts must stay tracked: `npm run build` executes the config
+# generator before `ng build`, so Vercel fails if this folder is ignored.
+!web/scripts/
+
 # Roadmap contract and data preparation maintained with the feature
 !server/api_user_2.md
 !server/scripts/
@@ -59,3 +64,4 @@ server/scripts/*
 !server/scripts/prepare_roadmap_data.js
 !server/scripts/seed_all_stage_questions.js
 !server/scripts/check_roadmaps.js
+.env

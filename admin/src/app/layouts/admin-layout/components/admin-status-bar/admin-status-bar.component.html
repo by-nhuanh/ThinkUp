@@ -1,0 +1,15 @@
+<div
+  class="status-bar"
+  [class.status-bar--reserve-dock]="reserveDock()"
+  role="note"
+  [attr.aria-label]="'statusBar.ariaLabel' | adminT"
+>
+  <span class="status-item">
+    <span class="status-dot" [class.is-offline]="!online()" aria-hidden="true"></span>
+    <span>{{ (online() ? 'statusBar.online' : 'statusBar.offline') | adminT }}</span>
+  </span>
+  <span class="status-divider" aria-hidden="true"></span>
+  <span class="status-item">{{ 'statusBar.environment' | adminT }}: {{ environmentLabel }}</span>
+  <span class="status-divider" aria-hidden="true"></span>
+  <span class="status-item">{{ timezone() }} · {{ clock() }}</span>
+</div>

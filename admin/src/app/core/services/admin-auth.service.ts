@@ -1,14 +1,16 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, catchError, from, map, of, tap, throwError } from 'rxjs';
+import { Observable, catchError, from, map, of, tap, throwError, timeout } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { MOCK_ADMIN_ACCOUNT, MOCK_ADMIN_BACKUP_CODES, MOCK_FIRST_LOGIN_ADMIN_ACCOUNT } from '../data/mock/admin-auth.mock';
+import { mapAdminProfile } from './admin-profile.presenter';
 import {
   AdminAuthError,
   AdminLoginRequest,
   AdminLoginResponse,
   AdminPasswordState,
   AdminOnboardingSetupResponse,
+  AdminProfileResponse,
   AdminRole,
   AdminTwoFactorSetup,
   AdminTwoFactorChallenge,
@@ -21,6 +23,8 @@ const USER_KEY = 'thinkup_admin_user';
 const CHALLENGE_KEY = 'thinkup_admin_2fa';
 const REMINDER_KEY = 'thinkup_admin_password_reminder_dismissed';
 const TWO_FACTOR_SETUP_KEY = 'thinkup_admin_2fa_setup';
+/** Token giả chỉ dùng ở chế độ demo local; không gửi lên server. */
+const DEMO_TOKEN = 'demo-local-access-token';
 
 /** Chính sách xoay vòng mật khẩu: 90 ngày, cảnh báo trước 7 ngày. */
 const PASSWORD_LIFETIME_DAYS = 90;
@@ -290,6 +294,51 @@ export class AdminAuthService {
     this.userState.set(null);
     this.challengeState.set(null);
     this.twoFactorSetupState.set(null);
+  }
+
+  /**
+   * Làm mới hồ sơ từ `/me` khi người dùng mở modal hồ sơ.
+   * Demo local bỏ qua HTTP để tránh token giả bị 401 và đăng xuất ngoài ý muốn.
+   */
+  refreshCurrentUser(): Observable<AdminUser> {
+    const current = this.userState();
+    if (!current) {
+      return throwError(() => this.buildError('Phiên đăng nhập đã hết. Vui lòng đăng nhập lại.', 401, 'NO_SESSION'));
+    }
+    if (environment.adminDemoLogin || this.getToken() === DEMO_TOKEN) {
+      return of(current);
+    }
+
+    return this.http.get<AdminProfileResponse>(`${this.apiUrl}/admin/auth/me`).pipe(
+      map(response => {
+        if (!response?.success || !response.admin) {
+          throw this.buildError('Dữ liệu hồ sơ từ máy chủ không hợp lệ.', 500, 'INVALID_PROFILE_RESPONSE');
+        }
+        return mapAdminProfile(response, current);
+      }),
+      tap(user => {
+        this.persistUser(user);
+        this.userState.set(user);
+      }),
+      catchError((error: unknown) => throwError(() => this.normalizeError(error)))
+    );
+  }
+
+  /**
+   * Đăng xuất: gọi endpoint hiện có theo kiểu best-effort, sau đó luôn xoá phiên local.
+   * Không thu hồi JWT; token vẫn có hiệu lực tới khi hết hạn.
+   */
+  signOut(): Observable<void> {
+    const token = this.getToken();
+    const shouldCallApi = !!token && token !== DEMO_TOKEN && !environment.adminDemoLogin;
+    const request = shouldCallApi
+      ? this.http.post<void>(`${this.apiUrl}/admin/auth/logout`, {}).pipe(
+        timeout(2000),
+        catchError(() => of(undefined))
+      )
+      : of(undefined);
+
+    return request.pipe(map(() => this.logout()));
   }
 
   private verifyTwoFactor(input: { otp: string } | { backupCode: string }): Observable<AdminUser> {

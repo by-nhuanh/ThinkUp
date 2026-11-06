@@ -16,7 +16,7 @@
             <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
           </svg>
         </span>
-        <span class="kpi-value">{{ formatCount(kpis().total) }}</span>
+        <span class="kpi-value">{{ kpis().total | adminNumber }}</span>
       </div>
       <p class="kpi-note">Toàn bộ tài khoản học viên</p>
     </article>
@@ -29,7 +29,7 @@
             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M19 8v6M22 11h-6" />
           </svg>
         </span>
-        <span class="kpi-value">{{ formatCount(kpis().fresh) }}</span>
+        <span class="kpi-value">{{ kpis().fresh | adminNumber }}</span>
       </div>
       <p class="kpi-note kpi-note--positive">30 ngày gần nhất</p>
     </article>
@@ -42,7 +42,7 @@
             <circle cx="12" cy="12" r="9" /><path d="m8.5 12.2 2.4 2.4 4.6-4.9" />
           </svg>
         </span>
-        <span class="kpi-value">{{ formatCount(kpis().active) }}</span>
+        <span class="kpi-value">{{ kpis().active | adminNumber }}</span>
       </div>
       <p class="kpi-note">{{ activePercent() }}% tổng số</p>
     </article>
@@ -55,7 +55,7 @@
             <rect x="4" y="10" width="16" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" />
           </svg>
         </span>
-        <span class="kpi-value">{{ formatCount(kpis().locked) }}</span>
+        <span class="kpi-value">{{ kpis().locked | adminNumber }}</span>
       </div>
       <p class="kpi-note kpi-note--danger">Cần theo dõi</p>
     </article>
@@ -181,9 +181,9 @@
                   <div class="cell-stack"><strong>{{ item.name }}</strong></div>
                 </div>
               </td>
-              <td>{{ item.email }}</td>
-              <td class="cell-nowrap">{{ item.phone }}</td>
-              <td class="cell-nowrap">{{ item.courseCount }}</td>
+              <td><span class="sensitive">{{ item.email | adminPrivacy }}</span></td>
+              <td class="cell-nowrap"><span class="sensitive">{{ item.phone | adminPrivacy }}</span></td>
+              <td class="cell-nowrap">{{ item.courseCount | adminNumber }}</td>
               <td class="cell-nowrap">{{ formatDate(item.registeredAt) }}</td>
               <td>
                 <span class="status-badge" [class]="'status-badge status-badge--' + statusTone[item.status]">
