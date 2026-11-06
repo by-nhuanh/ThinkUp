@@ -37,6 +37,7 @@ export interface CurrentCourse {
   id: string;
   category: string;
   instructor: string;
+  instructorAvatar?: string;
   title: string;
   progress: number;
   nextLesson: string;

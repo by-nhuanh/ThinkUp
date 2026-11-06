@@ -7,6 +7,9 @@
   (keydown.enter)="openCourse()"
 >
   <div class="icard__cover" [style.background]="getCoverColor()">
+    @if (course.thumbnailUrl) {
+      <img [src]="course.thumbnailUrl" [alt]="course.title" class="icard__cover-img" />
+    }
     @if (course.badge) {
       <span class="icard__badge" [ngClass]="getBadgeClass(course.badge)">{{ course.badge }}</span>
     }
@@ -23,26 +26,29 @@
       </svg>
     </button>
 
-    <div class="icard__cover-content">
-      @switch (getCoverMark()) {
-        @case ('letter') {
-          <span class="icard__mark-letter" aria-hidden="true">{{ course.icon }}</span>
+    @if (!course.thumbnailUrl) {
+      <div class="icard__cover-content">
+        @switch (getCoverMark()) {
+          @case ('letter') {
+            <span class="icard__mark-letter" aria-hidden="true">{{ course.icon }}</span>
+          }
+          @case ('ring') {
+            <span class="icard__mark-ring" aria-hidden="true"></span>
+          }
         }
-        @case ('ring') {
-          <span class="icard__mark-ring" aria-hidden="true"></span>
-        }
-      }
 
-      <div class="icard__cover-text" [class.icard__cover-text--dark]="isDarkCover()">
-        <p class="icard__cover-title">{{ getCoverTitle() }}</p>
-        @if (getCoverSubtitle()) {
-          <p class="icard__cover-subtitle">{{ getCoverSubtitle() }}</p>
-        }
+        <div class="icard__cover-text" [class.icard__cover-text--dark]="isDarkCover()">
+          <p class="icard__cover-title">{{ getCoverTitle() }}</p>
+          @if (getCoverSubtitle()) {
+            <p class="icard__cover-subtitle">{{ getCoverSubtitle() }}</p>
+          }
+        </div>
       </div>
-    </div>
+    }
   </div>
 
   <div class="icard__body">
+    <h3 class="icard__title" [title]="course.title">{{ course.title }}</h3>
     <div class="icard__row icard__instructor-row">
       <span class="icard__instructor">
         <svg class="icard__icon icard__icon--muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

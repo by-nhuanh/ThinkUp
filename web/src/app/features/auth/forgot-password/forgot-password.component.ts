@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { ToastService } from '../../../core/services/toast.service';
+import { environment } from '../../../../environments/environment';
 
 export interface ForgotPasswordErrors {
   email?: string;
@@ -68,7 +69,21 @@ export class ForgotPasswordComponent implements OnInit {
 
     this.authService.forgotPassword(emailVal).subscribe({
       next: (result) => {
-        this.toastService.showToast({ type: 'success', message: 'Mã xác thực đã được gửi!' });
+        if (result.accountExists === false && !environment.production) {
+          this.loading.set(false);
+          const message = 'Không tìm thấy tài khoản';
+          this.errors.set({ api: message });
+          this.toastService.showToast({ type: 'error', message });
+          return;
+        }
+        if (result.accountExists === false) {
+          this.loading.set(false);
+          const message = 'Không tìm thấy tài khoản';
+          this.errors.set({ api: message });
+          this.toastService.showToast({ type: 'error', message });
+          return;
+        }
+        this.toastService.showToast({ type: 'success', message: 'Yêu cầu đã được tiếp nhận. Vui lòng kiểm tra email nếu tài khoản của bạn đã đăng ký.' });
         const emailToVerify = result?.email || emailVal;
         this.router.navigate(['/auth/verify-otp'], {
           queryParams: { email: emailToVerify }

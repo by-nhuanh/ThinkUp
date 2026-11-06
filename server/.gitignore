@@ -13,4 +13,7 @@ writing-block.md
 
 # Optional maintenance and recheck scripts
 recheck/
-scripts/
+scripts/*
+!scripts/prepare_roadmap_data.js
+!scripts/seed_all_stage_questions.js
+!scripts/check_roadmaps.js

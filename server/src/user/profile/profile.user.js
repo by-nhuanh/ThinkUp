@@ -177,7 +177,17 @@ export async function getProfileOverviewData(userId, options = {}) {
     .limit(5)
     .toArray();
 
-  const recentActivities = rawActivities.map((act) => ({
+  const sessions = await db.collection('learning_activity_sessions').find({ user_id: String(userId), credited_milliseconds: { $gt: 0 } })
+    .sort({ last_seen_at: -1 }).limit(5).toArray();
+  const sessionCourses = await db.collection(COLLECTION_COURSES).find({ $or: [
+    { course_id: { $in: sessions.map(session => session.target?.course_id).filter(Boolean) } },
+    { _id: { $in: sessions.map(session => session.target?.course_id).filter(id => ObjectId.isValid(String(id))).map(id => new ObjectId(String(id))) } },
+  ] }).toArray();
+  const sessionActivities = sessions.map(session => {
+    const course = sessionCourses.find(item => String(item.course_id || item._id) === String(session.target?.course_id) || String(item._id) === String(session.target?.course_id));
+    return { _id: session._id, text: session.kind === 'lesson' ? `Đã học ${course?.title || 'khóa học'}` : session.kind === 'flashcard' ? 'Đã học thẻ ghi nhớ' : 'Đã học lộ trình', tone: 'blue', created_at: session.last_seen_at || session.created_at };
+  });
+  const recentActivities = [...rawActivities, ...sessionActivities].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5).map((act) => ({
     key: act._id.toString(),
     text: act.text,
     time: formatActivityRelativeTime(act.created_at, new Date(), timezone),
@@ -216,6 +226,21 @@ export async function getProfileOverviewData(userId, options = {}) {
   const coursesList = courseLookup
     ? await db.collection(COLLECTION_COURSES).find(courseLookup).toArray()
     : [];
+
+  const instructorIds = [...new Set(coursesList.map(c => String(c.instructor_id)).filter(Boolean))];
+  const instructorProfiles = instructorIds.length > 0
+    ? await db.collection('instructor_profiles').find({
+        $or: [
+          { instructor_id: { $in: instructorIds } },
+          { user_id: { $in: instructorIds } },
+        ],
+      }).toArray()
+    : [];
+  const instructorAvatarMap = new Map();
+  for (const inst of instructorProfiles) {
+    if (inst.instructor_id) instructorAvatarMap.set(String(inst.instructor_id), inst.avatar_url);
+    if (inst.user_id) instructorAvatarMap.set(String(inst.user_id), inst.avatar_url);
+  }
 
   const courseMap = new Map();
   for (const c of coursesList) {
@@ -270,10 +295,12 @@ export async function getProfileOverviewData(userId, options = {}) {
       }
     }
 
+    const instAvatar = instructorAvatarMap.get(String(course.instructor_id)) || course.instructor_avatar || '';
     const courseCardItem = {
-        id: canonicalCourseId,
+      id: canonicalCourseId,
       category: course.category || course.level || 'Khóa học',
       instructor: course.instructor_name || course.instructor || 'ThinkUp Giảng viên',
+      instructorAvatar: instAvatar,
       title: course.title || 'Khóa học',
       progress,
       nextLesson: nextLessonText,
@@ -328,8 +355,28 @@ export async function getProfileOverviewData(userId, options = {}) {
  * @param {Function} [getCurrentUser]
  * @returns {Object} Router Express
  */
+/** Private profile whitelist shared by GET and PUT; never return authentication fields. */
+export async function getProfileDetails(userId, options = {}) {
+  const db = options.db || await getMongoDb();
+  const uid = ObjectId.isValid(String(userId)) ? new ObjectId(String(userId)) : userId;
+  const user = await db.collection(COLLECTION_USERS).findOne({ _id: uid });
+  if (!user) throw Object.assign(new Error('Không tìm thấy hồ sơ.'), { status: 404, code: 'PROFILE_NOT_FOUND' });
+  const result = { user_id: String(user._id), name: user.full_name || '', full_name: user.full_name || '',
+    email: user.email || '', avatar: user.avatar_url || '', avatar_url: user.avatar_url || '' };
+  for (const key of ['headline', 'location', 'bio', 'phone', 'gender', 'birth_date', 'facebook', 'linkedin', 'x', 'youtube', 'github', 'portfolio']) result[key] = user[key] ?? '';
+  result.first_name = user.first_name ?? null;
+  result.last_name = user.last_name ?? null;
+  return result;
+}
+
 export function createProfileRouter(express, requireAuth, getCurrentUser) {
   const router = express.Router();
+
+  router.get('/', requireAuth, async (req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    try { res.json({ success: true, data: await getProfileDetails(req.userId) }); }
+    catch (error) { next(error); }
+  });
 
   // GET /api/user/profile/overview - Lấy tổng quan hồ sơ học viên (Dashboard)
   router.get('/overview', requireAuth, async (req, res, next) => {
@@ -406,14 +453,8 @@ export function createProfileRouter(express, requireAuth, getCurrentUser) {
         { $set: updateFields }
       );
 
-      let updatedData = {};
-      if (typeof getCurrentUser === 'function') {
-        const userRes = await getCurrentUser(req.userId);
-        updatedData = userRes?.user || userRes;
-      } else {
-        const u = await db.collection(COLLECTION_USERS).findOne({ _id: uid });
-        updatedData = u;
-      }
+      const updatedData = await getProfileDetails(req.userId, { db });
+      res.set('Cache-Control', 'no-store');
 
       res.json({
         success: true,

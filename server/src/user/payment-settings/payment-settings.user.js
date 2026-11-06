@@ -1,13 +1,14 @@
 import { getMongoDb } from '../db.js';
 import { getPurchaseHistory } from '../purchase/purchase.user.js';
 import { getTransactionBillingDetail } from '../purchase/billing.user.js';
+import { createInvoicePdf } from './invoice-pdf.js';
 
 export const COLLECTION_PAYMENT_PREFERENCES = 'payment_preferences';
 export const DEFAULT_PAYMENT_PREFERENCES = Object.freeze({
   savePayment: false, invoiceEmail: true, quickConfirm: false,
 });
 const CAPABILITIES = Object.freeze({ savePayment: false, invoiceEmail: true,
-  quickConfirm: false, linkedPaymentMethods: false, invoiceDownload: false });
+  quickConfirm: false, linkedPaymentMethods: false, invoiceDownload: true });
 const database = async options => options.db || await getMongoDb();
 const instant = options => new Date(options.now ?? Date.now());
 function failure(message, status = 400, code = 'PAYMENT_SETTINGS_INVALID') {
@@ -171,6 +172,19 @@ export function createPaymentSettingsRouter(express, requireAuth, options = {}) 
   router.get('/methods', handle(req => getPaymentMethods(req.userId)));
   router.get('/transactions', handle(req => getPaymentTransactions(req.userId, req.query, options)));
   router.get('/invoices', handle(req => getPaymentInvoices(req.userId, req.query, options)));
+  router.get('/invoices/:id/download', async (req, res) => {
+    try {
+      const detail = await getPaymentInvoice(req.userId, req.params.id, options);
+      const pdf = await createInvoicePdf(detail);
+      const filename = `${detail.invoice.code.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`;
+      res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Length': String(pdf.length), 'Cache-Control': 'private, no-store' });
+      res.send(pdf);
+    } catch (error) {
+      res.status(error.status >= 400 && error.status < 500 ? error.status : 503).json({ success: false,
+        code: error.code || 'PAYMENT_INVOICE_PDF_UNAVAILABLE', message: error.message || 'Không thể tạo hóa đơn PDF.' });
+    }
+  });
   router.get('/invoices/:id', handle(req => getPaymentInvoice(req.userId, req.params.id, options)));
   return router;
 }

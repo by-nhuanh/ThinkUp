@@ -62,10 +62,7 @@ export class CreatePostComponent {
       if(title && (title.length<5 || title.length>100))errors.title='Tiêu đề phải có từ 5 đến 100 ký tự';
       const words=this.post.content.replace(/<[^>]*>/g,' ').trim().split(/\s+/).filter(Boolean).length;
       if(words<50)errors.content=`Nội dung cần ít nhất 50 từ (hiện có ${words} từ)`;
-      if(!this.post.featuredContent.trim())errors.featuredContent='Vui lòng nhập nội dung nổi bật';
-      if(!this.contentImages.length)errors.contentImages='Vui lòng chọn ít nhất 1 ảnh';
       if(!this.coverImage)errors.coverImage='Vui lòng chọn ảnh đại diện';
-      if(!this.post.summary.trim())errors.summary='Vui lòng nhập tóm tắt bài viết';
       if(!this.post.categories.length)errors.categories='Vui lòng chọn ít nhất một danh mục';
     }
     this.errors.set(errors);if(Object.keys(errors).length){this.message.set('Vui lòng hoàn thành các trường bắt buộc.');window.scrollTo({top:0,behavior:'smooth'});return;}

@@ -2,7 +2,7 @@ import { Component, OnDestroy, OnInit, inject, signal, computed } from '@angular
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { catchError, forkJoin, of } from 'rxjs';
+import { catchError, finalize, forkJoin, of } from 'rxjs';
 import { CourseService } from '../../../core/services/course.service';
 import { CommerceService } from '../../../core/services/commerce.service';
 import { FavoritesService } from '../../../core/services/favorites.service';
@@ -29,6 +29,9 @@ export class CourseDetailComponent implements OnInit, OnDestroy {
   private courseService = inject(CourseService);
   private commerceService = inject(CommerceService);
   private favoritesService = inject(FavoritesService);
+  private loadVersion = 0;
+  private changingWishlist = false;
+  addingCart = false;
 
   courseId = signal<string>('');
   course = signal<Course | null>(null);
@@ -83,16 +86,16 @@ export class CourseDetailComponent implements OnInit, OnDestroy {
   });
 
   isWishlisted = computed(() => {
-    const id = this.courseId();
+    const id = this.course()?.id || this.courseId();
     const serverState = this.course()?.isInWishlist === true;
     return serverState || (id ? this.favoritesService.isFavorite(id) : false);
   });
 
   isInCart = computed(() => {
-    const id = this.courseId();
-    const serverState = this.course()?.isInCart === true;
-    return serverState || (id ? this.commerceService.cartItems().some(i => i.id === id) : false);
+    const id = this.course()?.id;
+    return id ? this.commerceService.cartItems().some(i => i.id === id) : false;
   });
+  cartVerified = signal(false);
 
   totalLessonsCount = computed(() => {
     const c = this.course();
@@ -120,9 +123,13 @@ export class CourseDetailComponent implements OnInit, OnDestroy {
   }
 
   private loadCourse(id: string): void {
+    const version = ++this.loadVersion;
     this.loading.set(true);
+    this.cartVerified.set(false);
     this.error.set('');
     this.reviews.set([]);
+    this.reviewsLoading.set(false);
+    this.reviewsLoadingMore.set(false);
     this.reviewSummary.set(null);
     this.reviewBreakdown.set([]);
     this.reviewPage.set(1);
@@ -132,20 +139,31 @@ export class CourseDetailComponent implements OnInit, OnDestroy {
 
     forkJoin({
       detail: this.courseService.getCourseDetail(id),
+      cart: this.commerceService.refreshCart().pipe(catchError(() => {
+        this.showToast('Không kiểm tra được giỏ hàng. Vui lòng tải lại trang.');
+        return of(null);
+      })),
       reviews: this.courseService
         .getCourseReviews(id, { page: 1, limit: 5 })
-        .pipe(catchError(() => of(null))),
+        .pipe(catchError(() => { this.showToast('Không tải được đánh giá khóa học.'); return of(null); })),
     }).subscribe({
-      next: ({ detail, reviews }) => {
+      next: ({ detail, reviews, cart }) => {
+        if (version !== this.loadVersion) return;
         this.loading.set(false);
         this.course.set(detail);
+        this.cartVerified.set(cart !== null);
         this.openChapters.set([0]);
         this.reviewSummary.set({ average: detail.rating, total: Number(detail.ratingCount) || 0 });
         this.reviewBreakdown.set(detail.ratingBreakdown ?? []);
         if (reviews) this.applyReviewPage(reviews, true);
         this.startCountdown();
+        this.favoritesService.checkFavorite(detail.id).subscribe({
+          next: isFavorite => { if (version === this.loadVersion) this.course.update(course => course ? { ...course, isInWishlist: isFavorite } : course); },
+          error: () => this.showToast('Không kiểm tra được trạng thái yêu thích.'),
+        });
       },
       error: () => {
+        if (version !== this.loadVersion) return;
         this.loading.set(false);
         this.error.set('Không thể tải khóa học. Vui lòng thử lại sau.');
       }
@@ -180,8 +198,10 @@ export class CourseDetailComponent implements OnInit, OnDestroy {
 
   private reloadReviews(): void {
     const id = this.courseId();
+    const key = JSON.stringify([id, this.reviewSort(), this.reviewFilter()]);
     if (!id) return;
     this.reviewsLoading.set(true);
+    this.reviewsLoadingMore.set(false);
     this.courseService
       .getCourseReviews(id, {
         rating: this.reviewFilter(),
@@ -191,10 +211,12 @@ export class CourseDetailComponent implements OnInit, OnDestroy {
       })
       .subscribe({
         next: page => {
+          if (key !== JSON.stringify([this.courseId(), this.reviewSort(), this.reviewFilter()])) return;
           this.reviewsLoading.set(false);
           this.applyReviewPage(page, true);
         },
         error: () => {
+          if (key !== JSON.stringify([this.courseId(), this.reviewSort(), this.reviewFilter()])) return;
           this.reviewsLoading.set(false);
           this.showToast('Không tải được danh sách đánh giá.');
         }
@@ -203,7 +225,8 @@ export class CourseDetailComponent implements OnInit, OnDestroy {
 
   loadMoreReviews(): void {
     const id = this.courseId();
-    if (!id || this.reviewsLoadingMore() || !this.reviewHasNext()) return;
+    const key = JSON.stringify([id, this.reviewSort(), this.reviewFilter()]);
+    if (!id || this.reviewsLoading() || this.reviewsLoadingMore() || !this.reviewHasNext()) return;
     this.reviewsLoadingMore.set(true);
     this.courseService
       .getCourseReviews(id, {
@@ -214,10 +237,12 @@ export class CourseDetailComponent implements OnInit, OnDestroy {
       })
       .subscribe({
         next: page => {
+          if (key !== JSON.stringify([this.courseId(), this.reviewSort(), this.reviewFilter()])) return;
           this.reviewsLoadingMore.set(false);
           this.applyReviewPage(page, false);
         },
         error: () => {
+          if (key !== JSON.stringify([this.courseId(), this.reviewSort(), this.reviewFilter()])) return;
           this.reviewsLoadingMore.set(false);
           this.showToast('Không tải thêm được đánh giá.');
         }
@@ -256,11 +281,8 @@ export class CourseDetailComponent implements OnInit, OnDestroy {
   continueLearning(): void {
     const c = this.course();
     if (!c) return;
-    if (c.learningUrl) {
-      void this.router.navigateByUrl(c.learningUrl);
-      return;
-    }
-    void this.router.navigate(['/learning/learn', c.id]);
+    const targetId = c.courseId || c.id;
+    void this.router.navigate(['/main/my-courses', targetId]);
   }
 
   openPreview(): void {
@@ -282,37 +304,45 @@ export class CourseDetailComponent implements OnInit, OnDestroy {
 
   handleAddToCart(): void {
     const c = this.course();
-    if (!c) return;
+    if (!c || this.addingCart || !this.cartVerified() || this.isInCart()) return;
+    this.addingCart = true;
 
-    this.commerceService.addToCart(c.id).subscribe({
+    this.commerceService.addToCart(c.id).pipe(finalize(() => this.addingCart = false)).subscribe({
       next: () => {
         this.showToast('Khóa học đã được thêm vào giỏ hàng!');
-      }
+      }, error: () => this.showToast('Không thêm được khóa học vào giỏ hàng.')
     });
   }
 
   handleBuyNow(): void {
     const c = this.course();
-    if (!c) return;
+    if (!c || this.addingCart || !this.cartVerified()) return;
+    if (this.isInCart()) {
+      void this.router.navigate(['/main/checkout']);
+      return;
+    }
+    this.addingCart = true;
 
-    this.commerceService.addToCart(c.id).subscribe({
+    this.commerceService.addToCart(c.id).pipe(finalize(() => this.addingCart = false)).subscribe({
       next: () => {
         this.router.navigate(['/main/checkout']);
-      }
+      }, error: () => this.showToast('Không thêm được khóa học vào giỏ hàng.')
     });
   }
 
   handleToggleWishlist(): void {
     const c = this.course();
-    if (!c) return;
+    if (!c || this.changingWishlist) return;
+    this.changingWishlist = true;
 
-    this.favoritesService.toggleFavorite(c).subscribe({
+    this.favoritesService.toggleFavorite(c).pipe(finalize(() => this.changingWishlist = false)).subscribe({
       next: (res) => {
+        this.course.update(course => course?.id === c.id ? { ...course, isInWishlist: res.isFavorite } : course);
         const msg = res.isFavorite
           ? 'Đã lưu khóa học vào danh sách yêu thích!'
           : 'Đã xóa khỏi danh sách yêu thích!';
         this.showToast(msg);
-      }
+      }, error: () => this.showToast('Không cập nhật được yêu thích.')
     });
   }
 

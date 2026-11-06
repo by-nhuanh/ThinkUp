@@ -135,12 +135,17 @@
         <aside class="space-y-4 xl:sticky xl:top-[100px]">
           <section class="rounded-xl bg-white p-5 shadow-[0_1px_3px_rgba(15,23,43,0.05)]">
             <h2 class="text-[13px] font-bold">Khóa học của bạn</h2>
-            <div class="relative mt-3 h-[164px] overflow-hidden rounded-xl bg-[linear-gradient(163deg,#041348_0%,#01052c_100%)]">
-              <div class="absolute inset-0 p-3 font-mono text-[7px] leading-[10px] text-[#93C5FD]/25">
-                import sys<br />from typing import<br />def main():<br />&nbsp;&nbsp;print("ThinkUp")<br />&nbsp;&nbsp;for i in range(10):<br />&nbsp;&nbsp;&nbsp;&nbsp;print(i)<br />if __name__ == "__main__":<br />&nbsp;&nbsp;main()
-              </div>
-              <span class="absolute right-5 top-5 grid h-14 w-14 rotate-6 place-items-center rounded-2xl border border-[#FACC15]/40 bg-[#FACC15]/10 text-[22px] font-black text-[#FACC15]">PY</span>
-              <span class="absolute bottom-3 left-3 inline-flex h-7 items-center gap-1.5 rounded-md bg-black/40 px-2 text-[10px] text-white">
+            <div class="relative mt-3 h-[164px] overflow-hidden rounded-xl" [style.background]="currentCourse.coverGradient || 'linear-gradient(163deg,#041348_0%,#01052c_100%)'">
+              @if (currentCourse.thumbnailUrl) {
+                <img [src]="currentCourse.thumbnailUrl" [alt]="currentCourse.title" class="absolute inset-0 h-full w-full object-cover" />
+                <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+              } @else {
+                <div class="absolute inset-0 p-3 font-mono text-[7px] leading-[10px] text-[#93C5FD]/25">
+                  import sys<br />from typing import<br />def main():<br />&nbsp;&nbsp;print("ThinkUp")<br />&nbsp;&nbsp;for i in range(10):<br />&nbsp;&nbsp;&nbsp;&nbsp;print(i)<br />if __name__ == "__main__":<br />&nbsp;&nbsp;main()
+                </div>
+                <span class="absolute right-5 top-5 grid h-14 w-14 rotate-6 place-items-center rounded-2xl border border-[#FACC15]/40 bg-[#FACC15]/10 text-[22px] font-black text-[#FACC15]">PY</span>
+              }
+              <span class="absolute bottom-3 left-3 inline-flex h-7 items-center gap-1.5 rounded-md bg-black/60 px-2 text-[10px] text-white backdrop-blur-sm">
                 <svg lucideBookOpen class="h-3 w-3" aria-hidden="true"></svg>
                 Khóa học đã đăng ký
               </span>
@@ -195,6 +200,14 @@
         </button>
       </div>
     </div>
+  }
+
+  @if (reviewOpen() && reviewSummary(); as summary) {
+    <app-review-modal
+      [courseTitle]="course()?.title || ''"
+      [summary]="summary"
+      (closed)="reviewOpen.set(false)"
+    />
   }
 
   @if (submitState() === 'error') {

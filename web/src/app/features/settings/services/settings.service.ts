@@ -1,7 +1,9 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, effect, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
-import { catchError, map, tap } from 'rxjs/operators';
+import { Observable, defer, of, throwError } from 'rxjs';
+import { AuthService } from '../../../core/services/auth.service';
+import { PaymentPreferences, PaymentSettingsOverview } from '../../../core/models/payment.model';
+import { map, tap } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 import {
   AccountSecurityPayload,
@@ -37,58 +39,40 @@ interface PaymentMethodsDto {
   supported?: boolean;
 }
 
-/**
- * Dịch vụ cài đặt người dùng.
- * Lưu ý: endpoint cụ thể sẽ được chốt sau khi nhận spec/Postman handoff từ backend.
- * Hiện tại gọi API thật khi có backend, khi backend chưa sẵn sàng thì giữ trạng thái cục bộ
- * và không làm gián đoạn giao diện (giống ProfileService).
- */
+/** Cấu hình từ API; lỗi được chuyển đến giao diện. */
 @Injectable({ providedIn: 'root' })
 export class SettingsService {
   private readonly http = inject(HttpClient);
+  private readonly auth = inject(AuthService);
   private readonly apiUrl = environment.apiUrl;
 
-  // Trạng thái cục bộ (fallback khi API chưa sẵn sàng)
+  // Bản nháp phục vụ giao diện; không dùng làm kết quả thay thế API.
   private readonly learningOptionsState = signal<LearningOptions>({ ...DEFAULT_LEARNING_OPTIONS });
   private readonly notificationPrefsState = signal<NotificationPrefs>({
     ...DEFAULT_NOTIFICATION_PREFS,
   });
-  private readonly paymentMethodsState = signal<PaymentMethod[]>([
-    {
-      id: 'pm_1',
-      type: 'momo',
-      last4: '5678',
-      holder: 'Nguyễn Minh Anh',
-      expiredAt: '',
-      isDefault: true,
-      verified: true,
-    },
-    {
-      id: 'pm_2',
-      type: 'zalopay',
-      last4: '2468',
-      holder: 'Nguyễn Minh Anh',
-      expiredAt: '',
-      isDefault: false,
-      verified: true,
-    },
-    {
-      id: 'pm_3',
-      type: 'visa',
-      last4: '1234',
-      holder: 'Nguyễn Minh Anh',
-      expiredAt: '12/27',
-      isDefault: false,
-      verified: true,
-    },
-  ]);
+  private readonly paymentMethodsState = signal<PaymentMethod[]>([]);
 
   readonly learningOptions = this.learningOptionsState.asReadonly();
   readonly notificationPrefs = this.notificationPrefsState.asReadonly();
   readonly paymentMethods = this.paymentMethodsState.asReadonly();
 
-  private notificationRevision = 0;
-  private readonly dndMinutes: Record<Exclude<DndDuration, 'until'>, number> = {
+  private notificationRevision: number | null = null;
+  private learningRevision: number | null = null;
+  constructor() {
+    let owner = this.auth.currentUser()?.id;
+    effect(() => {
+      const next = this.auth.currentUser()?.id;
+      if (next === owner) return;
+      owner = next;
+      this.learningRevision = null; this.notificationRevision = null;
+      this.learningOptionsState.set({ ...DEFAULT_LEARNING_OPTIONS });
+      this.notificationPrefsState.set({ ...DEFAULT_NOTIFICATION_PREFS });
+      this.paymentMethodsState.set([]);
+    });
+  }
+
+  private readonly dndMinutes: Record<Exclude<DndDuration, 'until' | null>, number> = {
     '15': 15,
     '1': 60,
     '8': 480,
@@ -101,24 +85,6 @@ export class SettingsService {
   }
   setNotificationPrefs(value: NotificationPrefs): void {
     this.notificationPrefsState.set(value);
-  }
-
-  /** TODO(pre-deploy): Gọi API đặt phương thức mặc định khi backend có spec. */
-  setDefaultPaymentMethod(id: string): void {
-    this.paymentMethodsState.update((methods) =>
-      methods.map((method) => ({ ...method, isDefault: method.id === id }))
-    );
-  }
-
-  /** TODO(pre-deploy): Gọi API xóa phương thức thanh toán khi backend có spec. */
-  removePaymentMethod(id: string): void {
-    this.paymentMethodsState.update((methods) => {
-      const remaining = methods.filter((method) => method.id !== id);
-      if (remaining.length > 0 && !remaining.some((method) => method.isDefault)) {
-        remaining[0] = { ...remaining[0], isDefault: true };
-      }
-      return remaining;
-    });
   }
 
   getSections(): Observable<SettingSection[]> {
@@ -162,59 +128,45 @@ export class SettingsService {
     ]);
   }
 
+  private mapLearning(data: LearningOptions & { revision: number }): LearningOptions {
+    if (!Number.isSafeInteger(data.revision)) throw new Error('Cấu hình không hợp lệ.');
+    this.learningRevision = data.revision;
+    const zones: Record<string, string> = { 'Asia/Ho_Chi_Minh': 'GMT+07:00', 'Asia/Singapore': 'GMT+08:00', 'Asia/Tokyo': 'GMT+09:00', 'Etc/UTC': 'GMT+00:00' };
+    const value: LearningOptions = { language: data.language, timezone: zones[data.timezone] ?? data.timezone,
+      videoQuality: data.videoQuality, playbackSpeed: data.playbackSpeed, downloadQuality: data.downloadQuality,
+      downloadLocation: data.downloadLocation, subtitles: data.subtitles, autoNext: data.autoNext };
+    this.learningOptionsState.set(value);
+    return value;
+  }
+
   getLearningOptions(): Observable<LearningOptions> {
-    // TODO(pre-deploy): Thay endpoint thật khi backend có spec.
-    return this.http
-      .get<SettingsApiResponse<LearningOptions>>(`${this.apiUrl}/user/settings/learning`, {
-        withCredentials: true,
-      })
-      .pipe(
-        tap((res) => {
-          if (res.success && res.data) this.learningOptionsState.set(res.data);
-        }),
-        map((res) => (res.success ? (res.data ?? this.learningOptionsState()) : this.learningOptionsState())),
-        catchError(() => of(this.learningOptionsState()))
-      );
+    return this.paymentResponse(this.http.get<SettingsApiResponse<LearningOptions & { revision: number }>>(
+      this.apiUrl + '/user/settings/learning')).pipe(map(data => this.mapLearning(data)));
   }
 
   updateLearningOptions(payload: Partial<LearningOptions>): Observable<LearningOptions> {
-    const next: LearningOptions = { ...this.learningOptionsState(), ...payload };
-    return this.http
-      .put<SettingsApiResponse<LearningOptions>>(
-        `${this.apiUrl}/user/settings/learning`,
-        next,
-        { withCredentials: true }
-      )
-      .pipe(
-        tap((res) => {
-          if (res.success && res.data) this.learningOptionsState.set(res.data);
-          else this.learningOptionsState.set(next);
-        }),
-        map((res) => (res.success ? (res.data ?? next) : next)),
-        catchError(() => of(next))
-      );
+    if (this.learningRevision === null) return throwError(() => new Error('Cần tải cấu hình trước khi lưu.'));
+    const body: Record<string, unknown> = { expectedRevision: this.learningRevision };
+    for (const key of ['language', 'timezone', 'videoQuality', 'playbackSpeed', 'downloadQuality', 'downloadLocation', 'subtitles', 'autoNext'] as const) {
+      if (payload[key] !== undefined) body[key] = payload[key];
+    }
+    return this.paymentResponse(this.http.put<SettingsApiResponse<LearningOptions & { revision: number }>>(
+      this.apiUrl + '/user/settings/learning', body)).pipe(map(data => this.mapLearning(data)));
   }
 
   getNotificationPrefs(): Observable<NotificationPrefs> {
-    return this.http
-      .get<SettingsApiResponse<NotificationPrefsDto>>(
-        `${this.apiUrl}/user/notifications/preferences`,
-        { withCredentials: true }
-      )
-      .pipe(
-        tap((res) => {
-          if (res.success && res.data) {
-            this.notificationPrefsState.set(this.mapNotificationPrefs(res.data));
-          }
-        }),
-        map(() => this.notificationPrefsState()),
-        catchError(() => of(this.notificationPrefsState()))
-      );
+    return this.paymentResponse(this.http.get<SettingsApiResponse<NotificationPrefsDto>>(
+      this.apiUrl + '/user/notifications/preferences')).pipe(map(dto => {
+        const value = this.mapNotificationPrefs(dto);
+        this.notificationPrefsState.set(value);
+        return value;
+      }));
   }
 
   updateNotificationPrefs(payload: Partial<NotificationPrefs>): Observable<NotificationPrefs> {
+    if (this.notificationRevision === null) return throwError(() => new Error('Cần tải cấu hình trước khi lưu.'));
     const next: NotificationPrefs = { ...this.notificationPrefsState(), ...payload };
-    const body: Record<string, unknown> = {};
+    const body: Record<string, unknown> = { expectedRevision: this.notificationRevision };
 
     for (const key of ['web', 'email', 'learning', 'community', 'courseUpdates'] as const) {
       if (typeof payload[key] === 'boolean') body[key] = payload[key];
@@ -230,43 +182,38 @@ export class SettingsService {
 
     if (payload.dnd !== undefined) {
       body['dnd'] =
-        payload.dnd === 'until'
+        payload.dnd === null || payload.dnd === this.notificationPrefsState().dnd
+          ? { mode: 'off' }
+          : payload.dnd === 'until'
           ? { mode: 'indefinite' }
           : { mode: 'timed', durationMinutes: this.dndMinutes[payload.dnd] };
       // BE bắt buộc gửi revision khi đổi chế độ không làm phiền.
       body['expectedRevision'] = this.notificationRevision;
     }
 
-    if (Object.keys(body).length === 0) return of(next);
+    if (Object.keys(body).length === 1) return of(next);
 
-    this.notificationPrefsState.set(next);
-    return this.http
-      .put<SettingsApiResponse<NotificationPrefsDto>>(
-        `${this.apiUrl}/user/notifications/preferences`,
-        body,
-        { withCredentials: true }
-      )
-      .pipe(
-        tap((res) => {
-          if (res.success && res.data) {
-            this.notificationPrefsState.set(this.mapNotificationPrefs(res.data));
-          } else this.notificationPrefsState.set(next);
-        }),
-        map((res) => (res.success && res.data ? this.notificationPrefsState() : next)),
-        catchError(() => of(next))
-      );
+    return this.paymentResponse(this.http.put<SettingsApiResponse<NotificationPrefsDto>>(
+      this.apiUrl + '/user/notifications/preferences', body)).pipe(map(dto => {
+        const value = this.mapNotificationPrefs(dto);
+        this.notificationPrefsState.set(value);
+        return value;
+      }));
   }
 
   private mapNotificationPrefs(dto: NotificationPrefsDto): NotificationPrefs {
-    const marketing = dto.marketingOptIn ?? dto.marketing ?? dto.newsletter;
+    if (!Number.isSafeInteger(dto.revision) || ['web', 'email', 'learning', 'community', 'courseUpdates'].some(key => typeof dto[key as keyof NotificationPrefsDto] !== 'boolean') || typeof dto.marketingOptIn !== 'boolean' || !dto.dnd) {
+      throw new Error('Phản hồi cấu hình thông báo không hợp lệ.');
+    }
+    const marketing = dto.marketingOptIn;
     const marketingValue =
       typeof marketing === 'boolean' ? marketing : DEFAULT_NOTIFICATION_PREFS.marketing;
 
-    let dnd: DndDuration = DEFAULT_NOTIFICATION_PREFS.dnd;
+    let dnd: DndDuration = null;
     if (dto.dnd?.mode === 'indefinite') {
       dnd = 'until';
     } else if (dto.dnd?.mode === 'timed' && typeof dto.dnd.durationMinutes === 'number') {
-      const matched = (Object.keys(this.dndMinutes) as Array<Exclude<DndDuration, 'until'>>).find(
+      const matched = (Object.keys(this.dndMinutes) as Array<Exclude<DndDuration, 'until' | null>>).find(
         (key) => this.dndMinutes[key] === dto.dnd?.durationMinutes
       );
       if (matched) dnd = matched;
@@ -296,24 +243,61 @@ export class SettingsService {
       )
       .pipe(
         tap((res) => {
-          // BE chưa hỗ trợ liên kết ví/thẻ (supported = false): giữ danh sách demo.
-          if (res.success && res.data?.supported && Array.isArray(res.data.items)) {
+            if (!res.success || !Array.isArray(res.data?.items)) throw new Error('Không tải được phương thức thanh toán.');
             this.paymentMethodsState.set(res.data.items);
-          }
         }),
-        map(() => this.paymentMethodsState()),
-        catchError(() => of(this.paymentMethodsState()))
+        map(() => this.paymentMethodsState())
       );
   }
 
-  changePassword(payload: AccountSecurityPayload): Observable<{ success: boolean; message?: string }> {
-    return this.http
-      .post<SettingsApiResponse>(`${this.apiUrl}/user/settings/change-password`, payload, {
-        withCredentials: true,
-      })
-      .pipe(
-        map((res) => ({ success: res.success ?? false, message: res.message })),
-        catchError(() => of({ success: false, message: 'Đổi mật khẩu thất bại. Vui lòng thử lại.' }))
-      );
+  private paymentResponse<T>(request: Observable<SettingsApiResponse<T>>): Observable<T> {
+    return defer(() => {
+      const token = this.auth.getToken();
+      return request.pipe(map(response => {
+        if (token !== this.auth.getToken() || !response.success || !response.data) throw new Error('Không tải được cài đặt.');
+        return response.data;
+      }));
+    });
   }
+
+  getPaymentSettings(): Observable<PaymentSettingsOverview> {
+    return this.paymentResponse(this.http.get<SettingsApiResponse<PaymentSettingsOverview>>(`${this.apiUrl}/user/settings/payment`));
+  }
+
+  updatePaymentPreferences(expectedRevision: number, invoiceEmail: boolean): Observable<PaymentPreferences> {
+    return this.paymentResponse(this.http.patch<SettingsApiResponse<PaymentPreferences>>(
+      `${this.apiUrl}/user/settings/payment/preferences`, { expectedRevision, invoiceEmail }));
+  }
+
+  downloadPaymentInvoice(id: string): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/user/settings/payment/invoices/${encodeURIComponent(id)}/download`, {
+      responseType: 'blob', withCredentials: true,
+    });
+  }
+
+  getAccountSecurity(): Observable<AccountSecurityOverview> {
+    return this.paymentResponse(this.http.get<SettingsApiResponse<AccountSecurityOverview>>(this.apiUrl + '/user/settings/account-security'));
+  }
+
+  revokeSession(id: string): Observable<{ id: string; revoked: boolean }> {
+    return this.paymentResponse(this.http.delete<SettingsApiResponse<{ id: string; revoked: boolean }>>(this.apiUrl + '/user/settings/sessions/' + encodeURIComponent(id)));
+  }
+
+  changePassword(payload: AccountSecurityPayload): Observable<{ success: boolean; message?: string }> {
+    return this.paymentResponse(this.http.post<SettingsApiResponse<{ accessToken: string; refreshToken: string }>>(
+      this.apiUrl + '/user/settings/change-password', payload)).pipe(map(data => {
+        this.auth.replaceCredentials(data);
+        return { success: true };
+      }));
+  }
+}
+
+export interface SecurityDevice {
+  id: string; deviceType: string; os: string; browser: string; maskedIp: string; location: string;
+  isCurrent: boolean; createdAt: string; lastSeenAt: string; expiresAt: string;
+}
+export interface AccountSecurityOverview {
+  canChangePassword: boolean; serverTime: string; passwordLockedUntil: string | null;
+  sessions: { items: SecurityDevice[]; pagination: { total: number; hasMore: boolean } };
+  logs: { items: { id: string; type: string; title: string; device: SecurityDevice; createdAt: string }[]; pagination: { total: number; hasMore: boolean } };
 }

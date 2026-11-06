@@ -5,6 +5,8 @@ import {
   COLLECTION_ROADMAP_QUESTIONS,
   COLLECTION_ROADMAP_SUBMISSIONS,
   SEED_STAGE_QUESTIONS,
+  CAREER_ROADMAP_TEMPLATES,
+  getStageDefinition,
   STATUS_NOT_STARTED,
   STATUS_IN_PROGRESS,
   STATUS_REVIEW,
@@ -25,7 +27,13 @@ import {
 import { getMongoDb, closeMongoDb } from '../../db.js';
 
 test('Roadmap Backend Service Test Suite', async (t) => {
-  const db = await getMongoDb();
+  const db = await getMongoDb(undefined, `thinkup_roadmap_test_${process.pid}`);
+  await db.collection('roadmap_templates').insertMany(
+    Object.values(CAREER_ROADMAP_TEMPLATES).map(template => structuredClone(template))
+  );
+  await db.collection(COLLECTION_ROADMAP_QUESTIONS).insertMany(
+    SEED_STAGE_QUESTIONS.map(question => ({ ...question }))
+  );
   const roadmapsColl = db.collection(COLLECTION_USER_ROADMAPS);
   const submissionsColl = db.collection(COLLECTION_ROADMAP_SUBMISSIONS);
   const questionsColl = db.collection(COLLECTION_ROADMAP_QUESTIONS);
@@ -100,6 +108,7 @@ test('Roadmap Backend Service Test Suite', async (t) => {
         test_fixture_id: 'roadmap-user-test-frontend-category',
       });
     }
+    await db.dropDatabase();
     await closeMongoDb();
   });
 
@@ -303,7 +312,7 @@ test('Roadmap Backend Service Test Suite', async (t) => {
   await t.test('5.2 Không sinh bộ câu hỏi fallback không có ngân hàng đã duyệt', async () => {
     await assert.rejects(
       () => getStageTestQuestions('stage-without-approved-question-bank'),
-      error => error.status === 404 && error.code === 'STAGE_QUESTION_BANK_EMPTY',
+      error => error.status === 404 && error.code === 'STAGE_NOT_FOUND',
     );
     assert.equal(await questionsColl.countDocuments({ stage_id: 'stage-without-approved-question-bank' }), 0);
   });
@@ -504,5 +513,58 @@ test('Roadmap Backend Service Test Suite', async (t) => {
       },
       { status: 404 }
     );
+  });
+
+  await t.test('11. Database curriculum determines list counts, detail and stage definitions', async () => {
+    const template = await db.collection('roadmap_templates').findOne({ category_id: 1 });
+    const stages = [{
+      stage_id: 'fe-stage-1', title: 'Database curriculum', order: 1,
+      nodes: [{ node_id: 'current-node', title: 'Current skill', tags: ['Current skill'], outcomes: ['Real outcome'] }],
+    }];
+    await db.collection('roadmap_templates').updateOne({ _id: template._id }, { $set: { stages } });
+    await db.collection('course_categories').updateOne({ category_id: 1 }, {
+      $set: { roadmap_total_stages: 999, roadmap_total_skills: 999 },
+    });
+    const listed = (await getCareerRoadmapsList()).find(item => item.category_id === 1);
+    assert.equal(listed.total_stages, 1);
+    assert.equal(listed.total_nodes, 1);
+    assert.equal((await getRoadmapTemplate(1)).stages[0].nodes[0].node_id, 'current-node');
+    assert.equal((await getStageDefinition('fe-stage-1')).stage.nodes[0].node_id, 'current-node');
+    assert.equal(await getRoadmapTemplate(99999), null);
+    await db.collection('roadmap_templates').deleteOne({ category_id: 2 });
+    assert.equal(await getRoadmapTemplate(2), null, 'Must not revive a hardcoded template');
+    assert.equal((await getCareerRoadmapsList()).some(item => item.category_id === 2), false);
+  });
+
+  await t.test('12. Reconcile curriculum by ID, preserve review and archive removed progress', async () => {
+    const userId = 'curriculum-reconciliation-test';
+    await roadmapsColl.insertOne({ user_id: userId, category_id: 1, is_active: true,
+      career_name: 'Old name', current_stage_id: 'retired-stage', nodes: [
+        { node_id: 'current-node', stage_id: 'old-stage', title: 'Old skill', status: STATUS_REVIEW,
+          score: 90, is_review: true, last_quiz_score: 20 },
+        { node_id: 'removed-node', stage_id: 'retired-stage', title: 'Removed skill',
+          status: STATUS_COMPLETED, score: 100, is_review: false },
+      ] });
+    const result = await getMyRoadmap(userId);
+    assert.equal(result.total_nodes, 1);
+    assert.equal(result.completed_nodes, 0);
+    assert.equal(result.overall_progress, 0);
+    assert.equal(result.stages[0].nodes[0].status, STATUS_REVIEW);
+    assert.equal(result.stages[0].nodes[0].score, 90);
+    assert.equal(result.stages[0].nodes[0].title, 'Current skill');
+    const stored = await roadmapsColl.findOne({ user_id: userId });
+    assert.equal(stored.nodes[0].stage_id, 'fe-stage-1');
+    assert.equal(stored.archived_nodes[0].node_id, 'removed-node');
+    assert.equal(stored.archived_nodes[0].score, 100);
+    const again = await getMyRoadmap(userId);
+    assert.deepEqual(again.raw_nodes, result.raw_nodes, 'Repeated reads must be idempotent');
+    const template = await db.collection('roadmap_templates').findOne({ category_id: 1 });
+    template.stages[0].nodes.push({ node_id: 'new-node', title: 'Removed skill', tags: ['New skill'] });
+    await db.collection('roadmap_templates').updateOne({ _id: template._id }, { $set: { stages: template.stages } });
+    const expanded = await getMyRoadmap(userId);
+    assert.equal(expanded.total_nodes, 2);
+    assert.equal(expanded.raw_nodes.find(node => node.node_id === 'new-node').score, 0,
+      'A similar title must not transfer a different node score');
+    assert.equal(expanded.raw_nodes.find(node => node.node_id === 'new-node').status, STATUS_NOT_STARTED);
   });
 });

@@ -7,7 +7,7 @@
       <p>{{ message() }}</p>
       <form (ngSubmit)="resend()">
         <label for="verification-email">Địa chỉ email đăng ký</label>
-        <input id="verification-email" type="email" name="verificationEmail" [(ngModel)]="email" autocomplete="email" required />
+        <input id="verification-email" type="email" name="verificationEmail" [ngModel]="email()" (ngModelChange)="email.set($event)" autocomplete="email" required />
         <button type="submit" [disabled]="resending() || cooldownSeconds() > 0">
           {{ resending() ? 'Đang gửi...' : cooldownSeconds() > 0 ? 'Gửi lại sau ' + cooldownSeconds() + ' giây' : 'Gửi lại liên kết kích hoạt' }}
         </button>

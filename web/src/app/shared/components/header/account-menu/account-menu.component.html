@@ -9,9 +9,9 @@
         [attr.aria-expanded]="isOpen()"
         aria-label="Mở menu tài khoản học viên"
       >
-        @if (avatarUrl) {
+        @if (avatarUrl && !avatarFailed()) {
           <span class="h-12 w-12 grid shrink-0 place-items-center overflow-hidden rounded-full border-[3px] border-[#3898EC] bg-white shadow-sm transition-transform group-hover:scale-105">
-            <img [src]="avatarUrl" alt="Ảnh đại diện" class="h-full w-full object-cover" />
+            <img [src]="avatarUrl" alt="Ảnh đại diện" class="h-full w-full object-cover" (error)="onAvatarError()" />
           </span>
         } @else {
           <svg class="h-12 w-12 shrink-0 text-[#3898EC] transition-transform group-hover:scale-105" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
@@ -32,9 +32,9 @@
         >
           <!-- User Profile Header -->
           <div class="flex h-[86px] items-center gap-3.5 px-2">
-            @if (avatarUrl) {
+            @if (avatarUrl && !avatarFailed()) {
               <span class="h-[58px] w-[58px] grid shrink-0 place-items-center overflow-hidden rounded-full border-[3px] border-[#3898EC] bg-white shadow-sm">
-                <img [src]="avatarUrl" alt="Ảnh đại diện" class="h-full w-full object-cover" />
+                <img [src]="avatarUrl" alt="Ảnh đại diện" class="h-full w-full object-cover" (error)="onAvatarError()" />
               </span>
             } @else {
               <svg class="h-[58px] w-[58px] shrink-0 text-[#3898EC]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">

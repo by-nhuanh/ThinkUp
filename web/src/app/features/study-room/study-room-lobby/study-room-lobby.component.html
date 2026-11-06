@@ -115,7 +115,7 @@
               ><input
                 type="search"
                 [ngModel]="search()"
-                (ngModelChange)="search.set($event)"
+                (ngModelChange)="onSearchChange($event)"
                 placeholder="Tìm theo tên phòng, chủ đề hoặc kỹ năng..."
             /></label>
           </div>
@@ -125,7 +125,7 @@
                 <button
                   type="button"
                   [class.selected]="selectedTab() === tab.key"
-                  (click)="selectedTab.set(tab.key)"
+                  (click)="selectTab(tab.key)"
                 >
                   {{ tab.label }}
                 </button>
@@ -359,7 +359,7 @@
           <div class="form-grid">
             <label
               >Chủ đề<select name="topic" [(ngModel)]="newRoomTopic">
-                @for (topic of topics.slice(1); track topic) {
+                @for (topic of topics().slice(1); track topic) {
                   <option [value]="topic">{{ topic }}</option>
                 }
               </select></label

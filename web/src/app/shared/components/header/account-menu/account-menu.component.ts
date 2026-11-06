@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal, Input, HostListener, ElementRef } from '@angular/core';
+import { Component, computed, inject, signal, Input, HostListener, ElementRef, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -19,7 +19,7 @@ export interface MenuItem {
   templateUrl: './account-menu.component.html',
   styleUrl: './account-menu.component.css'
 })
-export class AccountMenuComponent {
+export class AccountMenuComponent implements OnChanges {
   private router = inject(Router);
   private el = inject(ElementRef);
   private authService = inject(AuthService);
@@ -31,14 +31,22 @@ export class AccountMenuComponent {
   @Input() roleLabel = 'Học viên';
 
   readonly isOpen = signal(false);
+  readonly avatarFailed = signal(false);
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['avatarUrl']) this.avatarFailed.set(false);
+  }
+
+  onAvatarError(): void {
+    this.avatarFailed.set(true);
+  }
 
   readonly menuItems = computed<MenuItem[]>(() => {
     const unread = this.notifications.unreadCount();
     return [
       { label: 'Khóa học yêu thích', href: '/main/favorites', icon: 'heart' },
       { label: 'Khóa học của tôi', href: '/main/my-courses', icon: 'book' },
-      // TODO(pre-deploy): Flashcard chưa có route riêng, tạm trỏ về danh sách khóa học.
-      { label: 'Flashcard', href: '/main/courses', icon: 'cards' },
+      { label: 'Flashcard', href: '/learning/flashcards', icon: 'cards' },
       { label: 'Quản lý bài viết', href: '/main/blog', icon: 'newspaper' },
       { label: 'Lịch sử thanh toán', href: '/main/profile/billing', icon: 'credit-card' },
       { label: 'Chứng chỉ', href: '/main/certificates', icon: 'badge' },

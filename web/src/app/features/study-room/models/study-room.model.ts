@@ -9,8 +9,8 @@ export interface StudyRoomItem {
   category: string;
   theme: string;
   description: string;
-  rating: number;
-  creator: string;
+  rating?: number;
+  creator?: string;
   waitlistCount?: number;
   password?: string;
   requiresPassword?: boolean;

@@ -602,7 +602,39 @@ export async function getBlogList(query = {}, options = {}) {
       .toArray(),
   ]);
 
-  const posts = rawPosts.map(doc => formatBlogPost(doc));
+  // Batch query tác giả để lấy avatar mới nhất từ users / instructor_profiles
+  const authorEmails = [...new Set(rawPosts.map(p => (p.owner_email || p.ownerEmail || '').toLowerCase()).filter(Boolean))];
+  const authorNames = [...new Set(rawPosts.map(p => (p.author || p.author_name || '').trim()).filter(Boolean))];
+  const authorUserIds = [...new Set(rawPosts.map(p => String(p.owner_user_id || p.userId || p.author_id || '')).filter(Boolean))];
+  const authorObjIds = authorUserIds.filter(id => ObjectId.isValid(id)).map(id => new ObjectId(id));
+
+  const authorUsers = authorEmails.length > 0 || authorNames.length > 0 || authorUserIds.length > 0
+    ? await db.collection('users').find({
+        $or: [
+          ...(authorEmails.length ? [{ email: { $in: authorEmails } }] : []),
+          ...(authorNames.length ? [{ full_name: { $in: authorNames } }, { name: { $in: authorNames } }] : []),
+          ...(authorUserIds.length ? [{ id: { $in: authorUserIds } }, { user_id: { $in: authorUserIds } }] : []),
+          ...(authorObjIds.length ? [{ _id: { $in: authorObjIds } }] : []),
+        ],
+      }, { projection: { full_name: 1, name: 1, email: 1, avatar_url: 1, avatar: 1, id: 1, user_id: 1, _id: 1 } }).toArray()
+    : [];
+  const authorMap = new Map();
+  for (const u of authorUsers) {
+    if (u.email) authorMap.set(u.email.toLowerCase(), u);
+    if (u.full_name) authorMap.set(u.full_name.toLowerCase(), u);
+    if (u.name) authorMap.set(u.name.toLowerCase(), u);
+    for (const val of [u._id, u.id, u.user_id].filter(Boolean)) {
+      authorMap.set(String(val), u);
+    }
+  }
+
+  const posts = rawPosts.map(doc => {
+    const emailKey = (doc.owner_email || doc.ownerEmail || '').toLowerCase();
+    const nameKey = (doc.author || doc.author_name || '').toLowerCase();
+    const idKey = String(doc.owner_user_id || doc.userId || doc.author_id || '');
+    const user = (idKey && authorMap.get(idKey)) || (emailKey && authorMap.get(emailKey)) || (nameKey && authorMap.get(nameKey)) || null;
+    return formatBlogPost(doc, user);
+  });
   const hasMore = skip + posts.length < total;
 
   return {
@@ -708,7 +740,38 @@ export async function getManageBlogList(query = {}, options = {}) {
       .toArray(),
   ]);
 
-  const posts = rawPosts.map(doc => formatBlogPost(doc));
+  const authorEmails = [...new Set(rawPosts.map(p => (p.owner_email || p.ownerEmail || '').toLowerCase()).filter(Boolean))];
+  const authorNames = [...new Set(rawPosts.map(p => (p.author || p.author_name || '').trim()).filter(Boolean))];
+  const authorUserIds = [...new Set(rawPosts.map(p => String(p.owner_user_id || p.userId || p.author_id || '')).filter(Boolean))];
+  const authorObjIds = authorUserIds.filter(id => ObjectId.isValid(id)).map(id => new ObjectId(id));
+
+  const authorUsers = authorEmails.length > 0 || authorNames.length > 0 || authorUserIds.length > 0
+    ? await db.collection('users').find({
+        $or: [
+          ...(authorEmails.length ? [{ email: { $in: authorEmails } }] : []),
+          ...(authorNames.length ? [{ full_name: { $in: authorNames } }, { name: { $in: authorNames } }] : []),
+          ...(authorUserIds.length ? [{ id: { $in: authorUserIds } }, { user_id: { $in: authorUserIds } }] : []),
+          ...(authorObjIds.length ? [{ _id: { $in: authorObjIds } }] : []),
+        ],
+      }, { projection: { full_name: 1, name: 1, email: 1, avatar_url: 1, avatar: 1, id: 1, user_id: 1, _id: 1 } }).toArray()
+    : [];
+  const authorMap = new Map();
+  for (const u of authorUsers) {
+    if (u.email) authorMap.set(u.email.toLowerCase(), u);
+    if (u.full_name) authorMap.set(u.full_name.toLowerCase(), u);
+    if (u.name) authorMap.set(u.name.toLowerCase(), u);
+    for (const val of [u._id, u.id, u.user_id].filter(Boolean)) {
+      authorMap.set(String(val), u);
+    }
+  }
+
+  const posts = rawPosts.map(doc => {
+    const emailKey = (doc.owner_email || doc.ownerEmail || '').toLowerCase();
+    const nameKey = (doc.author || doc.author_name || '').toLowerCase();
+    const idKey = String(doc.owner_user_id || doc.userId || doc.author_id || '');
+    const user = (idKey && authorMap.get(idKey)) || (emailKey && authorMap.get(emailKey)) || (nameKey && authorMap.get(nameKey)) || null;
+    return formatBlogPost(doc, user);
+  });
   const hasMore = skip + posts.length < total;
 
   return {
@@ -1219,7 +1282,54 @@ export async function getBlogComments(idOrSlug, options = {}) {
     .sort({ createdAt: -1, _id: -1 })
     .toArray();
 
-  const comments = rawComments.map(formatBlogComment);
+  // Mapping động tên người dùng và avatar mới nhất từ collection users
+  const userEmails = [...new Set(rawComments.map(c => (c.userEmail || c.email || '').toLowerCase()).filter(Boolean))];
+  const userIds = [...new Set(rawComments.map(c => String(c.userId || c.user_id || '')).filter(Boolean))];
+  const authorNames = [...new Set(rawComments.map(c => (c.authorName || c.author_name || '').trim()).filter(Boolean))];
+
+  const userQueryConditions = [];
+  if (userEmails.length) userQueryConditions.push({ email: { $in: userEmails } });
+  if (authorNames.length) {
+    userQueryConditions.push({ full_name: { $in: authorNames } }, { name: { $in: authorNames } });
+  }
+  if (userIds.length) {
+    userQueryConditions.push({ id: { $in: userIds } }, { user_id: { $in: userIds } });
+    const validObjectIds = userIds.filter(id => ObjectId.isValid(id)).map(id => new ObjectId(id));
+    if (validObjectIds.length) userQueryConditions.push({ _id: { $in: validObjectIds } });
+  }
+
+  const userDocs = userQueryConditions.length ? await db.collection('users').find({ $or: userQueryConditions }).toArray() : [];
+  const userByEmail = new Map();
+  const userById = new Map();
+  const userByName = new Map();
+
+  for (const u of userDocs) {
+    const profile = {
+      name: u.full_name || u.name || '',
+      avatar: u.avatar_url || u.avatar || '',
+    };
+    if (u.email) userByEmail.set(u.email.toLowerCase(), profile);
+    if (u.full_name) userByName.set(u.full_name.toLowerCase(), profile);
+    if (u.name) userByName.set(u.name.toLowerCase(), profile);
+    for (const val of [u._id, u.id, u.user_id].filter(Boolean)) {
+      userById.set(String(val), profile);
+    }
+  }
+
+  const enrichedComments = rawComments.map(comment => {
+    const email = (comment.userEmail || comment.email || '').toLowerCase();
+    const uid = String(comment.userId || comment.user_id || '');
+    const name = (comment.authorName || comment.author_name || '').trim().toLowerCase();
+    const matched = userById.get(uid) || userByEmail.get(email) || userByName.get(name);
+
+    return {
+      ...comment,
+      authorName: matched?.name || comment.authorName || comment.author_name || 'Học viên ThinkUp',
+      authorAvatar: matched?.avatar || comment.authorAvatar || comment.author_avatar || '/assets/blog/default-avatar.jpg',
+    };
+  });
+
+  const comments = enrichedComments.map(formatBlogComment);
   return {
     comments,
     total: comments.length,
@@ -1269,8 +1379,10 @@ export async function addBlogComment(idOrSlug, commentData = {}, options = {}) {
   const authorName = (commentData.authorName || options.user?.full_name || 'Học viên ThinkUp').trim();
   const authorAvatar = commentData.authorAvatar || options.user?.avatar_url || '/assets/blog/default-avatar.jpg';
 
+  const currentUserId = String(options.user?.id || options.user?._id || options.user?.user_id || commentData.userId || '');
   const insertDoc = {
     postId,
+    userId: currentUserId || null,
     authorName,
     authorAvatar,
     content: cleanContent,
@@ -1367,15 +1479,27 @@ export async function getBlogDetail(idOrSlug, options = {}) {
 
   let authorUser = null;
   const ownerEmail = (rawPost.owner_email || rawPost.ownerEmail || '').toLowerCase();
-  if (ownerEmail) {
-    try {
-      authorUser = await db.collection('users').findOne(
-        { email: ownerEmail },
-        { projection: { full_name: 1, avatar_url: 1, avatar: 1, role: 1 } }
-      );
-    } catch {
-      // Bỏ qua lỗi tra cứu nếu chưa có index
+  const ownerUserId = String(rawPost.owner_user_id || rawPost.userId || rawPost.author_id || '');
+  const authorName = (rawPost.author || rawPost.author_name || '').trim();
+
+  try {
+    const userConditions = [];
+    if (ownerEmail) userConditions.push({ email: ownerEmail });
+    if (ownerUserId) {
+      userConditions.push({ id: ownerUserId }, { user_id: ownerUserId });
+      if (ObjectId.isValid(ownerUserId)) userConditions.push({ _id: new ObjectId(ownerUserId) });
     }
+    if (authorName) {
+      userConditions.push({ full_name: authorName }, { name: authorName });
+    }
+    if (userConditions.length > 0) {
+      authorUser = await db.collection('users').findOne(
+        { $or: userConditions },
+        { projection: { full_name: 1, name: 1, email: 1, avatar_url: 1, avatar: 1, role: 1 } }
+      );
+    }
+  } catch {
+    // Bỏ qua lỗi tra cứu nếu có ngoại lệ
   }
 
   const post = formatBlogPost(rawPost, authorUser);
@@ -1924,6 +2048,14 @@ export function createBlogRouter(expressModule, requireAuthMiddleware, requireAd
   }
 
   const router = express.Router();
+
+  // Đảm bảo dữ liệu blog luôn được cập nhật tươi mới khi người dùng đổi tên/avatar
+  router.use((req, res, next) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    next();
+  });
 
   const passThrough = (req, res, next) => next();
   router.use(optionalAuthMiddleware || passThrough);

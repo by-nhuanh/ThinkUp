@@ -31,7 +31,7 @@ interface StudyModeOption {
 const STUDY_MODES: StudyModeOption[] = [
   { id: 'shuffle', label: 'Học ngẫu nhiên', desc: 'Xáo trộn thứ tự để ghi nhớ chủ động hơn' },
   { id: 'ordered', label: 'Học theo thứ tự', desc: 'Lần lượt từ thẻ đầu tiên đến thẻ cuối' },
-  { id: 'review-first', label: 'Học lại từ đầu', desc: 'Ưu tiên các thẻ cần ôn tập trước' }
+  { id: 'review-first', label: 'Học lại từ đầu', desc: 'Đặt lại toàn bộ thẻ về chưa học và học theo thứ tự' }
 ];
 
 const CARD_STATUS_LABEL: Record<FlashcardCardStatus, string> = {
@@ -74,6 +74,7 @@ export class FlashcardDetailComponent {
   readonly studyMode = signal<FlashcardStudyMode>('shuffle');
   readonly deleteConfirm = signal(false);
   readonly syncing = signal(false);
+  readonly deleting = signal(false);
 
   readonly set = computed(() => this.flashcardService.getSet(this.setId));
   readonly stats = computed(() => {
@@ -164,10 +165,19 @@ export class FlashcardDetailComponent {
   }
 
   confirmDelete(): void {
-    this.deleteConfirm.set(false);
-    this.toastService.showToast({
-      type: 'info',
-      message: 'Chức năng xóa đang chờ backend cung cấp API contract.'
+    if (this.deleting()) return;
+    this.deleting.set(true);
+    this.flashcardService.deleteSet(this.setId).subscribe({
+      next: result => {
+        this.deleting.set(false);
+        this.deleteConfirm.set(false);
+        this.toastService.showToast({ type: 'success', message: result.message });
+        this.router.navigate(['/learning/flashcards']);
+      },
+      error: error => {
+        this.deleting.set(false);
+        this.toastService.showToast({ type: 'error', message: error?.error?.message || 'Không thể xóa bộ flashcard.' });
+      }
     });
   }
 }

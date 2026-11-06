@@ -4,24 +4,13 @@ import { DestroyRef } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import { catchError, map, of } from 'rxjs';
+import { map } from 'rxjs';
 import { Course } from '../../../core/models/course.model';
-import { MOCK_COURSES } from '../../../core/data/mock/mock-courses';
 import { Instructor, InstructorCourseSort, InstructorCourseSortOption } from '../../../core/models/instructor.model';
-import { CourseService } from '../../../core/services/course.service';
 import { InstructorService } from '../../../core/services/instructor.service';
 import { InstructorCourseCardComponent } from '../components/instructor-course-card/instructor-course-card.component';
 
 const PAGE_SIZE = 5;
-
-/** Thứ tự trình diễn theo Figma 5095-16772 cho tab "Phổ biến nhất". */
-const POPULAR_ORDER = new Map<string, number>([
-  ['vuejs-3', 0],
-  ['javascript-es6', 1],
-  ['reactjs', 2],
-  ['docker', 3],
-  ['uiux-design', 4],
-]);
 
 const SORT_OPTIONS: InstructorCourseSortOption[] = [
   { value: 'popular', label: 'Phổ biến nhất' },
@@ -49,7 +38,6 @@ export class InstructorProfileComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly location = inject(Location);
-  private readonly courseService = inject(CourseService);
   private readonly instructorService = inject(InstructorService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -80,11 +68,6 @@ export class InstructorProfileComponent implements OnInit, OnDestroy {
       case 'popular':
       default:
         return list.sort((a, b) => {
-          const aOrder = POPULAR_ORDER.get(a.id);
-          const bOrder = POPULAR_ORDER.get(b.id);
-          if (aOrder !== undefined || bOrder !== undefined) {
-            return (aOrder ?? Number.MAX_SAFE_INTEGER) - (bOrder ?? Number.MAX_SAFE_INTEGER);
-          }
           return (b.studentsCount || 0) - (a.studentsCount || 0) || b.rating - a.rating;
         });
     }
@@ -167,51 +150,25 @@ export class InstructorProfileComponent implements OnInit, OnDestroy {
     this.goToPage(this.page() + 1);
   }
 
-  formatStat(value: number): string {
-    return new Intl.NumberFormat('vi-VN').format(value);
+  formatStat(value: number | null): string {
+    return value === null ? '—' : new Intl.NumberFormat('vi-VN').format(value);
   }
 
-  formatRating(value: number): string {
-    return Number.isFinite(value) ? value.toFixed(1) : '0.0';
+  formatRating(value: number | null): string {
+    return value !== null && Number.isFinite(value) ? value.toFixed(1) : '—';
   }
 
+  private loadVersion = 0;
   private load(slug: string): void {
-    this.loading.set(true);
-    this.page.set(1);
-
-    const instructor = this.instructorService.getInstructor(slug);
-    this.instructor.set(instructor);
-
-    if (!instructor) {
-      this.courses.set([]);
-      this.loading.set(false);
-      return;
-    }
-
-    // TODO(pre-deploy): Nhớ thay bằng endpoint khóa học theo giảng viên khi backend sẵn sàng.
-    this.courseService
-      .getCourses()
-      .pipe(
-        // Giữ trang hồ sơ luôn có dữ liệu trình diễn khi backend chưa chạy.
-        catchError(() => of({ success: true, data: MOCK_COURSES, total: MOCK_COURSES.length })),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        next: response => {
-          const list = (response.data || []).filter(course => this.belongsTo(course, instructor));
-          this.courses.set(list);
-          this.loading.set(false);
-        },
-        error: () => {
-          this.courses.set([]);
-          this.loading.set(false);
-        },
-      });
-  }
-
-  private belongsTo(course: Course, instructor: Instructor): boolean {
-    if (course.instructorId) return course.instructorId === instructor.id;
-    return normalize(course.instructor || '') === normalize(instructor.name);
+    const version = ++this.loadVersion;
+    this.loading.set(true); this.page.set(1); this.instructor.set(null); this.courses.set([]);
+    this.instructorService.loadProfile(slug).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: data => {
+        if (version !== this.loadVersion) return;
+        this.instructor.set(data.instructor); this.courses.set(data.courses); this.loading.set(false);
+      },
+      error: () => { if (version === this.loadVersion) this.loading.set(false); },
+    });
   }
 
   private ratingCount(course: Course): number {

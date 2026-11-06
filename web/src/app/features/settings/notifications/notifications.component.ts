@@ -11,6 +11,7 @@ import {
   LucideRefreshCw,
   LucideSend,
 } from '@lucide/angular';
+import { ToastService } from '../../../core/services/toast.service';
 import { SettingsService } from '../services/settings.service';
 import { DndDuration, NotificationPrefs } from '../models/settings.model';
 import { SettingsToggleComponent } from '../components/settings-toggle/settings-toggle.component';
@@ -62,8 +63,12 @@ export class NotificationsComponent implements OnInit {
   private readonly settingsService = inject(SettingsService);
   private readonly router = inject(Router);
 
+  private readonly toast = inject(ToastService);
+  private pending = false;
+  private showError(): void { this.toast.showToast({ type: 'error', message: 'Không cập nhật được cài đặt thông báo. Vui lòng thử lại.' }); }
+
   ngOnInit(): void {
-    this.settingsService.getNotificationPrefs().subscribe();
+    this.settingsService.getNotificationPrefs().subscribe({ error: () => this.showError() });
   }
 
   readonly back = () => void this.router.navigate(['/main/settings']);
@@ -155,6 +160,11 @@ export class NotificationsComponent implements OnInit {
   }
 
   private updatePrefs(patch: Partial<NotificationPrefs>): void {
-    this.settingsService.updateNotificationPrefs(patch).subscribe();
+    if (this.pending) return;
+    this.pending = true;
+    this.settingsService.updateNotificationPrefs(patch).subscribe({
+      next: () => { this.pending = false; },
+      error: () => { this.pending = false; this.showError(); },
+    });
   }
 }

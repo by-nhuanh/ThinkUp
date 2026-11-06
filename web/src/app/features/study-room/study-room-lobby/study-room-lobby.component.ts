@@ -1,6 +1,7 @@
 import {
   Component,
   computed,
+  DestroyRef,
   ElementRef,
   HostListener,
   inject,
@@ -9,7 +10,9 @@ import {
 } from "@angular/core";
 import { HttpErrorResponse } from "@angular/common/http";
 import { FormsModule } from "@angular/forms";
-import { Router } from "@angular/router";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
+import { Subject, debounceTime, distinctUntilChanged } from "rxjs";
+import { ActivatedRoute, Router } from "@angular/router";
 import { AuthService } from "../../../core/services/auth.service";
 import { StudyRoomItem } from "../models/study-room.model";
 import { StudyRoomService } from "../services/study-room.service";
@@ -63,11 +66,14 @@ interface ThemePreview {
   styleUrl: "./study-room-lobby.component.css",
 })
 export class StudyRoomLobbyComponent implements OnInit {
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly searchChanges = new Subject<string>();
   private readonly roomsService = inject(StudyRoomService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
-  readonly topics = [
+  readonly topics = signal([
     "Tất cả",
     "Lập trình",
     "UI/UX & Thiết kế",
@@ -75,7 +81,7 @@ export class StudyRoomLobbyComponent implements OnInit {
     "Tự học",
     "Focus Session",
     "Study Group",
-  ];
+  ]);
   readonly tabs = [
     { key: "trending", label: "Trending" },
     { key: "new", label: "Mới mở" },
@@ -167,7 +173,7 @@ export class StudyRoomLobbyComponent implements OnInit {
   readonly loadError = signal("");
   readonly visibleTopics = computed(() => {
     const query = this.topicSearch().trim().toLocaleLowerCase("vi");
-    return this.topics
+    return this.topics()
       .slice(1)
       .filter(
         (topic) => !query || topic.toLocaleLowerCase("vi").includes(query),
@@ -236,6 +242,28 @@ export class StudyRoomLobbyComponent implements OnInit {
   newRoomLimit = 20;
 
   ngOnInit(): void {
+    this.feedback = this.route.snapshot.queryParamMap.get("entryError") || "";
+    this.searchChanges.pipe(
+      debounceTime(250),
+      distinctUntilChanged(),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(() => this.loadRooms());
+    this.roomsService.popularTags().subscribe({
+      next: result => {
+        const names = result.topTags.map(tag => tag.name).filter(Boolean);
+        if (names.length) this.topics.set(["Tất cả", ...names]);
+      },
+    });
+    this.loadRooms();
+  }
+
+  onSearchChange(value: string): void {
+    this.search.set(value);
+    this.searchChanges.next(value);
+  }
+
+  selectTab(tab: string): void {
+    this.selectedTab.set(tab);
     this.loadRooms();
   }
 
@@ -284,6 +312,7 @@ export class StudyRoomLobbyComponent implements OnInit {
   applyTopicFilter(): void {
     this.selectedTopics.set([...this.pendingTopics()]);
     this.closeTopicMenu();
+    this.loadRooms();
   }
 
   resetFilters(): void {
@@ -298,7 +327,18 @@ export class StudyRoomLobbyComponent implements OnInit {
   loadRooms(): void {
     this.loading.set(true);
     this.loadError.set("");
-    this.roomsService.loadRooms().subscribe({
+    const selectedTopics = this.selectedTopics();
+    const status = this.selectedTab() === "new" || this.selectedTab() === "active" || this.selectedTab() === "available"
+      ? this.selectedTab() as "new" | "active" | "available"
+      : "";
+    const request = selectedTopics.length > 1
+      ? this.roomsService.filterByTags(selectedTopics, false)
+      : this.search().trim()
+        ? this.roomsService.loadRooms({ search: this.search(), topic: selectedTopics[0], tab: this.selectedTab() as "trending" | "new" | "active" | "available" })
+        : status || selectedTopics.length === 1
+          ? this.roomsService.filterRooms(selectedTopics[0] || "", status, false)
+          : this.roomsService.loadRooms({ tab: this.selectedTab() as "trending" | "new" | "active" | "available" });
+    request.subscribe({
       next: () => this.loading.set(false),
       error: () => {
         this.loading.set(false);
@@ -325,11 +365,14 @@ export class StudyRoomLobbyComponent implements OnInit {
     this.modal.set("create");
   }
   quickJoin(): void {
-    const room = this.rooms().find(
-      (item) => item.type === "public" && item.currentUsers < item.maxUsers,
-    );
-    if (room) this.joinRoom(room);
-    else this.feedback = "Hiện chưa có phòng phù hợp và còn chỗ.";
+    this.feedback = "";
+    this.roomsService.randomSpawn().subscribe({
+      next: room => this.joinRoom(room),
+      error: (error: HttpErrorResponse) => {
+        const body = error.error as { message?: string } | null;
+        this.feedback = body?.message || "Hiện chưa có phòng phù hợp và còn chỗ.";
+      },
+    });
   }
   joinRoom(room: StudyRoomItem): void {
     if (!this.auth.isAuthenticated()) {

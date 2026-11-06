@@ -280,8 +280,9 @@ export async function getTransactionBillingDetail(userId, id, options = {}) {
 
     // Tác giả/giảng viên
     let instructorName = c.instructor || '';
+    const instructorId = courseDoc?.instructor_id ? String(courseDoc.instructor_id) : '';
     if (!instructorName && courseDoc?.instructor_id) {
-      const instrDoc = await instructorCol.findOne({ user_id: String(courseDoc.instructor_id) });
+      const instrDoc = await instructorCol.findOne({ $or: [{ user_id: String(courseDoc.instructor_id) }, { instructor_id: String(courseDoc.instructor_id) }] });
       if (instrDoc?.full_name) {
         instructorName = instrDoc.full_name;
       } else {
@@ -309,6 +310,7 @@ export async function getTransactionBillingDetail(userId, id, options = {}) {
       course_id: courseDoc?.course_id || cleanId,
       title: c.title || courseDoc?.title || 'Khóa học ThinkUp',
       instructor: instructorName,
+      instructor_id: instructorId,
       price: formatVND(salePrice),
       price_number: salePrice,
       original_price: formatVND(originalPrice),
@@ -403,6 +405,7 @@ export async function getTransactionBillingDetail(userId, id, options = {}) {
         course_id: c.course_id,
         title: c.title,
         instructor: c.instructor,
+        instructorId: c.instructor_id,
         price: c.price,
         price_number: c.price_number,
         originalPrice: c.original_price,

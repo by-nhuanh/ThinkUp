@@ -103,3 +103,24 @@
   aspect-ratio: 1;
   object-fit: contain;
 }
+
+.certificate-artwork__signature {
+  position: absolute;
+  left: 49%;
+  top: 74%;
+  width: 23%;
+  height: 19%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0.7cqw;
+  background: #fff;
+  color: #081433;
+  font-family: 'Inter', system-ui, sans-serif;
+  text-align: center;
+}
+
+.certificate-artwork__signature img { position: absolute; top: 0; width: 55%; height: 58%; object-fit: contain; }
+.certificate-artwork__signature strong { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1.35cqw; }
+.certificate-artwork__signature small { margin-top: 0.2cqw; color: #64748b; font-size: 0.9cqw; }

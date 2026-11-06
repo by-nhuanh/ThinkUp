@@ -17,7 +17,8 @@
                 <input
                   id="course-search"
                   name="search"
-                  [(ngModel)]="searchInput"
+                  [ngModel]="searchInput"
+                  (ngModelChange)="updateSearch($event)"
                   placeholder="Tìm kiếm khóa học của bạn..."
                   class="min-w-0 flex-1 bg-transparent text-[13.3px] text-[#0F172B] placeholder:text-[#90A1B9] outline-none"
                 />
@@ -144,13 +145,23 @@
                     class="relative flex h-[116px] w-full shrink-0 flex-col items-center justify-center overflow-hidden rounded-[12px] p-4 text-center xl:w-[204px]"
                     [ngStyle]="{ 'background-color': course.cover || '#0D3D2E' }"
                   >
-                    <h3 class="text-[18px] font-bold leading-[23px] text-white">
-                      {{ course.coverTitle || course.title }}
-                    </h3>
-                    @if (course.coverSubtitle) {
-                      <p class="mt-1 text-[11px] leading-[14px] text-[#E2E8F0] line-clamp-1">
-                        {{ course.coverSubtitle }}
-                      </p>
+                    @if (getThumbnail(course); as thumbnail) {
+                      <img
+                        [src]="thumbnail"
+                        [alt]="course.title"
+                        class="absolute inset-0 h-full w-full object-cover"
+                        loading="lazy"
+                        (error)="onThumbnailError(course)"
+                      />
+                    } @else {
+                      <h3 class="text-[18px] font-bold leading-[23px] text-white">
+                        {{ course.coverTitle || course.title }}
+                      </h3>
+                      @if (course.coverSubtitle) {
+                        <p class="mt-1 text-[11px] leading-[14px] text-[#E2E8F0] line-clamp-1">
+                          {{ course.coverSubtitle }}
+                        </p>
+                      }
                     }
                     @if (course.badge) {
                       <div class="absolute left-3 top-3 rounded bg-[#FB2C36] px-2 py-0.5 text-[10px] font-bold text-white">
@@ -162,7 +173,7 @@
                   <!-- Course Info -->
                   <div class="flex flex-1 flex-col gap-1.5 w-full xl:w-auto">
                     <h2 class="line-clamp-2 text-[16px] font-semibold text-[#0F1C33]">
-                      <a [routerLink]="course.id === 'python-co-ban' ? ['/main/my-courses', course.id] : ['/main/courses', course.id]" class="transition hover:text-[#145CF2]">
+                      <a [routerLink]="['/main/my-courses', course.id]" class="transition hover:text-[#145CF2]">
                         {{ course.title }}
                       </a>
                     </h2>
@@ -189,12 +200,40 @@
                   </div>
 
                   <!-- Action Link -->
-                  <div class="mt-2 flex w-full justify-end xl:mt-0 xl:w-auto xl:shrink-0">
+                  <div class="mt-2 flex w-full flex-wrap items-center justify-end gap-2 xl:mt-0 xl:w-auto xl:shrink-0">
+                    @if (getCoursePercent(course) === 100) {
+                      @if (getCertificateCode(course); as code) {
+                        <a
+                          [routerLink]="['/tra-cuu']"
+                          [queryParams]="{ code: code }"
+                          class="inline-flex h-11 items-center justify-center gap-1.5 rounded-[11px] border border-[#145CF2] bg-[#F0F6FF] px-4 text-[13.5px] font-semibold text-[#145CF2] transition hover:bg-[#E0EDFF]"
+                          title="Xem chứng chỉ khóa học"
+                        >
+                          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138z" />
+                          </svg>
+                          <span>Xem chứng chỉ</span>
+                        </a>
+                      } @else {
+                        <button
+                          type="button"
+                          (click)="syncCertificateForCourse(course)"
+                          [disabled]="claimingCourseIds().has(course.id)"
+                          class="inline-flex h-11 items-center justify-center gap-1.5 rounded-[11px] border border-[#145CF2] bg-[#F0F6FF] px-4 text-[13.5px] font-semibold text-[#145CF2] transition hover:bg-[#E0EDFF] disabled:opacity-60"
+                          title="Nhận chứng chỉ đã hoàn thành"
+                        >
+                          <svg class="h-4 w-4" [class.animate-spin]="claimingCourseIds().has(course.id)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138z" />
+                          </svg>
+                          <span>{{ claimingCourseIds().has(course.id) ? 'Đang cấp...' : 'Nhận chứng chỉ' }}</span>
+                        </button>
+                      }
+                    }
                     <a
-                      [routerLink]="['/learning/learn', course.id]"
-                      class="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[11px] bg-[#145CF2] px-6 text-[14px] font-semibold text-white transition hover:bg-[#0B4ACD] xl:w-[160px]"
+                      [routerLink]="['/main/my-courses', course.id]"
+                      class="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[11px] bg-[#145CF2] px-6 text-[14px] font-semibold text-white transition hover:bg-[#0B4ACD] xl:w-[140px]"
                     >
-                      <span>{{ getCoursePercent(course) === 100 ? 'Xem lại' : 'Tiếp tục học' }}</span>
+                      <span class="whitespace-nowrap">{{ getCoursePercent(course) === 100 ? 'Xem lại' : 'Tiếp tục học' }}</span>
                       <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                       </svg>

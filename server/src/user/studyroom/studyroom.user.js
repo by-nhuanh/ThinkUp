@@ -230,7 +230,6 @@ export async function createStudyRoom(creatorId, payload = {}) {
     creatorId: creatorId || null,
     creator: creatorName || 'Chủ phòng',
     status: 'idle', // 'idle' | 'focus' | 'break'
-    rating: 5.0,
     isActive: true,
     // Cấu hình quyền hạn mặc định toàn phòng (Room Permissions)
     permissions: {
@@ -466,44 +465,21 @@ export async function searchAndJoinRoom(codeOrLink, inputPassword = '', userId) 
     throw error;
   }
 
-  // Chủ phòng không cần lời mời; thành viên phòng private phải có lời mời khớp tài khoản.
-  if (room.type === 'private' && String(room.creatorId) !== String(userId)) {
-    const user = await getUserAccount(db, userId);
-    const invites = await db.collection('study_room_invites').find({
-      roomId: room.roomId,
-      status: { $in: ['pending', 'accepted'] }
-    }).toArray();
-    const invite = invites.find(candidate =>
-      ['pending', 'accepted'].includes(candidate.status) && inviteMatchesAccount(candidate.inviteTarget, user)
-    );
-    if (!invite) {
-      throw createStudyRoomError('Bạn cần lời mời hợp lệ để tham gia phòng riêng tư.', 403, 'INVITATION_REQUIRED');
-    }
-
+  // Link/code identifies the room; the password authorizes access for this account.
+  if ((room.type === 'private' || room.password) && String(room.creatorId) !== String(userId)) {
     if (!inputPassword) {
-      const error = createStudyRoomError('Phòng riêng tư yêu cầu mật khẩu.', 401, 'PASSWORD_REQUIRED');
+      const error = createStudyRoomError('Phòng học yêu cầu mật khẩu.', 401, 'PASSWORD_REQUIRED');
       error.requiresPassword = true;
       throw error;
     }
     if (!room.password || !(await bcrypt.compare(inputPassword, room.password))) {
       throw createStudyRoomError('Mật khẩu phòng học không chính xác.', 403, 'INVALID_PASSWORD');
     }
-
-    if (invite.status === 'pending') {
-      await db.collection('study_room_invites').updateOne(
-        { _id: invite._id, status: 'pending' },
-        { $set: { status: 'accepted' } }
-      );
-    }
-  } else if (room.password) {
-    if (!inputPassword) {
-      const error = createStudyRoomError('Phòng học yêu cầu mật khẩu.', 401, 'PASSWORD_REQUIRED');
-      error.requiresPassword = true;
-      throw error;
-    }
-    if (!(await bcrypt.compare(inputPassword, room.password))) {
-      throw createStudyRoomError('Mật khẩu phòng học không chính xác.', 403, 'INVALID_PASSWORD');
-    }
+    await db.collection('study_room_access').updateOne(
+      { roomId: room.roomId, userId: String(userId) },
+      { $set: { passwordHash: room.password, verifiedAt: new Date() } },
+      { upsert: true }
+    );
   }
 
   // Người đang ở trong phòng được vào lại; người mới phải còn slot.
@@ -1293,14 +1269,12 @@ export async function generateLiveKitToken({ roomId, userId, userName = 'Học v
   const userRole = isOwner ? 'owner' : (existingParticipant?.role === 'moderator' ? 'moderator' : 'member');
   const account = await getUserAccount(db, userId);
 
-  if (room.type === 'private' && !isOwner) {
-    const acceptedInvites = await db.collection('study_room_invites').find({
-      roomId: room.roomId,
-      status: 'accepted'
-    }).toArray();
-    const acceptedInvite = acceptedInvites.find(invite => inviteMatchesAccount(invite.inviteTarget, account));
-    if (!acceptedInvite) {
-      throw createStudyRoomError('Bạn cần hoàn tất xác thực lời mời và mật khẩu trước khi vào phòng.', 403, 'INVITATION_REQUIRED');
+  if ((room.type === 'private' || room.password) && !isOwner) {
+    const access = await db.collection('study_room_access').findOne({
+      roomId: room.roomId, userId: String(userId), passwordHash: room.password
+    });
+    if (!access) {
+      throw createStudyRoomError('Vui lòng nhập đúng mật khẩu phòng trước khi vào phòng.', 403, 'PASSWORD_REQUIRED');
     }
   }
 
@@ -1407,6 +1381,7 @@ export async function generateLiveKitToken({ roomId, userId, userName = 'Học v
 
   return {
     token,
+    theme: room.roomTheme || room.theme || 'white',
     livekitUrl,
     roomId: room.roomId,
     role: userRole,
@@ -2081,28 +2056,34 @@ export async function getRoomParticipants(roomId, currentUserId = null) {
 
   const rawParticipants = Array.isArray(room.participants) ? room.participants : [];
 
-  // Tự động đối chiếu avatar người dùng từ CSDL users (Cloudinary URL) nếu chưa có sẵn trong participant
-  const userIdsNeedLookup = rawParticipants
-    .filter(p => !p.avatar && p.userId)
-    .map(p => p.userId);
+  // Luôn đối chiếu tên và avatar người dùng mới nhất từ CSDL users
+  const allParticipantUserIds = rawParticipants
+    .map(p => String(p.userId || ''))
+    .filter(Boolean);
 
-  const userAvatarMap = {};
-  if (userIdsNeedLookup.length > 0) {
+  const userProfileMap = {};
+  if (allParticipantUserIds.length > 0) {
     try {
       const { ObjectId } = await import('mongodb');
-      const objectIds = userIdsNeedLookup
+      const objectIds = allParticipantUserIds
         .filter(id => ObjectId.isValid(id))
         .map(id => new ObjectId(id));
       const usersColl = db.collection('users');
       const userDocs = await usersColl.find({
         $or: [
           { _id: { $in: objectIds } },
-          { id: { $in: userIdsNeedLookup } }
+          { id: { $in: allParticipantUserIds } },
+          { user_id: { $in: allParticipantUserIds } }
         ]
       }).toArray();
       for (const u of userDocs) {
-        const key = u._id ? u._id.toString() : u.id;
-        userAvatarMap[key] = u.avatar_url || u.avatar || '';
+        const profile = {
+          name: u.full_name || u.name || '',
+          avatar: u.avatar_url || u.avatar || ''
+        };
+        for (const val of [u._id, u.id, u.user_id].filter(Boolean)) {
+          userProfileMap[String(val)] = profile;
+        }
       }
     } catch {
       // Bỏ qua lỗi tra cứu
@@ -2113,10 +2094,11 @@ export async function getRoomParticipants(roomId, currentUserId = null) {
     const isSelf = Boolean(currentUserId && String(p.userId) === String(currentUserId));
     const role = p.role || (String(room.creatorId) === String(p.userId) ? 'owner' : 'member');
     const roleLabel = p.roleLabel || getRoleLabel(role);
-    const rawName = p.name || 'Thành viên';
+    const userDocProfile = userProfileMap[String(p.userId)];
+    const rawName = userDocProfile?.name || p.name || 'Thành viên';
     const displayName = isSelf ? `${rawName} (Bạn)` : rawName;
-    const avatar = p.avatar || userAvatarMap[String(p.userId)] || '';
-    const initials = p.initials || getInitials(rawName);
+    const avatar = userDocProfile?.avatar || p.avatar || '';
+    const initials = getInitials(rawName) || p.initials;
 
     return {
       userId: p.userId,

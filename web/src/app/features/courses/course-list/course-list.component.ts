@@ -1,9 +1,11 @@
-import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { Component, ElementRef, inject, signal, computed, OnInit, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CourseService } from '../../../core/services/course.service';
 import { Course, CourseFilters } from '../../../core/models/course.model';
+import { Subscription } from 'rxjs';
+import { ToastService } from '../../../core/services/toast.service';
 import { CourseCardComponent } from '../components/course-card/course-card.component';
 import { FilterSidebarComponent } from '../components/filter-sidebar/filter-sidebar.component';
 import { SearchAndSuggestionsComponent } from '../components/search-and-suggestions/search-and-suggestions.component';
@@ -24,6 +26,9 @@ import { SearchAndSuggestionsComponent } from '../components/search-and-suggesti
 export class CourseListComponent implements OnInit {
   private courseService = inject(CourseService);
   private router = inject(Router);
+  private readonly toast = inject(ToastService);
+  private catalogRequest?: Subscription;
+  private readonly resultsTop = viewChild<ElementRef<HTMLElement>>('resultsTop');
 
   courses = signal<Course[]>([]);
   loading = signal(true);
@@ -45,7 +50,7 @@ export class CourseListComponent implements OnInit {
     maxDuration: 120,
     priceType: 'all',
     tags: [],
-    sort: 'popular'
+    sort: 'recommended'
   });
 
   readonly sortOptions = [
@@ -59,7 +64,7 @@ export class CourseListComponent implements OnInit {
   readonly activeSortLabel = computed(() => {
     const s = this.filters().sort;
     const opt = this.sortOptions.find(o => o.id === s);
-    return opt ? opt.label : 'Phổ biến nhất';
+    return opt ? opt.label : 'Sắp xếp';
   });
 
   readonly totalPages = computed(() =>
@@ -96,26 +101,33 @@ export class CourseListComponent implements OnInit {
   }
 
   loadFilterOptions(): void {
-    this.courseService.getFilterOptions().subscribe(res => {
+    this.courseService.getFilterOptions().subscribe({ next: res => {
       if (res.success && res.data) {
         this.availableCategories.set(res.data.categories);
         this.availableTags.set(res.data.popularTags);
       }
-    });
+    }, error: () => this.toast.showToast({ type: 'warning', message: 'Không tải được bộ lọc khóa học.' }) });
   }
 
-  loadCourses(): void {
-    this.loading.set(true);
-    this.courseService.getCourses(this.filters()).subscribe(res => {
+  loadCourses(scrollToResults = false): void {
+    if (!this.courses().length) this.loading.set(true);
+    this.catalogRequest?.unsubscribe();
+    this.catalogRequest = this.courseService.getCourses(this.filters()).subscribe({ next: res => {
       this.courses.set(res.data || []);
       this.loading.set(false);
-    });
+      if (scrollToResults) queueMicrotask(() => this.resultsTop()?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    }, error: () => {
+      this.loading.set(false);
+      this.toast.showToast({ type: 'warning', message: 'Không tải được danh sách khóa học. Vui lòng thử lại.' });
+    } });
   }
+
+  ngOnDestroy(): void { this.catalogRequest?.unsubscribe(); }
 
   onSearch(query: string): void {
     this.filters.update(f => ({ ...f, query }));
     this.currentPage.set(1);
-    this.loadCourses();
+    this.loadCourses(true);
   }
 
   onTagToggle(tag: string): void {
@@ -123,13 +135,13 @@ export class CourseListComponent implements OnInit {
     const next = current.includes(tag) ? current.filter(t => t !== tag) : [...current, tag];
     this.filters.update(f => ({ ...f, tags: next }));
     this.currentPage.set(1);
-    this.loadCourses();
+    this.loadCourses(true);
   }
 
   onFilterChange(newFilters: CourseFilters): void {
     this.filters.set(newFilters);
     this.currentPage.set(1);
-    this.loadCourses();
+    this.loadCourses(true);
   }
 
   onClearFilters(): void {
@@ -142,17 +154,17 @@ export class CourseListComponent implements OnInit {
       maxDuration: 120,
       priceType: 'all',
       tags: [],
-      sort: 'popular'
+      sort: 'recommended'
     });
     this.currentPage.set(1);
-    this.loadCourses();
+    this.loadCourses(true);
   }
 
   onSortSelect(sortId: string): void {
     this.filters.update(f => ({ ...f, sort: sortId }));
     this.isSortOpen.set(false);
     this.currentPage.set(1);
-    this.loadCourses();
+    this.loadCourses(true);
   }
 
   goToPage(page: number): void {

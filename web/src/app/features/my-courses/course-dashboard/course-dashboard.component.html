@@ -24,18 +24,23 @@
         <div class="min-w-0">
           <!-- Hero -->
           <div class="flex flex-col gap-6 lg:flex-row">
-            <div class="relative h-[210px] w-full shrink-0 overflow-hidden rounded-[20px] bg-[linear-gradient(163deg,#041348_0%,#01052c_100%)] lg:w-[300px]">
-              <div class="absolute inset-0 overflow-hidden p-4 font-mono text-[7px] leading-[10px] text-[#93C5FD]/20">
-                import sys<br />from typing import<br />def main():<br />&nbsp;&nbsp;print("ThinkUp")<br />&nbsp;&nbsp;for i in range(10):<br />&nbsp;&nbsp;&nbsp;&nbsp;print(i)<br />if __name__ == "__main__":<br />&nbsp;&nbsp;main()<br />class Course:<br />&nbsp;&nbsp;def __init__(self):<br />&nbsp;&nbsp;&nbsp;&nbsp;pass
-              </div>
-              <div class="absolute inset-0 grid place-items-center">
-                <div class="relative h-[112px] w-[112px]">
-                  <span class="absolute left-0 top-0 h-[60px] w-[62px] rounded-[26px] bg-[#60A5FA]"></span>
-                  <span class="absolute bottom-0 right-0 h-[60px] w-[62px] rounded-[26px] bg-[#F5D547]"></span>
-                  <span class="absolute left-[16px] top-[13px] h-[9px] w-[9px] rounded-full bg-white"></span>
-                  <span class="absolute bottom-[13px] right-[16px] h-[9px] w-[9px] rounded-full bg-white"></span>
+            <div class="relative h-[210px] w-full shrink-0 overflow-hidden rounded-[20px] lg:w-[300px]" [style.background]="currentCourse.coverGradient">
+              @if (currentCourse.thumbnailUrl) {
+                <img [src]="currentCourse.thumbnailUrl" [alt]="currentCourse.title" class="absolute inset-0 h-full w-full object-cover" />
+                <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+              } @else {
+                <div class="absolute inset-0 overflow-hidden p-4 font-mono text-[7px] leading-[10px] text-[#93C5FD]/20">
+                  import sys<br />from typing import<br />def main():<br />&nbsp;&nbsp;print("ThinkUp")<br />&nbsp;&nbsp;for i in range(10):<br />&nbsp;&nbsp;&nbsp;&nbsp;print(i)<br />if __name__ == "__main__":<br />&nbsp;&nbsp;main()<br />class Course:<br />&nbsp;&nbsp;def __init__(self):<br />&nbsp;&nbsp;&nbsp;&nbsp;pass
                 </div>
-              </div>
+                <div class="absolute inset-0 grid place-items-center">
+                  <div class="relative h-[112px] w-[112px]">
+                    <span class="absolute left-0 top-0 h-[60px] w-[62px] rounded-[26px] bg-[#60A5FA]"></span>
+                    <span class="absolute bottom-0 right-0 h-[60px] w-[62px] rounded-[26px] bg-[#F5D547]"></span>
+                    <span class="absolute left-[16px] top-[13px] h-[9px] w-[9px] rounded-full bg-white"></span>
+                    <span class="absolute bottom-[13px] right-[16px] h-[9px] w-[9px] rounded-full bg-white"></span>
+                  </div>
+                </div>
+              }
               <button type="button" (click)="openPreview()" class="absolute bottom-3 left-3 inline-flex h-8 items-center gap-2 rounded-full bg-[#020A31]/70 px-2.5 text-[13px] font-medium text-white backdrop-blur-sm transition hover:bg-[#020A31]/90">
                 <span class="grid h-5 w-5 place-items-center rounded-full bg-white text-[#061543]">
                   <svg lucidePlay class="ml-px h-3 w-3 fill-[#061543]" aria-hidden="true"></svg>
@@ -43,7 +48,6 @@
                 Xem giới thiệu
               </button>
             </div>
-
             <div class="min-w-0 flex-1">
               <h1 class="text-[28px] font-bold leading-[35px] text-[#0F172B]">{{ currentCourse.title }}</h1>
               <p class="mt-2 max-w-[900px] text-[14px] leading-[22.75px] text-[#62748E]">
@@ -52,8 +56,12 @@
 
               <div class="mt-4 flex flex-wrap items-center gap-x-8 gap-y-3">
                 <div class="flex items-center gap-2">
-                  <span class="grid h-8 w-8 place-items-center rounded-full bg-[#E8F1FF] text-[11px] font-bold text-[#155DFC]">
-                    {{ currentCourse.instructor.charAt(0) }}
+                  <span class="grid h-8 w-8 place-items-center overflow-hidden rounded-full bg-[#E8F1FF] text-[11px] font-bold text-[#155DFC]">
+                    @if (currentCourse.instructorAvatar) {
+                      <img [src]="currentCourse.instructorAvatar" [alt]="currentCourse.instructor" class="h-full w-full object-cover" />
+                    } @else {
+                      {{ currentCourse.instructor.charAt(0) }}
+                    }
                   </span>
                   <div>
                     <p class="text-[12px] leading-4 text-[#62748E]">Giảng viên</p>
@@ -92,6 +100,8 @@
                 type="button"
                 role="tab"
                 (click)="selectTab(tab.id)"
+                [disabled]="isTabLocked(tab.id)"
+                [attr.title]="isTabLocked(tab.id) ? 'Mua khóa học để sử dụng chức năng này' : null"
                 class="-mb-px shrink-0 border-b-2 pb-3 font-medium leading-5 transition"
                 [class]="(tab.id === 'content' ? 'text-[16.8px]' : 'text-[14px]') + ' ' + (activeTab() === tab.id ? 'border-[#2076FF] text-[#2076FF]' : 'border-transparent text-[#56647A] hover:text-[#0F172B]')"
                 [attr.aria-selected]="activeTab() === tab.id"
@@ -103,13 +113,16 @@
 
           <!-- Tab content -->
           <div class="mt-4">
+            @if (isTabLocked(activeTab())) {
+              <p class="text-[13px] text-[#62748E]">Mua khóa học để sử dụng tài liệu, hỏi đáp và thảo luận.</p>
+            } @else {
             @switch (activeTab()) {
               <!-- Figma 3173:9386 - tab "Nội dung khóa học" của trang dashboard khóa học. -->
               @case ('content') {
                 <div>
                   <!-- Figma 3173:9384 - tổng quan chương trình học. -->
                   <p class="mb-3 text-[12px] leading-4 text-[#56647A]">
-                    {{ currentCourse.chapters.length }} chương · {{ courseLessonCount(currentCourse) }} bài học · {{ enrollment()?.studyTime ?? courseDuration(currentCourse) }}
+                    {{ currentCourse.chapters.length }} chương · {{ courseLessonCount(currentCourse) }} bài học · {{ courseDuration(currentCourse) }}
                   </p>
 
                   <div class="space-y-3">
@@ -367,11 +380,13 @@
                                     [class]="
                                       document.ext === 'pdf'
                                         ? 'bg-[#FEF2F2] text-[#EF4444]'
-                                        : document.ext === 'zip'
+                                        : document.ext === 'zip' || document.ext === 'rar'
                                           ? 'bg-[#F0FDF4] text-[#16A34A]'
                                           : document.ext === 'docx'
                                             ? 'bg-[#EFF6FF] text-[#2563EB]'
-                                            : 'bg-[#FFFBEB] text-[#D97706]'
+                                            : document.ext === 'py'
+                                              ? 'bg-[#F5F3FF] text-[#7C3AED]'
+                                              : 'bg-[#FFFBEB] text-[#D97706]'
                                     "
                                   >
                                     <svg lucideFileText class="h-5 w-5" aria-hidden="true"></svg>
@@ -497,7 +512,7 @@
                   <div class="mt-6 space-y-6">
                     @for (question of questions(); track question.id) {
                       <article class="flex items-start gap-3">
-                        <img [src]="avatarFor(question.author)" alt="" class="h-10 w-10 shrink-0 rounded-full object-cover" />
+                        <img [src]="avatarFor(question.author, question.avatarUrl)" alt="" class="h-10 w-10 shrink-0 rounded-full object-cover" />
 
                         <div class="min-w-0 flex-1">
                           <div class="flex items-start justify-between gap-2">
@@ -552,7 +567,7 @@
 
                         @for (reply of question.replies; track $index) {
                           <article class="flex items-start gap-3">
-                            <img [src]="avatarFor(reply.author)" alt="" class="h-10 w-10 shrink-0 rounded-full object-cover" />
+                            <img [src]="avatarFor(reply.author, reply.avatarUrl)" alt="" class="h-10 w-10 shrink-0 rounded-full object-cover" />
 
                             <div class="min-w-0 flex-1">
                               <div class="flex items-start justify-between gap-2">
@@ -643,7 +658,7 @@
                     @for (post of sortedDiscussions; track post.id) {
                       <article class="rounded-2xl border border-[#E0E5EB] bg-white p-4">
                         <div class="flex items-start gap-3">
-                          <img [src]="avatarFor(post.author)" alt="" class="h-10 w-10 shrink-0 rounded-full object-cover" />
+                          <img [src]="avatarFor(post.author, post.avatarUrl)" alt="" class="h-10 w-10 shrink-0 rounded-full object-cover" />
 
                           <div class="min-w-0 flex-1">
                             <div class="flex items-start justify-between gap-2">
@@ -696,7 +711,7 @@
                                   <div class="mt-2 space-y-2">
                                     @for (reply of post.replies; track reply.id) {
                                       <div class="flex items-start gap-2.5 rounded-lg border border-[#EDF1F6] bg-white p-2.5">
-                                        <img [src]="avatarFor(reply.author)" alt="" class="h-8 w-8 shrink-0 rounded-full object-cover" />
+                                        <img [src]="avatarFor(reply.author, reply.avatarUrl)" alt="" class="h-8 w-8 shrink-0 rounded-full object-cover" />
                                         <div class="min-w-0 flex-1">
                                           <div class="flex flex-wrap items-center gap-2">
                                             <span class="text-[13px] font-semibold text-[#0F172B]">{{ reply.author }}</span>
@@ -732,6 +747,7 @@
                   </div>
                 </section>
               }
+            }
             }
           </div>
         </div>
@@ -816,15 +832,32 @@
                 </span>
               </button>
 
-              <button type="button" disabled class="flex w-full cursor-not-allowed items-center gap-3 rounded-xl border border-[#E2E8F0] bg-white p-3 text-left opacity-60" title="Hoàn thành khóa học để nhận chứng chỉ">
-                <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#F1F5F9] text-[#90A1B9]">
-                  <svg lucideAward class="h-4 w-4" aria-hidden="true"></svg>
-                </span>
-                <span class="min-w-0">
-                  <span class="block text-[13px] font-semibold text-[#62748E]">Xem chứng chỉ</span>
-                  <span class="block text-[10px] text-[#90A1B9]">Học hoàn tất để nhận chứng chỉ</span>
-                </span>
-              </button>
+              @if (certificate(); as cert) {
+                <a [routerLink]="['/tra-cuu']" [queryParams]="{ code: cert.code }" class="flex w-full items-center gap-3 rounded-xl border border-[#155DFC] bg-[#F0F6FF] p-3 text-left transition hover:bg-[#E0EDFF]" title="Xem chứng chỉ đã cấp">
+                  <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#155DFC] text-white">
+                    <svg lucideAward class="h-4 w-4" aria-hidden="true"></svg>
+                  </span>
+                  <span class="min-w-0 flex-1">
+                    <span class="block text-[13px] font-semibold text-[#155DFC]">Xem chứng chỉ</span>
+                    <span class="block truncate text-[10px] text-[#45556C]">Mã: {{ cert.code }} · Đã cấp</span>
+                  </span>
+                  <svg class="h-4 w-4 text-[#155DFC] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                </a>
+              } @else if (isClaimingCertificate()) {
+                <div class="rounded-xl border border-[#155DFC] bg-[#F0F6FF] p-3 text-[13px] text-[#155DFC]">Đang cấp chứng chỉ…</div>
+              } @else {
+                <button type="button" disabled class="flex w-full cursor-not-allowed items-center gap-3 rounded-xl border border-[#E2E8F0] bg-white p-3 text-left opacity-60" title="Hoàn thành khóa học để nhận chứng chỉ">
+                  <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#F1F5F9] text-[#90A1B9]">
+                    <svg lucideAward class="h-4 w-4" aria-hidden="true"></svg>
+                  </span>
+                  <span class="min-w-0">
+                    <span class="block text-[13px] font-semibold text-[#62748E]">Xem chứng chỉ</span>
+                    <span class="block text-[10px] text-[#90A1B9]">Học hoàn tất để nhận chứng chỉ</span>
+                  </span>
+                </button>
+              }
             </div>
           </section>
         </aside>

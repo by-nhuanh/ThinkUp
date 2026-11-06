@@ -1,5 +1,6 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ToastService } from '../../../core/services/toast.service';
 import { ProfileService } from '../services/profile.service';
 import { ProfileHeroComponent } from './components/profile-hero/profile-hero.component';
 import { CurrentCoursesCardComponent } from './components/current-courses-card/current-courses-card.component';
@@ -22,7 +23,9 @@ import { CertificatesCardComponent } from './components/certificates-card/certif
 export class ProfileOverviewComponent implements OnInit {
   readonly profileService = inject(ProfileService);
 
+  private readonly toast = inject(ToastService);
+
   ngOnInit(): void {
-    this.profileService.getProfileOverview().subscribe();
+    this.profileService.getProfileOverview().subscribe({ error: () => this.toast.showToast({ type: 'error', message: 'Không tải được hồ sơ. Vui lòng thử lại.' }) });
   }
 }

@@ -42,6 +42,8 @@ export interface FlashcardSetStats {
 }
 
 export interface FlashcardCardDraft {
+  /** Server ID of an existing card; absent for a new draft row. */
+  id?: string;
   key: string;
   front: string;
   back: string;

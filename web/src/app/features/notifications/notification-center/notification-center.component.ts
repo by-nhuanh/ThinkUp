@@ -1,4 +1,4 @@
-import { Component, ElementRef, HostListener, ViewChild, computed, effect, inject, signal } from '@angular/core';
+import { Component, ElementRef, HostListener, ViewChild, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map } from 'rxjs/operators';
@@ -11,12 +11,10 @@ import {
   LucideMessageCircle,
   LucideSettings2,
 } from '@lucide/angular';
-import { environment } from '../../../../environments/environment';
 import {
   AppNotification,
   notificationCategoryMeta,
 } from '../../../core/models/notification.model';
-import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { SettingsService } from '../../settings/services/settings.service';
@@ -84,7 +82,6 @@ export class NotificationCenterComponent {
   private readonly settings = inject(SettingsService);
   private readonly toast = inject(ToastService);
   private readonly notifications = inject(NotificationService);
-  private readonly auth = inject(AuthService);
 
   private readonly tabParam = toSignal(
     this.route.paramMap.pipe(map((params) => params.get('tab'))),
@@ -134,16 +131,12 @@ export class NotificationCenterComponent {
   );
 
   constructor() {
-    if (!environment.production) {
-      // TODO(pre-deploy): Xóa fallback user và lệnh nạp mock khi Notification API sẵn sàng.
-      effect(() => {
-        // Header có thể gọi setUser(null) khi khởi động ở chế độ khách; nạp lại một lần cho màn QA.
-        const testUserId = this.auth.currentUser()?.id ?? 'notification-demo-user';
-        if (this.notifications.totalCount() === 0) {
-          this.notifications.loadMockDataForTesting(testUserId);
-        }
-      });
-    }
+    this.settings.getNotificationPrefs().subscribe({ error: () => this.showError() });
+    this.notifications.syncFromStorage();
+  }
+
+  private showError(): void {
+    this.toast.showToast({ type: 'error', message: 'Không thể cập nhật cài đặt thông báo. Vui lòng thử lại.' });
   }
 
   /** Thông báo hiển thị theo tab và kiểu sắp xếp (chỉ tab "Tất cả" có sắp xếp). */
@@ -275,8 +268,9 @@ export class NotificationCenterComponent {
     if (restoreFocus) this.sortTriggerElement?.focus();
   }
 
-  markAllRead(): void {
-    const changed = this.notifications.markAllRead();
+  async markAllRead(): Promise<void> {
+    const changed = await this.notifications.markAllRead();
+    if (changed === null) return;
     if (changed === 0) {
       this.toast.showToast({ type: 'info', message: 'Tất cả thông báo đã được đọc.' });
       return;
@@ -287,23 +281,23 @@ export class NotificationCenterComponent {
     });
   }
 
-  openNotification(item: AppNotification): void {
-    this.notifications.markRead(item.id);
+  async openNotification(item: AppNotification): Promise<void> {
+    await this.notifications.markRead(item.id);
     if (item.href) void this.router.navigateByUrl(item.href);
   }
 
-  removeNotification(item: AppNotification): void {
-    const removed = this.notifications.remove(item.id);
+  async removeNotification(item: AppNotification): Promise<void> {
+    const removed = await this.notifications.remove(item.id);
     if (!removed) return;
 
     this.toast.showToast({
       type: 'success',
       message: 'Đã xóa thông báo.',
-      duration: 6000,
+      duration: Math.max(1, new Date(removed.undoUntil).getTime() - Date.now()),
       action: {
         label: 'Hoàn tác',
-        run: () => {
-          this.notifications.restore(removed);
+        run: async () => {
+          if (!await this.notifications.restore(removed)) return;
           this.toast.showToast({ type: 'info', message: 'Đã khôi phục thông báo.' });
         },
       },
@@ -319,12 +313,10 @@ export class NotificationCenterComponent {
 
     const key = item.category === 'learning' ? 'learning' : 'marketing';
     const next = !this.prefs()[key];
-    this.settings.updateNotificationPrefs({ [key]: next }).subscribe();
-
     const label = notificationCategoryMeta(item.category).label;
-    this.toast.showToast({
-      type: 'success',
-      message: next ? `Đã bật thông báo ${label}.` : `Đã tắt thông báo ${label}.`,
+    this.settings.updateNotificationPrefs({ [key]: next }).subscribe({
+      next: () => this.toast.showToast({ type: 'success', message: next ? 'Đã bật thông báo ' + label + '.' : 'Đã tắt thông báo ' + label + '.' }),
+      error: () => this.showError(),
     });
   }
 

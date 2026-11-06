@@ -2,6 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { LucideArrowLeft, LucideCircleCheck, LucideFileText, LucideLayers, LucidePercent, LucideRotateCcw } from '@lucide/angular';
 import { FlashcardService } from '../services/flashcard.service';
+import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-flashcard-complete',
@@ -13,6 +14,7 @@ import { FlashcardService } from '../services/flashcard.service';
 export class FlashcardCompleteComponent {
   private readonly flashcardService = inject(FlashcardService);
   private readonly router = inject(Router);
+  private readonly toastService = inject(ToastService);
 
   readonly setId = inject(ActivatedRoute).snapshot.paramMap.get('id') ?? '';
 
@@ -24,9 +26,15 @@ export class FlashcardCompleteComponent {
       : { total: 0, learned: 0, review: 0, fresh: 0, percent: 0 };
   });
 
+  constructor() {
+    this.flashcardService.loadSet(this.setId).subscribe({
+      error: () => this.toastService.showToast({ type: 'error', message: 'Không thể tải kết quả flashcard.' })
+    });
+  }
+
   restart(): void {
     this.router.navigate(['/learning/flashcards', this.setId, 'study'], {
-      queryParams: { mode: 'ordered' }
+      queryParams: { mode: 'review-first' }
     });
   }
 

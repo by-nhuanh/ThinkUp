@@ -138,7 +138,7 @@
                       [label]="'Tiến độ giai đoạn ' + stage.name"
                     />
 
-                    @if (stageProgress(stage).percent < 100) {
+                    @if (stageProgress(stage).percent < 100 && stage.testAvailable && isEnrolled()) {
                       <a class="rm-btn rm-btn--primary rm-btn--sm stage-card__test" [routerLink]="testLink(stage)">
                         Làm bài test
                       </a>

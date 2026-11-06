@@ -1,5 +1,6 @@
 import { getLearningPreferences, learningDateParts } from '../learning-settings/learning-settings.user.js';
 import { createHash } from 'node:crypto';
+import { ObjectId } from 'mongodb';
 import { getMongoDb } from '../db.js';
 
 export const COLLECTION_NOTIFICATIONS = 'notifications';
@@ -84,10 +85,75 @@ function listQuery(userId, query = {}) {
   };
 }
 
+/** Backfill deterministic inbox events for completed learning records created before notifications were wired. */
+async function syncCompletedLearningNotifications(userId, db) {
+  const id = owner(userId);
+  const ownerIds = [id, ...(ObjectId.isValid(id) ? [new ObjectId(id)] : [])];
+  const userFilter = { $or: ownerIds.flatMap(value => [{ user_id: value }, { userId: value }]) };
+
+  // 1. Sync lesson completions
+  const progressRows = await db.collection('user_lesson_progress').find({
+    $and: [userFilter, { $or: [{ status: 'completed' }, { is_completed: true }] }],
+  }).sort({ completed_at: -1, updated_at: -1 }).limit(100).toArray();
+
+  if (progressRows.length) {
+    const lessonIds = [...new Set(progressRows.map(row => String(row.lesson_id || row.lessonId || '')).filter(Boolean))];
+    const lessons = await db.collection('lessons').find({ $or: [
+      { lesson_id: { $in: lessonIds } },
+      ...lessonIds.filter(ObjectId.isValid).map(value => ({ _id: new ObjectId(value) })),
+    ] }).toArray();
+    const lessonMap = new Map(lessons.flatMap(lesson => [lesson.lesson_id, lesson._id]
+      .filter(Boolean).map(value => [String(value), lesson])));
+    await Promise.all(progressRows.map(async row => {
+      const lessonId = String(row.lesson_id || row.lessonId || '');
+      const lesson = lessonMap.get(lessonId);
+      const courseId = String(row.course_id || row.courseId || lesson?.course_id || '');
+      if (!lessonId || !courseId) return;
+      const isQuiz = ['quiz', 'test', 'exam'].includes(String(lesson?.lesson_type || '').toLowerCase());
+      const kind = isQuiz ? 'quiz' : 'progress';
+      const title = isQuiz ? 'Đã hoàn thành bài kiểm tra' : 'Đã hoàn thành bài học';
+      await createNotificationForEvent(id, {
+        eventKey: 'lesson-completed:' + lessonId, sourceType: 'lesson', sourceId: lessonId,
+        category: 'learning', kind, title,
+        message: 'Bạn đã hoàn thành “' + (lesson?.title || lesson?.lesson_name || 'Bài học') + '”.',
+        href: '/learning/learn/' + encodeURIComponent(courseId) + '?lesson=' + encodeURIComponent(lessonId),
+      }, { db, now: row.completed_at || row.updated_at || Date.now() });
+    }));
+  }
+
+  // 2. Sync course completion milestones (100% progress)
+  const courseProgressRows = await db.collection('user_course_progress').find({
+    $and: [userFilter, { $or: [{ progress_percentage: 100 }, { progress: 100 }, { status: 'completed' }] }],
+  }).toArray();
+
+  if (courseProgressRows.length) {
+    const courseIds = [...new Set(courseProgressRows.map(r => String(r.course_id || r.courseId || '')).filter(Boolean))];
+    const courses = await db.collection('courses').find({ $or: [
+      { course_id: { $in: courseIds } },
+      ...courseIds.filter(ObjectId.isValid).map(value => ({ _id: new ObjectId(value) })),
+    ] }).toArray();
+    const courseMap = new Map(courses.flatMap(c => [c.course_id, c._id, c.id].filter(Boolean).map(v => [String(v), c])));
+
+    await Promise.all(courseProgressRows.map(async row => {
+      const courseId = String(row.course_id || row.courseId || '');
+      const course = courseMap.get(courseId);
+      if (!courseId) return;
+      const courseTitle = course?.title || 'Khóa học ThinkUp';
+      await createNotificationForEvent(id, {
+        eventKey: 'course-completed:' + courseId, sourceType: 'course', sourceId: courseId,
+        category: 'learning', kind: 'milestone', title: 'Hoàn thành khóa học!',
+        message: 'Chúc mừng bạn đã hoàn thành 100% khóa học “' + courseTitle + '”.',
+        href: '/learning/learn/' + encodeURIComponent(courseId),
+      }, { db, now: row.updated_at || Date.now() });
+    }));
+  }
+}
+
 /** Lists only the authenticated owner's non-deleted inbox. Dates are UTC ISO strings. */
 export async function getUserNotifications(userId, query = {}, options = {}) {
   const { filter, direction, page, limit } = listQuery(userId, query);
   const db = await database(options);
+  await syncCompletedLearningNotifications(userId, db);
   const { timezone } = await getLearningPreferences(userId, { db });
   const collection = db.collection(COLLECTION_NOTIFICATIONS);
   const [documents, total] = await Promise.all([
@@ -102,6 +168,7 @@ export async function getUserNotifications(userId, query = {}, options = {}) {
 export async function getNotificationSummary(userId, options = {}) {
   const id = owner(userId);
   const db = await database(options);
+  await syncCompletedLearningNotifications(userId, db);
   const groups = await db.collection(COLLECTION_NOTIFICATIONS).aggregate([
     { $match: { user_id: id, deleted_at: null } },
     { $group: { _id: '$category', total: { $sum: 1 }, unread: {

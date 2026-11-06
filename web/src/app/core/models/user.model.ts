@@ -30,6 +30,7 @@ export interface AuthResponse {
   errorCode?: 'INVALID_CREDENTIALS' | 'ACCOUNT_LOCKED' | 'BRUTE_FORCE' | 'NETWORK_ERROR' | 'MISSING_EMAIL' | 'DUPLICATE_EMAIL' | 'DUPLICATE_PHONE' | string;
   provider?: string;
   email?: string;
+  accountExists?: boolean;
   resetToken?: string;
   autoLoginToken?: string;
   retryAfter?: number; // seconds

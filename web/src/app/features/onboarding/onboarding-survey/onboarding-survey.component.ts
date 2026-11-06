@@ -10,7 +10,7 @@ import { Component, OnInit, inject, signal, computed, HostListener } from '@angu
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { OnboardingService } from '../../../core/services/onboarding.service';
-import { NotificationService } from '../../../core/services/notification.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { StudentPreferences } from '../../../core/models/user.model';
 
 interface SurveyOption {
@@ -46,7 +46,7 @@ interface SurveyQuestion {
 export class OnboardingSurveyComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly onboardingService = inject(OnboardingService);
-  private readonly notificationService = inject(NotificationService);
+  private readonly toastService = inject(ToastService);
 
   private readonly draftPrefix = 'thinkup_onboarding_draft:';
 
@@ -297,21 +297,8 @@ export class OnboardingSurveyComponent implements OnInit {
       next: () => {
         this.submitting.set(false);
         this.clearSessionStorage();
-        const userId = this.onboardingService.getCurrentUser()?.id;
-        if (userId) {
-          this.notificationService.addForUser(userId, {
-            id: 'onboarding-completed',
-            title: 'Khảo sát đã hoàn tất',
-            message: 'Lộ trình học tập của bạn đã được cá nhân hóa.',
-            createdAt: new Date().toISOString(),
-            href: '/main/home',
-          });
-        }
-        this.showToast('Thiết lập thành công!', 'success');
-        // Điều hướng học viên vào Dashboard có bộ lọc cá nhân hóa
-        setTimeout(() => {
-          this.navigateAfterOnboarding();
-        }, 800);
+        this.toastService.showToast({ type: 'success', message: 'Thiết lập thành công!' });
+        this.navigateAfterOnboarding();
       },
       error: () => {
         // EX-ONB-01: Lỗi mạng / timeout -> Tắt spinner, hiện toast đỏ, bảo lưu form

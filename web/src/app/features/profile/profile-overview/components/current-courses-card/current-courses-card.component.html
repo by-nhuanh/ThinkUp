@@ -50,7 +50,16 @@
               <span class="inline-flex h-[15px] items-center rounded-full bg-[#FFFBEB] px-2 text-[10px] font-medium leading-[14px] text-[#596475]">
                 {{ course.category }}
               </span>
-              <span class="text-[12px] leading-4 text-[#596475]">GV: <span [appInstructorTrigger]="course.instructor">{{ course.instructor }}</span></span>
+              <span class="inline-flex items-center gap-1.5 text-[12px] leading-4 text-[#596475]">
+                <span class="grid h-4 w-4 shrink-0 place-items-center overflow-hidden rounded-full bg-[#E2E8F0] text-[9px] text-[#90A1B9]">
+                  @if (course.instructorAvatar) {
+                    <img [src]="course.instructorAvatar" [alt]="course.instructor" class="h-full w-full object-cover" />
+                  } @else {
+                    {{ course.instructor.charAt(0) }}
+                  }
+                </span>
+                <span>GV: <span [appInstructorTrigger]="course.instructor">{{ course.instructor }}</span></span>
+              </span>
             </div>
 
             <p class="truncate text-[14px] font-bold leading-5 text-[#071123]">{{ course.title }}</p>

@@ -49,6 +49,7 @@ export class VideoViewComponent implements OnChanges, OnDestroy {
   @Input() chapterTitle = '';
 
   @Output() completed = new EventEmitter<void>();
+  @Output() ended = new EventEmitter<void>();
 
   @ViewChild('videoElement') videoElement?: ElementRef<HTMLVideoElement>;
 
@@ -57,13 +58,13 @@ export class VideoViewComponent implements OnChanges, OnDestroy {
   readonly duration = signal(0);
   readonly muted = signal(false);
   readonly rate = signal(1);
-  readonly quality = signal('1080p');
+  readonly quality = signal('auto');
   readonly rateMenuOpen = signal(false);
   readonly qualityMenuOpen = signal(false);
   readonly started = signal(false);
 
   readonly rates = [0.75, 1, 1.25, 1.5, 1.75, 2];
-  readonly qualities = ['360p', '480p', '720p', '1080p'];
+  get qualities(): string[] { return this.lesson.playback?.sources.map(source => source.quality) ?? []; }
 
   private completionEmitted = false;
   private saveTimer: ReturnType<typeof setInterval> | null = null;
@@ -80,6 +81,12 @@ export class VideoViewComponent implements OnChanges, OnDestroy {
       this.rateMenuOpen.set(false);
       this.qualityMenuOpen.set(false);
       this.rate.set(1);
+    }
+    if (changes['lesson'] && this.lesson.playback && changes['lesson'].previousValue?.playback !== this.lesson.playback) {
+      this.rate.set(this.lesson.playback.effective.playbackSpeed);
+      this.quality.set(this.lesson.playback.effective.videoQuality);
+      const video = this.videoElement?.nativeElement;
+      if (video) video.playbackRate = this.rate();
     }
   }
 
@@ -127,6 +134,7 @@ export class VideoViewComponent implements OnChanges, OnDestroy {
   onLoadedMetadata(): void {
     const video = this.videoElement?.nativeElement;
     if (!video) return;
+    video.playbackRate = this.rate();
     this.duration.set(Number.isFinite(video.duration) ? video.duration : this.estimatedSeconds);
     const saved = Number(localStorage.getItem(`thinkup:video:${this.lesson.id}`) ?? '0');
     if (saved > 0 && saved < video.duration - 5) {
@@ -149,6 +157,7 @@ export class VideoViewComponent implements OnChanges, OnDestroy {
     this.playing.set(false);
     this.completed.emit();
     localStorage.removeItem(`thinkup:video:${this.lesson.id}`);
+    this.ended.emit();
   }
 
   onSeek(event: Event): void {
@@ -176,8 +185,19 @@ export class VideoViewComponent implements OnChanges, OnDestroy {
   }
 
   setQuality(value: string): void {
+    const source = this.lesson.playback?.sources.find(item => item.quality === value);
+    const video = this.videoElement?.nativeElement;
+    if (!source || !video) return;
     this.quality.set(value);
     this.qualityMenuOpen.set(false);
+    const time = video.currentTime;
+    const resume = !video.paused;
+    video.src = source.url;
+    video.addEventListener('loadedmetadata', () => {
+      video.currentTime = time; video.playbackRate = this.rate();
+      if (resume) void video.play().catch(() => this.playing.set(false));
+    }, { once: true });
+    video.load();
   }
 
   async toggleFullscreen(): Promise<void> {

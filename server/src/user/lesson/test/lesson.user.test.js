@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  labTestCases,
+  labActivityRows,
+  markLessonManualComplete,
   COLLECTION_COURSES,
   COLLECTION_INSTRUCTORS,
   COLLECTION_SECTIONS,
@@ -811,4 +814,73 @@ test('Learning integration: curriculum carries saved playback options without ch
   const result = await getCourseStudyCurriculum('course', 'learner', { db });
   assert.equal(result.learning_preferences.playbackSpeed, '1.75');assert.equal(result.learning_preferences.autoNext, false);
   assert.equal(result.learning_progress.completed_lessons, 0);assert.equal(result.learning_progress.progress_percentage, 0);
+});
+
+
+test('Lab cases preserve configured input and are available before running', () => {
+  const lab = { environment_config: JSON.stringify({ test_cases: [
+    { id: 'sum', name: 'Addition', input: '2 3', expected_output: '5' },
+  ] }) };
+  assert.deepEqual(labTestCases(lab), [{ id: 'sum', name: 'Addition', input: '2 3', expected_output: '5' }]);
+  assert.equal(labTestCases({ expected_output: 'Hello' })[0].expected_output, 'Hello');
+  assert.equal(labTestCases({})[0].passed, undefined);
+});
+
+test('Curriculum restores legacy completion without course scope', async () => {
+  const db = { collection(name) { return {
+    async findOne() { return name === 'courses' ? { course_id: 'course', _id: 'course-db' } : null; },
+    find(query) { return { sort() { return this; }, async toArray() {
+      if (name === 'course_sections') return [{ section_id: 'section', title: 'Section' }];
+      if (name === 'lessons') return [{ lesson_id: 'lesson', section_id: 'section', lesson_type: 'video', title: 'Video' }];
+      if (name === 'user_lesson_progress') {
+        assert.equal(query.course_id, undefined);
+        return [{ user_id: 'learner', lesson_id: 'lesson', is_completed: '1' }];
+      }
+      return [];
+    } }; },
+  }; } };
+  const result = await getCourseStudyCurriculum('course', 'learner', { db });
+  assert.equal(result.learning_progress.completed_lessons, 1);
+  assert.equal(result.learning_progress.progress_percentage, 100);
+});
+
+
+test('Lab activity maps runs, ranked submitted users and private history', () => {
+  const run = (id, user, status, passed) => ({ attempt_id: id, user_id: user, status,
+    submitted_at: '2026-11-05T02:00:00Z', exercises: { '1': { status: passed ? 'pass' : 'fail', execution_ms: 124,
+      test_results: [{ id: 't1', passed }, { id: 't2', passed }] } } });
+  const data = labActivityRows([
+    run('submitted', 'learner', 'submitted', true), run('trial', 'other', 'in_progress', false),
+    { attempt_id: 'empty', user_id: 'learner', status: 'in_progress', exercises: { '1': { test_results: [] } } },
+  ], [{ user_id: 'learner', full_name: 'Nguyễn An' }], 'learner');
+  assert.equal(data.leaderboard.length, 1);
+  assert.equal(data.leaderboard[0].name, 'Nguyễn An');
+  assert.equal(data.leaderboard[0].score, 100);
+  assert.equal(data.leaderboard[0].execTime, '124');
+  assert.equal(data.submissions.length, 1);
+  assert.equal(data.submissions[0].testsPassed, 2);
+  assert.equal(data.submissions[0].status, 'pass');
+  assert.equal(labActivityRows([run('trial', 'learner', 'in_progress', false)], [], 'learner').submissions.length, 1);
+});
+
+
+test('Manual completion supports section-linked lessons and updates the same progress record', async () => {
+  const writes = [];
+  const db = { collection(name) { return {
+    async findOne() {
+      if (name === 'lessons') return { lesson_id: 'lesson', section_id: 'section', lesson_type: 'video' };
+      if (name === 'course_sections') return { section_id: 'section', course_id: 'course' };
+      if (name === 'courses') return { course_id: 'course' };
+      if (name === 'user_enrollments') return { user_id: 'student', course_id: 'course' };
+      return null;
+    },
+    async updateOne(filter, update) { assert.equal(name, 'user_lesson_progress'); writes.push({ filter, data: update.$set }); },
+  }; } };
+  const done = await markLessonManualComplete('lesson', 'student', { completed: true }, { db });
+  assert.equal(done.completed, true); assert.equal(done.status, 'done');
+  assert.equal(writes[0].data.course_id, 'course'); assert.equal(writes[0].data.status, 'completed');
+  const undone = await markLessonManualComplete('lesson', 'student', { completed: false }, { db });
+  assert.equal(undone.completed, false); assert.equal(writes[1].data.is_completed, false);
+  assert.equal(writes[1].data.completed_at, null); assert.deepEqual(writes[0].filter, writes[1].filter);
+  await assert.rejects(markLessonManualComplete('lesson', 'student', { completed: 'true' }, { db }), { status: 400 });
 });

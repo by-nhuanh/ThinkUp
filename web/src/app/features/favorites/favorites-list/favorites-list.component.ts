@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FavoritesService } from '../../../core/services/favorites.service';
 import { Course } from '../../../core/models/course.model';
+import { Subscription } from 'rxjs';
+import { ToastService } from '../../../core/services/toast.service';
 import { CourseCardComponent } from '../../courses/components/course-card/course-card.component';
 
 @Component({
@@ -14,6 +16,8 @@ import { CourseCardComponent } from '../../courses/components/course-card/course
 })
 export class FavoritesListComponent implements OnInit {
   private favoritesService = inject(FavoritesService);
+  private readonly toast = inject(ToastService);
+  private request?: Subscription;
 
   isReady = signal(false);
   sort = signal('recent');
@@ -41,14 +45,25 @@ export class FavoritesListComponent implements OnInit {
   );
 
   ngOnInit(): void {
-    this.favoritesService.loadFavorites().subscribe({
+    this.reload();
+  }
+
+  private reload(): void {
+    this.request?.unsubscribe();
+    const sort = ({ recent: 'newest', rating: 'highest_rated', 'price-low': 'price_asc', 'price-high': 'price_desc' } as Record<string, string>)[this.sort()];
+    this.request = this.favoritesService.loadFavorites({ sort, limit: 'all' }).subscribe({
       next: () => this.isReady.set(true),
-      error: () => this.isReady.set(true),
+      error: () => {
+        this.isReady.set(true);
+        this.toast.showToast({ type: 'warning', message: 'Không tải được danh sách yêu thích.' });
+      },
     });
   }
 
   selectSort(value: string): void {
     this.sort.set(value);
     this.isSortOpen.set(false);
+    this.reload();
   }
+  ngOnDestroy(): void { this.request?.unsubscribe(); }
 }

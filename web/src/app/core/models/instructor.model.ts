@@ -14,9 +14,9 @@ export interface Instructor {
   joinedAt: string;
   avatar?: string;
   initials: string;
-  rating: number;
-  reviewsCount: number;
-  studentsCount: number;
+  rating: number | null;
+  reviewsCount: number | null;
+  studentsCount: number | null;
   coursesCount: number;
   experience: string[];
   expertise: string[];

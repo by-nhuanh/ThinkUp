@@ -138,6 +138,7 @@ test('Study Room Backend Service Test Suite', async (t) => {
       if (roomIds.length) {
         await db.collection('study_room_messages').deleteMany({ roomId: { $in: roomIds } });
         await db.collection('study_room_invites').deleteMany({ roomId: { $in: roomIds } });
+      await db.collection('study_room_access').deleteMany({ roomId: { $in: roomIds } });
       }
       await db.collection('users').deleteMany({ studyroomTestRunId: testRunId });
       assert.equal(await roomsColl.countDocuments({ studyroomTestRunId: testRunId }), 0);
@@ -213,6 +214,7 @@ test('Study Room Backend Service Test Suite', async (t) => {
     assert.equal(createdPublicRoom.name, payload.name);
     assert.equal(createdPublicRoom.type, 'public');
     assert.equal(createdPublicRoom.capacity, 5);
+    assert.equal(createdPublicRoom.theme, payload.roomTheme);
     assert.equal(createdPublicRoom.hasPassword, false);
     assert.equal(createdPublicRoom.password, undefined); // Không leak password
 
@@ -236,6 +238,8 @@ test('Study Room Backend Service Test Suite', async (t) => {
 
     assert.ok(createdPrivateRoom._id);
     assert.equal(createdPrivateRoom.type, 'private');
+    const ownerEntry = await searchAndJoinRoom(createdPrivateRoom.roomId, '', 'user_test_2');
+    assert.equal(ownerEntry.room.roomTheme, payload.roomTheme);
     assert.equal(createdPrivateRoom.hasPassword, true);
     assert.equal(createdPrivateRoom.password, undefined); // Không leak password ra client
 
@@ -281,11 +285,11 @@ test('Study Room Backend Service Test Suite', async (t) => {
       email: `other_${testRunId}@example.test`,
       studyroomTestRunId: testRunId
     });
-    await inviteUserToRoom(createdPrivateRoom.roomId, `invite_${testRunId}@example.test`, 'user_test_2');
+    // Both accounts can join without an account-specific invitation.
 
     await assert.rejects(
-      () => searchAndJoinRoom(createdPrivateRoom.roomCode, 'mypassword123', uninvitedUserId),
-      { code: 'INVITATION_REQUIRED' }
+      () => generateLiveKitToken({ roomId: createdPrivateRoom.roomId, userId: uninvitedUserId }),
+      { code: 'PASSWORD_REQUIRED' }
     );
 
     // Lời mời hợp lệ vẫn phải kèm mật khẩu phòng.
@@ -311,9 +315,13 @@ test('Study Room Backend Service Test Suite', async (t) => {
     assert.equal(privateJoinSuccess.room.theme, createdPrivateRoom.theme);
     const privateToken = await generateLiveKitToken({ roomId: createdPrivateRoom.roomId, userId: invitedUserId });
     assert.equal(privateToken.role, 'member');
+    const linkJoin = await searchAndJoinRoom(createdPrivateRoom.roomLink, 'mypassword123', uninvitedUserId);
+    assert.equal(linkJoin.success, true);
+    const linkToken = await generateLiveKitToken({ roomId: createdPrivateRoom.roomId, userId: uninvitedUserId });
+    assert.equal(linkToken.role, 'member');
     await assert.rejects(
-      () => generateLiveKitToken({ roomId: createdPrivateRoom.roomId, userId: uninvitedUserId }),
-      { code: 'INVITATION_REQUIRED' }
+      () => searchAndJoinRoom(createdPrivateRoom.roomLink, 'wrong-password', uninvitedUserId),
+      { code: 'INVALID_PASSWORD' }
     );
   });
 
@@ -409,6 +417,7 @@ test('Study Room Backend Service Test Suite', async (t) => {
     assert.ok(tokenResult.token);
     assert.ok(typeof tokenResult.token === 'string');
     assert.equal(tokenResult.roomId, createdPublicRoom.roomId);
+    assert.equal(tokenResult.theme, createdPublicRoom.roomTheme);
     assert.ok(tokenResult.position);
     assert.ok(tokenResult.livekitUrl);
     assert.equal(tokenResult.role, 'member');

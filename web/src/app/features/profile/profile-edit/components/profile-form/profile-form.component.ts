@@ -1,6 +1,8 @@
 import {
   AfterViewInit,
   Component,
+  OnChanges,
+  SimpleChanges,
   ElementRef,
   EventEmitter,
   Input,
@@ -49,7 +51,7 @@ const BIO_LIMIT = 250;
   templateUrl: './profile-form.component.html',
   styleUrl: './profile-form.component.css',
 })
-export class ProfileFormComponent implements AfterViewInit {
+export class ProfileFormComponent implements AfterViewInit, OnChanges {
   @Input({ required: true }) profile!: UserProfile;
   @Input() isSaving = false;
   /** Thay đổi ngoài form (ví dụ ảnh đại diện) cũng phải bật nút Lưu. */
@@ -107,6 +109,13 @@ export class ProfileFormComponent implements AfterViewInit {
     this.bioLength = bioTextLength(this.form.bio);
     this.initialSnapshot = this.snapshot();
     this.emitState();
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['profile'] && !changes['profile'].firstChange && !this.dirty) {
+      this.ngOnInit();
+      this.ngAfterViewInit();
+    }
   }
 
   ngAfterViewInit(): void {

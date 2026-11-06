@@ -61,25 +61,11 @@ export interface CartSummary {
 
 /** GET /api/user/cart -> { success, data: CartView } */
 export interface CartView {
-  is_guest: boolean;
-  user_id: string | null;
-  items_count: number;
-  items: ApiCartCourse[];
-  pricing_summary: {
-    subtotal: number;
-    subtotal_formatted: string;
-    discount_amount: number;
-    discount_amount_formatted: string;
-    total_amount: number;
-    total_amount_formatted: string;
-    currency: string;
-  };
-  voucher_applied?: {
-    code: string;
-    is_valid: boolean;
-    discount_amount: number;
-    message: string;
-  } | null;
+  totalCourses: number;
+  courses: ApiCartCourse[];
+  summary: CartSummary;
+  isGuest: boolean;
+  requiresAuthToCheckout: boolean;
 }
 
 /** POST /api/user/cart/voucher/validate -> { success, data } */
@@ -98,21 +84,13 @@ export interface CheckoutVoucher {
 }
 
 /** Phương thức gửi lên POST /api/payment/create-session. */
-export type PaymentMethodId = 'sepay' | 'vnpay' | 'stripe';
+export type PaymentMethodId = 'sepay' | 'vnpay' | 'stripe' | 'swift' | 'momo' | 'zalopay' | 'paypal' | 'apple-pay';
 
 export interface CreatePaymentSessionPayload {
-  courses: {
-    id: string;
-    title: string;
-    price: number;
-    originalPrice: number;
-    thumbnail?: string;
-    instructorName?: string;
-  }[];
+  courseIds: string[];
   paymentMethod: PaymentMethodId;
   bankCode?: string;
   voucherCode?: string;
-  voucherDiscount?: number;
 }
 
 /** POST /api/payment/create-session -> { success, message, data } */
@@ -121,18 +99,35 @@ export interface PaymentSession {
   transactionId: string;
   amount: number;
   currency: string;
+  status: PaymentStatusValue;
+  fulfillmentStatus: string;
   expiresAt: string;
   expiresInSeconds: number;
   paymentMethod: string;
   transferContent: string;
-  bankInfo: {
+  bankInfo?: {
     bankId: string;
     bankName?: string;
     accountNo: string;
-    accountHolder: string;
+    accountName: string;
   };
-  qrCodeUrl: string;
+  qrCodeUrl?: string;
   paymentUrl?: string;
+  executionMode?: 'simulation';
+  isSimulated?: boolean;
+  requestedPaymentMethod?: PaymentMethodId;
+  invoiceCode?: string | null;
+  paymentContent?: string;
+}
+
+export interface PaymentReceipt {
+  transactionId: string;
+  orderId: string;
+  invoiceCode: string;
+  paymentContent: string;
+  transferContent: string;
+  paymentMethod: string;
+  isSimulated: boolean;
 }
 
 /** Thông tin ngân hàng hiển thị cho chuyển khoản nội địa / QR. */
@@ -153,7 +148,7 @@ export interface SwiftInfo {
   content: string;
 }
 
-export type PaymentStatusValue = 'pending' | 'success' | 'failed' | 'expired';
+export type PaymentStatusValue = 'pending' | 'paid' | 'success' | 'failed' | 'expired' | 'cancelled' | 'needs_review';
 
 /** GET /api/payment/status/:id */
 export interface PaymentStatus {
@@ -161,8 +156,37 @@ export interface PaymentStatus {
   transactionId: string;
   orderId: string;
   status: PaymentStatusValue;
+  fulfillmentStatus: string;
+  currency: string;
   amount: number;
   paidAt: string | null;
   expiresAt: string;
   remainingSeconds: number;
+}
+
+export interface PaymentPreferences {
+  savePayment: boolean;
+  invoiceEmail: boolean;
+  quickConfirm: boolean;
+  revision: number;
+}
+
+export interface PaymentSettingsOverview {
+  preferences: PaymentPreferences;
+  capabilities: { savePayment: boolean; invoiceEmail: boolean; quickConfirm: boolean; linkedPaymentMethods: boolean; invoiceDownload: boolean };
+  methods: { items: import('../../features/settings/models/settings.model').PaymentMethod[]; supported: boolean };
+  transactions: { items: PaymentTransactionDto[]; pagination: { page: number; limit: number; total: number; hasMore: boolean } };
+  invoices: { items: { id: string; orderId: string; code: string; issuedAt: string; amount: number; currency: string; detailHref: string }[] };
+}
+
+export interface PaymentTransactionDto {
+  order_id: string;
+  transaction_id: string;
+  payment_method: string;
+  amount: number;
+  currency: string;
+  status: string;
+  courses: { title?: string }[];
+  created_at: string | null;
+  created_at_local?: { date: string; dateOnly: string; timeOnly: string } | null;
 }

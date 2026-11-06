@@ -1,4 +1,5 @@
 import { Directive, ElementRef, HostListener, computed, inject, input, OnDestroy } from '@angular/core';
+import { Router } from '@angular/router';
 import { InstructorService } from '../../core/services/instructor.service';
 import { InstructorCardService } from '../../core/services/instructor-card.service';
 
@@ -27,12 +28,15 @@ export class InstructorTriggerDirective implements OnDestroy {
 
   private readonly instructorService = inject(InstructorService);
   private readonly cardService = inject(InstructorCardService);
+  private readonly router = inject(Router);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private loadVersion = 0;
   private hoverTimer?: ReturnType<typeof setTimeout>;
 
   readonly isOpen = computed(() => this.cardService.state()?.trigger === this.host.nativeElement);
 
   ngOnDestroy(): void {
+    this.loadVersion++;
     this.clearHoverTimer();
   }
 
@@ -48,6 +52,7 @@ export class InstructorTriggerDirective implements OnDestroy {
 
   @HostListener('mouseleave')
   onMouseLeave(): void {
+    this.loadVersion++;
     this.clearHoverTimer();
     this.cardService.scheduleClose();
   }
@@ -61,6 +66,7 @@ export class InstructorTriggerDirective implements OnDestroy {
 
   @HostListener('blur')
   onBlur(): void {
+    this.loadVersion++;
     this.clearHoverTimer();
     this.cardService.scheduleClose();
   }
@@ -70,11 +76,11 @@ export class InstructorTriggerDirective implements OnDestroy {
     event.preventDefault();
     event.stopPropagation();
     this.clearHoverTimer();
-    if (this.isOpen()) {
-      this.cardService.cancelClose();
-      return;
+    this.cardService.close();
+    const ref = this.appInstructorTrigger();
+    if (ref) {
+      this.router.navigate(['/instructors', ref]);
     }
-    this.show(true);
   }
 
   @HostListener('keydown', ['$event'])
@@ -83,7 +89,11 @@ export class InstructorTriggerDirective implements OnDestroy {
       event.preventDefault();
       event.stopPropagation();
       this.clearHoverTimer();
-      this.show(true, true);
+      this.cardService.close();
+      const ref = this.appInstructorTrigger();
+      if (ref) {
+        this.router.navigate(['/instructors', ref]);
+      }
       return;
     }
     if (event.key === 'Escape' && this.isOpen()) {
@@ -93,9 +103,14 @@ export class InstructorTriggerDirective implements OnDestroy {
   }
 
   private show(pinned: boolean, openedByKeyboard = false): void {
-    const instructor = this.instructorService.getInstructor(this.appInstructorTrigger());
-    if (!instructor) return;
-    this.cardService.open(instructor, this.host.nativeElement, { pinned, openedByKeyboard });
+    const version = ++this.loadVersion;
+    this.instructorService.loadProfile(this.appInstructorTrigger()).subscribe({
+      next: ({ instructor }) => {
+        if (version !== this.loadVersion) return;
+        this.cardService.open(instructor, this.host.nativeElement, { pinned, openedByKeyboard });
+      },
+      error: () => { /* Keep the popup closed when the public profile cannot be loaded. */ },
+    });
   }
 
   private clearHoverTimer(): void {

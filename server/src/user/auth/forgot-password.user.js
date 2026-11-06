@@ -58,6 +58,7 @@ export async function sendForgotPasswordOtp({ email } = {}, options = {}) {
   return {
     message: 'Nếu email tồn tại trên hệ thống, bạn sẽ nhận được mã xác thực.',
     email: normalizedEmail, maskedEmail: maskEmail(normalizedEmail),
+    ...(options.exposeAccountExists ? { accountExists: !!user } : {}),
   };
 }
 

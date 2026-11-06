@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { getMongoDb } from '../../db.js';
-import { configured, paymentMoney, paymentError, fulfillPaymentSuccess } from '../payment.service.js';
+import { configured, paymentMoney, paymentError, fulfillPaymentSuccess, recordPaymentFailure } from '../payment.service.js';
 
 export async function stripeRequest(path, {method='GET',params,idempotencyKey}={}, options={}) {
   const secret=configured('STRIPE_SECRET_KEY');
@@ -37,18 +37,21 @@ export function verifyStripeEvent(rawBody,signature,now=Date.now()){
 }
 export async function handleStripeWebhookEvent(rawBody,signature,options={}){
   const event=verifyStripeEvent(rawBody,signature);
-  if(!['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(event.type))return {success:true,ignored:true};
+  if(!['checkout.session.completed','checkout.session.async_payment_succeeded','checkout.session.async_payment_failed'].includes(event.type))return {success:true,ignored:true};
   if(typeof event.id!=='string'||!Number.isFinite(event.created))throw paymentError('Thiếu định danh sự kiện Stripe.');
   const object=event.data?.object;
   if(typeof object?.id!=='string'||!/^cs_[A-Za-z0-9_]+$/.test(object.id))throw paymentError('Thiếu Checkout Session.');
   const checkout=await stripeRequest(`checkout/sessions/${encodeURIComponent(object.id)}`,{},options);
-  if(checkout.id!==object.id||checkout.payment_status!=='paid'||checkout.status!=='complete')return {success:true,ignored:true};
+  if(checkout.id!==object.id)return {success:true,ignored:true};
+  const failed=event.type==='checkout.session.async_payment_failed'&&checkout.payment_status==='unpaid';
+  if(!failed&&(checkout.payment_status!=='paid'||checkout.status!=='complete'))return {success:true,ignored:true};
   const transactionId=checkout.client_reference_id;
   const db=options.db || await getMongoDb();
   const tx=await db.collection('payment_transactions').findOne({transaction_id:transactionId});
   if(!tx||tx.payment_method!=='stripe')throw paymentError('Sai tham chiếu Stripe.',409,'GATEWAY_MISMATCH');
   if(tx.gateway_session_id!==checkout.id)throw paymentError('Phiên Stripe chưa được lưu hoặc không khớp.',503,'GATEWAY_SESSION_MISMATCH');
   if(checkout.metadata?.transactionId!==transactionId||checkout.metadata?.orderId!==tx.order_id)throw paymentError('Metadata Stripe không khớp.',409,'GATEWAY_MISMATCH');
+  if(failed)return recordPaymentFailure(transactionId,'stripe',options);
   return fulfillPaymentSuccess({transactionId,gateway:'stripe',gatewayTransactionNo:checkout.id,gatewayEventId:event.id,
     paidAmount:checkout.amount_total,currency:String(checkout.currency).toUpperCase(),paidAt:new Date(event.created*1000)},options);
 }

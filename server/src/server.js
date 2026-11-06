@@ -1,5 +1,8 @@
 import dotenv from 'dotenv';
-dotenv.config({ quiet: true });
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+dotenv.config({ path: path.join(repoRoot, '.env'), quiet: true });
 
 import express from 'express';
 import cors from 'cors';
@@ -54,6 +57,8 @@ import { createSupportRouter } from './user/support/support.user.js';
 import { createAccountSecurityRouter, logoutSecuritySession, recoverSecurityEvents } from './user/account-security/account-security.user.js';
 import { createPaymentSettingsRouter } from './user/payment-settings/payment-settings.user.js';
 import { createLearningSettingsRouter } from './user/learning-settings/learning-settings.user.js';
+import { createHomeRouter } from './user/home/home.user.js';
+import { createLearningActivityRouter } from './user/learning-activity/learning-activity.user.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -135,6 +140,13 @@ async function requireAuth(req, res, next) {
 }
 
 // ─── 3. Health Check Endpoints ───────────────────────────────────────────────
+const homeRouter = createHomeRouter(express, requireAuth);
+app.use('/api/user/home', homeRouter);
+app.use('/api/v1/user/home', homeRouter);
+const learningActivityRouter = createLearningActivityRouter(express, requireAuth);
+app.use('/api/user/learning-activity', learningActivityRouter);
+app.use('/api/v1/user/learning-activity', learningActivityRouter);
+
 app.get('/', (req, res) => {
   res.json({
     status: 'ok',
@@ -203,9 +215,16 @@ authRouter.post('/resend-verification', async (req, res, next) => {
 });
 
 // 4.4. Đăng ký nhanh Google OAuth
+const authRequestContext = req => ({
+  ip: req.ip,
+  userAgent: req.get('user-agent'),
+  city: req.get('x-vercel-ip-city') || req.get('cf-ipcity'),
+  region: req.get('x-vercel-ip-country-region') || req.get('cf-region'),
+  country: req.get('x-vercel-ip-country') || req.get('cf-ipcountry'),
+});
 authRouter.post('/google/signup', async (req, res, next) => {
   try {
-    const result = await registerWithGoogle(req.body, { ip: req.ip, userAgent: req.get('user-agent') });
+    const result = await registerWithGoogle(req.body, authRequestContext(req));
     setAuthCookie(res, result, 'user', req.body.rememberMe);
     res.json(result);
   } catch (err) {
@@ -216,7 +235,7 @@ authRouter.post('/google/signup', async (req, res, next) => {
 // 4.5. Đăng ký nhanh Facebook OAuth
 authRouter.post('/facebook/signup', async (req, res, next) => {
   try {
-    const result = await registerWithFacebook(req.body, { ip: req.ip, userAgent: req.get('user-agent') });
+    const result = await registerWithFacebook(req.body, authRequestContext(req));
     setAuthCookie(res, result, 'user', req.body.rememberMe);
     res.json(result);
   } catch (err) {
@@ -227,7 +246,7 @@ authRouter.post('/facebook/signup', async (req, res, next) => {
 // 4.6. Đăng nhập qua Email & Mật khẩu (Sign In)
 authRouter.post('/login', async (req, res, next) => {
   try {
-    const result = await loginWithCredentials(req.body, { ip: req.ip, userAgent: req.get('user-agent') });
+    const result = await loginWithCredentials(req.body, authRequestContext(req));
     setAuthCookie(res, result, 'user', req.body.rememberMe);
     res.json(result);
   } catch (err) {
@@ -238,7 +257,7 @@ authRouter.post('/login', async (req, res, next) => {
 // 4.7. Đăng nhập Google OAuth
 authRouter.post('/google/login', async (req, res, next) => {
   try {
-    const result = await loginWithGoogle(req.body, { ip: req.ip, userAgent: req.get('user-agent') });
+    const result = await loginWithGoogle(req.body, authRequestContext(req));
     setAuthCookie(res, result, 'user', req.body.rememberMe);
     res.json(result);
   } catch (err) {
@@ -249,7 +268,7 @@ authRouter.post('/google/login', async (req, res, next) => {
 // 4.8. Đăng nhập Facebook OAuth
 authRouter.post('/facebook/login', async (req, res, next) => {
   try {
-    const result = await loginWithFacebook(req.body, { ip: req.ip, userAgent: req.get('user-agent') });
+    const result = await loginWithFacebook(req.body, authRequestContext(req));
     setAuthCookie(res, result, 'user', req.body.rememberMe);
     res.json(result);
   } catch (err) {
@@ -327,7 +346,7 @@ authRouter.get('/session', async (req, res, next) => {
 authRouter.post('/forgot-password', async (req, res, next) => {
   try {
     const email = req.body.email || req.body.contact;
-    const result = await sendForgotPasswordOtp({ email }, { ip: req.ip });
+    const result = await sendForgotPasswordOtp({ email }, { ip: req.ip, exposeAccountExists: process.env.NODE_ENV !== 'production' });
     res.json(result);
   } catch (err) {
     next(err);
@@ -406,7 +425,7 @@ const onboardingRouter = express.Router();
 
 onboardingRouter.post('/skip', requireAuth, async (req, res, next) => {
   try {
-    const result = await skipOnboarding(req.userId);
+    const result = await skipOnboarding(req.userId, { includeCourses: req.body?.includeCourses !== false });
     res.json(result);
   } catch (err) {
     next(err);
@@ -415,7 +434,7 @@ onboardingRouter.post('/skip', requireAuth, async (req, res, next) => {
 
 onboardingRouter.post('/submit', requireAuth, async (req, res, next) => {
   try {
-    const result = await submitOnboarding(req.userId, req.body);
+    const result = await submitOnboarding(req.userId, req.body, { includeCourses: req.body?.includeCourses !== false });
     res.json(result);
   } catch (err) {
     next(err);
@@ -502,6 +521,12 @@ const paymentRouter = createPaymentRouter(express, requireAuth);
 app.use('/api/payment', paymentRouter);
 app.use('/api/user/payment', paymentRouter);
 app.use('/api/v1/payment', paymentRouter); // Hỗ trợ tiền tố v1
+
+// Hỗ trợ redirect fallback khi VNPay callback gọi về port backend hoặc đường dẫn cũ /payment/vnpay-return
+app.get('/payment/vnpay-return', (req, res) => {
+  const query = new URLSearchParams(req.query).toString();
+  res.redirect(`/api/payment/vnpay/callback${query ? '?' + query : ''}`);
+});
 
 // ─── 5i. Router Giỏ Hàng Học Viên & Khách: /api/user/cart ───────────────────
 async function optionalAuth(req, res, next) {

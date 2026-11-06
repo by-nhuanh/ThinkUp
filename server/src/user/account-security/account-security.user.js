@@ -51,8 +51,13 @@ function deviceInfo(context = {}) {
   if (ip.startsWith('::ffff:') && isIP(ip.slice(7)) === 4) ip = ip.slice(7);
   const maskedIp = isIP(ip) === 4 ? `${ip.split('.').slice(0, 2).join('.')}.XXX.XXX`
     : isIP(ip) === 6 ? `${ip.split(':').slice(0, 2).join(':')}:XXXX:XXXX` : 'Không xác định';
+  const decodeLocation = value => { try { return decodeURIComponent(value); } catch { return value; } };
+  const location = [context.city, context.region, context.country]
+    .filter(value => typeof value === 'string' && value.trim())
+    .map(value => decodeLocation(value.trim())).filter((value, index, values) => values.indexOf(value) === index)
+    .join(', ') || 'Không xác định';
   return { deviceType: /Mobile|Android|iPhone|iPad/i.test(ua) ? 'mobile' : 'desktop',
-    os, browser, maskedIp, location: 'Không xác định' };
+    os, browser, maskedIp, location };
 }
 function event(type, sid, device, timestamp, targetSessionId) {
   return { _id: randomUUID(), type, sessionId: sid, device, createdAt: timestamp,

@@ -11,7 +11,11 @@
         (timeupdate)="onTimeUpdate()"
         (ended)="onEnded()"
         (click)="togglePlay()"
-      ></video>
+      >
+        @if (lesson.playback?.selectedCaption; as caption) {
+          <track kind="subtitles" [src]="caption.url" [srclang]="caption.language" [label]="caption.label" [default]="lesson.playback?.effective?.subtitles ?? false" />
+        }
+      </video>
 
       @if (!started()) {
         <div class="absolute inset-0 flex flex-col justify-between bg-[linear-gradient(160deg,rgba(4,19,72,0.96)_0%,rgba(1,5,44,0.98)_100%)] p-8 pb-[112px] 2xl:p-10 2xl:pb-[120px]">

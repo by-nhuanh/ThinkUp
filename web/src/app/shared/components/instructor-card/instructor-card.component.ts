@@ -101,12 +101,12 @@ export class InstructorCardComponent implements OnInit, OnDestroy {
     this.cardService.close();
   }
 
-  formatCount(value: number): string {
-    return new Intl.NumberFormat('vi-VN').format(value);
+  formatCount(value: number | null): string {
+    return value === null ? '—' : new Intl.NumberFormat('vi-VN').format(value);
   }
 
-  formatRating(value: number): string {
-    return Number.isFinite(value) ? value.toFixed(1) : '0.0';
+  formatRating(value: number | null): string {
+    return value !== null && Number.isFinite(value) ? value.toFixed(1) : '—';
   }
 
   private measureAndPlace(): void {

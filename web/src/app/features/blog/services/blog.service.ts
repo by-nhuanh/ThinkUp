@@ -7,9 +7,9 @@ import { BlogAuthor, BlogCategory, BlogComment, BlogDetailResponse, BlogListQuer
 import { AuthService } from '../../../core/services/auth.service';
 
 // Backend payloads are normalized here so components keep a stable model.
-type BlogPostPayload = Omit<BlogPost, 'id' | 'views'> & { id: string | number; views: number | string; summary?: string; publishedDate?: string; };
+type BlogPostPayload = Omit<BlogPost, 'id' | 'views'> & { id: string | number; views: number | string; summary?: string; publishedDate?: string; author_avatar?: string; };
 function mapPost(post: BlogPostPayload): BlogPost {
-  return { ...post, id: String(post.id), description: post.description ?? post.summary ?? '', date: post.date ?? post.publishedDate ?? '', views: typeof post.views === 'number' ? post.views : Number.parseInt(post.views, 10) || 0, coverImage: post.coverImage || '/assets/blog/article-1.jpg', tags: post.tags ?? [], content: post.content ?? '' };
+  return { ...post, id: String(post.id), description: post.description ?? post.summary ?? '', date: post.date ?? post.publishedDate ?? '', views: typeof post.views === 'number' ? post.views : Number.parseInt(post.views, 10) || 0, coverImage: post.coverImage || '/assets/blog/article-1.jpg', tags: post.tags ?? [], content: post.content ?? '', authorAvatar: post.authorAvatar || post.author_avatar };
 }
 @Injectable({ providedIn: 'root' })
 export class HttpBlogDataSource implements BlogDataSource {
@@ -28,7 +28,10 @@ export class HttpBlogDataSource implements BlogDataSource {
   addComment(id: string, authorName: string, content: string) { return this.http.post<{ comment: BlogComment }>(`${this.base}/blog/${encodeURIComponent(id)}/comments`, { authorName, content }, { withCredentials: true }).pipe(map(result => result.comment)); }
   react(id: string, action: BlogReaction) { return this.http.post(`${this.base}/blog/${encodeURIComponent(id)}/like`, { action }, { withCredentials: true }); }
   save(request: BlogSaveRequest) {
-    const url = request.id ? `${this.base}/blog/${encodeURIComponent(request.id)}` : `${this.base}/blog`;
+    const isDraft = !request.id && request.status === 'draft';
+    const url = request.id
+      ? `${this.base}/blog/${encodeURIComponent(request.id)}`
+      : isDraft ? `${this.base}/blog/draft` : `${this.base}/blog`;
     const call = request.id
       ? this.http.put<BlogSaveResponse>(url, request, { withCredentials: true })
       : this.http.post<BlogSaveResponse>(url, request, { withCredentials: true });

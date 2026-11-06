@@ -2,7 +2,7 @@ export type BlogStatus = 'draft' | 'published' | 'updated';
 export type BlogReaction = 'like' | 'dislike' | 'none';
 export interface BlogPost {
   id: string; title: string; slug: string; description: string; content: string;
-  category: string; categoryId: string; author: string; date: string; readTime: string;
+  category: string; categoryId: string; author: string; authorAvatar?: string; date: string; readTime: string;
   coverImage: string; tags: string[]; views: number; topics?: string[]; status?: BlogStatus;
   ownerEmail?: string; updatedAt?: string; featuredContent?: string; seoTitle?: string;
   seoDescription?: string; keywords?: string[]; categories?: string[]; contentImages?: string[];

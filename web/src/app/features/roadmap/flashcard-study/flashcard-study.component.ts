@@ -1,5 +1,7 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnDestroy, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { finalize, switchMap } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   LucideArrowLeft,
   LucideArrowRight,
@@ -15,6 +17,7 @@ import { FlashcardCard, FlashcardStudyMode } from '../models/flashcard.model';
 import { FlashcardService } from '../services/flashcard.service';
 import { RoadmapService } from '../services/roadmap.service';
 import { ToastService } from '../../../core/services/toast.service';
+import { LearningActivityService } from '../../../core/services/learning-activity.service';
 import { RoadmapProgressComponent } from '../components/roadmap-progress/roadmap-progress.component';
 import { FlashcardSetIconComponent } from '../components/flashcard-set-icon/flashcard-set-icon.component';
 
@@ -40,12 +43,14 @@ const VALID_MODES: FlashcardStudyMode[] = ['shuffle', 'ordered', 'review-first']
   templateUrl: './flashcard-study.component.html',
   styleUrls: ['../styles/roadmap-ui.css', './flashcard-study.component.css']
 })
-export class FlashcardStudyComponent {
+export class FlashcardStudyComponent implements OnDestroy {
   private readonly flashcardService = inject(FlashcardService);
   private readonly roadmapService = inject(RoadmapService);
   private readonly toastService = inject(ToastService);
+  private readonly learningActivity = inject(LearningActivityService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly setId = this.route.snapshot.paramMap.get('id') ?? '';
   readonly mode = this.resolveMode(this.route.snapshot.queryParamMap.get('mode'));
@@ -53,6 +58,7 @@ export class FlashcardStudyComponent {
   readonly queue = signal<FlashcardCard[]>([]);
   readonly currentIndex = signal(0);
   readonly flipped = signal(false);
+  private marking = false;
 
   readonly set = computed(() => this.flashcardService.getSet(this.setId));
   readonly card = computed<FlashcardCard | null>(() => this.queue()[this.currentIndex()] ?? null);
@@ -68,13 +74,20 @@ export class FlashcardStudyComponent {
 
   constructor() {
     const filter = this.route.snapshot.queryParamMap.get('filter');
-    this.flashcardService.loadSet(this.setId, true).subscribe({
-      next: () => this.flashcardService.startSession(this.setId, this.mode).subscribe({
-        next: queue => this.queue.set(filter === 'review' ? queue.filter(card => card.status === 'review') : queue),
-        error: () => this.toastService.showToast({ type: 'error', message: 'Không thể bắt đầu phiên học.' })
-      }),
-      error: () => this.toastService.showToast({ type: 'error', message: 'Không thể tải bộ flashcard.' })
+    this.flashcardService.loadSet(this.setId).pipe(
+      switchMap(() => this.flashcardService.startSession(this.setId, this.mode)),
+      takeUntilDestroyed()
+    ).subscribe({
+      next: queue => {
+        this.queue.set(filter === 'review' ? queue.filter(card => card.status === 'review') : queue);
+        if (this.queue().length) void this.learningActivity.startFlashcard(this.setId);
+      },
+      error: () => this.toastService.showToast({ type: 'error', message: 'Không thể bắt đầu phiên học.' })
     });
+  }
+
+  ngOnDestroy(): void {
+    void this.learningActivity.finish();
   }
 
   private resolveMode(value: string | null): FlashcardStudyMode {
@@ -86,23 +99,29 @@ export class FlashcardStudyComponent {
   }
 
   previous(): void {
-    if (this.currentIndex() === 0) return;
+    if (this.marking || this.currentIndex() === 0) return;
     this.currentIndex.update((index) => index - 1);
     this.flipped.set(false);
   }
 
   next(): void {
-    if (this.isLast()) return;
+    if (this.marking || this.isLast()) return;
     this.currentIndex.update((index) => index + 1);
     this.flipped.set(false);
   }
 
   mark(status: 'learned' | 'review'): void {
     const card = this.card();
-    if (!card) return;
+    if (!card || this.marking) return;
 
-    this.flashcardService.updateCardStatus(this.setId, card.id, status).subscribe({
+    this.marking = true;
+    this.flashcardService.updateCardStatus(this.setId, card.id, status).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => this.marking = false)
+    ).subscribe({
       next: roadmapSync => {
+        const saved = this.flashcardService.getSet(this.setId)?.cards.find(item => item.id === card.id);
+        if (saved) this.queue.update(queue => queue.map(item => item.id === card.id ? saved : item));
         if (roadmapSync?.updated) {
           this.roadmapService.refreshActiveRoadmap().subscribe({ error: () => undefined });
         }

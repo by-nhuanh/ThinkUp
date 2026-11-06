@@ -32,3 +32,11 @@ yarn-error.log
 # Misc
 .DS_Store
 Thumbs.db
+
+# Local environment variables (never commit)
+.env
+.env.*
+!.env.example
+
+# Build-generated Google client configuration
+/src/generated/google-config.ts

@@ -88,7 +88,8 @@ export class OnboardingService {
     const payload = {
       targetRole: preferences.targetRole,
       selectedSkills: preferences.selectedSkills,
-      currentLevel: preferences.currentLevel
+      currentLevel: preferences.currentLevel,
+      includeCourses: false,
     };
 
     return this.http.post<{ message: string }>(`${this.apiUrl}/user/onboarding/submit`, payload).pipe(
@@ -101,7 +102,7 @@ export class OnboardingService {
    * Gửi yêu cầu bỏ qua khảo sát lên máy chủ.
    */
   skipOnboarding(): Observable<{ success: boolean; message: string }> {
-    return this.http.post<{ message: string }>(`${this.apiUrl}/user/onboarding/skip`, {}).pipe(
+    return this.http.post<{ message: string }>(`${this.apiUrl}/user/onboarding/skip`, { includeCourses: false }).pipe(
       tap(() => this.saveSkippedState()),
       map(response => ({ success: true, message: response.message }))
     );

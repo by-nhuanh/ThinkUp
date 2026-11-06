@@ -9,6 +9,7 @@ export interface Certificate {
   /** Tên in trên artwork (chữ in hoa, kèm mã học viên nếu có). */
   certificateName: string;
   courseTitle: string;
+  courseId?: string;
   /** Ngày cấp dạng dd/MM/yyyy. */
   issuedAt: string;
   /** Ngày cấp dạng MMM d, yyyy dùng cho artwork. */
@@ -16,6 +17,8 @@ export interface Certificate {
   status: CertificateStatus;
   /** Mã học viên in kèm tên trên chứng chỉ (không bắt buộc). */
   studentCode?: string;
+  instructorName?: string;
+  signatureUrl?: string | null;
 }
 
 export type CertificateStatus = 'valid' | 'revoked';

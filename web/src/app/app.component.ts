@@ -1,4 +1,7 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { CommerceService } from './core/services/commerce.service';
+import { FavoritesService } from './core/services/favorites.service';
+import { ToastService } from './core/services/toast.service';
 import { injectSpeedInsights } from '@vercel/speed-insights';
 import { inject as injectAnalytics } from '@vercel/analytics';
 import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
@@ -32,14 +35,42 @@ export class AppComponent {
   readonly hideShell = signal(false);
   readonly isStudyLobby = signal(false);
   readonly isGuestLanding = signal(false);
+  readonly instructorCardOpen = computed(() => !!this.instructorCardService.state());
 
   constructor() {
+    const commerce = inject(CommerceService);
+    const favorites = inject(FavoritesService);
+    const toast = inject(ToastService);
+    const accountId = computed(() => this.authService.currentUser()?.id);
+    effect(onCleanup => {
+      const id = accountId();
+      // Cart reads during initialization must not re-run this account effect
+      // or cancel its pending requests when cart state changes.
+      untracked(() => {
+        commerce.clearAccountCart();
+        if (!id) {
+          const guestCart = commerce.refreshCart().subscribe({ error: () => undefined });
+          onCleanup(() => guestCart.unsubscribe());
+          return;
+        }
+        const cartSync = commerce.mergeGuestCart().subscribe({
+          error: () => toast.showToast({ type: 'warning', message: 'Chưa đồng bộ được giỏ hàng. Dữ liệu khách vẫn được giữ để thử lại.' }),
+        });
+        const favoritesSync = favorites.syncGuestFavorites().subscribe({
+          error: () => toast.showToast({ type: 'warning', message: 'Chưa đồng bộ được danh sách yêu thích.' }),
+        });
+        onCleanup(() => { cartSync.unsubscribe(); favoritesSync.unsubscribe(); });
+      });
+    });
     injectSpeedInsights();
     injectAnalytics();
     this.updateShell(this.router.url);
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)
-    ).subscribe(event => this.updateShell(event.urlAfterRedirects));
+    ).subscribe(event => {
+      this.authService.syncFromStorage();
+      this.updateShell(event.urlAfterRedirects);
+    });
   }
 
   private updateShell(url: string): void {

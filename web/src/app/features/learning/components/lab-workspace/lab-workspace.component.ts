@@ -1,4 +1,6 @@
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { AuthService } from '../../../../core/services/auth.service';
 import { FormsModule } from '@angular/forms';
 import { NgTemplateOutlet } from '@angular/common';
 import {
@@ -14,14 +16,18 @@ import {
   LucideRotateCcw,
   LucideSend,
   LucideThumbsUp,
-  LucideUserRound,
 } from '@lucide/angular';
 import { CourseOutlineComponent } from '../course-outline/course-outline.component';
 import { ReportModalComponent } from '../report-modal/report-modal.component';
+import { inject, OnDestroy } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
+import { LearningService } from '../../services/learning.service';
+import { LabRunDto } from '../../models/learning-api.model';
 import {
   CommunityPost,
   CommunityReply,
   LabConfig,
+  LabLeaderboardEntry,
   LabExercise,
   LabInstructionBlock,
   LabSubmission,
@@ -64,6 +70,7 @@ const EMPTY_EXERCISE: LabExercise = {
   selector: 'app-lab-workspace',
   standalone: true,
   imports: [
+    RouterLink,
     FormsModule,
     NgTemplateOutlet,
     CourseOutlineComponent,
@@ -80,12 +87,24 @@ const EMPTY_EXERCISE: LabExercise = {
     LucideRotateCcw,
     LucideSend,
     LucideThumbsUp,
-    LucideUserRound,
   ],
   templateUrl: './lab-workspace.component.html',
   styleUrls: ['./lab-workspace.component.css'],
 })
-export class LabWorkspaceComponent implements OnChanges {
+export class LabWorkspaceComponent implements OnChanges, OnDestroy {
+  readonly currentUser = inject(AuthService).currentUser;
+  get myInitials(): string { return (this.currentUser()?.full_name || 'Bạn').split(/\s+/).slice(-2).map(part => part[0]).join(''); }
+  private readonly service = inject(LearningService);
+  loading = false;
+  errorMessage = '';
+
+  private config?: LabConfig;
+  private attemptId = '';
+  private revision = 0;
+  private generation = 0;
+  private draftTimer?: ReturnType<typeof setTimeout>;
+  private draftQueue: Promise<void> = Promise.resolve();
+  private draftFailed = false;
   @Input({ required: true }) lesson!: LearningLesson;
   @Input({ required: true }) course!: LearningCourse;
   @Input({ required: true }) chapter!: LearningChapter;
@@ -111,6 +130,8 @@ export class LabWorkspaceComponent implements OnChanges {
   readonly openChapterIds = signal<string[]>([]);
   readonly code = signal('');
   readonly tests = signal<LabTestCase[]>([]);
+  readonly leaderboard = signal<LabLeaderboardEntry[]>([]);
+  readonly executionMs = signal<number | null>(null);
   readonly activeTestId = signal('');
   readonly running = signal(false);
   readonly result = signal<LabResult>('none');
@@ -123,7 +144,7 @@ export class LabWorkspaceComponent implements OnChanges {
   readonly discussionThreads = signal<CommunityPost[]>([]);
   readonly expandedPosts = signal<string[]>([]);
   readonly replyTarget = signal<string | null>(null);
-  readonly reportTarget = signal<{ author: string; content: string } | null>(null);
+  readonly reportTarget = signal<{ id: string; author: string; content: string } | null>(null);
   readonly gutterOffset = signal(0);
 
   readonly guideExamples = [
@@ -156,11 +177,93 @@ export class LabWorkspaceComponent implements OnChanges {
       this.draft = '';
       this.replyDraft = '';
       this.resetEditorState();
+      void this.loadWorkspace();
+      void this.loadCommunity();
+      this.leaderboard.set([]);
     }
   }
 
+  private async loadCommunity(): Promise<void> {
+    const lessonId = this.lesson.id;
+    try {
+      const [qa, discussion] = await Promise.all([
+        firstValueFrom(this.service.getCommunity(this.course.id, 'qa')),
+        firstValueFrom(this.service.getCommunity(this.course.id, 'discussion')),
+      ]);
+      if (this.lesson.id !== lessonId) return;
+      this.qaThreads.set(qa); this.discussionThreads.set(discussion);
+    } catch { if (this.lesson.id === lessonId) this.errorMessage = 'Không tải được hỏi đáp và thảo luận.'; }
+  }
+
   get lab(): LabConfig | undefined {
-    return this.lesson?.lab;
+    return this.config;
+  }
+
+  ngOnDestroy(): void { this.generation++; clearTimeout(this.draftTimer); }
+
+  private async loadWorkspace(): Promise<void> {
+    const version=++this.generation;
+    clearTimeout(this.draftTimer);
+    this.loading=true;
+    this.running.set(false);
+    this.config=undefined;
+    this.attemptId='';
+    this.code.set('');
+    this.tests.set([]);
+    this.errorMessage='';
+    
+    this.draftQueue=Promise.resolve();
+    this.draftFailed=false;
+    try {
+      const content=await firstValueFrom(this.service.getLessonContent(this.lesson.id));
+      if(version!==this.generation)return;
+      this.config=this.service.mapLabContent(content);
+      const attempt=await firstValueFrom(this.service.startLabAttempt(this.lesson.id));
+      if(version!==this.generation)return;
+      this.attemptId=attempt.attempt_id;
+      this.revision=attempt.exercise.revision;
+      this.resetEditorState();
+      this.code.set(attempt.exercise.source_code);
+      if (attempt.exercise.test_results?.length) {
+        this.tests.set(this.service.mapLabTests(attempt.exercise.test_results));
+        this.result.set(attempt.exercise.test_results.every(test => test.passed) ? 'pass' : 'fail');
+        this.executionMs.set(attempt.exercise.execution_ms ?? null);
+      }
+      this.activeTestId.set(this.tests()[0]?.id || '');
+      await this.loadActivity(version);
+    } catch { if(version===this.generation)this.errorMessage='Không tải được workspace. Vui lòng mở lại bài lab.'; }
+    finally { if(version===this.generation)this.loading=false; }
+  }
+
+  private async loadActivity(version = this.generation): Promise<void> {
+    const data = await firstValueFrom(this.service.getLabActivity(this.lesson.id));
+    if (version !== this.generation) return;
+    this.leaderboard.set(data.leaderboard);
+    this.submissionsMap.set({ [this.activeExercise.id]: data.submissions });
+  }
+
+  onCodeChange(value: string): void {
+    this.code.set(value);
+    this.result.set('none');
+    this.tests.update(tests => tests.map(({ actual, passed, ...test }) => test));
+    this.executionMs.set(null);
+    clearTimeout(this.draftTimer);
+    this.draftTimer=setTimeout(()=>this.saveDraft(),600);
+  }
+
+  saveDraft(): void {
+    clearTimeout(this.draftTimer);
+    if(this.loading || this.running() || !this.attemptId || this.draftFailed)return;
+    const version=this.generation, lessonId=this.lesson.id, attemptId=this.attemptId, source_code=this.code();
+    this.draftQueue=this.draftQueue.then(async()=>{
+      if(version!==this.generation || this.draftFailed)return;
+      try {
+        const saved=await firstValueFrom(this.service.saveLabDraft(lessonId,attemptId,'1',{source_code,revision:this.revision}));
+        if(version===this.generation)this.revision=saved.revision;
+      } catch {
+        if(version===this.generation){this.draftFailed=true;this.errorMessage='Không lưu được code nháp hoặc phiên bản đã thay đổi. Sao chép code và mở lại bài để tải trạng thái mới nhất.';}
+      }
+    });
   }
 
   get exercises(): LabExercise[] {
@@ -178,7 +281,7 @@ export class LabWorkspaceComponent implements OnChanges {
         starterCode: lab.starterCode,
         tests: lab.tests,
         solutions: lab.solutions,
-        leaderboard: [],
+        leaderboard: this.leaderboard(),
         submissions: [],
       },
     ];
@@ -248,10 +351,25 @@ export class LabWorkspaceComponent implements OnChanges {
     this.execute(true);
   }
 
-  reset(): void {
-    const exercise = this.activeExercise;
-    this.codeByExercise.delete(exercise.id);
-    this.resetEditorState();
+  async reset(): Promise<void> {
+    if (!this.attemptId && this.submitted() && !this.running() && !this.loading) { await this.loadWorkspace(); return; }
+    if(this.running() || this.loading || !this.attemptId || this.draftFailed)return;
+    const version=this.generation;
+    clearTimeout(this.draftTimer);
+    this.running.set(true);
+    try {
+      await this.draftQueue;
+      if(version!==this.generation || this.draftFailed)return;
+      const reset=await firstValueFrom(this.service.resetLabExercise(this.lesson.id,this.attemptId,'1',this.revision));
+      if(version!==this.generation)return;
+      this.revision=reset.revision;
+      this.codeByExercise.delete(this.activeExercise.id);
+      this.resetEditorState();
+      this.code.set(reset.source_code);
+
+      
+    } catch { if(version===this.generation)this.errorMessage='Không khôi phục được code mẫu. Vui lòng tải lại trạng thái bài lab.'; }
+    finally { if(version===this.generation)this.running.set(false); }
   }
 
   richTextSegments(text: string): RichSegment[] {
@@ -275,65 +393,42 @@ export class LabWorkspaceComponent implements OnChanges {
     return `/assets/learning/discussion-avatar-${hash + 1}.webp`;
   }
 
-  addPost(): void {
+  private communityBusy = false;
+
+  async addPost(): Promise<void> {
     const body = this.draft.trim();
-    if (!body) return;
-    this.updateThreads((threads) => [
-      {
-        id: `lab-post-${Date.now()}`,
-        author: 'Bạn',
-        initials: 'B',
-        body,
-        createdAt: 'Vừa xong',
-        likes: 0,
-        replies: [],
-      },
-      ...threads,
-    ]);
-    this.draft = '';
+    if (!body || this.communityBusy) return;
+    await this.writeCommunity(body);
   }
 
-  addReply(postId: string): void {
+  async addReply(postId: string): Promise<void> {
     const body = this.replyDraft.trim();
-    if (!body) return;
-    this.updateThreads((threads) =>
-      threads.map((post) =>
-        post.id === postId
-          ? {
-              ...post,
-              replies: [
-                ...post.replies,
-                {
-                  id: `lab-reply-${Date.now()}`,
-                  author: 'Bạn',
-                  initials: 'B',
-                  body,
-                  createdAt: 'Vừa xong',
-                  likes: 0,
-                },
-              ],
-            }
-          : post
-      )
-    );
-    this.replyDraft = '';
-    this.replyTarget.set(null);
+    if (!body || this.communityBusy) return;
+    await this.writeCommunity(body, postId);
   }
 
-  toggleLike(id: string): void {
-    const toggle = <T extends CommunityReply>(item: T): T => ({
-      ...item,
-      liked: !item.liked,
-      likes: item.likes + (item.liked ? -1 : 1),
-    });
+  private async writeCommunity(body: string, parentId?: string): Promise<void> {
+    const mode = this.discussionTab(), lessonId = this.lesson.id;
+    this.communityBusy = true;
+    try {
+      const posts = await firstValueFrom(this.service.createCommunity(this.course.id, mode, body, lessonId, parentId));
+      if (this.lesson.id !== lessonId) return;
+      (mode === 'qa' ? this.qaThreads : this.discussionThreads).set(posts);
+      if (parentId) { this.replyDraft = ''; this.replyTarget.set(null); } else this.draft = '';
+    } catch { this.errorMessage = 'Không gửi được nội dung. Vui lòng thử lại.'; }
+    finally { this.communityBusy = false; }
+  }
 
-    this.updateThreads((threads) =>
-      threads.map((post) =>
-        post.id === id
-          ? toggle(post)
-          : { ...post, replies: post.replies.map((reply) => (reply.id === id ? toggle(reply) : reply)) }
-      )
-    );
+  async toggleLike(id: string): Promise<void> {
+    if (this.discussionTab() !== 'discussion') return;
+    const lessonId = this.lesson.id;
+    try {
+      const result = await firstValueFrom(this.service.likeDiscussion(id));
+      if (this.lesson.id !== lessonId) return;
+      const update = <T extends CommunityReply>(item: T): T => item.id === id
+        ? { ...item, liked: result.is_liked, likes: result.likes_count } : item;
+      this.discussionThreads.update(posts => posts.map(post => ({ ...update(post), replies: post.replies.map(update) })));
+    } catch { this.errorMessage = 'Không cập nhật được lượt thích.'; }
   }
 
   visibleReplies(post: CommunityPost): CommunityReply[] {
@@ -355,12 +450,18 @@ export class LabWorkspaceComponent implements OnChanges {
     );
   }
 
-  report(author: string, content: string): void {
-    this.reportTarget.set({ author, content });
+  report(id: string, author: string, content: string): void {
+    if (this.discussionTab() !== 'discussion') return;
+    this.reportTarget.set({ id, author, content });
   }
 
-  submitReport(): void {
-    this.reportTarget.set(null);
+  async submitReport(payload: { reasonId: string; detail: string }): Promise<void> {
+    const target = this.reportTarget();
+    if (!target) return;
+    try {
+      await firstValueFrom(this.service.reportDiscussion(target.id, payload.reasonId + ': ' + payload.detail));
+      this.reportTarget.set(null);
+    } catch { this.errorMessage = 'Không gửi được báo cáo.'; }
   }
 
   submittedTime(entry: { submittedAt: string }): string {
@@ -382,56 +483,67 @@ export class LabWorkspaceComponent implements OnChanges {
     this.tests.set(exercise.tests.map((test) => ({ ...test })));
     this.activeTestId.set(exercise.tests[0]?.id ?? '');
     this.result.set('none');
+    this.executionMs.set(null);
     this.submitted.set(false);
     this.gutterOffset.set(0);
   }
 
-  private execute(isSubmission: boolean): void {
-    if (this.running()) return;
-    const exercise = this.activeExercise;
+  private async execute(isSubmission: boolean): Promise<void> {
+    if (this.running() || this.loading || (!this.attemptId && !this.submitted()) || this.draftFailed) return;
+    const version=this.generation, lessonId=this.lesson.id, source_code=this.code();
+    clearTimeout(this.draftTimer);
     this.running.set(true);
     this.result.set('none');
-
-    window.setTimeout(() => {
-      const passed = this.evaluate(exercise);
-      this.tests.update((tests) =>
-        tests.map((test, index) => ({
-          ...test,
-          passed,
-          actual: passed ? test.expected : index === 0 ? 'Chưa có kết quả trả về' : undefined,
-        }))
-      );
-      this.running.set(false);
-      this.result.set(passed ? 'pass' : 'fail');
-      this.submitted.set(isSubmission);
-      this.recordSubmission(passed);
+    this.errorMessage='';
+    try {
+      await this.draftQueue;
+      if(version!==this.generation || this.draftFailed)return;
+      if (!this.attemptId) {
+        const next=await firstValueFrom(this.service.startLabAttempt(lessonId));
+        if(version!==this.generation)return;
+        this.attemptId=next.attempt_id;
+        this.revision=next.exercise.revision;
+        this.submitted.set(false);
+      }
+      const attemptId=this.attemptId;
+      const result=await firstValueFrom(this.service.runLabExercise(lessonId,attemptId,'1',{source_code,revision:this.revision}));
+      if(version!==this.generation)return;
+      this.revision=result.revision;
+      this.tests.set(this.service.mapLabTests(result.test_results));
+      this.activeTestId.set(this.tests()[0]?.id || '');
+      this.result.set(result.passed?'pass':'fail');
+      this.executionMs.set(result.execution_ms);
+      this.recordSubmission(result, new Date().toISOString());
+      this.testsOpen.set(true);
       this.hasNewResults.set(true);
-
       if (isSubmission) {
+        const submitted=await firstValueFrom(this.service.submitLabAttempt(lessonId,attemptId));
+        if(version!==this.generation)return;
+        this.submitted.set(true);
+        this.result.set(submitted.passed?'pass':'fail');
+        this.attemptId='';
+        try { await this.loadActivity(version); } catch { this.errorMessage='Đã nộp bài nhưng chưa tải lại được bảng xếp hạng.'; }
         this.activePanel.set('results');
         this.hasNewResults.set(false);
-        if (passed) this.completed.emit();
+        this.completed.emit();
+        // Submitted attempts are closed. A subsequent run must open a new workspace.
+        this.attemptId='';
       }
-    }, 700);
+    } catch { if(version===this.generation)this.errorMessage='Không chạy hoặc nộp được bài lab. Kết quả chưa được xác nhận; vui lòng mở lại để tải trạng thái mới nhất.'; }
+    finally { if(version===this.generation)this.running.set(false); }
   }
 
-  private evaluate(exercise: LabExercise): boolean {
-    const code = this.code().trim();
-    if (!code || code === exercise.starterCode.trim()) return false;
-    return /\breturn\b/.test(code);
-  }
-
-  private recordSubmission(passed: boolean): void {
+  private recordSubmission(run: LabRunDto, submittedAt: string): void {
     const exercise = this.activeExercise;
-    const now = new Date();
+    const now = new Date(submittedAt);
     const pad = (value: number) => value.toString().padStart(2, '0');
     const submission: LabSubmission = {
-      id: `lab-submission-${Date.now()}`,
+      id: run.run_id,
       submittedAt: `${pad(now.getHours())}:${pad(now.getMinutes())} ${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()}`,
-      testsPassed: passed ? this.tests().length : this.passedCount,
+      testsPassed: this.passedCount,
       testsTotal: this.tests().length,
-      status: passed ? 'pass' : 'fail',
-      execTime: `${40 + Math.floor(Math.random() * 30)} ms`,
+      status: run.passed ? 'pass' : 'fail',
+      execTime: `${run.execution_ms} ms`,
     };
 
     this.submissionsMap.update((map) => ({

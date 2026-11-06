@@ -1,12 +1,12 @@
-import { Component, computed, HostListener, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, computed, HostListener, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { LucideCalendarDays, LucideChevronDown } from '@lucide/angular';
 import { TransactionRow } from '../../../core/models/commerce.model';
 import { PurchaseHistoryService } from '../services/purchase-history.service';
 import { DateCalendarComponent } from './components/date-calendar/date-calendar.component';
-import { forkJoin } from 'rxjs';
+import { Subscription, forkJoin } from 'rxjs';
 
-type StatusFilter = 'all' | 'success' | 'pending' | 'failed' | 'cancelled';
+type StatusFilter = 'all' | 'success' | 'pending' | 'paid' | 'failed' | 'cancelled' | 'expired' | 'needs_review';
 
 @Component({
   selector: 'app-purchase-history',
@@ -17,6 +17,8 @@ type StatusFilter = 'all' | 'success' | 'pending' | 'failed' | 'cancelled';
 })
 export class PurchaseHistoryComponent implements OnInit {
   private readonly purchaseHistory = inject(PurchaseHistoryService);
+  private readonly destroyRef = inject(DestroyRef);
+  private request?: Subscription;
   readonly loading = signal(true);
   readonly error = signal('');
   readonly transactions = signal<TransactionRow[]>([]);
@@ -39,6 +41,9 @@ export class PurchaseHistoryComponent implements OnInit {
     { value: 'pending', label: 'Đang xử lý' },
     { value: 'failed', label: 'Thất bại' },
     { value: 'cancelled', label: 'Đã hủy' },
+    { value: 'paid', label: 'Đã nhận tiền, chờ cấp quyền' },
+    { value: 'expired', label: 'Hết hạn' },
+    { value: 'needs_review', label: 'Cần đối soát' },
   ];
   readonly datePresets = ['Hôm nay', 'Hôm qua', '7 ngày qua', '30 ngày qua', 'Tháng này', 'Tháng trước', 'Tùy chọn khác'];
   readonly customFrom = signal('');
@@ -53,32 +58,7 @@ export class PurchaseHistoryComponent implements OnInit {
   });
   readonly spending = computed(() => `${new Intl.NumberFormat('vi-VN').format(this.totalSpent())}đ`);
   readonly filtered = computed(() => {
-    const query = this.query().trim().toLocaleLowerCase('vi-VN');
-    const status = this.selectedStatus();
-    const preset = this.selectedDate();
-    const range = this.appliedCustomRange();
-    return this.transactions().filter(row => {
-      if (status !== 'all' && row.status !== status) return false;
-      if (query && ![row.id, row.paymentMethod, row.amount, row.date, ...row.courses].join(' ').toLocaleLowerCase('vi-VN').includes(query)) return false;
-      if (preset === 'Tất cả thời gian') return true;
-      const date = this.dateOf(row);
-      if (preset === 'Tùy chọn khác') {
-        if (!range) return true;
-        const endExclusive = new Date(`${range.to}T00:00:00`);
-        endExclusive.setDate(endExclusive.getDate() + 1);
-        return date >= new Date(`${range.from}T00:00:00`) && date < endExclusive;
-      }
-      const today = new Date();
-      const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const tomorrow = new Date(start);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      if (preset === 'Hôm nay') return date >= start && date < tomorrow;
-      if (preset === 'Hôm qua') { const from = new Date(start); from.setDate(from.getDate() - 1); return date >= from && date < start; }
-      if (preset === '7 ngày qua' || preset === '30 ngày qua') { const from = new Date(start); from.setDate(from.getDate() - (preset.startsWith('7') ? 6 : 29)); return date >= from && date < tomorrow; }
-      if (preset === 'Tháng này') return date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear();
-      if (preset === 'Tháng trước') { const previous = new Date(today.getFullYear(), today.getMonth() - 1, 1); return date.getMonth() === previous.getMonth() && date.getFullYear() === previous.getFullYear(); }
-      return true;
-    }).sort((a, b) => (this.sortAscending() ? 1 : -1) * (this.dateOf(a).getTime() - this.dateOf(b).getTime()));
+    return [...this.transactions()].sort((a, b) => (this.sortAscending() ? 1 : -1) * (this.dateOf(a).getTime() - this.dateOf(b).getTime()));
   });
   readonly pageCount = computed(() => Math.max(1, Math.ceil(this.filtered().length / this.pageSize)));
   readonly visible = computed(() => this.filtered().slice((Math.min(this.page(), this.pageCount()) - 1) * this.pageSize, Math.min(this.page(), this.pageCount()) * this.pageSize));
@@ -86,7 +66,7 @@ export class PurchaseHistoryComponent implements OnInit {
   readonly visibleEnd = computed(() => Math.min(Math.min(this.page(), this.pageCount()) * this.pageSize, this.filtered().length));
   readonly pages = computed(() => Array.from({ length: this.pageCount() }, (_, index) => index + 1));
 
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void { this.destroyRef.onDestroy(() => this.request?.unsubscribe()); this.load(); }
 
   statusLabelFor(status: string): string {
     switch (status) {
@@ -94,20 +74,32 @@ export class PurchaseHistoryComponent implements OnInit {
       case 'pending': return 'Đang xử lý';
       case 'failed': return 'Thất bại';
       case 'cancelled': return 'Đã hủy';
+      case 'paid': return 'Đã nhận tiền, chờ cấp quyền';
+      case 'expired': return 'Hết hạn';
+      case 'needs_review': return 'Cần đối soát';
       default: return status || 'Không rõ';
     }
   }
 
   statusClassFor(status: string): string {
     if (status === 'success') return 'border-[#BEEFD9] bg-[#E9FBF2] text-[#00A66E]';
-    if (status === 'pending') return 'border-[#FDE68A] bg-[#FFFBEB] text-[#B45309]';
+    if (status === 'pending' || status === 'paid') return 'border-[#FDE68A] bg-[#FFFBEB] text-[#B45309]';
+    if (status === 'needs_review') return 'border-[#BFDBFE] bg-[#EFF6FF] text-[#1D4ED8]';
+    if (status === 'cancelled') return 'border-[#E2E8F0] bg-[#F8FAFC] text-[#64748B]';
     return 'border-[#FFD1DC] bg-[#FFF0F4] text-[#FF315C]';
   }
 
   load(): void {
-    this.loading.set(true);
+    // Giữ nguyên khung trang và bảng khi đổi bộ lọc; skeleton toàn trang chỉ dùng ở lần tải đầu.
+    if (!this.transactions().length && this.loading()) this.loading.set(true);
     this.error.set('');
-    forkJoin({ rows: this.purchaseHistory.list(), summary: this.purchaseHistory.summary() }).subscribe({
+    this.request?.unsubscribe();
+    const presets: Record<string, string> = { 'Hôm nay': 'today', 'Hôm qua': 'yesterday', '7 ngày qua': 'last7days', '30 ngày qua': 'last30days', 'Tháng này': 'thismonth', 'Tháng trước': 'lastmonth' };
+    const range = this.selectedDate() === 'Tùy chọn khác' ? this.appliedCustomRange() : null;
+    this.request = forkJoin({ rows: this.purchaseHistory.list({
+      status: this.selectedStatus() === 'all' ? '' : this.selectedStatus(), keyword: this.query().trim(),
+      datePreset: presets[this.selectedDate()], dateFrom: range?.from, dateTo: range?.to,
+    }), summary: this.purchaseHistory.summary() }).subscribe({
       next: ({ rows, summary }) => {
         this.transactions.set(rows);
         this.totalTransactions.set(summary.totalTransactions);
@@ -119,8 +111,8 @@ export class PurchaseHistoryComponent implements OnInit {
     });
   }
 
-  setQuery(value: string): void { this.query.set(value); this.page.set(1); }
-  setStatus(value: StatusFilter): void { this.selectedStatus.set(value); this.statusOpen.set(false); this.page.set(1); }
+  setQuery(value: string): void { this.query.set(value); this.page.set(1); this.load(); }
+  setStatus(value: StatusFilter): void { this.selectedStatus.set(value); this.statusOpen.set(false); this.page.set(1); this.load(); }
   setDate(value: string): void {
     if (value === 'Tùy chọn khác') {
       this.customRangeOpen.update(open => !open);
@@ -132,6 +124,7 @@ export class PurchaseHistoryComponent implements OnInit {
     this.customRangeOpen.set(false);
     this.activeCalendar.set(null);
     this.page.set(1);
+    this.load();
   }
   toggleCalendar(field: 'from' | 'to'): void {
     this.activeCalendar.set(this.activeCalendar() === field ? null : field);
@@ -155,6 +148,7 @@ export class PurchaseHistoryComponent implements OnInit {
     this.activeCalendar.set(null);
     this.dateOpen.set(false);
     this.page.set(1);
+    this.load();
   }
   formatDisplayDate(value: string): string {
     if (!value) return 'dd/mm/yyyy';

@@ -1,144 +1,181 @@
-import { Injectable, inject, signal, computed } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, catchError, map, tap, throwError } from 'rxjs';
+import { Injectable, inject, signal, computed, effect } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable, defer, map, of, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Course } from '../models/course.model';
+import { AuthService } from './auth.service';
+import { formatCourseLevel } from './course.service';
 
-interface FavoriteCourseDto {
-  course_id: string;
-  title: string;
-  slug?: string;
-  thumbnail?: string;
-  rating?: number | string;
-  total_reviews?: number | string;
-  total_students?: number | string;
-  price?: {
-    sale?: number | string;
-    original?: number | string;
-  };
+export interface FavoritesQuery {
+  sort?: string; page?: number; limit?: number | 'all'; search?: string; category_id?: string; level?: string;
 }
-
-interface FavoritesListResponse {
-  success: boolean;
-  data: {
-    courses: FavoriteCourseDto[];
-  };
+interface FavoriteDto {
+  id?: string; course_id: string; title: string; slug?: string; thumbnail_url?: string;
+  instructor?: { id?: string; name?: string; avatar_url?: string; avatar?: string; headline?: string };
+  rating: number; total_reviews: number; total_students: number;
+  price: { sale: number; original: number }; level?: string; duration_minutes?: number | string; duration_formatted?: string; tag_names?: string[];
+  is_in_cart?: boolean; is_purchased?: boolean;
 }
-
-interface FavoriteToggleResponse {
-  success: boolean;
-  data: {
-    course_id: string;
-    is_favorite: boolean;
-  };
-}
+interface Result<T> { success: boolean; data: T; }
+interface FavoriteState { course_id: string; is_favorite: boolean; }
+const GUEST_KEY = 'thinkup_guest_favorite_courses';
 
 @Injectable({ providedIn: 'root' })
 export class FavoritesService {
-  private http = inject(HttpClient);
-  private apiUrl = environment.apiUrl;
-
-  private _favorites = signal<Course[]>([]);
+  private readonly http = inject(HttpClient);
+  private readonly auth = inject(AuthService);
+  private readonly accountId = computed(() => this.auth.currentUser()?.id);
+  private readonly base = `${environment.apiUrl}/user/favorites`;
+  private readonly _favorites = signal<Course[]>([]);
+  private readonly ids = signal<string[]>([]);
   readonly favorites = this._favorites.asReadonly();
-  readonly count = computed(() => this._favorites().length);
+  readonly count = computed(() => this.ids().length);
+  readonly pagination = signal({ page: 1, total: 0, totalPages: 1 });
 
   constructor() {
-    this.loadFromStorage();
-  }
-
-  private loadFromStorage(): void {
-    try {
-      const saved = localStorage.getItem('thinkup_favorite_courses');
-      if (saved) {
-        const courses = JSON.parse(saved);
-        if (Array.isArray(courses) && courses.length > 0) {
-          this._favorites.set(courses);
-          return;
-        }
-      }
+    effect(() => {
+      const user = this.accountId();
       this._favorites.set([]);
-    } catch {
-      this._favorites.set([]);
-    }
-  }
-
-  private saveToStorage(courses: Course[]): void {
-    try {
-      const ids = courses.map(c => c.id);
-      localStorage.setItem('thinkup_favorite_course_ids', JSON.stringify(ids));
-      localStorage.setItem('thinkup_favorite_courses', JSON.stringify(courses));
-    } catch {}
-  }
-
-  isFavorite(courseId: string): boolean {
-    return this._favorites().some(c => c.id === courseId);
-  }
-
-  loadFavorites(): Observable<Course[]> {
-    return this.http.get<FavoritesListResponse>(`${this.apiUrl}/user/favorites`).pipe(
-      map(response => response.data.courses.map(course => this.mapCourse(course))),
-      tap(courses => {
+      this.ids.set([]);
+      if (!user) {
+        const courses = this.guestCourses();
         this._favorites.set(courses);
-        this.saveToStorage(courses);
-      })
-    );
+        this.ids.set(courses.map(course => course.id));
+      }
+    });
+  }
+
+  private readonly guard = <T>(source: Observable<T>): Observable<T> => defer(() => {
+    const token = this.auth.getToken();
+    return source.pipe(map(value => {
+      if (token !== this.auth.getToken()) throw new Error('Phiên đăng nhập đã thay đổi.');
+      return value;
+    }));
+  });
+
+  isFavorite(courseId: string): boolean { return this.ids().includes(courseId); }
+
+  loadIds(): Observable<string[]> {
+    return this.http.get<Result<{ course_ids: string[]; total: number }>>(`${this.base}/ids`).pipe(this.guard,
+      map(response => {
+        if (!response.success || !Array.isArray(response.data?.course_ids)) throw new Error('Phản hồi yêu thích không hợp lệ.');
+        return response.data.course_ids;
+      }), tap(ids => this.ids.set(ids)));
+  }
+
+  checkFavorite(courseId: string): Observable<boolean> {
+    return this.http.get<Result<FavoriteState>>(`${this.base}/check/${encodeURIComponent(courseId)}`).pipe(this.guard,
+      map(response => {
+        if (!response.success || typeof response.data?.is_favorite !== 'boolean') throw new Error('Phản hồi yêu thích không hợp lệ.');
+        if (this.auth.isAuthenticated()) this.applyState(response.data);
+        return response.data.is_favorite;
+      }));
+  }
+
+  loadFavorites(query: FavoritesQuery = {}): Observable<Course[]> {
+    if (!this.auth.isAuthenticated()) return of(this.guestCourses()).pipe(tap(courses => this._favorites.set(courses)));
+    let params = new HttpParams().set('sort', query.sort || 'newest').set('page', String(query.page || 1))
+      .set('limit', String(query.limit ?? 'all'));
+    for (const key of ['search', 'category_id', 'level'] as const) if (query[key]) params = params.set(key, query[key]!);
+    return this.http.get<Result<{ favorites: FavoriteDto[]; total: number; page: number; totalPages: number; course_ids: string[] }>>(this.base, { params }).pipe(this.guard,
+      map(response => {
+        if (!response.success || !Array.isArray(response.data?.favorites)) throw new Error('Phản hồi danh sách yêu thích không hợp lệ.');
+        const data = response.data;
+        const courses = data.favorites.map(dto => this.mapCourse(dto));
+        this.pagination.set({ page: data.page, total: data.total, totalPages: data.totalPages });
+        this.ids.set(data.course_ids);
+        this._favorites.set(courses);
+        return courses;
+      }));
+  }
+
+  syncGuestFavorites(): Observable<string[]> {
+    const guest = this.guestCourses().map(course => course.id);
+    if (!guest.length) return this.loadIds();
+    return this.http.post<Result<{ course_ids: string[] }>>(`${this.base}/sync`, { guestWishlistIds: guest }).pipe(this.guard,
+      map(response => {
+        if (!response.success || !Array.isArray(response.data?.course_ids)) throw new Error('Chưa đồng bộ được yêu thích.');
+        localStorage.removeItem(GUEST_KEY);
+        this.ids.set(response.data.course_ids);
+        return response.data.course_ids;
+      }));
+  }
+
+  addFavorite(course: Course): Observable<boolean> {
+    if (!this.auth.isAuthenticated()) return this.isFavorite(course.id) ? of(true) : this.toggleFavorite(course).pipe(map(result => result.isFavorite));
+    return this.mutate('add', course.id, course);
+  }
+  removeFavorite(courseId: string): Observable<boolean> {
+    if (!this.auth.isAuthenticated()) {
+      const next = this.guestCourses().filter(course => course.id !== courseId);
+      localStorage.setItem(GUEST_KEY, JSON.stringify(next));
+      this._favorites.set(next); this.ids.set(next.map(course => course.id));
+      return of(false);
+    }
+    return this.mutate('remove', courseId);
   }
 
   toggleFavorite(course: Course): Observable<{ success: boolean; data: Course[]; isFavorite: boolean }> {
-    const courseId = course.id;
-    const wasFavorite = this.isFavorite(courseId);
-
-    // Update state immediately for instant responsive UX
-    const current = this._favorites();
-    const next = wasFavorite
-      ? current.filter(c => c.id !== courseId)
-      : [course, ...current];
-    this._favorites.set(next);
-    this.saveToStorage(next);
-
-    return this.http.post<FavoriteToggleResponse>(`${this.apiUrl}/user/favorites/toggle`, {
-      course_id: courseId,
-    }).pipe(
-      map(response => ({
-        success: response.success,
-        data: next,
-        isFavorite: response.data.is_favorite,
-      })),
-      tap(result => {
-        if (result.isFavorite !== !wasFavorite) {
-          const reconciled = result.isFavorite
-            ? [course, ...current.filter(item => item.id !== courseId)]
-            : current.filter(item => item.id !== courseId);
-          this._favorites.set(reconciled);
-          this.saveToStorage(reconciled);
-        }
-      }),
-      catchError(error => {
-        this._favorites.set(current);
-        this.saveToStorage(current);
-        return throwError(() => error);
-      })
-    );
+    if (!this.auth.isAuthenticated()) {
+      const courses = this.guestCourses();
+      const next = courses.some(item => item.id === course.id) ? courses.filter(item => item.id !== course.id) : [course, ...courses];
+      localStorage.setItem(GUEST_KEY, JSON.stringify(next));
+      this._favorites.set(next);
+      this.ids.set(next.map(item => item.id));
+      return of({ success: true, data: next, isFavorite: next.some(item => item.id === course.id) });
+    }
+    return this.mutate('toggle', course.id, course).pipe(map(isFavorite => ({ success: true, data: this._favorites(), isFavorite })));
   }
 
-  private mapCourse(course: FavoriteCourseDto): Course {
-    return {
-      id: course.course_id,
-      courseId: course.course_id,
-      slug: course.slug,
-      title: course.title,
-      instructor: 'Giảng viên ThinkUp',
-      rating: this.toNumber(course.rating),
-      ratingCount: this.toNumber(course.total_reviews),
-      studentsCount: this.toNumber(course.total_students),
-      originalPrice: this.toNumber(course.price?.original),
-      salePrice: this.toNumber(course.price?.sale),
-      thumbnailUrl: course.thumbnail,
-    };
+  private mutate(action: 'add' | 'remove' | 'toggle', courseId: string, course?: Course): Observable<boolean> {
+    const request = action === 'remove'
+      ? this.http.delete<Result<FavoriteState>>(`${this.base}/${encodeURIComponent(courseId)}`)
+      : this.http.post<Result<FavoriteState>>(action === 'toggle' ? `${this.base}/toggle` : this.base, { course_id: courseId });
+    return request.pipe(this.guard, map(response => {
+      if (!response.success || typeof response.data?.is_favorite !== 'boolean') throw new Error('Máy chủ chưa xác nhận thay đổi yêu thích.');
+      this.applyState(response.data, course);
+      return response.data.is_favorite;
+    }));
   }
 
-  private toNumber(value: number | string | null | undefined): number {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : 0;
+  private applyState(state: FavoriteState, course?: Course): void {
+    this.ids.update(ids => state.is_favorite ? [...new Set([...ids, state.course_id])] : ids.filter(id => id !== state.course_id));
+    this._favorites.update(courses => !state.is_favorite ? courses.filter(item => item.id !== state.course_id)
+      : course ? [course, ...courses.filter(item => item.id !== course.id)] : courses);
+  }
+
+  private guestCourses(): Course[] {
+    try {
+      const value = JSON.parse(localStorage.getItem(GUEST_KEY) || '[]');
+      return Array.isArray(value) ? value.filter(item => typeof item?.id === 'string') : [];
+    } catch { return []; }
+  }
+
+  private mapCourse(dto: FavoriteDto): Course {
+    const durationMinutes = Number(dto.duration_minutes) || 0;
+    const duration = dto.duration_formatted || this.formatDuration(durationMinutes);
+    const instructorName = dto.instructor?.name || 'Giảng viên ThinkUp';
+    const instructorAvatar = dto.instructor?.avatar_url || dto.instructor?.avatar;
+    return { id: dto.course_id || dto.id!, courseId: dto.course_id, slug: dto.slug, title: dto.title,
+      instructor: instructorName, instructorId: dto.instructor?.id,
+      instructorInitial: instructorName.charAt(0).toUpperCase(),
+      instructorProfile: {
+        id: dto.instructor?.id, name: instructorName, title: dto.instructor?.headline || 'Giảng viên chuyên môn',
+        bio: '', rating: Number(dto.rating) || 0, studentsCount: Number(dto.total_students) || 0,
+        coursesCount: 0, avatar: instructorAvatar,
+      },
+      level: formatCourseLevel(dto.level), duration, durationMinutes,
+      rating: dto.rating, ratingCount: dto.total_reviews, studentsCount: dto.total_students,
+      salePrice: dto.price.sale, originalPrice: dto.price.original, thumbnailUrl: dto.thumbnail_url,
+      tags: dto.tag_names, isInWishlist: true, isInCart: dto.is_in_cart, isPurchased: dto.is_purchased };
+  }
+
+  private formatDuration(minutes: number): string {
+    if (!Number.isFinite(minutes) || minutes <= 0) return '';
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    if (hours && remainingMinutes) return `${hours} giờ ${remainingMinutes} phút`;
+    if (hours) return `${hours} giờ`;
+    return `${remainingMinutes} phút`;
   }
 }

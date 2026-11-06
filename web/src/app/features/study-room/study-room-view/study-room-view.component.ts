@@ -60,6 +60,7 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
   readonly currentRole = signal<'owner' | 'moderator' | 'member'>('member');
   readonly sessionError = signal('');
   readonly notice = signal('');
+  readonly inviting = signal(false);
   readonly participants = signal<RoomParticipant[]>([]);
   readonly timerMode = signal<'focus' | 'break'>('focus');
   readonly timeLeft = signal<number>(25 * 60);
@@ -92,11 +93,11 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
   readonly zoom = signal(100);
   readonly viewportSize = signal({ width: window.innerWidth, height: window.innerHeight });
   readonly roomPermissions = signal<RoomPermissions>({
-    voiceEnabled: true, cameraEnabled: true, chatEnabled: true,
-    whiteboardLocked: false, participantShareScreen: false,
-    participantUpload: true, approvalRequired: false,
+    voiceEnabled: false, cameraEnabled: false, chatEnabled: false,
+    whiteboardLocked: true, participantShareScreen: false,
+    participantUpload: false, approvalRequired: false,
   });
-  readonly focusLocked = computed(() => this.timerMode() === 'focus' && this.isRunning());
+  readonly focusLocked = computed(() => this.currentRole() === 'member' && this.timerMode() === 'focus' && this.isRunning());
   readonly selectedTheme = signal('white');
   readonly themes = [
     { id: 'white', name: 'Trắng mặc định', src: '', background: '#ffffff', grid: 'rgba(148,163,184,.34)', type: 'gradient' },
@@ -213,8 +214,7 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
     }
     this.leaving = false;
     this.roomId.set(id);
-    const storedTheme = sessionStorage.getItem('study_room_theme');
-    if (storedTheme && this.themes.some(theme => theme.id === storedTheme)) this.selectedTheme.set(storedTheme);
+    this.selectedTheme.set('white');
     this.openRoom(id, transition);
   }
 
@@ -278,6 +278,10 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
     this.studyRoomService.connection(id, user.id, user.full_name).subscribe({
       next: async connection => {
         if (!this.isCurrentRoomTransition(id, transition)) { this.cleanupStaleConnection(id, user.id); return; }
+        this.currentRole.set(connection.role);
+        this.roleLabel.set(connection.role === 'owner' ? 'Chủ phòng' : connection.role === 'moderator' ? 'Moderator' : 'Thành viên');
+        if (connection.theme) this.applyRoomTheme({ theme: connection.theme } as StudyRoomItem);
+        this.loadPermissions();
         try {
           await this.media.connect(connection);
           if (!this.isCurrentRoomTransition(id, transition)) {
@@ -351,7 +355,7 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
     if (!userId) return;
     const roomId = this.roomId();
     this.studyRoomService.permissions(roomId, userId).subscribe({
-      next: result => { if (roomId === this.roomId()) this.applyLoadedPermissions(result.roomPermissions); },
+      next: result => { if (roomId === this.roomId()) { this.currentRole.set(result.role); this.roleLabel.set(result.role === 'owner' ? 'Chủ phòng' : result.role === 'moderator' ? 'Moderator' : 'Thành viên'); this.applyLoadedPermissions(result.roomPermissions); } },
       error: () => { if (roomId === this.roomId()) this.showNotice('Không thể đồng bộ quyền tương tác trong phòng.'); },
     });
   }
@@ -934,6 +938,27 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
   async copyLink(): Promise<void> {
     try { await navigator.clipboard.writeText(location.href); this.showNotice('Đã sao chép link mời vào phòng.'); }
     catch { this.showNotice('Không thể sao chép link phòng trên trình duyệt này.'); }
+  }
+
+  inviteByEmailOrPhone(): void {
+    if (this.inviting()) return;
+    const emailOrPhone = window.prompt('Nhập email hoặc số điện thoại người bạn muốn mời:')?.trim();
+    if (!emailOrPhone) return;
+
+    this.inviting.set(true);
+    this.studyRoomService.invite(this.roomId(), emailOrPhone)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: response => {
+          this.inviting.set(false);
+          this.showNotice(response.message || 'Đã gửi lời mời tham gia phòng học.');
+        },
+        error: error => {
+          this.inviting.set(false);
+          const message = (error?.error as { message?: string } | null)?.message;
+          this.showNotice(message || 'Không thể gửi lời mời. Vui lòng thử lại.');
+        },
+      });
   }
   private showNotice(message: string): void {
     if (this.noticeTimer) clearTimeout(this.noticeTimer);
