@@ -29,7 +29,8 @@ yarn-error.log*
 
 # local env files
 .env*.local
-
+.env
+web/.env
 # vercel
 .vercel
 
@@ -63,3 +64,4 @@ server/scripts/*
 !server/scripts/prepare_roadmap_data.js
 !server/scripts/seed_all_stage_questions.js
 !server/scripts/check_roadmaps.js
+.env

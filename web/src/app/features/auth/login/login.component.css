@@ -1,0 +1,7 @@
+.google-sign-in-host{position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;border:1px solid #c2c6d6;border-radius:.5rem;background:#fff;color:#090909;font-size:.75rem;font-weight:600;transition:background-color .15s,transform .15s}
+.google-sign-in-host:not(.google-sign-in-host--disabled):hover{background:#f8fafc}
+.google-sign-in-host:not(.google-sign-in-host--disabled):active{transform:scale(.98)}
+.google-sign-in-host--disabled{cursor:not-allowed;opacity:.5}
+.google-sign-in-visual{display:flex;align-items:center;justify-content:center;gap:.625rem;pointer-events:none}
+.google-gis-click-target{position:absolute;inset:0;z-index:1;overflow:hidden;opacity:0}
+.google-gis-click-target>div{width:100%!important;height:100%!important}

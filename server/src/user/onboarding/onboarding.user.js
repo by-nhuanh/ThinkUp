@@ -216,6 +216,7 @@ function sortCoursesByPreferences(courses, prefs) {
  * @param {string} userId
  * @param {object} [options]
  * @param {object} [options.db] - DB instance (dùng cho test)
+ * @param {boolean} [options.includeCourses=true] - Bỏ truy vấn danh mục khi client tự tải khóa học sau onboarding.
  * @returns {Promise<{ message: string, courses: Array<object> }>}
  */
 export async function skipOnboarding(userId, options = {}) {
@@ -223,7 +224,7 @@ export async function skipOnboarding(userId, options = {}) {
   const objId = parseUserId(userId);
   await findUserById(db, objId);
 
-  const courses = await fetchPublishedCoursesWithTags(db);
+  const courses = options.includeCourses === false ? [] : await fetchPublishedCoursesWithTags(db);
   const session = db.client.startSession();
   try {
     await session.withTransaction(async () => {
@@ -257,6 +258,7 @@ export async function skipOnboarding(userId, options = {}) {
  * @param {string} userId
  * @param {{ categoryId: string, selectedTagIds: string[], level: string }} surveyAnswers
  * @param {object} [options]
+ * @param {boolean} [options.includeCourses=true] - Bỏ truy vấn danh mục khi client tự tải khóa học sau onboarding.
  * @returns {Promise<{ message: string, preferences: object, courses: Array<object> }>}
  */
 export async function submitOnboarding(userId, surveyAnswers = {}, options = {}) {
@@ -359,13 +361,11 @@ export async function submitOnboarding(userId, surveyAnswers = {}, options = {})
     submitted_at: new Date(),
   };
 
-  // Lấy toàn bộ khóa học published kèm tags và sắp xếp ưu tiên
-  const allCourses = await fetchPublishedCoursesWithTags(db);
-  const sortedCourses = sortCoursesByPreferences(allCourses, {
-    categoryId,
-    selectedTagIds: cleanedTagIds,
-    level: normalizedLevel,
-  });
+  // Chỉ tải toàn bộ khóa học khi caller thực sự cần danh sách gợi ý trong phản hồi.
+  const sortedCourses = options.includeCourses === false ? [] : sortCoursesByPreferences(
+    await fetchPublishedCoursesWithTags(db),
+    { categoryId, selectedTagIds: cleanedTagIds, level: normalizedLevel },
+  );
 
   // Hai thay đổi trạng thái phải cùng thành công hoặc cùng được rollback.
   const session = db.client.startSession();

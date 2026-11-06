@@ -35,6 +35,7 @@ export class AppComponent {
   readonly hideShell = signal(false);
   readonly isStudyLobby = signal(false);
   readonly isGuestLanding = signal(false);
+  readonly instructorCardOpen = computed(() => !!this.instructorCardService.state());
 
   constructor() {
     const commerce = inject(CommerceService);

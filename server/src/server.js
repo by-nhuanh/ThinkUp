@@ -425,7 +425,7 @@ const onboardingRouter = express.Router();
 
 onboardingRouter.post('/skip', requireAuth, async (req, res, next) => {
   try {
-    const result = await skipOnboarding(req.userId);
+    const result = await skipOnboarding(req.userId, { includeCourses: req.body?.includeCourses !== false });
     res.json(result);
   } catch (err) {
     next(err);
@@ -434,7 +434,7 @@ onboardingRouter.post('/skip', requireAuth, async (req, res, next) => {
 
 onboardingRouter.post('/submit', requireAuth, async (req, res, next) => {
   try {
-    const result = await submitOnboarding(req.userId, req.body);
+    const result = await submitOnboarding(req.userId, req.body, { includeCourses: req.body?.includeCourses !== false });
     res.json(result);
   } catch (err) {
     next(err);

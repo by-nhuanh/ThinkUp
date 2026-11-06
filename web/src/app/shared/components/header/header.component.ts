@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input, signal, OnInit, HostListener } from '@angular/core';
+import { Component, computed, effect, inject, input, signal, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommerceService } from '../../../core/services/commerce.service';
@@ -15,7 +15,7 @@ import { NotificationPopoverComponent } from './notification-popover/notificatio
   styleUrl: './header.component.css',
   host: { '[class.liquid-glass]': "appearance() === 'liquid-glass'" },
 })
-export class HeaderComponent implements OnInit {
+export class HeaderComponent {
   readonly audience = input<'guest' | 'member'>('guest');
   readonly appearance = input<'standard' | 'liquid-glass'>('standard');
   private commerceService = inject(CommerceService);
@@ -43,12 +43,6 @@ export class HeaderComponent implements OnInit {
 
   constructor() {
     effect(() => this.notifications.setUser(this.isLoggedIn() ? this.authService.currentUser()?.id ?? null : null));
-  }
-
-  ngOnInit(): void {
-    if (this.authService.isAuthenticated()) {
-      this.authService.validateSession().subscribe({ error: () => { /* Giữ phiên để thử lại nếu mạng tạm mất. */ } });
-    }
   }
 
   @HostListener('window:storage')

@@ -1,5 +1,5 @@
 import { FacebookAuthService } from '../../../core/services/facebook-auth.service';
-import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, OnDestroy, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
@@ -23,6 +23,8 @@ export class LoginComponent implements OnInit, OnDestroy {
   private readonly onboardingService = inject(OnboardingService);
   private readonly toastService = inject(ToastService);
   private googleInitialized = false;
+  private googleLoadPromise: Promise<void> | null = null;
+  @ViewChild('googleButtonHost') private googleButtonHost?: ElementRef<HTMLElement>;
   private readonly facebook = inject(FacebookAuthService);
   private readonly facebookReady = this.facebook.prepare().catch(() => undefined);
 
@@ -72,6 +74,7 @@ export class LoginComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
+    this.prepareGoogleButton();
     // SPEC-REG-STU-01 Bước 4: Kiểm tra queryParams kích hoạt tài khoản
     const qParams = this.route.snapshot.queryParams;
     if (qParams['activated'] === 'true') {
@@ -234,6 +237,10 @@ export class LoginComponent implements OnInit, OnDestroy {
       }).catch(error => this.toastService.showToast({ type: 'error', message: error.message }));
       return;
     }
+    this.prepareGoogleButton();
+  }
+
+  private prepareGoogleButton(): void {
     if (!environment.googleClientId) {
       this.toastService.showToast({ type: 'error', message: 'Google Sign-In chưa được cấu hình.' });
       return;
@@ -244,11 +251,20 @@ export class LoginComponent implements OnInit, OnDestroy {
         google.accounts.id.initialize({
           client_id: environment.googleClientId,
           callback: (response: { credential?: string }) => this.submitGoogleLogin(response.credential),
+          auto_select: false,
+          cancel_on_tap_outside: true,
         });
         this.googleInitialized = true;
       }
-      google.accounts.id.prompt();
-    }).catch(() => this.toastService.showToast({ type: 'error', message: 'Không thể khởi tạo đăng nhập Google. Vui lòng thử lại.' }));
+      const host = this.googleButtonHost?.nativeElement;
+      const clickTarget = host?.querySelector<HTMLElement>('.google-gis-click-target');
+      if (clickTarget && !clickTarget.childElementCount) {
+        google.accounts.id.renderButton(clickTarget, { type: 'standard', theme: 'outline', size: 'large', text: 'signin_with', shape: 'rectangular', logo_alignment: 'left', width: Math.max(120, Math.floor(clickTarget.getBoundingClientRect().width)) });
+      }
+    }).catch((error: unknown) => {
+      console.error('[Google Sign-In] Could not load Google Identity Services.', error);
+      this.toastService.showToast({ type: 'error', message: 'Không thể tải dịch vụ Google. Hãy kiểm tra kết nối hoặc cho phép accounts.google.com rồi tải lại trang.' });
+    });
   }
 
   private submitGoogleLogin(idToken?: string): void {
@@ -272,17 +288,22 @@ export class LoginComponent implements OnInit, OnDestroy {
 
   private loadGoogleIdentity(): Promise<void> {
     if ((window as any).google?.accounts?.id) return Promise.resolve();
-    return new Promise((resolve, reject) => {
+    if (this.googleLoadPromise) return this.googleLoadPromise;
+    this.googleLoadPromise = new Promise((resolve, reject) => {
       const existing = document.querySelector<HTMLScriptElement>('script[data-google-identity]');
       if (existing) {
         if ((window as any).google?.accounts?.id) { resolve(); return; }
-        existing.addEventListener('load', () => resolve(), { once: true }); existing.addEventListener('error', () => reject(), { once: true }); return;
+        existing.addEventListener('load', () => (window as any).google?.accounts?.id ? resolve() : reject(new Error('Google Identity Services loaded without an API')), { once: true });
+        existing.addEventListener('error', () => reject(new Error('Google Identity Services failed to load')), { once: true }); return;
       }
       const script = document.createElement('script');
       script.src = 'https://accounts.google.com/gsi/client'; script.async = true; script.defer = true;
-      script.dataset['googleIdentity'] = 'true'; script.onload = () => resolve(); script.onerror = () => reject();
+      script.dataset['googleIdentity'] = 'true';
+      script.onload = () => (window as any).google?.accounts?.id ? resolve() : reject(new Error('Google Identity Services loaded without an API'));
+      script.onerror = () => reject(new Error('Google Identity Services failed to load'));
       document.head.appendChild(script);
     });
+    return this.googleLoadPromise;
   }
 
   resendVerification(): void {

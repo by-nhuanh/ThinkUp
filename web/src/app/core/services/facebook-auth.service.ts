@@ -9,11 +9,14 @@ export class FacebookAuthService {
   private pending: Promise<FacebookSdk> | null = null;
   private sdk: FacebookSdk | null = null;
   private loginPending = false;
+  private isConfigured(): boolean {
+    return /^\d+$/.test(environment.facebookAppId) && /^v\d+\.\d+$/.test(environment.facebookGraphVersion);
+  }
   prepare(): Promise<FacebookSdk> {
     if (this.sdk) return Promise.resolve(this.sdk);
     if (this.pending) return this.pending;
-    if (!/^\d+$/.test(environment.facebookAppId) || !/^v\d+\.\d+$/.test(environment.facebookGraphVersion)) {
-      return Promise.reject(new Error('Facebook chưa được cấu hình.'));
+    if (!this.isConfigured()) {
+      return Promise.reject(new Error('Đăng nhập Facebook đang được cập nhật.'));
     }
     this.pending = new Promise((resolve, reject) => {
       const script = document.createElement('script');
