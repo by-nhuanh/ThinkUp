@@ -1,3 +1,4 @@
+import { FacebookAuthService } from '../../../core/services/facebook-auth.service';
 import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -6,6 +7,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { OnboardingService } from '../../../core/services/onboarding.service';
 import { AuthApiError } from '../../../core/models/user.model';
 import { ToastService } from '../../../core/services/toast.service';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-login',
@@ -20,6 +22,9 @@ export class LoginComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly onboardingService = inject(OnboardingService);
   private readonly toastService = inject(ToastService);
+  private googleInitialized = false;
+  private readonly facebook = inject(FacebookAuthService);
+  private readonly facebookReady = this.facebook.prepare().catch(() => undefined);
 
   readonly email = signal('');
   readonly password = signal('');
@@ -218,8 +223,66 @@ export class LoginComponent implements OnInit, OnDestroy {
   }
 
   handleSocialLogin(provider: 'Google' | 'Facebook'): void {
-    // TODO(pre-deploy): Nhớ thay thông báo này bằng OAuth Google/Facebook có xác minh danh tính thật trước khi mở tính năng.
-    this.toastService.showToast({ type: 'info', message: `Đăng nhập bằng ${provider} sẽ được hỗ trợ sau.` });
+    if (provider === 'Facebook') {
+      if (this.loading()) return;
+      this.facebook.login().then(accessToken => {
+        this.loading.set(true); this.clearErrors();
+        this.authService.loginWithFacebook(accessToken, this.rememberMe()).subscribe({
+          next: () => { this.loading.set(false); this.handleLoginSuccess(); },
+          error: (error: AuthApiError) => { this.loading.set(false); this.networkToast.set(error.message || 'Không đăng nhập được bằng Facebook.'); },
+        });
+      }).catch(error => this.toastService.showToast({ type: 'error', message: error.message }));
+      return;
+    }
+    if (!environment.googleClientId) {
+      this.toastService.showToast({ type: 'error', message: 'Google Sign-In chưa được cấu hình.' });
+      return;
+    }
+    this.loadGoogleIdentity().then(() => {
+      const google = (window as any).google;
+      if (!this.googleInitialized) {
+        google.accounts.id.initialize({
+          client_id: environment.googleClientId,
+          callback: (response: { credential?: string }) => this.submitGoogleLogin(response.credential),
+        });
+        this.googleInitialized = true;
+      }
+      google.accounts.id.prompt();
+    }).catch(() => this.toastService.showToast({ type: 'error', message: 'Không thể khởi tạo đăng nhập Google. Vui lòng thử lại.' }));
+  }
+
+  private submitGoogleLogin(idToken?: string): void {
+    if (!idToken || this.loading()) return;
+    this.loading.set(true);
+    this.clearErrors();
+    this.authService.loginWithGoogle(idToken, this.rememberMe()).subscribe({
+      next: () => { this.loading.set(false); this.handleLoginSuccess(); },
+      error: (err: AuthApiError) => {
+        this.loading.set(false);
+        if (err.errorCode === 'NETWORK_ERROR' || err.status === 0 || (err.status || 0) >= 500) {
+          this.networkToast.set(err.message || 'Không thể kết nối đến máy chủ. Vui lòng thử lại.');
+          return;
+        }
+        const message = err.message || 'Không thể xác thực tài khoản Google. Vui lòng thử lại.';
+        this.hasAuthError.set(true);
+        this.errorMessage.set(message);
+      },
+    });
+  }
+
+  private loadGoogleIdentity(): Promise<void> {
+    if ((window as any).google?.accounts?.id) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const existing = document.querySelector<HTMLScriptElement>('script[data-google-identity]');
+      if (existing) {
+        if ((window as any).google?.accounts?.id) { resolve(); return; }
+        existing.addEventListener('load', () => resolve(), { once: true }); existing.addEventListener('error', () => reject(), { once: true }); return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client'; script.async = true; script.defer = true;
+      script.dataset['googleIdentity'] = 'true'; script.onload = () => resolve(); script.onerror = () => reject();
+      document.head.appendChild(script);
+    });
   }
 
   resendVerification(): void {

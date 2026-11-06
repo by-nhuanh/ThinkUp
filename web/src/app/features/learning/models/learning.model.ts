@@ -1,5 +1,5 @@
 export type LessonType = 'video' | 'reading' | 'quiz' | 'lab';
-export type LessonStatus = 'done' | 'not-started' | 'failed';
+export type LessonStatus = 'done' | 'not-started' | 'failed' | 'in-progress';
 export type UtilityTab = 'overview' | 'resources' | 'qa' | 'discussion';
 
 export interface QuizOption {
@@ -11,7 +11,7 @@ export interface QuizQuestion {
   id: string;
   text: string;
   options: QuizOption[];
-  correctOptionId: string;
+  correctOptionId?: string;
 }
 
 export interface QuizConfig {
@@ -107,6 +107,8 @@ export interface LabConfig {
 }
 
 export interface LearningLesson {
+  playback?: import('../../../core/models/course.model').LearningPlayback;
+  questionCount?: number;
   id: string;
   order: number;
   title: string;
@@ -145,13 +147,21 @@ export interface LearningPlayerConfig {
 }
 
 export interface LearningCourse {
+  enrollment?: {
+    completedLessons: number; totalLessons: number; percent: number; completed: number; remaining: number;
+    studyTime: string; nextLessonId: string; nextLessonTitle: string; lastUpdated: string;
+  };
+  overview?: { description: string; goals: string[]; requirements: string[] };
   id: string;
   title: string;
   instructor: string;
   instructorTitle: string;
+  instructorAvatar?: string;
   progress: number;
   description: string;
   coverGradient: string;
+  thumbnailUrl?: string;
+  bgGradient?: string;
   coverLabel: string;
   rating: number;
   ratingCount: number;
@@ -162,6 +172,9 @@ export interface LearningCourse {
 }
 
 export interface CommunityReply {
+  lessonId?: string;
+  avatarUrl?: string;
+  isOwner?: boolean;
   id: string;
   author: string;
   initials: string;
@@ -191,6 +204,8 @@ export interface CourseReview {
 }
 
 export interface CourseReviewSummary {
+  hasUserReviewed?: boolean;
+  myReview?: CourseReview | null;
   average: number;
   total: number;
   distribution: { stars: number; percent: number }[];
@@ -198,6 +213,9 @@ export interface CourseReviewSummary {
 }
 
 export interface LearningResource {
+  lessonId?: string | null;
+  canDownload?: boolean;
+  fileName?: string;
   id: string;
   title: string;
   meta: string;
@@ -225,7 +243,7 @@ export interface CourseDocument {
   kind: string;
   size: string;
   updated: string;
-  ext: 'pdf' | 'zip' | 'docx' | 'pptx';
+  ext: string;
 }
 
 export interface DashboardReply {
@@ -234,6 +252,7 @@ export interface DashboardReply {
   role: string;
   date: string;
   body: string;
+  avatarUrl?: string;
   relatedLessonTitle?: string;
 }
 
@@ -244,6 +263,7 @@ export interface DashboardQuestion {
   role: string;
   date: string;
   body: string;
+  avatarUrl?: string;
   relatedLessonTitle: string;
   replies: DashboardReply[];
 }

@@ -7,6 +7,10 @@
   }
 
   <div class="hm-main">
+    @if (overviewError()) {
+      <p class="hm-overview-error" role="alert">Không thể tải dữ liệu trang chủ. Vui lòng thử lại sau.</p>
+    }
+
     <!-- 1. Hero -->
     <section class="hm-hero">
       <div class="hm-hero__content">
@@ -25,8 +29,8 @@
     <section class="hm-section">
       <header class="hm-head">
         <h2 class="hm-head__title">Khóa học của tôi đang học</h2>
-        <a class="hm-head__link" routerLink="/my-courses">
-          Xem tất cả (12)
+        <a class="hm-head__link" routerLink="/main/my-courses">
+          Xem tất cả ({{ learningCount() }})
           <app-icon name="arrow-right" class="h-[16px] w-[16px]" />
         </a>
       </header>
@@ -37,9 +41,10 @@
         </button>
 
         <div class="hm-track" #track>
-          @for (item of myLearning; track item.id) {
-            <a class="hm-course" [routerLink]="item.href">
-              <div class="hm-course__cover">
+          @for (item of myLearning(); track item.id) {
+            <a class="hm-course" [routerLink]="item.href" [queryParams]="item.lessonId ? { lesson: item.lessonId } : null">
+              <div class="hm-course__cover"
+                [style.background-image]="item.thumbnailUrl ? 'linear-gradient(90deg, rgba(8,20,51,.85), rgba(8,20,51,.5)), url(' + item.thumbnailUrl + ')' : null">
                 @if (item.glyphType === 'react') {
                   <span class="hm-course__icon hm-course__icon--react">{{ item.glyph }}</span>
                 } @else {
@@ -53,13 +58,16 @@
               <div class="hm-course__body">
                 <span class="hm-course__progress-label">{{ item.progress }}% hoàn thành</span>
                 <span class="hm-course__bar"><span [style.width.%]="item.progress"></span></span>
-                <p class="hm-course__next">{{ item.nextLesson }}</p>
+                <p class="hm-course__next"><strong>Bài học tiếp:</strong> {{ item.nextLesson }}</p>
                 <span class="hm-course__btn">
                   <app-icon name="play" class="is-filled h-[14px] w-[14px]" />
                   Tiếp tục học
                 </span>
               </div>
             </a>
+          }
+          @if (!myLearning().length && !overviewError()) {
+            <p class="hm-empty-state">Bạn chưa có khóa học nào đang học.</p>
           }
         </div>
 
@@ -69,7 +77,7 @@
       </div>
 
       <div class="hm-dots" aria-hidden="true">
-        @for (item of myLearning; track item.id; let first = $first) {
+        @for (item of myLearning(); track item.id; let first = $first) {
           <span class="hm-dot" [class.hm-dot--active]="first"></span>
         }
       </div>
@@ -80,27 +88,27 @@
       <span class="hm-roadmap__glow" aria-hidden="true"></span>
 
       <div class="hm-roadmap__content">
-        <span class="hm-roadmap__tag">{{ roadmap.tag }}</span>
-        <h3 class="hm-roadmap__title">{{ roadmap.title }}</h3>
-        <p class="hm-roadmap__desc">{{ roadmap.description }}</p>
+        <span class="hm-roadmap__tag">{{ roadmap().tag }}</span>
+        <h3 class="hm-roadmap__title">{{ roadmap().title }}</h3>
+        <p class="hm-roadmap__desc">{{ roadmap().description }}</p>
 
         <div class="hm-roadmap__actions">
-          <a class="hm-roadmap__cta" [routerLink]="roadmap.href">{{ roadmap.action }}</a>
+          <a class="hm-roadmap__cta" [routerLink]="roadmap().href">{{ roadmap().action }}</a>
           <span class="hm-roadmap__status">
             <i class="hm-roadmap__dot" aria-hidden="true"></i>
-            {{ roadmap.progress }}
+            {{ roadmap().progress }}
           </span>
         </div>
       </div>
 
-      <img class="hm-roadmap__art" [src]="roadmap.illustration" alt="" aria-hidden="true" />
+      <img class="hm-roadmap__art" [src]="roadmap().illustration" alt="" aria-hidden="true" />
     </section>
 
     <!-- 4. Đề xuất -->
     <section class="hm-section">
       <header class="hm-head">
         <h2 class="hm-head__title">Đề xuất theo sở thích của bạn</h2>
-        <a class="hm-head__link" routerLink="/courses">
+        <a class="hm-head__link" routerLink="/main/courses">
           Xem tất cả
           <app-icon name="arrow-right" class="h-[16px] w-[16px]" />
         </a>
@@ -114,6 +122,9 @@
             (saveToggle)="toggleSave($event)"
             (addToCart)="addToCart($event)"
           />
+        }
+        @if (!featured().length) {
+          <p class="hm-empty-state">Chưa có khóa học phù hợp để đề xuất.</p>
         }
       </div>
     </section>
@@ -139,15 +150,16 @@
             </svg>
           </span>
           <div class="hm-streak__text">
-            <p class="hm-streak__count"><b>{{ streakCount }}</b><span>ngày liên tiếp</span></p>
-            <p class="hm-streak__hint">Bạn đang thuộc top 12% học viên chăm chỉ nhất.</p>
+            <p class="hm-streak__count"><b>{{ streakCount() ?? 0 }}</b><span>ngày liên tiếp</span></p>
           </div>
         </div>
 
         <div class="hm-week">
-          @for (day of streakDays; track day.label) {
+          @for (day of streakDays(); track $index) {
             <div class="hm-week__day">
-              <span class="hm-week__icon"><app-icon name="check" class="h-[18px] w-[18px]" /></span>
+              <span class="hm-week__icon" [class.is-off]="!day.done">
+                @if (day.done) { <app-icon name="check" class="h-[18px] w-[18px]" /> }
+              </span>
               <span class="hm-week__label">{{ day.label }}</span>
             </div>
           }
@@ -164,7 +176,7 @@
           <span class="hm-heat__corner"></span>
 
           <div class="hm-heat__months" aria-hidden="true">
-            @for (month of monthLabels; track month) {
+            @for (month of monthLabels(); track month) {
               <span>{{ month }}</span>
             }
           </div>
@@ -176,10 +188,17 @@
           </div>
 
           <div class="hm-heat__grid" role="img" aria-label="Biểu đồ nhịp độ học tập 12 tuần gần nhất">
-            @for (row of heatmapRows; track $index) {
-              <div class="hm-heat__row">
-                @for (level of row; track $index) {
-                  <span class="hm-heat__cell" [class]="'hm-heat__cell--' + level"></span>
+            @for (row of heatmapRows(); track $index) {
+              <div class="hm-heat__row" [style.--hm-heat-weeks]="row.length">
+                @for (cell of row; track $index) {
+                  <span
+                    class="hm-heat__cell"
+                    [class]="cell.level === null ? '' : 'hm-heat__cell--' + cell.level"
+                    [class.hm-heat__cell--untracked]="cell.coverage === 'untracked' || cell.coverage === 'outside-window'"
+                    [attr.title]="cell.date ? cell.date + (cell.level === null ? ' · Chưa được theo dõi' : ' · ' + cell.level) : null"
+                    [attr.aria-hidden]="cell.date ? null : 'true'"
+                    [style.visibility]="cell.date ? 'visible' : 'hidden'"
+                  ></span>
                 }
               </div>
             }
@@ -187,7 +206,7 @@
         </div>
 
         <div class="hm-heat__stats">
-          @for (stat of heatmapStats; track stat.label) {
+          @for (stat of heatmapStats(); track stat.label) {
             <div class="hm-heat__stat">
               <b>{{ stat.value }}</b>
               <span>{{ stat.label }}</span>

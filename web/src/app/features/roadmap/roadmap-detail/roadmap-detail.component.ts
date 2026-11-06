@@ -184,16 +184,13 @@ export class RoadmapDetailComponent implements OnInit {
       return;
     }
 
-    if (this.isEnrolled()) {
-      const result = this.roadmapService.unenrollRoadmap(this.roadmapId);
-      this.toastService.showToast({ type: 'warning', message: result.message });
-      return;
-    }
-
     if (this.enrolling()) return;
 
     this.enrolling.set(true);
-    this.roadmapService.selectRoadmap(this.roadmapId).subscribe({
+    const action = this.isEnrolled()
+      ? this.roadmapService.unenrollRoadmap(this.roadmapId)
+      : this.roadmapService.selectRoadmap(this.roadmapId);
+    action.subscribe({
       next: result => {
         this.enrolling.set(false);
         this.toastService.showToast({
@@ -205,7 +202,7 @@ export class RoadmapDetailComponent implements OnInit {
         this.enrolling.set(false);
         this.toastService.showToast({
           type: 'warning',
-          message: error?.error?.message ?? 'Không chọn được lộ trình. Vui lòng thử lại.'
+          message: error?.error?.message ?? 'Không cập nhật được lựa chọn lộ trình. Vui lòng thử lại.'
         });
       }
     });

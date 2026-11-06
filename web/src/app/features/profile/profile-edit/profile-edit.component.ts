@@ -61,11 +61,22 @@ export class ProfileEditComponent {
     );
   });
 
+  private detailsLoaded = false;
+
+  constructor() {
+    this.isSaving.set(true);
+    this.profileService.getProfileDetails().subscribe({
+      next: () => { this.detailsLoaded = true; this.isSaving.set(false); },
+      error: () => { this.isSaving.set(false); this.modal.set('error'); },
+    });
+  }
+
   onFormState(status: FormStatus): void {
     this.formStatus.set(status);
   }
 
   onSave(value: ProfileFormValue): void {
+    if (!this.detailsLoaded) { this.modal.set('error'); return; }
     if (this.isSaving()) return;
 
     this.isSaving.set(true);

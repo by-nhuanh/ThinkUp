@@ -64,13 +64,14 @@ export async function validateVoucherLogic(db, rawCode, eligibleSubtotal, userId
     return { isValid: false, code: '', discount: 0, message: 'Chưa nhập mã voucher' };
   }
 
-  // 1. Tìm voucher trong platform_coupons hoặc payment_vouchers
-  const [platCoupon, payVoucher] = await Promise.all([
+  // 1. Tìm voucher trong platform_coupons, payment_vouchers hoặc course_coupons
+  const [platCoupon, payVoucher, courseCoupon] = await Promise.all([
     db.collection(COLLECTION_PLATFORM_COUPONS).findOne({ code }),
     db.collection(COLLECTION_PAYMENT_VOUCHERS).findOne({ code }),
+    db.collection(COLLECTION_COURSE_COUPONS).findOne({ code }),
   ]);
 
-  const voucherDoc = platCoupon || payVoucher;
+  const voucherDoc = platCoupon || payVoucher || courseCoupon;
   if (!voucherDoc) {
     // Dự phòng các mã ưu đãi kiểm thử
     if (code === 'THINKUP10' || code === 'WELCOME') {
@@ -465,6 +466,17 @@ export async function addToCartLogic(userId, courseId) {
 
   const db = await getMongoDb();
   const cId = String(courseId).trim();
+
+  const course = await db.collection(COLLECTION_COURSES).findOne({ $or: [
+    { course_id: cId }, { id: cId }, ...(ObjectId.isValid(cId) ? [{ _id: new ObjectId(cId) }] : []),
+  ] });
+  if (!course || course.status !== 'published') throw Object.assign(new Error('Khóa học không còn được bán.'), { status: 404 });
+  const aliases = [cId, course.course_id, course._id, course.id].filter(Boolean).map(String);
+  const userIds = [String(userId), ...(ObjectId.isValid(String(userId)) ? [new ObjectId(String(userId))] : [])];
+  const filter = { $and: [{ $or: [{ user_id: { $in: userIds } }, { userId: { $in: userIds } }] },
+    { $or: [{ course_id: { $in: aliases } }, { courseId: { $in: aliases } }] }] };
+  const [owned, enrolled] = await Promise.all([db.collection(COLLECTION_USER_COURSES).findOne(filter), db.collection(COLLECTION_ENROLLMENTS).findOne(filter)]);
+  if (owned || enrolled) throw Object.assign(new Error('Bạn đã sở hữu khóa học này.'), { status: 409 });
 
   // Kiểm tra trùng lặp
   const existing = await db.collection(COLLECTION_CARTS).findOne({

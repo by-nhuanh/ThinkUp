@@ -54,6 +54,7 @@
                   class="method-head"
                   [attr.aria-expanded]="expanded"
                   (click)="selectMethod(method.id)"
+                  [disabled]="processing()"
                 >
                   <span class="method-radio" [class.is-checked]="isSelectedMethod(method.id)" aria-hidden="true">
                     <span class="method-radio__dot"></span>
@@ -222,8 +223,8 @@
                           <div class="info-row">
                             <span class="info-row__label">Nội dung chuyển khoản</span>
                             <span class="info-row__value-group">
-                              <span class="info-row__value is-strong">{{ displayBank().transferContent }}</span>
-                              <button type="button" class="copy-btn" (click)="copyText(displayBank().transferContent, 'transferContent', 'nội dung chuyển khoản')">
+                              <span class="info-row__value is-strong">{{ displayBank().transferContent || 'Được tạo khi bạn tiếp tục thanh toán' }}</span>
+                              <button type="button" class="copy-btn" [disabled]="!displayBank().transferContent" (click)="copyText(displayBank().transferContent, 'transferContent', 'nội dung chuyển khoản')">
                                 <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                                   <rect x="8.6" y="8.6" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.5" />
                                   <path d="M15.4 6.4V5.6a2 2 0 0 0-2-2h-8a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
@@ -273,6 +274,7 @@
                       }
 
                       @case ('card') {
+                        <p class="method-subtitle">Bạn có thể nhập thông tin thẻ tại đây. Khi tiếp tục, bạn cần nhập lại và xác nhận tại cổng Stripe để hoàn tất thanh toán.</p>
                         <label class="field field--full">
                           <span class="field-label">Số thẻ</span>
                           <span class="field-control">
@@ -402,7 +404,7 @@
                           </div>
                           <div class="swift-info__row">
                             <span>Nội dung chuyển khoản</span>
-                            <strong class="is-link">{{ swiftInfo.content }}</strong>
+                            <strong class="is-link">{{ swiftTransferContent() || 'Chưa có mã giao dịch SWIFT' }}</strong>
                           </div>
                         </div>
 
@@ -531,7 +533,7 @@
           <button
             type="button"
             class="pay-cta checkout-submit"
-            [disabled]="processing()"
+            [disabled]="processing() || !cartReady()"
             (click)="submit()"
           >
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -637,7 +639,7 @@
   </div>
 
   <!-- Phiên thanh toán đang chờ (QR / chuyển khoản / SWIFT) -->
-  @if (session(); as current) {
+  @if (selectedMethod() !== 'atm' && session(); as current) {
     <div class="pay-modal" role="dialog" aria-modal="true" [attr.aria-label]="pendingTitle()">
       <div class="pay-modal__backdrop" (click)="closePending()"></div>
 
@@ -746,7 +748,7 @@
           <div class="pay-pending__info">
             <div class="pay-pending__amount">
               <span>Số tiền cần thanh toán</span>
-              <strong>{{ formatPrice(current.amount || total()) }}</strong>
+              <strong>{{ formatPrice(current.amount) }}</strong>
             </div>
 
             @if (pendingKind() === 'swift') {
@@ -770,11 +772,12 @@
                 <div class="info-row">
                   <span class="info-row__label">Nội dung chuyển khoản</span>
                   <span class="info-row__value-group">
-                    <span class="info-row__value is-strong">{{ current.transferContent || swiftInfo.content }}</span>
+                    <span class="info-row__value is-strong">{{ swiftTransferContent() }}</span>
                     <button
                       type="button"
                       class="copy-btn"
-                      (click)="copyText(current.transferContent || swiftInfo.content, 'sessionContent', 'nội dung chuyển khoản')"
+                      [disabled]="!swiftTransferContent()"
+                      (click)="copyText(swiftTransferContent(), 'sessionContent', 'nội dung chuyển khoản')"
                     >
                       {{ copiedField() === 'sessionContent' ? 'Đã sao chép' : 'Sao chép' }}
                     </button>

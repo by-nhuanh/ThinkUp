@@ -31,8 +31,6 @@ export class LearningOptionsComponent {
   /** Bản chụp để nút "Hủy" trả lại đúng trạng thái lúc mở trang. */
   private readonly savedOptions = signal<LearningOptions>({ ...this.options() });
 
-  // Hai công tắc chưa có trong hợp đồng API nên chỉ giữ ở phạm vi trang.
-  // TODO(pre-deploy): Nối vào LearningOptions khi backend chốt spec.
   readonly subtitles = signal(false);
   readonly autoNext = signal(true);
 
@@ -76,6 +74,17 @@ export class LearningOptionsComponent {
     { value: 'choose', label: 'Chọn thư mục khác' },
   ];
 
+  constructor() {
+    this.settingsService.getLearningOptions().subscribe({
+      next: value => {
+        this.savedOptions.set({ ...value });
+        this.subtitles.set(value.subtitles);
+        this.autoNext.set(value.autoNext);
+      },
+      error: () => this.saveStatus.set('error'),
+    });
+  }
+
   patch<K extends keyof LearningOptions>(key: K, value: string): void {
     this.settingsService.setLearningOptions({ ...this.options(), [key]: value });
   }
@@ -83,7 +92,7 @@ export class LearningOptionsComponent {
   onSave(): void {
     if (this.isSaving()) return;
     this.isSaving.set(true);
-    this.settingsService.updateLearningOptions({ ...this.options() }).subscribe({
+    this.settingsService.updateLearningOptions({ ...this.options(), subtitles: this.subtitles(), autoNext: this.autoNext() }).subscribe({
       next: () => {
         this.isSaving.set(false);
         this.saveStatus.set('success');
@@ -99,8 +108,8 @@ export class LearningOptionsComponent {
   /** Hủy: bỏ các thay đổi chưa lưu, trả về trạng thái lúc mở trang. */
   onCancel(): void {
     this.settingsService.setLearningOptions({ ...this.savedOptions() });
-    this.subtitles.set(false);
-    this.autoNext.set(true);
+    this.subtitles.set(this.options().subtitles);
+    this.autoNext.set(this.options().autoNext);
     this.saveStatus.set('idle');
   }
 

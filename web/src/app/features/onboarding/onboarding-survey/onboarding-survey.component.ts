@@ -297,16 +297,7 @@ export class OnboardingSurveyComponent implements OnInit {
       next: () => {
         this.submitting.set(false);
         this.clearSessionStorage();
-        const userId = this.onboardingService.getCurrentUser()?.id;
-        if (userId) {
-          this.notificationService.addForUser(userId, {
-            id: 'onboarding-completed',
-            title: 'Khảo sát đã hoàn tất',
-            message: 'Lộ trình học tập của bạn đã được cá nhân hóa.',
-            createdAt: new Date().toISOString(),
-            href: '/main/home',
-          });
-        }
+        this.notificationService.syncFromStorage();
         this.showToast('Thiết lập thành công!', 'success');
         // Điều hướng học viên vào Dashboard có bộ lọc cá nhân hóa
         setTimeout(() => {

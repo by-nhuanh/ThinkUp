@@ -6,7 +6,7 @@
   <div class="grid min-h-[60vh] place-items-center bg-[#F9F9FF]">
     <div class="text-center">
       <p class="text-[15px] font-semibold text-[#0F172B]">Không thể tải khóa học</p>
-      <p class="mt-1 text-[13px] text-[#62748E]">Vui lòng thử lại hoặc quay về danh sách khóa học.</p>
+      <p class="mt-1 text-[13px] text-[#62748E]">{{ loadError() || 'Vui lòng thử lại hoặc quay về danh sách khóa học.' }}</p>
       <a routerLink="/main/my-courses" class="mt-4 inline-flex h-10 items-center rounded-lg bg-[#155DFC] px-4 text-[13px] font-semibold text-white">
         Về khóa học của tôi
       </a>
@@ -75,7 +75,7 @@
           <header class="flex flex-wrap items-start justify-between gap-4">
             <div class="flex min-w-0 flex-col gap-2">
               <nav class="flex flex-wrap items-center gap-1.5 text-[12px] leading-4 text-[#62748E]" aria-label="Breadcrumb">
-                <a routerLink="/main/my-courses" class="max-w-[220px] truncate transition hover:text-[#0072F8]">
+                <a [routerLink]="['/main/my-courses', currentCourse.id]" class="max-w-[220px] truncate transition hover:text-[#0072F8]">
                   {{ currentCourse.title }}
                 </a>
                 <svg lucideChevronRight class="h-3 w-3 shrink-0 text-[#90A1B9]" aria-hidden="true"></svg>
@@ -122,7 +122,7 @@
                   class="inline-flex h-9 shrink-0 items-center gap-2 rounded-xl border border-[#0072F8] bg-white px-4 text-[14px] font-bold leading-5 text-[#0072F8] transition hover:bg-[#F0F6FF]"
                 >
                   <svg lucideCircleCheck class="h-4 w-4" aria-hidden="true"></svg>
-                  Đánh dấu hoàn thành
+                  {{ lesson.completed ? 'Đã hoàn thành' : 'Đánh dấu hoàn thành' }}
                 </button>
               }
             </div>
@@ -148,6 +148,7 @@
                   [lesson]="lesson"
                   [courseTitle]="currentCourse.title"
                   (completed)="completeLesson()"
+                  (ended)="onVideoEnded()"
                 />
               }
             } @else {
@@ -199,5 +200,15 @@
         (submitted)="submitReport($event)"
       />
     }
+  } @else {
+    <div class="grid min-h-[60vh] place-items-center bg-[#F9F9FF]">
+      <div class="text-center">
+        <p class="text-[15px] font-semibold text-[#0F172B]">Khóa học chưa có bài học</p>
+        <p class="mt-1 text-[13px] text-[#62748E]">Nội dung học tập của khóa học này chưa được cập nhật.</p>
+        <a routerLink="/main/my-courses" class="mt-4 inline-flex h-10 items-center rounded-lg bg-[#155DFC] px-4 text-[13px] font-semibold text-white">
+          Về khóa học của tôi
+        </a>
+      </div>
+    </div>
   }
 }

@@ -1,4 +1,7 @@
 <div class="flex h-[calc(100dvh-83px)] min-h-0 flex-col overflow-hidden bg-[#0F1117]">
+  @if (loading) { <p class="px-4 py-2 text-sm text-slate-100" role="status">Đang tải bài lab...</p> }
+  @if (errorMessage) { <p class="px-4 py-2 text-sm text-amber-200" role="alert">{{ errorMessage }}</p> }
+  <a [routerLink]="['/main/my-courses', course.id]" class="shrink-0 truncate border-b border-[#1D293D] px-4 py-2 text-xs text-[#90A1B9] hover:text-white">{{ course.title }}</a>
   <!-- ── Exercise switcher bar ───────────────────────────────────── -->
   <div class="flex h-[53px] shrink-0 items-center justify-end gap-1.5 overflow-x-auto border-b border-[#1D293D] bg-[#151823] px-4">
     <button
@@ -309,7 +312,7 @@
 
             <div class="mb-5 flex items-start gap-3">
               <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#F1F5F9] text-[#90A1B9]">
-                <svg lucideUserRound class="h-4 w-4" aria-hidden="true"></svg>
+                @if (currentUser()?.avatar; as avatar) { <img [src]="avatar" alt="" class="block h-full w-full rounded-full object-cover" /> } @else { {{ myInitials }} }
               </span>
               <div class="min-w-0 flex-1 rounded-lg border border-[#E2E8F0] bg-white p-2.5">
                 <textarea
@@ -339,7 +342,7 @@
                   <div class="flex items-start gap-3">
                     <img
                       class="h-8 w-8 shrink-0 rounded-full object-cover"
-                      [src]="avatarFor(post.author)"
+                      [src]="post.avatarUrl || avatarFor(post.author)"
                       [alt]="post.author"
                     />
                     <div class="min-w-0 flex-1">
@@ -350,7 +353,7 @@
                         </div>
                         <button
                           type="button"
-                          (click)="report(post.author, post.body)"
+                          (click)="report(post.id, post.author, post.body)"
                           class="shrink-0 rounded border border-[#FFC9C9] px-2 py-1 text-[11px] font-medium text-[#E7000B] transition hover:bg-[#FFF1F1]"
                         >
                           Báo cáo
@@ -390,7 +393,7 @@
                                 </div>
                                 <button
                                   type="button"
-                                  (click)="report(reply.author, reply.body)"
+                                  (click)="report(reply.id, reply.author, reply.body)"
                                   class="shrink-0 rounded border border-[#FFC9C9] px-2 py-1 text-[11px] font-medium text-[#E7000B] transition hover:bg-[#FFF1F1]"
                                 >
                                   Báo cáo
@@ -513,7 +516,7 @@
           <button
             type="button"
             (click)="run()"
-            [disabled]="running()"
+            [disabled]="running() || loading"
             class="inline-flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-[#155DFC] px-3 text-[11.6px] font-medium text-white transition hover:bg-[#0E4BD8] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <svg lucidePlay class="h-3.5 w-3.5" aria-hidden="true"></svg>
@@ -531,7 +534,7 @@
           <button
             type="button"
             (click)="submit()"
-            [disabled]="running()"
+            [disabled]="running() || loading"
             class="inline-flex h-7 shrink-0 items-center whitespace-nowrap rounded-lg bg-[#314158]/60 px-3 text-[11.6px] font-medium text-[#CAD5E2] transition hover:bg-[#314158]/80 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Nộp bài
@@ -555,7 +558,9 @@
         <textarea
           name="labCode"
           [ngModel]="code()"
-          (ngModelChange)="code.set($event)"
+          (ngModelChange)="onCodeChange($event)"
+          (blur)="saveDraft()"
+          [disabled]="running() || loading"
           (scroll)="onCodeScroll($event)"
           spellcheck="false"
           wrap="off"
@@ -617,8 +622,10 @@
                 <dt class="text-[#90A1B9]">Đầu vào</dt>
                 <dd class="break-words font-mono text-[#E2E8F0]">{{ test.input }}</dd>
 
-                <dt class="text-[#90A1B9]">Đầu ra thực tế</dt>
-                <dd class="break-words font-mono text-[#E2E8F0]">{{ test.actual || '—' }}</dd>
+                @if (test.actual !== undefined) {
+                  <dt class="text-[#90A1B9]">Đầu ra thực tế</dt>
+                  <dd class="break-words font-mono text-[#E2E8F0]">{{ test.actual }}</dd>
+                }
 
                 <dt class="text-[#90A1B9]">Đầu ra mong đợi</dt>
                 <dd class="break-words font-mono text-[#E2E8F0]">{{ test.expected }}</dd>
@@ -627,7 +634,7 @@
                 <dd class="text-[#E2E8F0]">2000 ms</dd>
 
                 <dt class="text-[#90A1B9]">Thời gian thực thi</dt>
-                <dd class="text-[#E2E8F0]">{{ result() === 'none' ? '—' : '45 ms' }}</dd>
+                <dd class="text-[#E2E8F0]">{{ executionMs() === null ? '—' : executionMs() + ' ms' }}</dd>
               </dl>
             } @else {
               <p class="text-[12px] text-[#62748E]">Chọn một kiểm thử để xem chi tiết.</p>
@@ -644,7 +651,7 @@
       [content]="target.content"
       [reasons]="reportReasons"
       (closed)="reportTarget.set(null)"
-      (submitted)="submitReport()"
+      (submitted)="submitReport($event)"
     />
   }
 </div>

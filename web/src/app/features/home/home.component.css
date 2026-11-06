@@ -120,6 +120,20 @@
   color: #cbd5e1;
 }
 
+.hm-heat__cell--untracked {
+  background: #eef2f7;
+}
+
+.hm-overview-error,
+.hm-empty-state {
+  color: #64748b;
+  font-size: var(--hm-fs-13);
+}
+
+.hm-overview-error {
+  color: #b42318;
+}
+
 .hm-week__label {
   font-size: var(--hm-fs-11);
   font-weight: 600;
@@ -192,7 +206,7 @@
 
 .hm-heat__row {
   display: grid;
-  grid-template-columns: repeat(28, clamp(9px, 0.833vw, 16px));
+  grid-template-columns: repeat(var(--hm-heat-weeks, 28), clamp(9px, 0.833vw, 16px));
   gap: clamp(7px, 0.677vw, 13px);
 }
 

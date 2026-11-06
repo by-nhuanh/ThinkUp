@@ -37,8 +37,7 @@ export class AccountMenuComponent {
     return [
       { label: 'Khóa học yêu thích', href: '/main/favorites', icon: 'heart' },
       { label: 'Khóa học của tôi', href: '/main/my-courses', icon: 'book' },
-      // TODO(pre-deploy): Flashcard chưa có route riêng, tạm trỏ về danh sách khóa học.
-      { label: 'Flashcard', href: '/main/courses', icon: 'cards' },
+      { label: 'Flashcard', href: '/learning/flashcards', icon: 'cards' },
       { label: 'Quản lý bài viết', href: '/main/blog', icon: 'newspaper' },
       { label: 'Lịch sử thanh toán', href: '/main/profile/billing', icon: 'credit-card' },
       { label: 'Chứng chỉ', href: '/main/certificates', icon: 'badge' },

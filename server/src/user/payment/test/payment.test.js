@@ -41,15 +41,16 @@ function memoryDb(){
     };
   }};return db;
 }
-const envKeys=['SEPAY_BANK_ID','SEPAY_ACCOUNT_NO','BANK_ACCOUNT_HOLDER','SEPAY_WEBHOOK_KEY','STRIPE_SECRET_KEY','STRIPE_WEBHOOK_SECRET','CLIENT_URL','VNP_TMN_CODE','VNP_HASH_SECRET','VNP_RETURN_URL'];
+const envKeys=['PAYMENT_MODE','SEPAY_BANK_ID','SEPAY_ACCOUNT_NO','BANK_ACCOUNT_HOLDER','SEPAY_WEBHOOK_KEY','STRIPE_SECRET_KEY','STRIPE_WEBHOOK_SECRET','CLIENT_URL','VNP_TMN_CODE','VNP_HASH_SECRET','VNP_RETURN_URL'];
 const original=Object.fromEntries(envKeys.map(k=>[k,process.env[k]]));
-test.before(()=>Object.assign(process.env,{SEPAY_BANK_ID:'MB',SEPAY_ACCOUNT_NO:'123456789',BANK_ACCOUNT_HOLDER:'THINKUP',SEPAY_WEBHOOK_KEY:'test-sepay-key',STRIPE_SECRET_KEY:'sk_test_example',STRIPE_WEBHOOK_SECRET:'whsec_test',CLIENT_URL:'http://localhost:4200',VNP_TMN_CODE:'TESTMERCHANT',VNP_HASH_SECRET:'test-vnpay-secret',VNP_RETURN_URL:'http://localhost:5000/api/payment/vnpay/callback'}));
+test.before(()=>Object.assign(process.env,{PAYMENT_MODE:'live',SEPAY_BANK_ID:'MB',SEPAY_ACCOUNT_NO:'123456789',BANK_ACCOUNT_HOLDER:'THINKUP',SEPAY_WEBHOOK_KEY:'test-sepay-key',STRIPE_SECRET_KEY:'sk_test_example',STRIPE_WEBHOOK_SECRET:'whsec_test',CLIENT_URL:'http://localhost:4200',VNP_TMN_CODE:'TESTMERCHANT',VNP_HASH_SECRET:'test-vnpay-secret',VNP_RETURN_URL:'http://localhost:5000/api/payment/vnpay/callback'}));
 test.after(()=>{for(const[k,v]of Object.entries(original)){if(v===undefined)delete process.env[k];else process.env[k]=v}});
 async function fixture(){
   const db=memoryDb(),userId=String(new ObjectId()),courseId='COURSE_01';let sequence=0,sent=0;
   await db.collection('users').insertOne({_id:new ObjectId(userId),email:'buyer@example.test',full_name:'Buyer',status:'active',is_active:true});
   await db.collection('courses').insertOne({_id:new ObjectId(),course_id:courseId,title:'Course One',status:'published',price:500000,original_price:600000});
   const options={db,generateIds:async()=>{sequence++;return {orderId:`DH20261030${String(sequence).padStart(8,'0')}`,transactionId:`GD20261030${String(sequence).padStart(8,'0')}`}},sendEmail:async()=>{sent++;return {accepted:['buyer@example.test']}}};
+  options.simulatedMethods='';
   const create=(extra={})=>createPaymentSession({userId,courseIds:[courseId],paymentMethod:'sepay',idempotencyKey:'test-checkout-key-0001',...extra},options);
   const pay=(session,extra={})=>fulfillPaymentSuccess({transactionId:session.transactionId,gateway:session.paymentMethod,gatewayTransactionNo:'gateway-ref-1',paidAmount:session.amount,currency:'VND',paidAt:new Date(),...extra},options);
   return {db,userId,courseId,options,create,pay,get sent(){return sent}};
@@ -61,6 +62,36 @@ function signedVnp(extra={}){
   const params={vnp_TmnCode:'TESTMERCHANT',vnp_TxnRef:'GD2026103000000001',vnp_ResponseCode:'00',vnp_TransactionStatus:'00',vnp_Amount:'50000000',vnp_TransactionNo:'vnp-ref',vnp_PayDate:date,...extra};
   return {...params,vnp_SecureHash:createHmac('sha512',process.env.VNP_HASH_SECRET).update(canonicalVnpay(params)).digest('hex')};
 }
+
+test('Payment lookup QR payload contains only the existing result URL and transaction ID',async()=>{
+  for(const method of ['sepay','vnpay','stripe']) {
+    const f=await fixture(),s=await f.create({paymentMethod:method});
+    const target=new URL(s.paymentQrPayload);
+    assert.equal(target.origin,'http://localhost:4200');
+    assert.equal(target.pathname,'/main/checkout/result');
+    assert.deepEqual([...target.searchParams],[['transaction_id',s.transactionId]]);
+    assert.equal(s.paymentDetailsUrl,s.paymentQrPayload);
+    assert.equal((await f.create({paymentMethod:method})).paymentQrPayload,s.paymentQrPayload);
+    assert.equal(txOf(f,s.transactionId).status,'pending');
+  }
+  const f=await simulationFixture(),s=await f.create();
+  assert.equal(new URL(s.paymentQrPayload).searchParams.get('transaction_id'),s.transactionId);
+  assert.equal(s.status,'success');
+});
+
+test('Missing or unsafe lookup origin reports QR unavailable without changing payment state',async()=>{
+  const previous=process.env.CLIENT_URL;
+  try {
+    for(const value of ['', 'javascript:alert(1)', 'https://user:secret@example.test']) {
+      process.env.CLIENT_URL=value;
+      const f=await fixture(),s=await f.create();
+      assert.equal(s.paymentQrPayload,null);
+      assert.equal(s.paymentDetailsUrl,null);
+      assert.equal(s.paymentQrError,'PAYMENT_LOOKUP_URL_NOT_CONFIGURED');
+      assert.equal(s.status,'pending');
+    }
+  } finally {process.env.CLIENT_URL=previous;}
+});
 
 test('Session uses DB prices, deduplicates canonical IDs and exports a 15-minute TTL',async()=>{
   const f=await fixture(),s=await f.create({courseIds:undefined,courses:[{id:f.courseId,price:1,salePrice:1},f.courseId],voucherDiscount:499999});
@@ -287,4 +318,188 @@ test('Stripe unpaid Checkout Session never triggers fulfillment even with a vali
   const raw=Buffer.from(JSON.stringify({id:'evt_unpaid',created:Math.floor(Date.now()/1000),type:'checkout.session.completed',data:{object:{id:'cs_unpaid'}}}));
   f.options.fetch=async()=>({ok:true,json:async()=>({id:'cs_unpaid',payment_status:'unpaid',status:'complete'})});
   assert.equal((await handleStripeWebhookEvent(raw,stripeSignature(raw),f.options)).ignored,true);assert.equal(txOf(f,s.transactionId).status,'pending');
+});
+
+async function simulationFixture() {
+  const f=await fixture();
+  f.options.paymentMode='simulation';
+  delete f.options.generateIds;
+  f.options.fetch=async()=>{throw new Error('Simulation must not call an external gateway')};
+  return f;
+}
+
+test('Selective simulation keeps three provider gateways pending and completes only selected methods',async()=>{
+  for(const method of ['sepay','vnpay','stripe','momo','zalopay','paypal','apple-pay','swift']) {
+    const f=await fixture();
+    f.options.simulatedMethods='momo,zalopay,paypal,apple-pay,swift';
+    const s=await f.create({paymentMethod:method});
+    const simulated=!['sepay','vnpay','stripe'].includes(method);
+    assert.equal(s.status,simulated?'success':'pending');
+    assert.equal(s.isSimulated===true,simulated);
+    if(simulated)assert.equal(s.requestedPaymentMethod,method);
+  }
+  const f=await fixture();f.options.simulatedMethods='stripe';
+  await assert.rejects(f.create(),e=>e.code==='PAYMENT_MODE_INVALID');
+});
+
+test('Switching a pending provider order to a simulated method preserves order and fulfills once',async()=>{
+  const f=await fixture(),first=await f.create();
+  f.options.simulatedMethods='momo';
+  const params={userId:f.userId,orderId:first.orderId,paymentMethod:'momo',idempotencyKey:'mixed-retry-payment-001'};
+  const result=await retryPaymentSession(params,f.options);
+  assert.equal(result.orderId,first.orderId);assert.equal(result.status,'success');
+  assert.equal(result.requestedPaymentMethod,'momo');assert.equal(txOf(f,first.transactionId).status,'cancelled');
+  const again=await retryPaymentSession(params,f.options);
+  assert.equal(again.transactionId,result.transactionId);
+  assert.equal(f.db.tables.get('user_enrollments').length,1);
+});
+
+test('VNPay maps bank selections to NCB only on sandbox, preserving production selection',()=>{
+  const saved=process.env.VNP_URL;
+  try {
+    const params={transactionId:'GD2026103000000001',amount:500000};
+    process.env.VNP_URL='https://sandbox.vnpayment.vn/paymentv2/vpcpay.html';
+    for(const bankCode of ['VIETCOMBANK','BIDV','TECHCOMBANK','NCB']) {
+      assert.equal(new URL(createVnpayPaymentUrl({...params,bankCode})).searchParams.get('vnp_BankCode'),'NCB');
+    }
+    process.env.VNP_URL='https://pay.vnpay.vn/vpcpay.html';
+    assert.equal(new URL(createVnpayPaymentUrl({...params,bankCode:'BIDV'})).searchParams.get('vnp_BankCode'),'BIDV');
+  } finally {if(saved===undefined)delete process.env.VNP_URL;else process.env.VNP_URL=saved;}
+});
+
+test('Simulation completes every supported gateway choice without gateway configuration or receipt email',async()=>{
+  const keys=['SEPAY_BANK_ID','SEPAY_ACCOUNT_NO','BANK_ACCOUNT_HOLDER','SEPAY_WEBHOOK_KEY','STRIPE_SECRET_KEY','STRIPE_WEBHOOK_SECRET','VNP_TMN_CODE','VNP_HASH_SECRET','VNP_RETURN_URL'];
+  const saved=Object.fromEntries(keys.map(key=>[key,process.env[key]]));
+  try {
+    keys.forEach(key=>delete process.env[key]);
+    for(const method of ['sepay','vnpay','stripe','swift','momo','zalopay','paypal','apple-pay']) {
+      const f=await simulationFixture();
+      await f.db.collection('user_cart_items').insertOne({user_id:f.userId,course_id:f.courseId});
+      await f.db.collection('user_cart_items').insertOne({user_id:'another-user',course_id:f.courseId});
+      const s=await f.create({paymentMethod:method,courses:[{id:f.courseId,price:1}],voucherDiscount:499999});
+      assert.equal(s.status,'success');assert.equal(s.fulfillmentStatus,'completed');assert.equal(s.amount,500000);
+      assert.equal(s.paymentMethod,'simulation');assert.equal(s.executionMode,'simulation');assert.equal(s.isSimulated,true);
+      assert.equal(s.requestedPaymentMethod,method);assert.equal(s.paymentUrl,'');assert.equal(s.qrCodeUrl,undefined);
+      assert.match(s.orderId,/^DH\d{16}$/);assert.match(s.transactionId,/^GD\d{16}$/);
+      assert.match(s.invoiceCode,/^HD-\d{8}-[A-F0-9]{16}$/);
+      assert.equal(s.transferContent,`THINKUP ${s.transactionId}`);
+      assert.ok(s.paymentContent.includes(s.orderId)&&s.paymentContent.includes(s.transactionId));
+      assert.equal(txOf(f,s.transactionId).invoice_code,s.invoiceCode);
+      assert.equal(txOf(f,s.transactionId).is_simulated,true);assert.equal(txOf(f,s.transactionId).email_status,'suppressed');
+      assert.equal(f.db.tables.get('orders')[0].status,'completed');assert.equal(f.db.tables.get('orders')[0].is_simulated,true);
+      assert.equal(f.db.tables.get('user_enrollments').length,1);assert.equal(f.db.tables.get('user_courses').length,1);
+      assert.equal(f.db.tables.get('user_cart_items').length,1);assert.equal(f.db.tables.get('user_cart_items')[0].user_id,'another-user');
+      assert.equal(f.db.tables.get('notifications').length,1);assert.equal(f.sent,0);
+    }
+  } finally { for(const[key,value]of Object.entries(saved)){if(value===undefined)delete process.env[key];else process.env[key]=value;} }
+});
+
+test('Simulation generates independent unique order, transaction and stored invoice codes',async()=>{
+  const f=await simulationFixture(),orders=new Set(),transactions=new Set(),invoices=new Set();
+  const date=new Date(Date.now()+7*3600000).toISOString().slice(0,10).replaceAll('-','');
+  for(let i=0;i<12;i++) {
+    const id=`random-course-${i}`;
+    await f.db.collection('courses').insertOne({course_id:id,title:id,status:'published',price:1000,original_price:1000});
+    const s=await f.create({courseIds:[id],idempotencyKey:`simulation-random-${i}-key`});
+    assert.equal(s.orderId.slice(2,10),date);assert.equal(s.transactionId.slice(2,10),date);
+    orders.add(s.orderId);transactions.add(s.transactionId);invoices.add(s.invoiceCode);
+  }
+  assert.equal(orders.size,12);assert.equal(transactions.size,12);assert.equal(invoices.size,12);
+});
+
+test('Simulation concurrent requests and repeated reads preserve one invoice and one enrollment',async()=>{
+  const f=await simulationFixture();
+  const results=await Promise.all([f.create(),f.create(),f.create()]);
+  assert.equal(new Set(results.map(s=>s.orderId)).size,1);assert.equal(new Set(results.map(s=>s.invoiceCode)).size,1);
+  const again=await f.create();assert.equal(again.invoiceCode,results[0].invoiceCode);
+  await checkPaymentStatus(again.transactionId,f.userId,f.options);await completePaidOrder(again.transactionId,f.options);await recoverPayments(f.options);
+  assert.equal(f.db.tables.get('orders').length,1);assert.equal(f.db.tables.get('user_enrollments').length,1);
+  assert.equal(f.db.tables.get('notifications').length,1);assert.equal(f.sent,0);
+  assert.equal(txOf(f,again.transactionId).invoice_code,again.invoiceCode);
+  await assert.rejects(checkPaymentStatus(again.transactionId,'another-user',f.options),e=>e.status===404);
+  await assert.rejects(f.create({paymentMethod:'stripe'}),e=>e.code==='IDEMPOTENCY_CONFLICT');
+});
+
+test('Simulation preserves validation, DB prices, real voucher reservations and ownership rules',async()=>{
+  const f=await simulationFixture();
+  await assert.rejects(f.create({userId:'invalid'}),e=>e.status===401);
+  await assert.rejects(f.create({courseIds:[]}),e=>e.status===400);
+  await assert.rejects(f.create({courseIds:['missing']}),e=>e.code==='COURSE_UNAVAILABLE');
+  await assert.rejects(f.create({paymentMethod:'unknown'}),e=>e.status===400);
+  await assert.rejects(f.create({voucherCode:'WELCOME'}),e=>e.code==='VOUCHER_INVALID');
+  await f.db.collection('platform_coupons').insertOne({code:'REAL',status:'active',discount_type:'fixed',discount_value:100000,usage_count:0,usage_limit:1});
+  const s=await f.create({voucherCode:'REAL'});assert.equal(s.amount,400000);
+  await f.create({voucherCode:'REAL'});assert.equal(f.db.tables.get('platform_coupons')[0].usage_count,1);
+  await assert.rejects(f.create({idempotencyKey:'simulation-owned-course-key'}),e=>e.code==='COURSE_ALREADY_OWNED');
+  const inactive=await simulationFixture();inactive.db.tables.get('users')[0].status='inactive';
+  await assert.rejects(inactive.create(),e=>e.code==='ACCOUNT_UNAVAILABLE');
+});
+
+test('Simulation fulfillment failure never fabricates success and the same key recovers the paid order',async()=>{
+  const f=await simulationFixture();
+  await f.db.collection('user_cart_items').insertOne({user_id:f.userId,course_id:f.courseId});
+  f.db.fail=(name,op)=>{if(name==='user_enrollments'&&op==='updateOne')throw new Error('Enrollment write failed')};
+  await assert.rejects(f.create(),/Enrollment write failed/);
+  const tx=f.db.tables.get('payment_transactions').find(row=>row.transaction_id);
+  assert.equal(tx.status,'paid');assert.equal(tx.invoice_code,undefined);
+  assert.equal(f.db.tables.get('orders')[0].status,'paid');assert.equal(f.db.tables.get('user_enrollments')?.length||0,0);
+  assert.equal(f.db.tables.get('user_cart_items').length,1);assert.equal(f.sent,0);
+  assert.equal((await checkPaymentStatus(tx.transaction_id,f.userId,f.options)).status,'paid');
+  f.db.fail=null;const recovered=await f.create();assert.equal(recovered.status,'success');
+  assert.equal(recovered.transactionId,tx.transaction_id);assert.equal(f.db.tables.get('orders').length,1);
+  assert.ok(recovered.invoiceCode);assert.equal(f.db.tables.get('user_cart_items').length,0);
+});
+
+test('Simulation order-write failure rolls back the voucher and never grants access',async()=>{
+  const f=await simulationFixture();
+  await f.db.collection('platform_coupons').insertOne({code:'REAL',status:'active',discount_type:'fixed',discount_value:10000,usage_count:0,usage_limit:1});
+  f.db.fail=(name,op)=>{if(name==='orders'&&op==='insertOne')throw new Error('Order write failed')};
+  await assert.rejects(f.create({voucherCode:'REAL'}),/Order write failed/);
+  assert.equal(f.db.tables.get('orders')?.length||0,0);assert.equal(f.db.tables.get('user_enrollments')?.length||0,0);
+  assert.equal(f.db.tables.get('platform_coupons')[0].usage_count,0);
+});
+
+test('Simulation retries reserved identifier collisions and fails closed if allocation stays unavailable',async()=>{
+  const f=await fixture();f.options.paymentMode='simulation';
+  await f.db.collection('counters').insertOne({_id:'payment-code:DH2026103000000001'});
+  const s=await f.create();assert.equal(s.orderId,'DH2026103000000002');
+  const unavailable=await fixture();unavailable.options.paymentMode='simulation';
+  unavailable.db.fail=(name,op)=>{if(name==='counters'&&op==='insertOne')throw Object.assign(new Error('Collision'),{code:11000})};
+  await assert.rejects(unavailable.create(),e=>e.code==='PAYMENT_ID_UNAVAILABLE');
+  assert.equal(unavailable.db.tables.get('orders')?.length||0,0);
+});
+
+test('Simulation mode is server-controlled, defaults to live and cannot convert existing live requests',async()=>{
+  const f=await fixture();const live=await f.create({paymentMode:'simulation',is_simulated:true});
+  assert.equal(live.status,'pending');assert.equal(live.isSimulated,undefined);
+  f.options.paymentMode='simulation';await assert.rejects(f.create(),e=>e.code==='IDEMPOTENCY_CONFLICT');
+  assert.equal(txOf(f,live.transactionId).status,'pending');
+  f.options.paymentMode='invalid';await assert.rejects(f.create(),e=>e.code==='PAYMENT_MODE_INVALID');
+  const g=await fixture();const previous=process.env.PAYMENT_MODE;
+  try{process.env.PAYMENT_MODE='simulation';assert.equal((await g.create()).isSimulated,true);}finally{process.env.PAYMENT_MODE=previous;}
+});
+
+test('Simulation cannot be paid by a real gateway or retried as an unpaid order',async()=>{
+  const f=await simulationFixture(),s=await f.create();
+  await assert.rejects(f.pay(s,{gateway:'sepay'}),e=>e.code==='GATEWAY_MISMATCH');
+  await assert.rejects(retryPaymentSession({userId:f.userId,orderId:s.orderId,paymentMethod:'stripe',idempotencyKey:'simulation-retry-key-001'},f.options),e=>e.code==='ORDER_NOT_PAYABLE');
+  assert.equal(txOf(f,s.transactionId).status,'success');assert.equal(f.db.tables.get('orders').length,1);
+});
+
+test('Existing HTTP routes return a completed simulation with stored codes, auth and ownership enforced',async()=>{
+  const f=await simulationFixture(),app=express();app.use(express.json());
+  app.use('/api/payment',createPaymentRouter(express,(req,res,next)=>{if(!req.get('X-Test-User'))return res.sendStatus(401);req.userId=req.get('X-Test-User');next()},f.options));
+  const server=app.listen(0);await new Promise(resolve=>server.once('listening',resolve));
+  const base=`http://127.0.0.1:${server.address().port}/api/payment`;
+  try{
+    const init={method:'POST',headers:{'Content-Type':'application/json','Idempotency-Key':'simulation-http-key-001'},body:JSON.stringify({courseIds:[f.courseId],paymentMethod:'stripe'})};
+    assert.equal((await fetch(`${base}/create-session`,init)).status,401);
+    init.headers['X-Test-User']=f.userId;
+    const response=await fetch(`${base}/create-session`,init);assert.equal(response.status,201);
+    const {data}=await response.json();assert.equal(data.status,'success');assert.equal(data.fulfillmentStatus,'completed');assert.ok(data.invoiceCode);assert.equal(data.paymentUrl,'');
+    const status=await fetch(`${base}/status/${data.transactionId}`,{headers:{'X-Test-User':f.userId}});assert.equal(status.status,200);assert.equal((await status.json()).status,'success');
+    assert.equal((await fetch(`${base}/status/${data.transactionId}`,{headers:{'X-Test-User':'someone-else'}})).status,404);
+    const repeated=await fetch(`${base}/create-session`,init);assert.equal((await repeated.json()).data.invoiceCode,data.invoiceCode);
+    assert.equal((await fetch(`${base}/simulate-success`,{method:'POST'})).status,404);
+  }finally{await new Promise(resolve=>server.close(resolve));}
 });

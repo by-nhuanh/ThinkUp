@@ -51,6 +51,8 @@ export interface TransactionDetail {
       id: string;
       title: string;
       instructor: string;
+        instructorId?: string;
+        thumbnail_url?: string;
       price: string;
       originalPrice: string;
       badge: string;

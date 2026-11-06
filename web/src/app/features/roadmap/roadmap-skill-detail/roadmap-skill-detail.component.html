@@ -120,19 +120,31 @@
               <section class="rm-card skill-status">
                 <div class="skill-status__head">
                   <h2 class="skill-status__title">Trạng thái học tập của bạn</h2>
-                  <button type="button" class="rm-btn rm-btn--primary rm-btn--sm" (click)="openTest()">
+                  <button type="button" class="rm-btn rm-btn--primary rm-btn--sm" [disabled]="!stage()?.testAvailable || !roadmapService.isEnrolled(roadmapId)" [title]="!roadmapService.isEnrolled(roadmapId) ? 'Chọn lộ trình này trước khi làm bài test' : stage()?.testAvailable ? 'Làm bài test' : 'Bài kiểm tra đang được chuẩn bị'" (click)="openTest()">
                     Làm bài test
                   </button>
                 </div>
 
                 <p class="rm-base skill-status__hint">
-                  Trạng thái được cập nhật tự động từ bài test giai đoạn và tiến độ khóa học.
+                  @if (sk.manualStatusAllowed) {
+                    Bạn có thể tự chọn trạng thái trước khi có kết quả bài test hoặc khóa học.
+                  } @else if (sk.statusLockReason === 'REVIEW_REQUIRED') {
+                    Hoàn thành bộ flashcard ôn tập để gỡ trạng thái ôn tập bắt buộc.
+                  } @else if (sk.statusLockReason === 'LEARNING_RESULT_EXISTS') {
+                    Trạng thái được cập nhật theo kết quả bài test và tiến độ khóa học.
+                  } @else {
+                    Chọn lộ trình này để cập nhật trạng thái kỹ năng.
+                  }
                 </p>
 
                 <div class="skill-status__options" role="group" aria-label="Trạng thái hiện tại của kỹ năng">
                   @for (option of statusOptions; track option.id) {
-                    <span
-                      class="status-option status-option--readonly"
+                    <button
+                      type="button"
+                      class="status-option"
+                      [disabled]="!sk.manualStatusAllowed || savingStatus()"
+                      [attr.aria-pressed]="sk.status === option.id"
+                      (click)="changeStatus(option.id)"
                       [class.status-option--completed]="option.id === 'completed'"
                       [class.status-option--in-progress]="option.id === 'in-progress'"
                       [class.status-option--review]="option.id === 'review'"
@@ -157,7 +169,7 @@
                         }
                       </span>
                       {{ option.label }}
-                    </span>
+                    </button>
                   }
                 </div>
 
@@ -250,7 +262,7 @@
                   }
                   @if (courses().length === 0) {
                     <p class="courses-panel__empty rm-small">
-                      Chưa có khóa học gắn với kỹ năng này. Khám phá thêm các khóa học khác của ThinkUp.
+                      {{ coursesError() || 'Chưa có khóa học gợi ý cho kỹ năng này. Khám phá thêm các khóa học khác của ThinkUp.' }}
                     </p>
                   }
                 </div>

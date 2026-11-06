@@ -53,11 +53,12 @@ export function createPaymentRouter(express,requireAuth,options={}){
   });
   router.get('/vnpay/callback',async(req,res,next)=>{
     try{
-      const result=await verifyVnpayCallback(req.query,{...options,settle:false});
+      // Settle directly on callback if verified because localhost cannot receive server-to-server IPN from VNPay sandbox
+      const result=await verifyVnpayCallback(req.query,{...options,settle:true,settleOnCallback:true});
       const client=new URL((process.env.CLIENT_URL || 'http://localhost:4200').split(',')[0]);
       const target=new URL('/main/checkout/result',client);
       if(typeof req.query.vnp_TxnRef==='string')target.searchParams.set('transaction_id',req.query.vnp_TxnRef);
-      target.searchParams.set('status',result.isSuccess?'pending':'failed');
+      target.searchParams.set('status',result.isSuccess?'success':'failed');
       res.redirect(target.toString());
     }catch(error){next(error);}
   });

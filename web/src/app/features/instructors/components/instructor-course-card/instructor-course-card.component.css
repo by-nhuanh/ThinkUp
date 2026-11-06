@@ -37,6 +37,14 @@
   color: #ffffff;
 }
 
+.icard__cover-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .icard__badge {
   position: absolute;
   z-index: 2;
@@ -158,6 +166,20 @@
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
+}
+
+.icard__title {
+  margin: 10px 16px 2px;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 20px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 40px;
 }
 
 .icard__row {

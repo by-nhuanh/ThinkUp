@@ -3,9 +3,9 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
-    "watch": "ng build --watch --configuration development",
+    "start": "node scripts/write-google-config.mjs && ng serve",
+    "build": "node scripts/write-google-config.mjs && ng build",
+    "watch": "node scripts/write-google-config.mjs && ng build --watch --configuration development",
     "test": "ng test"
   },
   "private": true,
@@ -31,6 +31,7 @@
     "@angular/compiler-cli": "^21.2.0",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/qrcode": "^1.5.6",
+    "dotenv": "^16.4.7",
     "postcss": "^8.4.0",
     "tailwindcss": "^4.0.0",
     "typescript": "~5.9.2"

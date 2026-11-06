@@ -56,49 +56,46 @@ export class AccountSecurityComponent {
     return value.length > 0 && !isStrongPassword(value);
   });
 
-  readonly devices = [
-    {
-      name: 'Windows · Chrome',
-      badge: 'Thiết bị hiện tại',
-      badgeClass: 'bg-[#DCFCE7] text-[#16A34A]',
-      location: 'Hồ Chí Minh, Việt Nam',
-      ip: 'IP: 118.69.XXX.XXX',
-      status: 'Đang hoạt động',
-      statusClass: 'text-[#16A34A]',
-      action: '',
-    },
-    {
-      name: 'iPhone 13 · Safari',
-      badge: '',
-      badgeClass: '',
-      location: 'Hà Nội, Việt Nam',
-      ip: 'IP: 123.30.XXX.XXX',
-      time: '20/05/2024, 14:30',
-      status: 'Đăng xuất',
-      statusClass: 'text-[#EF4444] border-[#FCA5A5] bg-[#FDF2F8]',
-      action: 'Đăng xuất',
-    },
-    {
-      name: 'MacBook Air · Chrome',
-      badge: '',
-      badgeClass: '',
-      location: 'Đà Nẵng, Việt Nam',
-      ip: 'IP: 171.244.XXX.XXX',
-      time: '18/05/2024, 09:15',
-      status: 'Đăng xuất',
-      statusClass: 'text-[#EF4444] border-[#FCA5A5] bg-[#FDF2F8]',
-      action: 'Đăng xuất',
-    },
-  ];
+  private readonly overview = signal<import('../services/settings.service').AccountSecurityOverview | null>(null);
+  private readonly revoking = new Set<string>();
+  readonly devices = computed(() => (this.overview()?.sessions.items ?? []).map(d => ({
+    id: d.id, name: d.os + ' · ' + d.browser,
+    badge: d.isCurrent ? 'Thiết bị hiện tại' : '', badgeClass: d.isCurrent ? 'bg-[#DCFCE7] text-[#16A34A]' : '',
+    location: d.location, ip: 'IP: ' + d.maskedIp, time: new Date(d.lastSeenAt).toLocaleString('vi-VN'),
+    status: d.isCurrent ? 'Đang hoạt động' : 'Đăng xuất',
+    statusClass: d.isCurrent ? 'text-[#16A34A]' : 'text-[#EF4444] border-[#FCA5A5] bg-[#FDF2F8]',
+    action: d.isCurrent ? '' : 'Đăng xuất',
+  })));
+  readonly activities = computed(() => (this.overview()?.logs.items ?? []).map(log => ({
+    id: log.id, icon: log.type === 'PASSWORD_CHANGED' ? 'lock' : 'activity', title: log.title,
+    sub: [log.device.os, log.device.browser, log.device.location].filter(Boolean).join(' · '),
+    time: new Date(log.createdAt).toLocaleString('vi-VN'), dotClass: 'bg-[#3061EF]',
+  })));
 
-  readonly activities = [
-    { icon: 'activity', title: 'Đăng nhập thành công', sub: 'Windows · Chrome · Hồ Chí Minh, Việt Nam', time: 'Hôm nay, 10:45', dotClass: 'bg-[#16A34A]' },
-    { icon: 'lock', title: 'Đổi mật khẩu', sub: '· Hồ Chí Minh, Việt Nam', time: '20/05/2024, 09:30', dotClass: 'bg-[#3061EF]' },
-    { icon: 'mail', title: 'Thêm số điện thoại dự phòng', sub: '· Hồ Chí Minh, Việt Nam', time: '20/05/2024, 09:25', dotClass: 'bg-[#EF4444]' },
-  ];
+  constructor() { this.loadSecurity(); }
+
+  private loadSecurity(): void {
+    this.settingsService.getAccountSecurity().subscribe({
+      next: value => this.overview.set(value),
+      error: () => this.saveStatus.set('error'),
+    });
+  }
+
+  revokeDevice(id: string): void {
+    if (this.revoking.has(id)) return;
+    this.revoking.add(id);
+    this.settingsService.revokeSession(id).subscribe({
+      next: () => { this.revoking.delete(id); this.loadSecurity(); },
+      error: () => { this.revoking.delete(id); this.saveStatus.set('error'); },
+    });
+  }
 
   onSavePassword(): void {
     if (this.isSaving()) return;
+    const security = this.overview();
+    if (!security || !security.canChangePassword || (security.passwordLockedUntil && Date.parse(security.passwordLockedUntil) > Date.now())) {
+      this.saveStatus.set('error'); return;
+    }
     const payload = this.form();
     if (!payload.currentPassword || !payload.newPassword || !payload.confirmNewPassword) {
       this.saveStatus.set('error');
@@ -119,9 +116,12 @@ export class AccountSecurityComponent {
         this.saveStatus.set(res.success ? 'success' : 'error');
         if (res.success) {
           this.form.set({ currentPassword: '', newPassword: '', confirmNewPassword: '' });
+          this.loadSecurity();
         }
       },
-      error: () => {
+      error: (error) => {
+        if (error?.error?.code === 'CURRENT_PASSWORD_INVALID') this.form.update(value => ({ ...value, currentPassword: '' }));
+        this.loadSecurity();
         this.isSaving.set(false);
         this.saveStatus.set('error');
       },
@@ -134,7 +134,8 @@ export class AccountSecurityComponent {
 /** Mật khẩu hợp lệ: tối thiểu 8 ký tự, có chữ hoa, chữ thường và số. */
 function isStrongPassword(value: string): boolean {
   return (
-    value.length >= 8 &&
+    value.length >= 8 && value.length <= 32 && new TextEncoder().encode(value).length <= 72 && value.trim() === value &&
+    /[!@#$%^&*()_+={}\[\];':"\\|,.<>/?-]/.test(value) &&
     /[a-z]/.test(value) &&
     /[A-Z]/.test(value) &&
     /\d/.test(value)

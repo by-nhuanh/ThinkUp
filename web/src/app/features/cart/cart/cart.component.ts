@@ -101,19 +101,8 @@ export class CartComponent implements OnInit {
       if (item.courseId) inCart.add(item.courseId);
     }
 
-    const preferred = ['uiux-design', 'nodejs', 'docker', 'flutter'];
-    const pool = this.suggestionPool();
-    const ordered: Course[] = [];
-
-    for (const id of preferred) {
-      const found = pool.find(course => course.id === id);
-      if (found) ordered.push(found);
-    }
-    for (const course of pool) {
-      if (!ordered.some(item => item.id === course.id)) ordered.push(course);
-    }
-
-    return ordered.filter(course => !inCart.has(course.id)).slice(0, 4);
+    return this.courseService.filterByPreferences(this.suggestionPool(), this.auth.currentUser()?.preferences ?? null)
+      .filter(course => !inCart.has(course.id) && !course.isPurchased).slice(0, 4);
   });
 
   ngOnInit(): void {

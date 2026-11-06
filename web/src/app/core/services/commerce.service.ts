@@ -1,9 +1,9 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, defer, switchMap } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
-import { CartItem, TransactionRow, TransactionDetail } from '../models/commerce.model';
+import { CartItem, TransactionDetail } from '../models/commerce.model';
 import {
   ApiCartCourse,
   CartView,
@@ -11,14 +11,16 @@ import {
   CreatePaymentSessionPayload,
   PaymentSession,
   PaymentStatus,
+  PaymentReceipt,
   VoucherValidateResult,
 } from '../models/payment.model';
 import { Course } from '../models/course.model';
-import { MOCK_BILLING_DETAILS, MOCK_BILLING_EMAIL, MOCK_BILLING_ROWS } from '../data/mock/mock-billing';
+import { AuthService } from './auth.service';
 
 /** Chuyển khóa học của API giỏ hàng sang model dùng chung của app. */
 function mapApiCartCourse(course: ApiCartCourse): CartItem {
   const instructorName = course.instructor?.name || 'Giảng viên ThinkUp';
+  const instructorAvatar = course.instructor?.avatar_url || course.instructor?.avatar;
   return {
     id: course.course_id,
     courseId: course.course_id,
@@ -26,6 +28,17 @@ function mapApiCartCourse(course: ApiCartCourse): CartItem {
     title: course.title,
     displayTitle: course.title,
     instructor: instructorName,
+    instructorId: course.instructor?.id,
+    instructorProfile: {
+      id: course.instructor?.id,
+      name: instructorName,
+      title: '',
+      bio: '',
+      rating: course.rating,
+      studentsCount: course.total_students ?? 0,
+      coursesCount: 0,
+      avatar: instructorAvatar,
+    },
     instructorInitial: instructorName.charAt(0).toUpperCase(),
     rating: course.rating,
     ratingCount: course.total_reviews,
@@ -45,13 +58,40 @@ function mapApiCartCourse(course: ApiCartCourse): CartItem {
 export class CommerceService {
   private http = inject(HttpClient);
   private apiUrl = environment.apiUrl;
+  private readonly auth = inject(AuthService);
+
+  private readonly guardAccount = <T>(source: Observable<T>): Observable<T> => defer(() => {
+    const token = this.auth.getToken();
+    return source.pipe(map(value => {
+      if (token !== this.auth.getToken()) throw new Error('Phiên đăng nhập đã thay đổi.');
+      return value;
+    }));
+  });
+
+  clearAccountCart(): void {
+    this._cartItems.set([]);
+    this._checkoutIds.set([]);
+    this._checkoutVoucher.set(null);
+  }
+
+  mergeGuestCart(): Observable<CartItem[]> {
+    const ids = this.readGuestCourseIds();
+    if (!ids.length) return this.refreshCart();
+    return this.http.post<{ success: boolean; data: CartView }>(`${this.apiUrl}/user/cart/merge`,
+      { guestCourseIds: ids }, { withCredentials: true }).pipe(this.guardAccount, map(response => {
+        if (response.success !== true) throw new Error('Chưa đồng bộ được giỏ hàng.');
+        const items = this.applyCartPayload(response.data);
+        const remaining = this.readGuestCourseIds().filter(id => !ids.includes(id));
+        if (remaining.length) localStorage.setItem('thinkup_guest_cart_ids', JSON.stringify(remaining));
+        else localStorage.removeItem('thinkup_guest_cart_ids');
+        return items;
+      }));
+  }
 
   // State
   private _cartItems = signal<CartItem[]>([]);
   private _checkoutIds = signal<string[]>([]);
   private _checkoutVoucher = signal<CheckoutVoucher | null>(null);
-  private _transactions = signal<TransactionRow[]>([]);
-  private _transactionDetails = signal<Record<string, TransactionDetail>>({});
 
   readonly cartItems = this._cartItems.asReadonly();
   readonly cartCount = computed(() => this._cartItems().length);
@@ -63,57 +103,9 @@ export class CommerceService {
     if (ids.length === 0) return items; // Default to all if none selected
     return items.filter(item => ids.includes(item.id));
   });
-  // TODO(pre-deploy): Nhớ bỏ giao dịch mẫu khi lịch sử thanh toán lấy từ API theo tài khoản.
-  readonly transactions = () => {
-    const email = this.currentUserEmail();
-    const ownTransactions = this._transactions().filter(row =>
-      this._transactionDetails()[row.id]?.invoice.buyer.email.toLowerCase() === email,
-    );
-    return email === MOCK_BILLING_EMAIL
-      ? [...ownTransactions, ...MOCK_BILLING_ROWS.filter(row => !ownTransactions.some(own => own.id === row.id))]
-      : ownTransactions;
-  };
-
-  constructor() {
-    this.loadFromStorage();
-  }
-
-  private currentUserEmail(): string {
-    try {
-      const user = JSON.parse(localStorage.getItem('thinkup_current_user') || 'null') as { email?: string } | null;
-      return user?.email?.toLowerCase() || '';
-    } catch { return ''; }
-  }
-
-  private loadFromStorage(): void {
-    try {
-      const saved = localStorage.getItem('thinkup-commerce');
-      if (saved) {
-        const data = JSON.parse(saved);
-        if (data.state) {
-          if (data.state.cartCourses?.length) this._cartItems.set(data.state.cartCourses);
-          if (data.state.completedTransactions) this._transactions.set(data.state.completedTransactions);
-          if (data.state.transactionDetails) this._transactionDetails.set(data.state.transactionDetails);
-          return;
-        }
-      }
-      this._cartItems.set([]);
-    } catch {
-      this._cartItems.set([]);
-    }
-  }
-
   private persistState(): void {
     try {
-      const state = {
-        state: {
-          cartCourses: this._cartItems(),
-          checkoutCourseIds: this._checkoutIds(),
-          completedTransactions: this._transactions(),
-          transactionDetails: this._transactionDetails(),
-        }
-      };
-      localStorage.setItem('thinkup-commerce', JSON.stringify(state));
+      sessionStorage.setItem(`thinkup_checkout_${this.auth.currentUser()?.id || 'guest'}`, JSON.stringify(this._checkoutIds()));
     } catch {}
   }
 
@@ -124,6 +116,12 @@ export class CommerceService {
    * khi người dùng bỏ tick (yêu cầu TC-04: cập nhật tức thời).
    */
   loadCartView(params: { selectedIds?: string[]; voucherCode?: string } = {}): Observable<CartItem[]> {
+    if (!this._checkoutIds().length) {
+      try {
+        const ids = JSON.parse(sessionStorage.getItem(`thinkup_checkout_${this.auth.currentUser()?.id || 'guest'}`) || '[]');
+        if (Array.isArray(ids) && ids.every(id => typeof id === 'string')) this._checkoutIds.set(ids);
+      } catch {}
+    }
     let query = '';
     const search: string[] = [];
     if (params.selectedIds?.length) {
@@ -140,7 +138,10 @@ export class CommerceService {
 
     return this.http
       .get<{ success: boolean; data: CartView }>(`${this.apiUrl}/user/cart${query}`, { withCredentials: true })
-      .pipe(map(res => this.applyCartPayload(res.data)));
+      .pipe(this.guardAccount, map(res => {
+        if (res.success !== true) throw new Error('Không tải được giỏ hàng.');
+        return this.applyCartPayload(res.data);
+      }));
   }
 
   /** PATCH-like refresh: đồng bộ lại danh sách khóa học sau mỗi thao tác giỏ hàng. */
@@ -149,11 +150,11 @@ export class CommerceService {
   }
 
   private applyCartPayload(payload: unknown): CartItem[] {
-    const data = payload as CartView | { items?: ApiCartCourse[] } | null;
-    if (!data) return this._cartItems();
+    const data = payload as CartView | null;
+    if (!data) throw new Error('Phản hồi giỏ hàng không hợp lệ.');
 
-    if (Array.isArray(data.items)) {
-      const items = data.items.map(mapApiCartCourse);
+    if (Array.isArray(data.courses)) {
+      const items = data.courses.map(mapApiCartCourse);
       this._cartItems.set(items);
       this._checkoutIds.update(ids => ids.filter(id => items.some(item => item.id === id)));
       this.persistState();
@@ -167,17 +168,32 @@ export class CommerceService {
   }
 
   addToCart(courseId: string): Observable<{ success: boolean; data: CartItem[]; added: boolean }> {
-    return this.http.post<{ success: boolean; data: unknown; added: boolean }>(
+    if (!this.auth.isAuthenticated()) {
+      const ids = this.readGuestCourseIds();
+      const added = !ids.includes(courseId);
+      localStorage.setItem('thinkup_guest_cart_ids', JSON.stringify([...new Set([...ids, courseId])]));
+      return this.loadCartView().pipe(map(data => ({ success: true, data, added })));
+    }
+    return this.http.post<{ success: boolean; data: CartView }>(
       `${this.apiUrl}/user/cart`, { courseId }, { withCredentials: true }
-    ).pipe(
-      map(res => ({ success: res.success, data: this.applyCartPayload(res.data), added: res.added ?? true }))
+    ).pipe(this.guardAccount,
+      map(res => {
+        if (!res.success) throw new Error('Không thêm được khóa học vào giỏ hàng.');
+        const data = this.applyCartPayload(res.data);
+        if (!data.some(item => item.id === courseId)) throw new Error('Giỏ hàng chưa có khóa học này.');
+        return { success: true, data, added: true };
+      })
     );
   }
 
   removeFromCart(courseId: string): Observable<{ success: boolean; data: CartItem[] }> {
+    if (!this.auth.isAuthenticated()) {
+      localStorage.setItem('thinkup_guest_cart_ids', JSON.stringify(this.readGuestCourseIds().filter(id => id !== courseId)));
+      return this.loadCartView().pipe(map(data => ({ success: true, data })));
+    }
     return this.http.delete<{ success: boolean; data: unknown }>(
       `${this.apiUrl}/user/cart`, { body: { courseId }, withCredentials: true }
-    ).pipe(
+    ).pipe(this.guardAccount,
       map(res => ({ success: res.success, data: this.applyCartPayload(res.data) }))
     );
   }
@@ -215,30 +231,85 @@ export class CommerceService {
 
   /** POST /api/payment/create-session — khởi tạo phiên thanh toán thật. */
   createPaymentSession(payload: CreatePaymentSessionPayload): Observable<PaymentSession> {
+    return this.requestPaymentSession('create-session', { ...payload, courseIds: [...new Set(payload.courseIds)].sort() });
+  }
+
+  retryPaymentSession(orderId: string, paymentMethod: CreatePaymentSessionPayload['paymentMethod'], bankCode?: string): Observable<PaymentSession> {
+    return this.requestPaymentSession(`retry/${encodeURIComponent(orderId)}`, { paymentMethod, ...(bankCode ? { bankCode } : {}) });
+  }
+
+  resetPaymentAttempt(transactionId?: string): void {
+    if (transactionId && !this.isCurrentPaymentAttempt(transactionId)) return;
+    sessionStorage.removeItem(this.paymentAttemptStorageKey());
+  }
+
+  isCurrentPaymentAttempt(transactionId: string): boolean {
+    try { return JSON.parse(sessionStorage.getItem(this.paymentAttemptStorageKey()) || 'null')?.transactionId === transactionId; }
+    catch { return false; }
+  }
+
+  private paymentAttemptStorageKey(): string {
+    return `thinkup_payment_attempt_${this.auth.currentUser()?.id || 'guest'}`;
+  }
+
+  private requestPaymentSession(path: string, payload: object): Observable<PaymentSession> {
+    const signature = JSON.stringify({ path, payload });
+    const storageKey = this.paymentAttemptStorageKey();
+    let attempt: { signature: string; key: string; transactionId?: string } | null = null;
+    try { attempt = JSON.parse(sessionStorage.getItem(storageKey) || 'null'); } catch {}
+    if (attempt?.signature !== signature) {
+      attempt = { signature, key: `checkout_${crypto.randomUUID()}` };
+      sessionStorage.setItem(storageKey, JSON.stringify(attempt));
+    }
     return this.http
-      .post<{ success: boolean; data: PaymentSession }>(`${this.apiUrl}/payment/create-session`, payload, {
+      .post<{ success: boolean; data: PaymentSession }>(`${this.apiUrl}/payment/${path}`, payload, {
         withCredentials: true,
+        headers: { 'Idempotency-Key': attempt.key },
       })
-      .pipe(map(res => res.data));
+      .pipe(this.guardAccount, map(res => {
+        if (!res.success || !res.data?.transactionId || !res.data.orderId || !Number.isSafeInteger(res.data.amount)
+          || res.data.amount < 0 || res.data.currency !== 'VND') throw new Error('Phản hồi thanh toán không hợp lệ.');
+        const data = res.data;
+        if (data.paymentMethod === 'simulation' || data.isSimulated || data.executionMode === 'simulation') {
+          if (data.paymentMethod !== 'simulation' || data.isSimulated !== true || data.executionMode !== 'simulation'
+            || !data.paymentContent || !data.transferContent || data.requestedPaymentMethod !== (payload as { paymentMethod?: string }).paymentMethod
+            || (data.status === 'success' && (data.fulfillmentStatus !== 'completed' || !data.invoiceCode))) {
+            throw new Error('Không xác minh được kết quả thanh toán mô phỏng.');
+          }
+        }
+        const current = JSON.parse(sessionStorage.getItem(storageKey) || 'null');
+        if (current?.key === attempt.key) sessionStorage.setItem(storageKey, JSON.stringify({ ...attempt, transactionId: res.data.transactionId }));
+        return res.data;
+      }));
   }
 
   /** GET /api/payment/status/:id — dùng để polling trạng thái và đồng hồ đếm ngược. */
   getPaymentStatus(transactionId: string): Observable<PaymentStatus> {
     return this.http.get<PaymentStatus>(`${this.apiUrl}/payment/status/${encodeURIComponent(transactionId)}`, {
       withCredentials: true,
-    });
+    }).pipe(this.guardAccount, map(result => {
+      if (!result.success || result.transactionId !== transactionId) throw new Error('Không xác minh được giao dịch.');
+      return result;
+    }));
+  }
+
+  getPaymentReceipt(transactionId: string): Observable<PaymentReceipt> {
+    return this.http.get<TransactionDetail>(`${this.apiUrl}/user/billing/${encodeURIComponent(transactionId)}`).pipe(
+      this.guardAccount,
+      map(detail => {
+        if (detail.transactionCode !== transactionId || detail.status !== 'success' || !detail.invoice?.code || !detail.paymentMethod) {
+          throw new Error('Chưa lấy được chứng từ giao dịch đã hoàn tất.');
+        }
+        return { transactionId: detail.transactionCode, orderId: detail.id, invoiceCode: detail.invoice.code,
+          paymentContent: detail.paymentContent, transferContent: detail.payment.transferContent,
+          paymentMethod: detail.paymentMethod, isSimulated: detail.paymentMethod === 'simulation' };
+      }),
+    );
   }
 
   finalizeCheckout(): void {
-    const checkoutIds = this._checkoutIds();
-    this._cartItems.update(items => items.filter(item => !checkoutIds.includes(item.id)));
     this._checkoutIds.set([]);
     this.persistState();
   }
 
-  getTransactionDetail(id: string): TransactionDetail | undefined {
-    const email = this.currentUserEmail();
-    const detail = this._transactionDetails()[id] ?? (email === MOCK_BILLING_EMAIL ? MOCK_BILLING_DETAILS[id] : undefined);
-    return detail?.invoice.buyer.email.toLowerCase() === email ? detail : undefined;
-  }
 }

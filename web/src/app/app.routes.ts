@@ -1,3 +1,4 @@
+import { studyRoomEntryGuard } from './features/study-room/guards/study-room-entry.guard';
 import { Routes } from '@angular/router';
 import { onboardingRequiredGuard, onboardingCompletedGuard } from './core/guards/onboarding.guard';
 import { guestGuard } from './core/guards/guest.guard';
@@ -71,6 +72,7 @@ export const routes: Routes = [
       { path: 'settings/account-security', loadComponent: () => import('./features/settings/account-security/account-security.component').then(m => m.AccountSecurityComponent) },
       { path: 'settings/learning-options', loadComponent: () => import('./features/settings/learning-options/learning-options.component').then(m => m.LearningOptionsComponent) },
       { path: 'settings/notifications', loadComponent: () => import('./features/settings/notifications/notifications.component').then(m => m.NotificationsComponent) },
+      { path: 'notifications', loadComponent: () => import('./features/notifications/notification-center/notification-center.component').then(m => m.NotificationCenterComponent) },
       { path: 'settings/payment', loadComponent: () => import('./features/settings/payment/payment.component').then(m => m.PaymentComponent) },
       { path: 'my-courses/:courseId/review', loadComponent: () => import('./features/my-courses/review-form/review-form.component').then(m => m.ReviewFormComponent) },
       { path: 'my-courses/:courseId', loadComponent: () => import('./features/my-courses/course-dashboard/course-dashboard.component').then(m => m.CourseDashboardComponent) },
@@ -110,7 +112,7 @@ export const routes: Routes = [
     children: [
       { path: 'learn/:courseId', data: { hideFooter: true }, loadComponent: () => import('./features/learning/lesson-player/lesson-player.component').then(m => m.LessonPlayerComponent) },
       { path: 'study-room', loadComponent: () => import('./features/study-room/study-room-lobby/study-room-lobby.component').then(m => m.StudyRoomLobbyComponent) },
-      { path: 'study-room/:roomId', data: { hideShell: true }, loadComponent: () => import('./features/study-room/study-room-view/study-room-view.component').then(m => m.StudyRoomViewComponent) },
+      { path: 'study-room/:roomId', canActivate: [studyRoomEntryGuard], data: { hideShell: true }, loadComponent: () => import('./features/study-room/study-room-view/study-room-view.component').then(m => m.StudyRoomViewComponent) },
       { path: 'roadmap', loadComponent: () => import('./features/roadmap/roadmap-list/roadmap-list.component').then(m => m.RoadmapListComponent) },
       { path: 'roadmap/:id', loadComponent: () => import('./features/roadmap/roadmap-detail/roadmap-detail.component').then(m => m.RoadmapDetailComponent) },
       { path: 'roadmap/:roadmapId/test/:stageId', loadComponent: () => import('./features/roadmap/roadmap-test/roadmap-test.component').then(m => m.RoadmapTestComponent) },

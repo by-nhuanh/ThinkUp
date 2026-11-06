@@ -1,4 +1,6 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { catchError, distinctUntilChanged, finalize, map, of, switchMap } from 'rxjs';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   LucideArrowRight,
@@ -11,7 +13,6 @@ import {
   LucideLightbulb
 } from '@lucide/angular';
 import { Course } from '../../../core/models/course.model';
-import { MOCK_COURSES } from '../../../core/data/mock/mock-courses';
 import { CommerceService } from '../../../core/services/commerce.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { RoadmapSkillStatus, RoadmapStage } from '../models/roadmap.model';
@@ -60,12 +61,16 @@ export class RoadmapSkillDetailComponent implements OnInit {
   private readonly toastService = inject(ToastService);
   private readonly router = inject(Router);
 
-  private readonly params = inject(ActivatedRoute).snapshot.paramMap;
-  readonly roadmapId = this.params.get('roadmapId') ?? '';
-  readonly skillId = this.params.get('skillId') ?? '';
+  private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly params = toSignal(this.route.paramMap, { initialValue: this.route.snapshot.paramMap });
+  get roadmapId(): string { return this.params().get('roadmapId') ?? ''; }
+  get skillId(): string { return this.params().get('skillId') ?? ''; }
   readonly statusOptions = STATUS_OPTIONS;
   readonly loading = this.roadmapService.loading;
   readonly error = signal<string | null>(null);
+  private creatingFlashcard = false;
+  readonly savingStatus = signal(false);
 
   readonly roadmap = computed(() => this.roadmapService.getRoadmapById(this.roadmapId));
   readonly skillInfo = computed(() => this.roadmapService.getSkill(this.roadmapId, this.skillId));
@@ -93,19 +98,51 @@ export class RoadmapSkillDetailComponent implements OnInit {
     }
     return null;
   });
-  readonly courses = computed<Course[]>(() => {
-    const skill = this.skill();
-    if (!skill) return [];
-    return skill.courseIds
-      .map((id) => MOCK_COURSES.find((course) => course.id === id))
-      .filter((course): course is Course => Boolean(course))
-      .slice(0, 2);
-  });
+  readonly courses = signal<Course[]>([]);
+  readonly coursesError = signal<string | null>(null);
 
   ngOnInit(): void {
-    this.error.set(null);
-    this.roadmapService.loadRoadmap(this.roadmapId).subscribe({
-      error: () => this.error.set('Không tải được thông tin kỹ năng. Vui lòng thử lại sau.')
+    this.route.paramMap.pipe(
+      map(params => params.get('skillId') ?? ''),
+      distinctUntilChanged(),
+      switchMap(nodeId => {
+        this.courses.set([]);
+        this.coursesError.set(null);
+        return this.roadmapService.loadRecommendedCourses(nodeId).pipe(
+          catchError(() => {
+            this.coursesError.set('Không tải được khóa học gợi ý. Vui lòng thử lại sau.');
+            return of([] as Course[]);
+          })
+        );
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(courses => this.courses.set(courses));
+    this.route.paramMap.pipe(
+      map(params => params.get('roadmapId') ?? ''),
+      distinctUntilChanged(),
+      switchMap(id => {
+        this.error.set(null);
+        return this.roadmapService.loadRoadmap(id).pipe(
+          catchError(() => {
+            this.error.set('Không tải được thông tin kỹ năng. Vui lòng thử lại sau.');
+            return of(null);
+          })
+        );
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe();
+  }
+
+  changeStatus(status: RoadmapSkillStatus): void {
+    const skill = this.skill();
+    if (!skill?.manualStatusAllowed || this.savingStatus() || skill.status === status) return;
+    this.savingStatus.set(true);
+    this.roadmapService.setSkillStatus(this.roadmapId, skill.id, status).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => this.savingStatus.set(false))
+    ).subscribe({
+      next: () => this.toastService.showToast({ type: 'success', message: 'Đã lưu trạng thái kỹ năng.' }),
+      error: () => this.toastService.showToast({ type: 'warning', message: 'Không thể đổi trạng thái. Hãy tải lại; kỹ năng có thể đã có kết quả học hoặc yêu cầu ôn tập.' })
     });
   }
 
@@ -114,15 +151,18 @@ export class RoadmapSkillDetailComponent implements OnInit {
   }
 
   openTest(): void {
+    if (!this.stage()?.testAvailable) return;
     this.router.navigate(['/learning/roadmap', this.roadmapId, 'test', this.stage()?.id]);
   }
 
   createFlashcard(): void {
     const skill = this.skill();
-    if (!skill) return;
+    if (!skill || this.creatingFlashcard) return;
 
+    this.creatingFlashcard = true;
     this.flashcardService
-      .createFromRoadmap({ nodeId: skill.id, roadmapId: this.roadmapId, title: skill.title })
+      .createFromRoadmap({ nodeId: skill.id, roadmapId: this.roadmapService.getPersonalRoadmapId(this.roadmapId), title: skill.title })
+      .pipe(finalize(() => this.creatingFlashcard = false))
       .subscribe({
         next: result => {
           this.router.navigate(['/learning/flashcards', result.setId, 'edit'], {

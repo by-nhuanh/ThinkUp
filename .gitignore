@@ -51,3 +51,11 @@ next-env.d.ts
 # scripts
 scripts/
 server/scripts/
+
+# Roadmap contract and data preparation maintained with the feature
+!server/api_user_2.md
+!server/scripts/
+server/scripts/*
+!server/scripts/prepare_roadmap_data.js
+!server/scripts/seed_all_stage_questions.js
+!server/scripts/check_roadmaps.js

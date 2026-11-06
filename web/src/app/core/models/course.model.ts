@@ -15,6 +15,7 @@ export interface Course {
   studentsCount?: number;
   students?: string;
   duration?: string;
+  durationMinutes?: number;
   lessonsCount?: number;
   originalPrice: number;
   salePrice: number;
@@ -72,6 +73,8 @@ export interface CourseReviewSortOption {
 }
 
 export interface CourseReviewPage {
+  hasUserReviewed?: boolean;
+  myReview?: CourseReview | null;
   reviews: CourseReview[];
   pagination: {
     page: number;
@@ -146,7 +149,18 @@ export interface CoursePreview {
   resources: CoursePreviewResource[];
 }
 
+export interface LearningPlayback {
+  videoUrl: string;
+  sources: { quality: string; url: string }[];
+  captionTracks: { language: string; label: string; url: string }[];
+  selectedCaption: { language: string; label: string; url: string } | null;
+  effective: { videoQuality: string; playbackSpeed: number; subtitles: boolean; autoNext: boolean };
+  qualityFallback: boolean;
+  capabilities: { videoQuality: boolean; subtitles: boolean };
+  revision: number;
+}
 export interface LessonStream {
+  playback: LearningPlayback;
   lessonId: string;
   videoUrl: string;
   duration?: string;
@@ -171,6 +185,7 @@ export interface CourseChapter {
 }
 
 export interface CourseReview {
+  isMine?: boolean;
   id: string;
   author: string;
   avatar?: string;
@@ -214,6 +229,8 @@ export interface CourseListResponse {
 }
 
 export interface EnrolledCourse {
+  progress?: number;
+  resumeLesson?: { id: string; title: string } | null;
   id: string;
   title: string;
   instructor: string;
@@ -226,5 +243,6 @@ export interface EnrolledCourse {
   coverSubtitle?: string;
   badge?: string;
   lastStudiedAt?: string;
+  certificateCode?: string | null;
 }
 

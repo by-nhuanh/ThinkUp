@@ -116,8 +116,12 @@
                     </a>
 
                     <div class="cart-instructor">
-                      <span class="cart-instructor__avatar" aria-hidden="true">
-                        {{ item.instructorInitial || item.instructor.charAt(0) }}
+                      <span class="cart-instructor__avatar overflow-hidden" aria-hidden="true">
+                        @if (item.instructorProfile?.avatar) {
+                          <img [src]="item.instructorProfile?.avatar" [alt]="item.instructor" class="h-full w-full object-cover" />
+                        } @else {
+                          {{ item.instructorInitial || item.instructor.charAt(0) }}
+                        }
                       </span>
                       <span [appInstructorTrigger]="item.instructor">{{ item.instructor }}</span>
                     </div>
@@ -318,14 +322,17 @@
           @for (course of suggestions(); track course.id) {
             <article class="suggest-card">
               <div class="suggest-cover" [style.background]="coverGradient(course)" [class.is-light]="isLightCover(course)">
+                @if (course.thumbnailUrl) {
+                  <img [src]="course.thumbnailUrl" [alt]="course.title" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" />
+                }
                 <span class="art-badge" [class]="'art-badge ' + badgeClass(course.badge)">{{ course.badge || 'KHÓA HỌC' }}</span>
 
-                <div class="suggest-cover__text">
+                <div class="suggest-cover__text" [style.visibility]="course.thumbnailUrl ? 'hidden' : 'visible'">
                   <span class="suggest-cover__title">{{ coverTitle(course) }}</span>
                   <span class="suggest-cover__subtitle">{{ coverSubtitle(course) }}</span>
                 </div>
 
-                <span class="suggest-cover__deco" aria-hidden="true">{{ course.icon || course.instructorInitial }}</span>
+                @if (!course.thumbnailUrl) { <span class="suggest-cover__deco" aria-hidden="true">{{ course.icon || course.instructorInitial }}</span> }
 
                 <button
                   type="button"
@@ -344,11 +351,17 @@
                 <a class="suggest-title" [routerLink]="['/main/courses', course.id]">{{ course.title }}</a>
 
                 <div class="suggest-instructor">
-                  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                    <circle cx="10" cy="6.6" r="3" stroke="currentColor" stroke-width="1.4" />
-                    <path d="M4.3 16.4c.5-2.5 2.8-4.1 5.7-4.1s5.2 1.6 5.7 4.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
-                  </svg>
-                  <span [appInstructorTrigger]="course.instructor">{{ course.instructor }}</span>
+                  <span class="grid h-5 w-5 shrink-0 place-items-center overflow-hidden rounded-full bg-[#E2E8F0] text-[#90A1B9]">
+                    @if (course.instructorProfile?.avatar) {
+                      <img [src]="course.instructorProfile?.avatar" [alt]="course.instructor" class="h-full w-full object-cover" />
+                    } @else {
+                      <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" class="h-3 w-3">
+                        <circle cx="10" cy="6.6" r="3" stroke="currentColor" stroke-width="1.4" />
+                        <path d="M4.3 16.4c.5-2.5 2.8-4.1 5.7-4.1s5.2 1.6 5.7 4.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+                      </svg>
+                    }
+                  </span>
+                  <span [appInstructorTrigger]="course.instructorId || course.instructor">{{ course.instructor }}</span>
                 </div>
 
                 <div class="suggest-rating">

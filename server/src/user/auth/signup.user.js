@@ -8,6 +8,14 @@ import { issueUserSession } from '../account-security/account-security.user.js';
 
 const VERIFICATION_TOKEN_EXPIRE = '12h'; // BR-AUTH-06: thời hạn tối đa 12 giờ
 
+function buildVerificationLink(token) {
+  const base = process.env.NODE_ENV === 'production'
+    ? (process.env.API_URL || process.env.SERVER_URL || process.env.CLIENT_URL || 'https://think-up-edu.vercel.app')
+    : `http://localhost:${process.env.PORT || 5000}`;
+  const apiOrigin = base.trim().replace(/\/+$/, '').replace(/\/api$/i, '');
+  return `${apiOrigin}/api/auth/verify?token=${encodeURIComponent(token)}`;
+}
+
 export function authError(message, status = 400, code = 'INVALID_INPUT', field) {
   return Object.assign(new Error(message), { status, code, ...(field ? { field } : {}) });
 }
@@ -347,10 +355,7 @@ export async function registerUser(
   );
 
   const clientUrl = process.env.CLIENT_URL || 'https://think-up-edu.vercel.app';
-  const apiBase = process.env.API_URL || process.env.SERVER_URL;
-  const verificationLink = apiBase
-    ? `${apiBase}/api/auth/verify?token=${encodeURIComponent(verificationToken)}`
-    : `${clientUrl}/api/auth/verify?token=${encodeURIComponent(verificationToken)}`;
+  const verificationLink = buildVerificationLink(verificationToken);
 
   // 11. Gửi email kích hoạt
   if (!options.skipEmail) {
@@ -472,10 +477,7 @@ export async function resendVerificationLink({ email } = {}, options = {}) {
     VERIFICATION_TOKEN_EXPIRE
   );
   const clientUrl = process.env.CLIENT_URL || 'https://think-up-edu.vercel.app';
-  const apiBase = process.env.API_URL || process.env.SERVER_URL;
-  const verificationLink = apiBase
-    ? `${apiBase}/api/auth/verify?token=${encodeURIComponent(verificationToken)}`
-    : `${clientUrl}/api/auth/verify?token=${encodeURIComponent(verificationToken)}`;
+  const verificationLink = buildVerificationLink(verificationToken);
 
   if (!options.skipEmail) {
     await deliverAuthEmail({
@@ -558,7 +560,8 @@ export async function authenticateSocialUser(provider, params, options = {}) {
     user = updated;
   }
   const { accessToken, refreshToken } = await issueUserSession(user,
-    { ip: options.ip, userAgent: options.userAgent, rememberMe: params.rememberMe }, { ...options, db });
+    { ip: options.ip, userAgent: options.userAgent, rememberMe: params.rememberMe,
+      city: options.city, region: options.region, country: options.country }, { ...options, db });
   return {
     message: 'Xác thực tài khoản thành công!', accessToken, refreshToken, token: accessToken,
     user: { id: user._id.toString(), studentId: user.student_id || null, name: user.full_name,

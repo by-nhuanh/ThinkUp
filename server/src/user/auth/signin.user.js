@@ -107,7 +107,7 @@ export async function loginWithCredentials({ email, password, rememberMe = false
   );
 
   const { accessToken, refreshToken } = await issueUserSession(user,
-    { rememberMe, ip: options.ip, userAgent: options.userAgent }, { ...options, db });
+    { rememberMe, ip: options.ip, userAgent: options.userAgent, city: options.city, region: options.region, country: options.country }, { ...options, db });
 
   return {
     message: 'Đăng nhập thành công!',

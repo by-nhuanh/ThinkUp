@@ -5,7 +5,7 @@
  * - `not-started`: Ô xám – chưa học.
  * - `in-progress`: Ô xanh – đang học.
  * - `review`: Ô cam – phát hiện lỗ hổng, cần ôn tập Flashcard / làm lại bài củng cố.
- * - `completed`: Ô xanh tick – đã đạt chuẩn (mastery >= 70%).
+ * - `completed`: Ô xanh tick – tự đánh dấu trước đánh giá, hoặc đạt chuẩn theo kết quả hệ thống.
  */
 export type RoadmapSkillStatus = 'not-started' | 'in-progress' | 'review' | 'completed';
 
@@ -26,6 +26,8 @@ export interface RoadmapSkill {
   /** Mô tả đầy đủ hiển thị ở trang chi tiết kỹ năng. */
   summary: string;
   status: RoadmapSkillStatus;
+  manualStatusAllowed?: boolean;
+  statusLockReason?: string | null;
   /** Điểm năng lực thực tế theo EWMA (0 - 100). */
   mastery: number;
   difficulty: RoadmapDifficulty;
@@ -40,6 +42,8 @@ export interface RoadmapSkill {
 }
 
 export interface RoadmapStage {
+  apiProgress?: RoadmapStageProgress;
+  testAvailable?: boolean;
   id: string;
   number: number;
   name: string;
@@ -53,6 +57,7 @@ export interface RoadmapStage {
 }
 
 export interface RoadmapDetail {
+  apiProgress?: RoadmapProgress;
   id: string;
   title: string;
   desc: string;

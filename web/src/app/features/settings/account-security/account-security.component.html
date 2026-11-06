@@ -123,7 +123,7 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-[#F1F5F9]">
-              @for (d of devices; track d.name) {
+              @for (d of devices(); track d.id) {
                 <tr class="hover:bg-[#F9F9FF]">
                   <td class="py-4 text-[#191B23] text-[13px] leading-5">
                     <div class="flex items-center gap-3">
@@ -149,7 +149,7 @@
                   <td class="py-4 text-right pr-2 text-[#62748E] text-[12px] leading-[16px]">{{ d.time || '-' }}</td>
                   <td class="py-4 text-right pr-2">
                     @if (d.action) {
-                      <button type="button" class="px-2 py-[6px] rounded-[6px] {{ d.statusClass }} text-[11px] font-semibold border transition hover:opacity-90">{{ d.action }}</button>
+                      <button type="button" (click)="revokeDevice(d.id)" class="px-2 py-[6px] rounded-[6px] {{ d.statusClass }} text-[11px] font-semibold border transition hover:opacity-90">{{ d.action }}</button>
                     } @else {
                       <span class="text-[#16A34A] text-[12px] leading-[16px]">{{ d.status }}</span>
                     }
@@ -169,7 +169,7 @@
         </div>
 
         <div class="mt-4 flex flex-col gap-3">
-          @for (a of activities; track a.title) {
+          @for (a of activities(); track a.id) {
             <div class="flex items-start gap-3 p-2.5 rounded-[8px] hover:bg-[#F9F9FF] transition">
               <div class="mt-0.5 flex h-[6px] w-[6px] shrink-0 rounded-full {{ a.dotClass }}"></div>
               <div class="min-w-0 flex flex-col gap-0.5">

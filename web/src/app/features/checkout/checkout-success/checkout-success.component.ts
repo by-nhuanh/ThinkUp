@@ -32,9 +32,15 @@ export class CheckoutSuccessComponent implements OnInit {
   amount = signal(0);
   paidAt = signal<string | null>(null);
   errorMessage = signal('');
+  readonly isSimulated = signal<boolean | null>(null);
+  readonly invoiceCode = signal('');
+  readonly paymentContent = signal('');
+  readonly receiptError = signal('');
 
   private pollSub?: Subscription;
   private finalized = false;
+  private verifiedStatus: PaymentStatus['status'] | null = null;
+  private verificationUnavailable = false;
 
   readonly title = computed(() => {
     switch (this.state()) {
@@ -54,13 +60,14 @@ export class CheckoutSuccessComponent implements OnInit {
   readonly message = computed(() => {
     switch (this.state()) {
       case 'success':
+        if (this.isSimulated() === null) return 'Khóa học đã được cấp vào tài khoản của bạn.';
         return 'Cảm ơn bạn đã tin tưởng ThinkUp. Khóa học đã được thêm vào tài khoản và sẵn sàng để bạn bắt đầu học.';
       case 'failed':
         return this.errorMessage() || 'Giao dịch chưa thể hoàn tất. Bạn có thể thử lại hoặc chọn phương thức thanh toán khác.';
       case 'expired':
         return 'Thời gian giữ đơn đã kết thúc. Vui lòng quay lại giỏ hàng và tạo phiên thanh toán mới.';
       case 'pending':
-        return 'Hệ thống đã ghi nhận yêu cầu thanh toán và đang chờ ngân hàng xác nhận. Trang sẽ tự cập nhật khi có kết quả.';
+        return this.errorMessage() || 'Hệ thống đang chờ ngân hàng xác nhận. Trang sẽ tự cập nhật khi có kết quả.';
       default:
         return 'Vui lòng chờ trong giây lát, ThinkUp đang kiểm tra trạng thái giao dịch với cổng thanh toán.';
     }
@@ -88,12 +95,20 @@ export class CheckoutSuccessComponent implements OnInit {
     this.pollSub = timer(0, 4000)
       .pipe(
         switchMap(() =>
-          this.commerce.getPaymentStatus(id).pipe(catchError(() => of(null))),
+          this.commerce.getPaymentStatus(id).pipe(catchError(error => {
+            this.verificationUnavailable = [401, 403, 404].includes(error.status);
+            if (this.verificationUnavailable) {
+              this.stopPolling(); this.state.set('failed');
+              this.errorMessage.set('Không thể truy cập giao dịch. Vui lòng kiểm tra phiên đăng nhập và mã giao dịch.');
+            }
+            return of(null);
+          })),
         ),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe(status => {
         if (!status) {
+          if (this.verificationUnavailable) return;
           this.state.set('pending');
           this.errorMessage.set('Kết nối xác minh tạm thời gián đoạn. Hệ thống sẽ tự thử lại.');
           return;
@@ -104,25 +119,54 @@ export class CheckoutSuccessComponent implements OnInit {
 
   checkNow(): void {
     const id = this.transactionId();
-    if (!id || this.state() === 'checking') return;
+    if (!id) return;
+
+    this.state.set('checking');
+    this.errorMessage.set('');
 
     this.commerce
       .getPaymentStatus(id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: status => this.handleStatus(status),
-        error: () => this.errorMessage.set('Không thể kiểm tra trạng thái giao dịch lúc này. Vui lòng thử lại sau.'),
+        error: (err: any) => {
+          this.state.set('pending');
+          this.errorMessage.set(
+            err?.status === 404
+              ? 'Không tìm thấy thông tin giao dịch hoặc phiên đăng nhập không trùng khớp.'
+              : 'Không thể kiểm tra trạng thái giao dịch lúc này. Vui lòng thử lại sau.'
+          );
+        },
       });
   }
 
   private handleStatus(status: PaymentStatus): void {
+    if (this.finalized) return;
+    this.verificationUnavailable = false;
+    this.verifiedStatus = status.status;
+    this.errorMessage.set('');
     if (status.orderId) this.orderId.set(status.orderId);
-    if (status.amount) this.amount.set(status.amount);
+    this.amount.set(status.amount);
     if (status.paidAt) this.paidAt.set(status.paidAt);
 
     switch (status.status) {
       case 'success':
-        this.finishSuccess(status);
+        if (status.fulfillmentStatus === 'completed') this.finishSuccess(status);
+        else { this.state.set('pending'); this.errorMessage.set('Đã nhận tiền, đang xác nhận quyền học. Không thanh toán lại.'); }
+        break;
+      case 'paid':
+        this.state.set('pending');
+        this.errorMessage.set('Đã nhận tiền, đang cấp quyền học. Không thanh toán lại.');
+        break;
+      case 'needs_review':
+        this.state.set('pending');
+        this.errorMessage.set('Giao dịch cần đối soát. Vui lòng liên hệ hỗ trợ và không thanh toán lại.');
+        this.stopPolling();
+        break;
+      case 'cancelled':
+        this.stopPolling();
+        this.state.set('failed');
+        this.errorMessage.set('Lần thanh toán này đã được thay thế. Không sử dụng lại mã QR hoặc đường dẫn cũ.');
         break;
       case 'failed':
         this.stopPolling();
@@ -148,8 +192,22 @@ export class CheckoutSuccessComponent implements OnInit {
 
     if (!this.finalized) {
       this.finalized = true;
-      this.commerce.finalizeCheckout();
-      this.commerce.setCheckoutVoucher(null);
+      this.commerce.getPaymentReceipt(status.transactionId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: receipt => {
+          this.isSimulated.set(receipt.isSimulated);
+          this.invoiceCode.set(receipt.invoiceCode);
+          this.paymentContent.set(receipt.paymentContent);
+        },
+        error: () => this.receiptError.set('Đơn đã hoàn tất nhưng chưa tải được chi tiết hóa đơn. Bạn có thể kiểm tra lại trong lịch sử giao dịch.'),
+      });
+      if (this.commerce.isCurrentPaymentAttempt(status.transactionId)) {
+        this.commerce.resetPaymentAttempt(status.transactionId);
+        this.commerce.finalizeCheckout();
+        this.commerce.setCheckoutVoucher(null);
+      }
+      this.commerce.refreshCart().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        error: () => this.errorMessage.set('Thanh toán thành công nhưng chưa tải lại được giỏ hàng.'),
+      });
     }
   }
 
@@ -171,6 +229,11 @@ export class CheckoutSuccessComponent implements OnInit {
   }
 
   retryPayment(): void {
+    if (!this.verifiedStatus || this.verifiedStatus === 'paid' || this.verifiedStatus === 'needs_review' || this.verifiedStatus === 'cancelled') {
+      this.errorMessage.set('Cần xác minh trạng thái giao dịch trước khi thanh toán lại.');
+      return;
+    }
+    this.commerce.resetPaymentAttempt(this.transactionId());
     void this.router.navigate(['/main/checkout']);
   }
 

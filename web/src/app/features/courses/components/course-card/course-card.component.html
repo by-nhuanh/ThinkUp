@@ -36,6 +36,9 @@
       </svg>
     </button>
 
+    @if (coverUrl) {
+      <img [src]="coverUrl" [alt]="course.title" loading="lazy" class="h-full w-full object-cover" (error)="failedThumbnail = course.thumbnailUrl || ''" />
+    } @else {
     <div class="flex h-full items-center gap-4 px-6">
       @if (getCoverMarkKind(); as mark) {
         @if (mark === 'ring') {
@@ -61,6 +64,7 @@
         }
       </div>
     </div>
+    }
   </div>
 
   <!-- Course information -->
@@ -70,11 +74,15 @@
     </h3>
 
     <div class="mb-2 flex items-center gap-2">
-      <span class="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#E2E8F0] text-[#90A1B9]">
-        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.17" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-          <circle cx="12" cy="7" r="4" />
-        </svg>
+      <span class="grid h-6 w-6 shrink-0 place-items-center overflow-hidden rounded-full bg-[#E2E8F0] text-[#90A1B9]">
+        @if (course.instructorProfile?.avatar) {
+          <img [src]="course.instructorProfile?.avatar" [alt]="course.instructor" class="h-full w-full object-cover" />
+        } @else {
+          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.17" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+        }
       </span>
       <span class="min-w-0 flex-1 truncate text-[12px] leading-4 text-[#45556C]" [appInstructorTrigger]="instructorRef">{{ course.instructor }}</span>
       @if (course.level) {
@@ -145,9 +153,14 @@
         <button
           type="button"
           (click)="$event.stopPropagation(); addToCart()"
+          [disabled]="isPurchased() || addingCart()"
+          [attr.aria-busy]="addingCart()"
+          [attr.title]="isPurchased() ? 'Khóa học đã mua' : addingCart() ? 'Đang cập nhật giỏ hàng...' : isInCart() ? 'Xóa khỏi giỏ hàng' : 'Thêm vào giỏ hàng'"
+          [class.animate-pulse]="addingCart()"
+          (keydown.enter)="$event.stopPropagation()"
           class="grid h-7 w-7 place-items-center rounded-[4px] border border-[#E2E8F0] transition-colors"
-          [ngClass]="isInCart() ? 'bg-[#2B7FFF] text-white hover:bg-[#1C66DF]' : 'bg-white text-[#2B7FFF] hover:bg-[#EFF6FF]'"
-          [attr.aria-label]="isInCart() ? 'Đã có trong giỏ hàng' : 'Thêm vào giỏ hàng'"
+          [ngClass]="isPurchased() ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60' : isInCart() ? 'bg-[#2B7FFF] text-white hover:bg-[#1C66DF]' : 'bg-white text-[#2B7FFF] hover:bg-[#EFF6FF]'"
+          [attr.aria-label]="isPurchased() ? 'Khóa học đã mua' : isInCart() ? 'Xóa khỏi giỏ hàng' : 'Thêm vào giỏ hàng'"
         >
           <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.17" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <circle cx="8" cy="21" r="1" />

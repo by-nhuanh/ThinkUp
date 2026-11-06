@@ -1,5 +1,7 @@
-import { Component, computed, inject } from '@angular/core';
-import { Router } from '@angular/router';
+import { Component, DestroyRef, computed, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router } from '@angular/router';
+import { ToastService } from '../../../core/services/toast.service';
 import {
   LucideChartColumn,
   LucideRoute,
@@ -27,8 +29,23 @@ interface CompleteValue {
 export class RoadmapSurveyCompleteComponent {
   private readonly testService = inject(RoadmapTestService);
   private readonly router = inject(Router);
+  private readonly params = inject(ActivatedRoute).snapshot.paramMap;
+  private readonly toast = inject(ToastService);
+  private readonly destroyRef = inject(DestroyRef);
 
-  readonly submission = computed(() => this.testService.lastSubmission());
+  ngOnInit(): void {
+    const roadmapId = this.params.get('roadmapId');
+    const stageId = this.params.get('stageId');
+    if (!roadmapId || !stageId) return;
+    this.testService.loadLatestSubmission(roadmapId, stageId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      error: () => this.toast.showToast({ type: 'warning', message: 'Không tải được lịch sử bài test. Vui lòng thử lại.' }),
+    });
+  }
+
+  readonly submission = computed(() => {
+    const result = this.testService.lastSubmission();
+    return result?.roadmapId === this.params.get('roadmapId') && result.stageId === this.params.get('stageId') ? result : null;
+  });
   readonly roadmapId = computed(() => this.submission()?.roadmapId ?? '');
   readonly score = computed(() => this.submission()?.result.score ?? 0);
 

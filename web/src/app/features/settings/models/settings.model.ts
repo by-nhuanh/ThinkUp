@@ -21,6 +21,8 @@ export interface LearningOptions {
   playbackSpeed: string;
   downloadQuality: string;
   downloadLocation: string;
+  subtitles: boolean;
+  autoNext: boolean;
 }
 
 /** Giá trị mặc định dùng cho trạng thái cục bộ và nút "Khôi phục cài đặt mặc định". */
@@ -31,9 +33,11 @@ export const DEFAULT_LEARNING_OPTIONS: LearningOptions = {
   playbackSpeed: '1.0',
   downloadQuality: 'high',
   downloadLocation: 'downloads',
+  subtitles: false,
+  autoNext: true,
 };
 
-export type DndDuration = '15' | '1' | '8' | '24' | 'until';
+export type DndDuration = '15' | '1' | '8' | '24' | 'until' | null;
 
 export interface NotificationPrefs {
   web: boolean;
@@ -59,7 +63,7 @@ export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
   community: true,
   courseUpdates: true,
   marketing: false,
-  dnd: '24',
+  dnd: null,
 };
 
 export interface PaymentMethod {

@@ -70,12 +70,14 @@
             [class]="review.mine ? 'border-[#155DFC] bg-[#EEF6FF]' : 'border-[#E2E8F0] bg-white'"
           >
             <div class="flex flex-wrap items-start gap-3">
-              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#E2E8F0] text-[12px] font-bold text-[#475569]">{{ review.initials }}</span>
               <div class="min-w-0 flex-1">
                 @if (review.mine) {
-                  <p class="text-[10px] font-bold uppercase tracking-wide text-[#155DFC]">Đánh giá của bạn</p>
+                  <p class="text-[10px] font-bold uppercase tracking-wide text-[#62748E]">ĐÁNH GIÁ CỦA BẠN</p>
                 }
-                <p class="text-[13px] font-semibold text-[#0F172B]">{{ review.author }}</p>
+                <div class="flex items-center gap-2" [class.mt-1]="review.mine">
+                  <svg lucideCircleUser class="h-5 w-5 text-[#0F172B]" aria-hidden="true"></svg>
+                  <p class="text-[14px] font-semibold text-[#0F172B]">{{ review.mine ? 'Bạn' : review.author }}</p>
+                </div>
               </div>
               <div class="flex items-center gap-1">
                 @for (star of stars(review.rating); track $index) {

@@ -1,4 +1,6 @@
 import { Component, Input, inject } from '@angular/core';
+import { finalize } from 'rxjs';
+import { ToastService } from '../../../../core/services/toast.service';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { Course } from '../../../../core/models/course.model';
@@ -21,6 +23,9 @@ export class InstructorCourseCardComponent {
   @Input({ required: true }) course!: Course;
 
   private router = inject(Router);
+  private readonly toast = inject(ToastService);
+  private savingWishlist = false;
+  private savingCart = false;
   private favoritesService = inject(FavoritesService);
   private commerceService = inject(CommerceService);
 
@@ -87,7 +92,11 @@ export class InstructorCourseCardComponent {
   }
 
   toggleWishlist(): void {
-    this.favoritesService.toggleFavorite(this.course).subscribe();
+    if (this.savingWishlist) return;
+    this.savingWishlist = true;
+    this.favoritesService.toggleFavorite(this.course).pipe(finalize(() => this.savingWishlist = false)).subscribe({
+      error: () => this.toast.showToast({ type: 'error', message: 'Không cập nhật được yêu thích. Vui lòng thử lại.' }),
+    });
   }
 
   addToCart(): void {
@@ -95,7 +104,11 @@ export class InstructorCourseCardComponent {
       this.router.navigate(['/main/cart']);
       return;
     }
-    this.commerceService.addToCart(this.course.id).subscribe();
+    if (this.savingCart) return;
+    this.savingCart = true;
+    this.commerceService.addToCart(this.course.id).pipe(finalize(() => this.savingCart = false)).subscribe({
+      error: () => this.toast.showToast({ type: 'error', message: 'Không thêm được khóa học vào giỏ hàng. Vui lòng thử lại.' }),
+    });
   }
 
   openCourse(): void {

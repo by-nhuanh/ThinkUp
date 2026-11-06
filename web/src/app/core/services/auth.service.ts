@@ -28,6 +28,7 @@ interface BackendLoginResponse {
 interface BackendMessageResponse {
   message: string;
   email?: string;
+  accountExists?: boolean;
   resetToken?: string;
 }
 
@@ -52,7 +53,9 @@ export class AuthService {
   }
 
   isAuthenticated(): boolean {
-    return !!this.getToken() && !!this.userState();
+    // Always read the signal so computed header state tracks login even without a token yet.
+    const user = this.userState();
+    return !!this.getToken() && !!user;
   }
 
   getToken(): string | null {
@@ -66,6 +69,33 @@ export class AuthService {
       tap(response => this.saveSession(response, !!credentials.rememberMe)),
       catchError(error => this.handleError(error))
     );
+  }
+
+  loginWithGoogle(idToken: string, rememberMe = false): Observable<AuthResponse> {
+    return this.http.post<BackendLoginResponse>(`${this.apiUrl}/auth/google/login`, { idToken, rememberMe }).pipe(
+      map(response => this.mapLoginResponse(response)),
+      tap(response => this.saveSession(response, rememberMe)),
+      catchError(error => this.handleError(error))
+    );
+  }
+
+  signUpWithGoogle(idToken: string, rememberMe = false): Observable<AuthResponse> {
+    return this.http.post<BackendLoginResponse>(`${this.apiUrl}/auth/google/signup`, { idToken, rememberMe }).pipe(
+      map(response => this.mapLoginResponse(response)),
+      tap(response => this.saveSession(response, rememberMe)),
+      catchError(error => this.handleError(error))
+    );
+  }
+
+  loginWithFacebook(accessToken: string, rememberMe = false): Observable<AuthResponse> {
+    return this.http.post<BackendLoginResponse>(this.apiUrl + '/auth/facebook/login', { accessToken, rememberMe }).pipe(
+      map(response => this.mapLoginResponse(response)), tap(response => this.saveSession(response, rememberMe)),
+      catchError(error => this.handleError(error)));
+  }
+  signUpWithFacebook(accessToken: string): Observable<AuthResponse> {
+    return this.http.post<BackendLoginResponse>(this.apiUrl + '/auth/facebook/signup', { accessToken, rememberMe: false }).pipe(
+      map(response => this.mapLoginResponse(response)), tap(response => this.saveSession(response, false)),
+      catchError(error => this.handleError(error)));
   }
 
   signUp(data: { fullName: string; phone: string; email: string; password: string; confirmPassword: string; termsAccepted: boolean }): Observable<AuthResponse> {
@@ -93,7 +123,7 @@ export class AuthService {
 
   forgotPassword(email: string): Observable<AuthResponse> {
     return this.http.post<BackendMessageResponse>(`${this.apiUrl}/auth/forgot-password`, { email }).pipe(
-      map(response => ({ success: true, message: response.message, email: response.email || email })),
+      map(response => ({ success: true, message: response.message, email: response.email || email, accountExists: response.accountExists })),
       catchError(error => this.handleError(error))
     );
   }
@@ -201,6 +231,14 @@ export class AuthService {
     } catch {
       this.clearSession();
     }
+  }
+
+  replaceCredentials(data: { accessToken: string; refreshToken: string }): void {
+    if (!data.accessToken || !data.refreshToken) throw new Error('Phản hồi phiên không hợp lệ.');
+    const storage = this.getSessionStorage();
+    if (!storage) throw new Error('Phiên đã kết thúc.');
+    storage.setItem(TOKEN_KEY, data.accessToken);
+    storage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
   }
 
   private saveSession(response: AuthResponse, rememberMe: boolean): void {

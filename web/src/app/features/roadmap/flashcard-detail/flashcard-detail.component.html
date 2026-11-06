@@ -245,8 +245,8 @@
           <button type="button" class="rm-btn rm-btn--ghost rm-btn--sm" (click)="deleteConfirm.set(false)">
             Hủy
           </button>
-          <button type="button" class="rm-btn rm-btn--danger-soft rm-btn--sm" (click)="confirmDelete()">
-            Xóa bộ thẻ
+          <button type="button" class="rm-btn rm-btn--danger-soft rm-btn--sm" [disabled]="deleting()" (click)="confirmDelete()">
+            {{ deleting() ? 'Đang xóa...' : 'Xóa bộ thẻ' }}
           </button>
         </div>
       </div>

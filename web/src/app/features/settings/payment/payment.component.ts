@@ -1,4 +1,7 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ToastService } from '../../../core/services/toast.service';
+import { PaymentPreferences } from '../../../core/models/payment.model';
 import { Router } from '@angular/router';
 import {
   LucideBookOpen,
@@ -24,6 +27,7 @@ type PaymentTone = 'green' | 'pink' | 'yellow';
 type TransactionIcon = 'book' | 'monitor' | 'gift' | 'code' | 'crown';
 
 interface TransactionItem {
+  id: string;
   title: string;
   date: string;
   value: string;
@@ -32,6 +36,7 @@ interface TransactionItem {
 }
 
 interface InvoiceItem {
+  id: string;
   code: string;
   date: string;
   amount: string;
@@ -70,6 +75,12 @@ interface InvoiceItem {
 export class PaymentComponent {
   private readonly settingsService = inject(SettingsService);
   private readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
+  private readonly destroyRef = inject(DestroyRef);
+  readonly loading = signal(true);
+  readonly saving = signal(false);
+  readonly error = signal('');
+  private revision = 0;
 
   readonly back = () => void this.router.navigate(['/main/settings']);
 
@@ -91,55 +102,72 @@ export class PaymentComponent {
     return [...methods.slice(start), ...methods.slice(0, start)];
   });
 
-  readonly transactions: TransactionItem[] = [
-    {
-      title: 'Khóa học ReactJS từ cơ bản đến nâng cao',
-      date: '12/05/2024 • 10:30',
-      value: '499.000₫',
-      tone: 'green',
-      icon: 'book',
-    },
-    {
-      title: 'Khóa học UI/UX Design Masterclass',
-      date: '05/05/2024 • 14:20',
-      value: '399.000₫',
-      tone: 'green',
-      icon: 'monitor',
-    },
-    {
-      title: 'Mã giảm giá từ sự kiện ThinkUp Birthday',
-      date: '01/05/2024 • 09:15',
-      value: '-Đã áp dụng',
-      tone: 'pink',
-      icon: 'gift',
-    },
-    {
-      title: 'Khóa học JavaScript Nâng cao',
-      date: '22/04/2024 • 16:45',
-      value: '449.000₫',
-      tone: 'green',
-      icon: 'code',
-    },
-    {
-      title: 'Gói hội viên ThinkUp Premium (1 tháng)',
-      date: '15/04/2024 • 11:05',
-      value: '129.000₫',
-      tone: 'yellow',
-      icon: 'crown',
-    },
-  ];
+  transactions: TransactionItem[] = [];
+  invoices: InvoiceItem[] = [];
 
-  readonly invoices: InvoiceItem[] = [
-    { code: 'INV-2024-000123', date: '12/05/2024 • 10:30', amount: '499.000₫' },
-    { code: 'INV-2024-000122', date: '05/05/2024 • 14:20', amount: '399.000₫' },
-    { code: 'INV-2024-000121', date: '22/04/2024 • 16:45', amount: '449.000₫' },
-    { code: 'INV-2024-000120', date: '15/04/2024 • 11:05', amount: '129.000₫' },
-    { code: 'INV-2024-000119', date: '01/04/2024 • 09:30', amount: '299.000₫' },
-  ];
-
-  readonly savePayment = signal(true);
+  readonly savePayment = signal(false);
   readonly invoiceEmail = signal(true);
   readonly quickConfirm = signal(false);
+
+  constructor() { this.load(); }
+
+  load(): void {
+    this.loading.set(true); this.error.set('');
+    this.settingsService.getPaymentSettings().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: data => {
+        this.applyPreferences(data.preferences);
+        this.transactions = data.transactions.items.map(item => ({
+          id: item.transaction_id,
+          title: item.courses.map(course => course.title || '').join(', ') || item.order_id,
+          date: item.created_at_local ? `${item.created_at_local.dateOnly} • ${item.created_at_local.timeOnly}` : item.created_at ? new Date(item.created_at).toLocaleString('vi-VN') : '—',
+          value: new Intl.NumberFormat('vi-VN', { style: 'currency', currency: item.currency }).format(item.amount),
+          tone: item.status === 'success' ? 'green' : 'yellow', icon: 'book',
+        }));
+        this.invoices = data.invoices.items.map(item => ({ id: item.id, code: item.code, date: item.issuedAt,
+          amount: new Intl.NumberFormat('vi-VN', { style: 'currency', currency: item.currency }).format(item.amount) }));
+        this.loading.set(false);
+      },
+      error: () => { this.loading.set(false); this.error.set('Không tải được cài đặt thanh toán. Vui lòng thử lại.'); },
+    });
+    this.settingsService.getPaymentMethods().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      error: () => this.toast.showToast({ type: 'warning', message: 'Không tải được phương thức thanh toán.' }),
+    });
+  }
+
+  private applyPreferences(preferences: PaymentPreferences): void {
+    this.savePayment.set(preferences.savePayment); this.invoiceEmail.set(preferences.invoiceEmail);
+    this.quickConfirm.set(preferences.quickConfirm); this.revision = preferences.revision;
+  }
+
+  setInvoiceEmail(value: boolean): void {
+    if (this.loading() || this.saving()) return;
+    const previous = this.invoiceEmail();
+    this.invoiceEmail.set(value);
+    this.saving.set(true);
+    this.settingsService.updatePaymentPreferences(this.revision, value).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: data => { this.applyPreferences(data); this.saving.set(false); },
+      error: error => {
+        this.invoiceEmail.set(previous);
+        this.saving.set(false);
+        this.toast.showToast({ type: 'warning', message: error.status === 409 ? 'Cài đặt đã thay đổi. Đang tải lại để bạn kiểm tra trước khi lưu tiếp.' : 'Không lưu được cài đặt thanh toán.' });
+        this.load();
+      },
+    });
+  }
+
+  downloadInvoice(invoice: InvoiceItem): void {
+    this.settingsService.downloadPaymentInvoice(invoice.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: blob => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url; link.download = `${invoice.code}.pdf`; link.click();
+        URL.revokeObjectURL(url);
+      },
+      error: () => this.toast.showToast({ type: 'warning', message: 'Không thể tải hóa đơn PDF. Vui lòng thử lại.' }),
+    });
+  }
+
+  viewTransactions(): void { void this.router.navigate(['/main/profile/billing']); }
 
   readonly badgeClass: Record<PaymentTone, string> = {
     green:
@@ -167,12 +195,12 @@ export class PaymentComponent {
   }
 
   setDefaultMethod(id: string): void {
-    this.settingsService.setDefaultPaymentMethod(id);
+    this.toast.showToast({ type: 'info', message: 'Chưa thể đặt phương thức mặc định.' });
     this.closeMenu();
   }
 
   removeMethod(id: string): void {
-    this.settingsService.removePaymentMethod(id);
+    this.toast.showToast({ type: 'info', message: 'Chưa thể xóa phương thức thanh toán.' });
     this.closeMenu();
   }
 

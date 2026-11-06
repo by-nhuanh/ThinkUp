@@ -342,6 +342,7 @@ async function fetchCatalog(db) {
 
   const items = courses.map((c) => ({
     course_id: String(c.course_id),
+    aliases: [c._id, c.course_id].filter(Boolean).map(String),
     price: parseFloat(c.price ?? c.original_price ?? 0) || 0,
     rating: parseFloat(c.rating) || 0,
     total_students: parseInt(c.total_students, 10) || 0,
@@ -477,7 +478,7 @@ async function rankCatalog({ db, userId, cartIds, excludeOwned }) {
   const maxCooc = Math.max(0, ...cooccurrence.values());
 
   const ownedSet = new Set([...cartIds, ...purchasedIds]);
-  const candidates = excludeOwned ? catalog.filter((c) => !ownedSet.has(c.course_id)) : catalog;
+  const candidates = excludeOwned ? catalog.filter((c) => !c.aliases.some(id => ownedSet.has(id))) : catalog;
   const maxima = {
     maxStudents: Math.max(0, ...candidates.map((c) => c.total_students)),
     maxReviews: Math.max(0, ...candidates.map((c) => c.total_reviews)),
@@ -494,9 +495,11 @@ async function rankCatalog({ db, userId, cartIds, excludeOwned }) {
       level: computeLevelScore(item.level, onboarding.level, behaviorWeight),
     };
     const total = Object.values(breakdown).reduce((s, n) => s + n, 0);
+    const isPurchased = item.aliases.some((id) => purchasedIds.has(id));
     return {
       course_id: item.course_id,
       total_students: item.total_students,
+      is_purchased: isPurchased,
       recommend_score: round1(total),
       ml_features: getMlFeatures(breakdown, behaviorWeight),
       score_breakdown: Object.fromEntries(
@@ -517,8 +520,13 @@ async function rankCatalog({ db, userId, cartIds, excludeOwned }) {
     for (const item of ranked) item.recommendation_method = 'rules';
   }
 
-  ranked.sort((a, b) => b.recommend_score - a.recommend_score
-    || b.total_students - a.total_students);
+  // Khóa học đã mua xuất hiện ở cuối danh sách đề xuất
+  ranked.sort((a, b) => {
+    if (a.is_purchased !== b.is_purchased) {
+      return a.is_purchased ? 1 : -1;
+    }
+    return (b.recommend_score - a.recommend_score) || (b.total_students - a.total_students);
+  });
 
   return {
     ranked,
@@ -606,6 +614,14 @@ export async function getRecommendedCourses({
   return { budget, blend, recommendations };
 }
 
+/** Full catalog order for existing catalog filters and pagination; no card hydration. */
+export async function getCatalogRanking({ userId = null, guestCartIds = [], dbInstance = null } = {}) {
+  assertUserId(userId, { required: false });
+  const db = dbInstance || await getMongoDb();
+  const cartIds = userId ? await fetchCartCourseIds(db, userId) : new Set(guestCartIds.map(String));
+  return rankCatalog({ db, userId, cartIds, excludeOwned: false });
+}
+
 /**
  * Danh sách khóa học cá nhân hóa cho trang chủ — thay thế cách sắp xếp tĩnh sau
  * onboarding. Người dùng mới (chưa có hành vi) được xếp theo onboarding; càng
@@ -625,6 +641,7 @@ export async function getPersonalizedCourseFeed({
   page = 1,
   limit = DEFAULT_FEED_LIMIT,
   dbInstance = null,
+  excludeOwned = false,
 } = {}) {
   assertUserId(userId, { required: true });
   const pageNum = normalizePositiveInt(page, 1, Number.MAX_SAFE_INTEGER, 'page');
@@ -632,7 +649,7 @@ export async function getPersonalizedCourseFeed({
   const db = dbInstance || (await getMongoDb());
 
   const cartIds = await fetchCartCourseIds(db, userId);
-  const { ranked, blend, preferences } = await rankCatalog({ db, userId, cartIds, excludeOwned: false });
+  const { ranked, blend, preferences } = await rankCatalog({ db, userId, cartIds, excludeOwned });
 
   const start = (pageNum - 1) * pageSize;
   const courses = await hydrateCards(db, userId, ranked.slice(start, start + pageSize), [...cartIds]);

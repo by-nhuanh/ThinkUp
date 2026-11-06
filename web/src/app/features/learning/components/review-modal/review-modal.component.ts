@@ -1,7 +1,7 @@
 import { DecimalPipe } from '@angular/common';
 import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { LucidePenLine, LucideStar, LucideThumbsUp, LucideX } from '@lucide/angular';
+import { LucideCircleUser, LucidePenLine, LucideStar, LucideThumbsUp, LucideX } from '@lucide/angular';
 import { CourseReview, CourseReviewSummary } from '../../models/learning.model';
 import { LearningService } from '../../services/learning.service';
 
@@ -10,7 +10,7 @@ type ReviewFilter = 'all' | '5' | '4' | '3' | '12';
 @Component({
   selector: 'app-review-modal',
   standalone: true,
-  imports: [DecimalPipe, FormsModule, LucidePenLine, LucideStar, LucideThumbsUp, LucideX],
+  imports: [DecimalPipe, FormsModule, LucideCircleUser, LucidePenLine, LucideStar, LucideThumbsUp, LucideX],
   templateUrl: './review-modal.component.html',
 })
 export class ReviewModalComponent {
@@ -117,7 +117,7 @@ export class ReviewModalComponent {
       .subscribe((result) => {
         this.editSaving = false;
         if (!result.success) {
-          this.editError = 'Không thể lưu đánh giá. Vui lòng thử lại.';
+          this.editError = result.message || 'Không thể lưu đánh giá. Vui lòng thử lại.';
           return;
         }
         review.rating = this.editRating;

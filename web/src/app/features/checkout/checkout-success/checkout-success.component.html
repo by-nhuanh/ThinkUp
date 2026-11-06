@@ -80,6 +80,7 @@
               }
             </dl>
           }
+          @if (receiptError()) { <p class="result-text" role="alert">{{ receiptError() }}</p> }
 
           @if (transactionId()) {
             <p class="result-transaction">Mã giao dịch: <strong>{{ transactionId() }}</strong></p>
@@ -95,7 +96,7 @@
               <path d="M12 3.2 5.5 5.7v5.4c0 4.1 2.7 7.8 6.5 9.2 3.8-1.4 6.5-5.1 6.5-9.2V5.7L12 3.2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
               <path d="m9.2 12 1.9 1.9 3.7-3.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
-            <span>Hóa đơn điện tử đã được gửi tới email đăng ký của bạn.</span>
+            <span>Bạn có thể xem chi tiết hóa đơn trong lịch sử giao dịch.</span>
           </div>
         }
 

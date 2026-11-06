@@ -12,7 +12,7 @@ import {
   stats,
   testimonials,
 } from '../../core/data/mock/mock-landing-data';
-import { FEATURED_COURSES, FeaturedCourseSeed } from '../../core/data/mock/mock-home';
+import { ToastService } from '../../core/services/toast.service';
 import { CourseCardComponent } from '../../shared/components/course-card/course-card.component';
 import { CourseCardView } from '../../shared/components/course-card/course-card.model';
 import { formatMoney, toCourseCardView } from '../../shared/components/course-card/course-card.mapper';
@@ -72,29 +72,6 @@ const TOOL_CHECKS = [
   'Kết nối, hỏi đáp trực tiếp với Giảng Viên & Mentor.',
 ];
 
-/** Chuyển dữ liệu seed (khi API không trả về khóa học) sang dữ liệu thẻ khóa học. */
-function seedToCard(seed: FeaturedCourseSeed, index: number): CourseCardView {
-  return {
-    id: seed.id,
-    coverTitle: seed.coverTitle,
-    coverSubtitle: seed.coverSubtitle,
-    coverSize: seed.coverSize ?? (index === 0 ? 'lg' : 'md'),
-    coverGradient: seed.coverGradient,
-    badge: seed.badge ?? null,
-    title: seed.title,
-    author: seed.author,
-    level: seed.level,
-    rating: seed.rating,
-    reviews: seed.reviews,
-    students: seed.students,
-    duration: seed.duration,
-    tags: seed.tags,
-    price: formatMoney(seed.salePrice),
-    oldPrice: formatMoney(seed.originalPrice),
-    discount: seed.discount ?? '',
-  };
-}
-
 @Component({
   selector: 'app-landing-view',
   standalone: true,
@@ -104,6 +81,7 @@ function seedToCard(seed: FeaturedCourseSeed, index: number): CourseCardView {
 })
 export class LandingComponent implements OnInit {
   private readonly courseService = inject(CourseService);
+  private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
 
   readonly skillTracks = skillTracks;
@@ -118,22 +96,18 @@ export class LandingComponent implements OnInit {
   readonly popularCourses = signal<Course[]>([]);
   readonly openFaq = signal<number | null>(null);
 
-  // TODO(pre-deploy): bỏ FEATURED_COURSES khi API khóa học luôn trả đủ 4 khóa cho trang chủ khách.
-  readonly popularCards = computed<CourseCardView[]>(() => {
-    const courses = this.popularCourses();
-    if (courses.length > 0) {
-      return courses.slice(0, 4).map((course, index) => toCourseCardView(course, index));
-    }
-    return FEATURED_COURSES.slice(0, 4).map((seed, index) => seedToCard(seed, index));
-  });
+  readonly popularCards = computed<CourseCardView[]>(() =>
+    this.popularCourses().slice(0, 4).map((course, index) => toCourseCardView(course, index))
+  );
 
   private readonly courseTrack = viewChild<ElementRef<HTMLElement>>('courseTrack');
 
   ngOnInit(): void {
     this.courseService.getCourses({ sort: 'popular' }).subscribe({
       next: (res) => {
-        this.popularCourses.set((res.data || []).slice(0, 4));
+        this.popularCourses.set(res.data.slice(0, 4));
       },
+      error: () => this.toast.showToast({ type: 'error', message: 'Không tải được khóa học. Vui lòng thử lại.' }),
     });
   }
 

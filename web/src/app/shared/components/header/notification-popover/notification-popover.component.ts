@@ -41,7 +41,7 @@ export class NotificationPopoverComponent {
   }
 
   readonly items = computed(() =>
-    this.notifications.items().map((item) => ({
+    this.notifications.items().slice(0, 5).map((item) => ({
       ...item,
       relativeTime: formatRelativeTime(item.createdAt),
       meta: notificationKindMeta(item.kind),
@@ -67,6 +67,7 @@ export class NotificationPopoverComponent {
       this.close();
       return;
     }
+    this.notifications.syncFromStorage();
     this.open.set(true);
   }
 
@@ -74,8 +75,8 @@ export class NotificationPopoverComponent {
     this.notifications.markAllRead();
   }
 
-  openItem(id: string, href?: string): void {
-    this.notifications.markRead(id);
+  async openItem(id: string, href?: string): Promise<void> {
+    await this.notifications.markRead(id);
     this.close();
     if (href) void this.router.navigateByUrl(href);
   }

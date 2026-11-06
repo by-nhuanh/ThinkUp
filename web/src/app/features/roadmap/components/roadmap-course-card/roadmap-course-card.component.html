@@ -1,5 +1,8 @@
 <article class="course-card">
   <a class="course-cover" [routerLink]="['/main/courses', course().id]" [style.background]="course().bgGradient">
+    @if (thumbnail(); as imageUrl) {
+      <img class="course-cover__image" [src]="imageUrl" [alt]="course().title" loading="lazy" (error)="failedThumbnail.set(imageUrl)" />
+    }
     <span class="course-cover__badge">{{ badge() }}</span>
     <button
       type="button"
@@ -10,9 +13,11 @@
     >
       <svg lucideBookmark aria-hidden="true" [size]="15" [strokeWidth]="1.8"></svg>
     </button>
-    <span class="course-cover__glyph" aria-hidden="true">{{ course().icon ?? '⚛' }}</span>
-    <span class="course-cover__title">{{ coverTitle() }}</span>
-    <span class="course-cover__brand">THINKUP</span>
+    @if (!thumbnail()) {
+      <span class="course-cover__glyph" aria-hidden="true">{{ course().icon ?? '⚛' }}</span>
+      <span class="course-cover__title">{{ coverTitle() }}</span>
+      <span class="course-cover__brand">THINKUP</span>
+    }
   </a>
 
   <div class="course-card__body">

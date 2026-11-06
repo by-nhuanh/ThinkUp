@@ -1,4 +1,4 @@
-import { Component, Input, computed, signal } from '@angular/core';
+import { Component, Input, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { CurrentCourse } from '../../../../../core/models/profile.model';
@@ -20,9 +20,9 @@ export class CurrentCoursesCardComponent {
 
   readonly activeTab = signal<CourseTab>('active');
 
-  readonly visibleCourses = computed(() =>
-    this.activeTab() === 'active' ? this.courses : this.completedCourses
-  );
+  visibleCourses(): CurrentCourse[] {
+    return this.activeTab() === 'active' ? this.courses : this.completedCourses;
+  }
 
   selectTab(tab: CourseTab): void {
     this.activeTab.set(tab);

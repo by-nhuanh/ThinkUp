@@ -1,7 +1,10 @@
 import { getLearningPreferences, DEFAULT_LEARNING_PREFERENCES } from '../learning-settings/learning-settings.user.js';
 import { hasCourseEnrollment } from '../course/course.user.js';
 import { ObjectId } from 'mongodb';
+import { randomUUID } from 'node:crypto';
 import { getMongoDb } from '../db.js';
+import { createLearningActivityStartHandler, getRecordedCourseLearningTimes } from '../learning-activity/learning-activity.user.js';
+import { createNotificationForEvent } from '../notification/notification.user.js';
 
 // ─── 0. Danh mục Collection CSDL MongoDB ─────────────────────────────────────
 export const COLLECTION_COURSES = 'courses';
@@ -20,6 +23,13 @@ export const COLLECTION_DISCUSSION_LIKES = 'course_discussion_likes';
 export const COLLECTION_DISCUSSION_REPORTS = 'course_discussion_reports';
 export const COLLECTION_QNA = 'course_qna';
 export const COLLECTION_DOCUMENTS = 'course_documents';
+export const COLLECTION_LESSON_ARTICLES = 'lesson_articles';
+export const COLLECTION_LESSON_QUIZZES = 'lesson_quizzes';
+export const COLLECTION_QUIZ_QUESTIONS = 'quiz_questions';
+export const COLLECTION_QUIZ_ANSWER_OPTIONS = 'quiz_answer_options';
+export const COLLECTION_LESSON_LABS = 'lesson_labs';
+export const COLLECTION_QUIZ_ATTEMPTS = 'user_quiz_attempts';
+export const COLLECTION_LAB_ATTEMPTS = 'user_lab_attempts';
 
 // ─── 1. Tiện ích định dạng & tính toán thời gian, số từ ──────────────────────
 
@@ -219,6 +229,9 @@ export async function getCourseStudyCurriculum(courseIdOrSlug, userId = null, op
 
   const targetCourseId = String(courseDoc.course_id || courseDoc._id);
 
+  const studyCourseIds = [courseDoc._id, courseDoc.course_id, targetCourseId, String(courseDoc._id)]
+    .filter(value => value != null);
+
   // 2. Truy vấn song song: Giảng viên, Sections, Lessons, Tiến độ người học, Đánh giá cá nhân
   const [
     instructorDoc,
@@ -252,24 +265,12 @@ export async function getCourseStudyCurriculum(courseIdOrSlug, userId = null, op
       : null,
     // Danh sách chương
     db.collection(COLLECTION_SECTIONS)
-      .find({
-        $or: [
-          { course_id: targetCourseId },
-          { course_id: courseDoc.course_id },
-          { course_id: String(courseDoc._id) },
-        ],
-      })
+      .find({ course_id: { $in: studyCourseIds } })
       .sort({ order_index: 1, order: 1 })
       .toArray(),
     // Danh sách toàn bộ bài học
     db.collection(COLLECTION_LESSONS)
-      .find({
-        $or: [
-          { course_id: targetCourseId },
-          { course_id: courseDoc.course_id },
-          { course_id: String(courseDoc._id) },
-        ],
-      })
+      .find({ course_id: { $in: studyCourseIds } })
       .sort({ section_id: 1, order_index: 1, order: 1, lesson_number: 1 })
       .toArray(),
     // Tiến độ chi tiết từng bài học của user
@@ -277,7 +278,6 @@ export async function getCourseStudyCurriculum(courseIdOrSlug, userId = null, op
       ? db.collection(COLLECTION_USER_LESSON_PROGRESS)
           .find({
             user_id: String(userId),
-            course_id: targetCourseId,
           })
           .toArray()
       : [],
@@ -285,7 +285,7 @@ export async function getCourseStudyCurriculum(courseIdOrSlug, userId = null, op
     userId
       ? db.collection(COLLECTION_USER_COURSE_PROGRESS).findOne({
           user_id: String(userId),
-          course_id: targetCourseId,
+          course_id: { $in: studyCourseIds },
         })
       : null,
     // Đánh giá khóa học của user hiện tại
@@ -296,6 +296,38 @@ export async function getCourseStudyCurriculum(courseIdOrSlug, userId = null, op
         })
       : null,
   ]);
+
+  // Some stored lessons reference only their section, not the course directly.
+  const sectionReferences = sectionsDocs.flatMap(section => [section._id, section.section_id])
+    .filter(value => value != null);
+  if (sectionReferences.length) {
+    const sectionLessons = await db.collection(COLLECTION_LESSONS).find({
+      course_id: null, section_id: { $in: [...sectionReferences, ...sectionReferences.map(String)] },
+    }).toArray();
+    const loaded = new Set(lessonsDocs.map(lesson => String(lesson._id || lesson.lesson_id)));
+    lessonsDocs.push(...sectionLessons.filter(lesson => !loaded.has(String(lesson._id || lesson.lesson_id))));
+  }
+
+  // Pre-load quiz question counts for all quiz lessons
+  const allLessonIds = lessonsDocs.map(l => String(l.lesson_id || l._id));
+  const quizzesList = await db.collection(COLLECTION_LESSON_QUIZZES).find({
+    lesson_id: { $in: allLessonIds }
+  }).toArray();
+  const quizQuestionsMap = new Map();
+  if (quizzesList.length > 0) {
+    const quizMap = new Map();
+    quizzesList.forEach(q => quizMap.set(String(q.lesson_quiz_id), String(q.lesson_id)));
+    const lqIds = quizzesList.map(q => String(q.lesson_quiz_id));
+    const allQuestions = await db.collection(COLLECTION_QUIZ_QUESTIONS).find({
+      lesson_quiz_id: { $in: lqIds }
+    }).toArray();
+    allQuestions.forEach(q => {
+      const lesId = quizMap.get(String(q.lesson_quiz_id));
+      if (lesId) {
+        quizQuestionsMap.set(lesId, (quizQuestionsMap.get(lesId) || 0) + 1);
+      }
+    });
+  }
 
   // 3. Xử lý thông tin Giảng viên
   const instructorProfile = instructorDoc || userDoc || {};
@@ -346,19 +378,25 @@ export async function getCourseStudyCurriculum(courseIdOrSlug, userId = null, op
     let questionCount = 0;
     const wordCount = Math.max(0, parseInt(les.word_count, 10) || 0);
 
+    const rawMins = parseInt(les.duration_minutes || les.duration, 10) || 0;
+    const rawSecs = parseInt(les.duration_seconds, 10) || (rawMins * 60);
+
     if (normalizedType === 'article') {
-      // Bài đọc cấu hình theo số lượng từ
       durationSeconds = les.duration_seconds
         ? parseInt(les.duration_seconds, 10)
-        : calculateArticleDuration(wordCount, les.reading_speed_wpm || 200);
+        : (rawMins ? rawMins * 60 : calculateArticleDuration(wordCount, les.reading_speed_wpm || 200));
       durationFormatted = formatDurationMmSs(durationSeconds);
     } else if (normalizedType === 'quiz') {
       totalQuizzesCount += 1;
-      questionCount = parseInt(les.total_questions || les.questions_count || les.questions?.length, 10) || 0;
+      questionCount = parseInt(les.question_count || les.total_questions || les.questions_count || les.questions?.length, 10) || 0;
+      if (!questionCount && quizQuestionsMap.has(lessonIdStr)) {
+        questionCount = quizQuestionsMap.get(lessonIdStr);
+      }
+      durationSeconds = rawSecs || 15 * 60;
       durationFormatted = `${questionCount} câu hỏi`;
     } else {
       // video hoặc lab
-      durationSeconds = parseInt(les.duration_seconds || les.duration, 10) || 0;
+      durationSeconds = rawSecs;
       durationFormatted = formatDurationMmSs(durationSeconds);
     }
 
@@ -369,7 +407,7 @@ export async function getCourseStudyCurriculum(courseIdOrSlug, userId = null, op
     let status = 'not_started';
 
     if (prog) {
-      if (prog.status === 'completed' || prog.is_completed === true) {
+      if (prog.status === 'completed' || (prog.is_completed === true || String(prog.is_completed) === '1')) {
         status = 'completed';
         completedLessonsCount += 1;
         if (normalizedType === 'quiz') {
@@ -424,7 +462,10 @@ export async function getCourseStudyCurriculum(courseIdOrSlug, userId = null, op
     for (let idx = 0; idx < sectionsDocs.length; idx++) {
       const sec = sectionsDocs[idx];
       const secIdStr = String(sec.section_id || sec._id);
-      const secLessons = lessonsBySectionMap.get(secIdStr) || [];
+      const sectionAliases = new Set([sec.section_id, sec._id].filter(value => value != null).map(String));
+      const secLessons = [...lessonsBySectionMap.entries()]
+        .filter(([id]) => sectionAliases.has(id)).flatMap(([, lessons]) => lessons)
+        .sort((a, b) => a.order_index - b.order_index || a.lesson_number - b.lesson_number);
       const secDurationSeconds = secLessons.reduce((acc, curr) => acc + (curr.duration_seconds || 0), 0);
 
       sectionsList.push({
@@ -459,6 +500,15 @@ export async function getCourseStudyCurriculum(courseIdOrSlug, userId = null, op
   const remainingLessonsCount = Math.max(0, totalLessonsCount - completedLessonsCount);
 
   // 8. Khối Sidebar: Xác định bài học "Tiếp tục học" (Resume Learning)
+  const listedLessonIds = new Set(sectionsList.flatMap(section => section.lessons.map(lesson => lesson.lesson_id)));
+  const unlistedLessons = flattenedLessons.filter(lesson => !listedLessonIds.has(lesson.lesson_id));
+  if (unlistedLessons.length) {
+    const duration = unlistedLessons.reduce((total, lesson) => total + (lesson.duration_seconds || 0), 0);
+    sectionsList.push({ section_id: 'unassigned_lessons', section_number: sectionsList.length + 1,
+      title: 'Bài học khác', lessons_count: unlistedLessons.length,
+      lessons_count_formatted: `${unlistedLessons.length} bài học`, duration_seconds: duration,
+      duration_formatted: formatHoursMinutes(duration), lessons: unlistedLessons });
+  }
   let resumeLesson = null;
   const lastAccessedId = userCourseProgressDoc?.last_accessed_lesson_id;
   if (lastAccessedId) {
@@ -480,6 +530,10 @@ export async function getCourseStudyCurriculum(courseIdOrSlug, userId = null, op
   });
 
   // 10. Tập hợp đầy đủ 5 khối theo yêu cầu
+  const recordedTimes = userId ? await getRecordedCourseLearningTimes(String(userId), { db }) : new Map();
+  const synchronizedLearningSeconds = Math.max(Number(totalUserSpentSeconds) || 0,
+    ...studyCourseIds.map(id => recordedTimes.get(String(id)) || 0));
+
   return {
     learning_preferences: userId ? await getLearningPreferences(String(userId), { db }) : { ...DEFAULT_LEARNING_PREFERENCES, revision: 0 },
     // ── Khối 1: Thông tin khóa học & Giảng viên ──
@@ -490,6 +544,7 @@ export async function getCourseStudyCurriculum(courseIdOrSlug, userId = null, op
       short_description: courseDoc.short_description || courseDoc.description || '',
       intro_video_url: courseDoc.intro_video_url || courseDoc.trailer_url || '',
       thumbnail_url: courseDoc.thumbnail_url || '',
+      bg_gradient: courseDoc.bg_gradient || '',
       instructor: instructorInfo,
       // Lưu ý: Đánh giá và số học viên ở đây là của khóa học
       rating: {
@@ -529,8 +584,8 @@ export async function getCourseStudyCurriculum(courseIdOrSlug, userId = null, op
       total_lessons: totalLessonsCount,
       lessons_progress_text: `${completedLessonsCount} / ${totalLessonsCount}`,
       remaining_lessons: remainingLessonsCount,
-      total_time_spent_seconds: totalUserSpentSeconds,
-      total_time_spent_formatted: formatHoursMinutes(totalUserSpentSeconds),
+      total_time_spent_seconds: synchronizedLearningSeconds,
+      total_time_spent_formatted: formatHoursMinutes(synchronizedLearningSeconds),
       is_completed: progressPercentage === 100,
     },
 
@@ -1028,6 +1083,20 @@ export async function getCourseDiscussions({ courseId, userId = null, page = 1, 
     .sort({ created_at: 1 })
     .toArray();
 
+  // Luôn lấy tên/avatar hiện tại từ users cho cả bình luận gốc và phản hồi.
+  const allUserIds = [...new Set([...rootComments, ...childReplies]
+    .flatMap(item => [item.user_id, item.student_id, item.author?.user_id]).filter(Boolean).map(String))];
+  const userDocs = allUserIds.length > 0 ? await db.collection(COLLECTION_USERS).find({ $or: [
+    { id: { $in: allUserIds } }, { user_id: { $in: allUserIds } },
+    ...allUserIds.filter(id => ObjectId.isValid(id)).map(id => ({ _id: new ObjectId(id) })),
+  ] }).toArray() : [];
+  const userMap = new Map();
+  for (const user of userDocs) {
+    const current = { full_name: user.full_name || user.name || '', email: user.email || '',
+      avatar_url: user.avatar_url || user.avatar || '', role: user.role || 'student' };
+    for (const value of [user._id, user.id, user.user_id].filter(Boolean)) userMap.set(String(value), current);
+  }
+
   // Nhóm phản hồi con theo parent_id
   const repliesByParentMap = new Map();
   for (const rep of childReplies) {
@@ -1079,17 +1148,18 @@ export async function getCourseDiscussions({ courseId, userId = null, page = 1, 
     const isLiked = userLikesSet.has(commentIdStr);
     const relatedLesson = item.lesson_id ? (lessonLookup.get(String(item.lesson_id)) || null) : null;
 
+    const currentUser = userMap.get(String(item.user_id || item.author?.user_id || item.student_id));
     return {
       discussion_id: commentIdStr,
       course_id: item.course_id,
       parent_id: item.parent_id ? String(item.parent_id) : null,
       author: {
         user_id: String(item.author?.user_id || item.user_id || ''),
-        full_name: item.author?.full_name || 'Học viên ThinkUp',
-        masked_email: item.author?.masked_email || maskEmail(item.author?.email || ''),
-        avatar_url: item.author?.avatar_url || '',
-        role: item.author?.role || 'student', // 'student' | 'instructor'
-        is_instructor: ['instructor', 'mentor', 'admin'].includes(item.author?.role || ''),
+        full_name: currentUser?.full_name || item.author?.full_name || item.author_name || 'Học viên ThinkUp',
+        masked_email: maskEmail(currentUser?.email || item.author?.email || ''),
+        avatar_url: currentUser?.avatar_url || item.author?.avatar_url || item.author_avatar || item.avatar_url || '',
+        role: currentUser?.role || item.author?.role || 'student',
+        is_instructor: ['instructor', 'mentor', 'admin'].includes(currentUser?.role || item.author?.role || ''),
       },
       content: item.content,
       lesson_info: relatedLesson ? {
@@ -1470,6 +1540,17 @@ export async function getCourseQnaList({ courseId, userId, role = 'student', pag
     repliesMap.get(pid).push(r);
   }
 
+  const qnaUserIds = [...new Set([...rootQuestions, ...replies]
+    .flatMap(item => [item.user_id, item.student_id, item.author?.user_id]).filter(Boolean).map(String))];
+  const qnaUsers = qnaUserIds.length ? await db.collection(COLLECTION_USERS).find({ $or: [
+    { id: { $in: qnaUserIds } }, { user_id: { $in: qnaUserIds } },
+    ...qnaUserIds.filter(id => ObjectId.isValid(id)).map(id => ({ _id: new ObjectId(id) })),
+  ] }).toArray() : [];
+  const qnaUserMap = new Map();
+  for (const user of qnaUsers) {
+    for (const value of [user._id, user.id, user.user_id].filter(Boolean)) qnaUserMap.set(String(value), user);
+  }
+
   // Tra cứu thông tin bài học liên quan
   const allLessonIds = [...new Set(rootQuestions.map(q => q.lesson_id).filter(Boolean))];
   const lessonDocs = allLessonIds.length > 0
@@ -1496,6 +1577,8 @@ export async function getCourseQnaList({ courseId, userId, role = 'student', pag
     const isOwner = String(item.user_id) === uid;
     const lessonInfo = item.lesson_id ? (lessonMap.get(String(item.lesson_id)) || null) : null;
 
+    const currentAuthor = qnaUserMap.get(String(item.user_id || item.student_id || item.author?.user_id));
+    const currentRole = currentAuthor?.role || item.author?.role || 'student';
     return {
       qna_id: String(item._id),
       course_id: item.course_id,
@@ -1504,10 +1587,10 @@ export async function getCourseQnaList({ courseId, userId, role = 'student', pag
       lesson_info: lessonInfo,
       author: {
         user_id: String(item.author?.user_id || item.user_id || ''),
-        full_name: item.author?.full_name || 'Người dùng',
-        avatar_url: item.author?.avatar_url || '',
-        role: item.author?.role || 'student',
-        is_instructor: ['instructor', 'mentor', 'admin'].includes(item.author?.role || ''),
+        full_name: currentAuthor?.full_name || currentAuthor?.name || item.author?.full_name || 'Người dùng',
+        avatar_url: currentAuthor?.avatar_url || currentAuthor?.avatar || item.author?.avatar_url || '',
+        role: currentRole,
+        is_instructor: ['instructor', 'mentor', 'admin'].includes(currentRole),
       },
       content: item.content,
       is_owner: isOwner,
@@ -1807,6 +1890,24 @@ export async function getCourseDocuments(courseIdOrSlug, userId = null, options 
     ],
   }).sort({ category: 1, created_at: -1 }).toArray();
 
+  // Tra cứu thông tin bài học đính kèm (nếu doc có lesson_id)
+  const attachedLessonIds = [...new Set(docList.map(d => d.lesson_id).filter(Boolean))];
+  const lessonDocs = attachedLessonIds.length > 0
+    ? await db.collection(COLLECTION_LESSONS).find({
+        $or: [
+          { lesson_id: { $in: attachedLessonIds } },
+          { id: { $in: attachedLessonIds } },
+          ...(attachedLessonIds.filter(id => ObjectId.isValid(id)).map(id => ({ _id: new ObjectId(id) }))),
+        ],
+      }).toArray()
+    : [];
+
+  const lessonMap = new Map();
+  for (const l of lessonDocs) {
+    const lid = String(l.lesson_id || l.id || l._id);
+    lessonMap.set(lid, l.title || l.lesson_name || l.name || '');
+  }
+
   // Chuẩn hóa và gom nhóm theo 3 mục
   const categorized = {
     lecture_slides: [],
@@ -1822,20 +1923,27 @@ export async function getCourseDocuments(courseIdOrSlug, userId = null, options 
       ? 'source_code'
       : 'exercises_data';
 
+    const lidStr = doc.lesson_id ? String(doc.lesson_id) : null;
+    const lTitle = lidStr ? (lessonMap.get(lidStr) || doc.lesson_name || null) : (doc.lesson_name || null);
+
     const item = {
-      document_id: String(doc.document_id || doc._id),
-      title: doc.title || doc.file_name || 'Tài liệu học tập',
-      file_name: doc.file_name || 'document',
+      document_id: String(doc.document_id || doc.id || doc._id),
+      title: doc.title || doc.name || doc.file_name || 'Tài liệu học tập',
+      file_name: doc.file_name || doc.name || 'document',
       file_type: String(doc.file_type || doc.file_name?.split('.').pop() || 'pdf').toLowerCase(),
       icon_type: detectDocumentIcon(doc.file_type, doc.file_name),
       file_size_bytes: doc.file_size_bytes || 0,
       file_size_formatted: doc.file_size_formatted || formatFileSize(doc.file_size_bytes || 0),
       download_count: parseInt(doc.download_count, 10) || 0,
-      download_url: `/api/user/lessons/documents/${String(doc.document_id || doc._id)}/download`,
-      can_download: Boolean(userId && (enrolled || doc.is_free === true || String(doc.is_free) === '1' || doc.is_preview === true) && doc.file_url),
-      file_url: userId && (enrolled || doc.is_free === true || String(doc.is_free) === '1' || doc.is_preview === true) ? doc.file_url || '' : '',
+      download_url: `/api/user/lessons/documents/${String(doc.document_id || doc.id || doc._id)}/download`,
+      can_download: Boolean(userId && (enrolled || doc.is_free === true || String(doc.is_free) === '1' || doc.is_preview === true) && (doc.file_url || doc.download_url)),
+      file_url: userId && (enrolled || doc.is_free === true || String(doc.is_free) === '1' || doc.is_preview === true) ? (doc.file_url || doc.download_url || '') : '',
       updated_at: doc.updated_at || null,
       updated_at_formatted: formatRelativeTime(doc.updated_at),
+      lesson_id: lidStr,
+      lesson_title: lTitle,
+      lesson_name: lTitle,
+      is_attached_to_lesson: Boolean(lidStr || lTitle),
     };
 
     categorized[categoryKey].push(item);
@@ -1936,6 +2044,907 @@ export async function downloadCourseDocument(documentId, userId, options = {}) {
   };
 }
 
+// ─── 7.9. Dịch vụ K.15: Bốn loại bài học (Reading, Video, Quiz, Lab) ──────────
+
+/**
+ * Phân giải ngữ cảnh bài học: tìm lesson, section và course tương ứng; kiểm tra enrollment
+ */
+export async function resolveLessonContext(lessonId, userId = null, options = {}) {
+  const db = options.db || await getMongoDb();
+  const lessonQuery = {
+    $or: [
+      { lesson_id: String(lessonId) },
+      ...(ObjectId.isValid(lessonId) ? [{ _id: new ObjectId(lessonId) }] : []),
+      { _id: String(lessonId) },
+    ],
+  };
+
+  const lesson = await db.collection(COLLECTION_LESSONS).findOne(lessonQuery);
+  if (!lesson) {
+    const error = new Error('Bài học không tồn tại.');
+    error.status = 404;
+    error.code = 'LESSON_NOT_FOUND';
+    throw error;
+  }
+
+  let courseId = lesson.course_id ? String(lesson.course_id) : null;
+  let section = null;
+
+  if (lesson.section_id) {
+    const sectionQuery = {
+      $or: [
+        { section_id: String(lesson.section_id) },
+        ...(ObjectId.isValid(lesson.section_id) ? [{ _id: new ObjectId(lesson.section_id) }] : []),
+        { _id: String(lesson.section_id) },
+      ],
+    };
+    section = await db.collection(COLLECTION_SECTIONS).findOne(sectionQuery);
+    if (section && section.course_id) {
+      courseId = String(section.course_id);
+    }
+  }
+
+  let course = null;
+  if (courseId) {
+    const courseQuery = {
+      $or: [
+        { course_id: courseId },
+        { id: courseId },
+        ...(ObjectId.isValid(courseId) ? [{ _id: new ObjectId(courseId) }] : []),
+      ],
+    };
+    course = await db.collection(COLLECTION_COURSES).findOne(courseQuery);
+  }
+
+  const isFree = lesson.is_free === true || String(lesson.is_free) === '1' || lesson.is_preview === true;
+  if (!isFree) {
+    if (!userId) {
+      const error = new Error('Bạn cần đăng ký hoặc đăng nhập để truy cập bài học này.');
+      error.status = 401;
+      error.code = 'REQUIRE_LOGIN';
+      throw error;
+    }
+    if (course) {
+      const enrolled = await hasCourseEnrollment(course, userId, { db });
+      if (!enrolled) {
+        const error = new Error('Bạn cần đăng ký khóa học để truy cập bài học này.');
+        error.status = 403;
+        error.code = 'REQUIRE_ENROLLMENT';
+        throw error;
+      }
+    }
+  }
+
+  return { lesson, section, course, courseId, db };
+}
+
+/**
+ * GET /curriculum/:lessonId
+ */
+export async function getLessonCurriculumOverview(lessonId, userId) {
+  const { lesson, course, db } = await resolveLessonContext(lessonId, userId);
+  const courseId = course ? String(course.course_id || course._id) : lesson.course_id;
+  const curriculum = await getCourseStudyCurriculum(courseId, userId, { db });
+  return curriculum;
+}
+
+/**
+ * GET /content/:lessonId
+ */
+export async function getLessonContentDetails(lessonId, userId) {
+  const { lesson, course, section, courseId, db } = await resolveLessonContext(lessonId, userId);
+  const normalizedType = lesson.lesson_type === 'article' ? 'reading' : lesson.lesson_type;
+
+  // Lấy trạng thái từ user_lesson_progress
+  const progress = await db.collection(COLLECTION_USER_LESSON_PROGRESS).findOne({
+    user_id: String(userId),
+    lesson_id: String(lesson.lesson_id || lesson._id),
+  });
+  const status = progress?.status === 'completed' || progress?.is_completed === true || String(progress?.is_completed) === '1' ? 'done' : progress?.status === 'in_progress' ? 'in-progress' : 'not-started';
+
+  // Lấy danh sách bài cùng section/course để tính prev/next
+  const siblingLessons = await db.collection(COLLECTION_LESSONS).find({
+    section_id: String(lesson.section_id),
+  }).sort({ order_index: 1 }).toArray();
+
+  const currentIndex = siblingLessons.findIndex(l => String(l.lesson_id || l._id) === String(lesson.lesson_id || lesson._id));
+  const prevSibling = currentIndex > 0 ? siblingLessons[currentIndex - 1] : null;
+  const nextSibling = (currentIndex >= 0 && currentIndex < siblingLessons.length - 1) ? siblingLessons[currentIndex + 1] : null;
+
+  const result = {
+    id: String(lesson.lesson_id || lesson._id),
+    title: lesson.title,
+    type: normalizedType,
+    status,
+    duration_minutes: parseInt(lesson.duration_minutes, 10) || 0,
+    previous_lesson: prevSibling ? { id: String(prevSibling.lesson_id || prevSibling._id), title: prevSibling.title, type: prevSibling.lesson_type === 'article' ? 'reading' : prevSibling.lesson_type } : null,
+    next_lesson: nextSibling ? { id: String(nextSibling.lesson_id || nextSibling._id), title: nextSibling.title, type: nextSibling.lesson_type === 'article' ? 'reading' : nextSibling.lesson_type } : null,
+    resources: [],
+  };
+
+  if (normalizedType === 'reading') {
+    const article = await db.collection(COLLECTION_LESSON_ARTICLES).findOne({
+      lesson_id: String(lesson.lesson_id || lesson._id),
+    });
+    let references = [];
+    if (article?.references_data) {
+      try { references = typeof article.references_data === 'string' ? JSON.parse(article.references_data) : article.references_data; } catch {}
+    }
+    result.reading = {
+      content_html: article ? article.content : '<p>Nội dung bài đọc đang được cập nhật.</p>',
+      images: article?.images ? [article.images] : [],
+      document_url: null,
+      references,
+    };
+  } else if (normalizedType === 'video') {
+    const video = await db.collection(COLLECTION_LESSON_VIDEOS).findOne({
+      lesson_id: String(lesson.lesson_id || lesson._id),
+    });
+    result.video = {
+      video_url: video?.video_url || '',
+      duration_seconds: (parseInt(video?.duration, 10) || parseInt(lesson.duration_minutes, 10) || 0) * 60,
+    };
+  } else if (normalizedType === 'quiz') {
+    const quiz = await db.collection(COLLECTION_LESSON_QUIZZES).findOne({
+      lesson_id: String(lesson.lesson_id || lesson._id),
+    });
+    let questionCount = 0;
+    if (quiz) {
+      questionCount = await db.collection(COLLECTION_QUIZ_QUESTIONS).countDocuments({
+        lesson_quiz_id: String(quiz.lesson_quiz_id),
+      });
+    }
+    result.quiz = {
+      time_limit_minutes: quiz ? parseInt(quiz.time_limit, 10) || 15 : 15,
+      pass_score_percent: quiz ? parseInt(quiz.pass_score, 10) || 70 : 70,
+      total_questions: questionCount,
+    };
+  } else if (normalizedType === 'lab') {
+    const lab = await db.collection(COLLECTION_LESSON_LABS).findOne({
+      lesson_id: String(lesson.lesson_id || lesson._id),
+    });
+    let envConfig = {};
+    if (lab?.environment_config) {
+      try { envConfig = typeof lab.environment_config === 'string' ? JSON.parse(lab.environment_config) : lab.environment_config; } catch {}
+    }
+    result.lab = {
+      requirements: lab ? lab.requirements : '',
+      sample_code: lab ? lab.sample_code : '',
+      expected_output: lab ? lab.expected_output : '',
+      environment_config: envConfig,
+      test_cases: labTestCases(lab),
+    };
+  }
+
+  return result;
+}
+
+/**
+ * POST /:lessonId/complete
+ */
+export async function markLessonManualComplete(lessonId, userId, payload = {}, options = {}) {
+  const completed = payload.completed ?? true;
+  if (typeof completed !== 'boolean') throw Object.assign(new Error('Trạng thái hoàn thành không hợp lệ.'), { status: 400 });
+  const { lesson, course, courseId, db } = await resolveLessonContext(lessonId, userId, options);
+  const normalizedType = lesson.lesson_type === 'article' ? 'reading' : lesson.lesson_type;
+  if (!['reading', 'video'].includes(normalizedType)) {
+    const error = new Error('Chỉ bài đọc hoặc video mới được phép tự đánh dấu hoàn thành thủ công.');
+    error.status = 403;
+    error.code = 'MANUAL_COMPLETION_NOT_ALLOWED';
+    throw error;
+  }
+
+  const now = new Date();
+  const targetLessonId = String(lesson.lesson_id || lesson._id);
+  const targetCourseId = String(course?.course_id || courseId);
+  await db.collection(COLLECTION_USER_LESSON_PROGRESS).updateOne(
+    { user_id: String(userId), lesson_id: targetLessonId },
+    {
+      $set: {
+        user_id: String(userId),
+        course_id: targetCourseId,
+        lesson_id: targetLessonId,
+        is_completed: completed,
+        status: completed ? 'completed' : 'in_progress',
+        completed_at: completed ? now.toISOString().replace('T', ' ').slice(0, 19) : null,
+        updated_at: now,
+      },
+    },
+    { upsert: true }
+  );
+
+  if (completed) {
+    try {
+      await createNotificationForEvent(String(userId), {
+        eventKey: 'lesson-completed:' + targetLessonId,
+        sourceType: 'lesson',
+        sourceId: targetLessonId,
+        category: 'learning',
+        kind: 'progress',
+        title: 'Đã hoàn thành bài học',
+        message: 'Bạn đã hoàn thành “' + (lesson.title || 'Bài học') + '”.',
+        href: '/learning/learn/' + encodeURIComponent(targetCourseId) + '?lesson=' + encodeURIComponent(targetLessonId),
+      }, { db, now });
+    } catch (e) {
+      // Best-effort notification
+    }
+  }
+
+  return {
+    lesson_id: targetLessonId,
+    status: completed ? 'done' : 'in-progress',
+    completed,
+  };
+}
+
+/**
+ * GET /quiz/:lessonId/overview
+ */
+export async function getQuizOverview(lessonId, userId) {
+  const { lesson, db } = await resolveLessonContext(lessonId, userId);
+  const quiz = await db.collection(COLLECTION_LESSON_QUIZZES).findOne({
+    lesson_id: String(lesson.lesson_id || lesson._id),
+  });
+  if (!quiz) {
+    const error = new Error('Bài kiểm tra không tồn tại.');
+    error.status = 404;
+    error.code = 'QUIZ_NOT_FOUND';
+    throw error;
+  }
+
+  const questionCount = await db.collection(COLLECTION_QUIZ_QUESTIONS).countDocuments({
+    lesson_quiz_id: String(quiz.lesson_quiz_id),
+  });
+
+  const attempts = await db.collection(COLLECTION_QUIZ_ATTEMPTS).find({
+    user_id: String(userId),
+    lesson_quiz_id: String(quiz.lesson_quiz_id),
+  }).sort({ created_at: -1 }).toArray();
+
+  const runningAttempt = attempts.find(a => a.status === 'in_progress');
+  const bestScore = attempts.reduce((max, a) => Math.max(max, a.score_percent || 0), 0);
+
+  return {
+    lesson_quiz_id: String(quiz.lesson_quiz_id),
+    title: lesson.title,
+    description: quiz.description,
+    total_questions: questionCount,
+    time_limit_minutes: parseInt(quiz.time_limit, 10) || 15,
+    pass_score_percent: parseInt(quiz.pass_score, 10) || 70,
+    total_attempts: attempts.length,
+    best_score_percent: bestScore,
+    running_attempt: runningAttempt ? {
+      attempt_id: runningAttempt.attempt_id,
+      expires_at: runningAttempt.expires_at,
+    } : null,
+  };
+}
+
+/**
+ * POST /quiz/:lessonId/attempts
+ */
+export async function startOrResumeQuizAttempt(lessonId, userId, { retry = false } = {}) {
+  const { lesson, db } = await resolveLessonContext(lessonId, userId);
+  const quiz = await db.collection(COLLECTION_LESSON_QUIZZES).findOne({
+    lesson_id: String(lesson.lesson_id || lesson._id),
+  });
+  if (!quiz) throw Object.assign(new Error('Bài kiểm tra không tồn tại.'), { status: 404 });
+
+  const existing = await db.collection(COLLECTION_QUIZ_ATTEMPTS).findOne({
+    user_id: String(userId),
+    lesson_quiz_id: String(quiz.lesson_quiz_id),
+    status: 'in_progress',
+  });
+
+  if (existing) {
+    const now = new Date();
+    if (new Date(existing.expires_at) > now) {
+      if (retry) {
+        throw Object.assign(new Error('Đang có lượt làm bài chưa hoàn thành.'), { status: 409, code: 'ATTEMPT_RUNNING' });
+      }
+      return getQuizAttempt(existing.attempt_id, userId, { db });
+    } else {
+      // Hết hạn -> chốt lượt cũ
+      await db.collection(COLLECTION_QUIZ_ATTEMPTS).updateOne(
+        { _id: existing._id },
+        { $set: { status: 'expired', updated_at: now } }
+      );
+    }
+  }
+
+  // Bắt đầu attempt mới
+  const timeLimit = (parseInt(quiz.time_limit, 10) || 15) * 60;
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + timeLimit * 1000);
+  const attemptId = randomUUID();
+
+  const attemptDoc = {
+    attempt_id: attemptId,
+    user_id: String(userId),
+    lesson_quiz_id: String(quiz.lesson_quiz_id),
+    lesson_id: String(lesson.lesson_id || lesson._id),
+    answers: {},
+    flagged_question_ids: [],
+    revision: 0,
+    status: 'in_progress',
+    created_at: now,
+    expires_at: expiresAt,
+  };
+
+  await db.collection(COLLECTION_QUIZ_ATTEMPTS).insertOne(attemptDoc);
+  return getQuizAttempt(attemptId, userId, { db });
+}
+
+/**
+ * GET /quiz/attempts/:attemptId
+ */
+export async function getQuizAttempt(attemptId, userId, options = {}) {
+  const db = options.db || await getMongoDb();
+  const attempt = await db.collection(COLLECTION_QUIZ_ATTEMPTS).findOne({
+    attempt_id: String(attemptId),
+    user_id: String(userId),
+  });
+  if (!attempt) throw Object.assign(new Error('Lượt làm bài không tồn tại.'), { status: 404 });
+
+  const questions = await db.collection(COLLECTION_QUIZ_QUESTIONS).find({
+    lesson_quiz_id: String(attempt.lesson_quiz_id),
+  }).sort({ order_index: 1 }).toArray();
+
+  const questionIds = questions.map(q => String(q.quiz_question_id));
+  const optionsList = await db.collection(COLLECTION_QUIZ_ANSWER_OPTIONS).find({
+    question_id: { $in: questionIds },
+  }).sort({ order_index: 1 }).toArray();
+
+  // ẨN ĐÁP ÁN ĐÚNG
+  const formattedQuestions = questions.map(q => ({
+    id: String(q.quiz_question_id),
+    text: q.question_text,
+    type: q.question_type || 'single_choice',
+    options: optionsList
+      .filter(opt => String(opt.question_id) === String(q.quiz_question_id))
+      .map(opt => ({
+        id: String(opt.quiz_answer_option_id),
+        text: opt.option_text,
+      })),
+  }));
+
+  const now = new Date();
+  const remainingSeconds = Math.max(0, Math.floor((new Date(attempt.expires_at).getTime() - now.getTime()) / 1000));
+
+  return {
+    attempt_id: attempt.attempt_id,
+    lesson_id: attempt.lesson_id,
+    status: attempt.status,
+    answers: attempt.answers || {},
+    flagged_question_ids: attempt.flagged_question_ids || [],
+    revision: attempt.revision || 0,
+    remaining_seconds: remainingSeconds,
+    expires_at: attempt.expires_at,
+    questions: formattedQuestions,
+  };
+}
+
+/**
+ * PUT /quiz/attempts/:attemptId/answers
+ */
+export async function saveQuizAnswers(attemptId, userId, { answers, flagged_question_ids, revision } = {}) {
+  const db = await getMongoDb();
+  const attempt = await db.collection(COLLECTION_QUIZ_ATTEMPTS).findOne({
+    attempt_id: String(attemptId),
+    user_id: String(userId),
+  });
+  if (!attempt) throw Object.assign(new Error('Lượt làm bài không tồn tại.'), { status: 404 });
+  if (attempt.status !== 'in_progress') throw Object.assign(new Error('Lượt làm bài đã kết thúc.'), { status: 400 });
+
+  if (typeof revision === 'number' && revision !== attempt.revision) {
+    throw Object.assign(new Error('Dữ liệu đáp án đã thay đổi từ phiên khác.'), { status: 409, code: 'STALE_REVISION' });
+  }
+
+  const updateFields = {
+    revision: (attempt.revision || 0) + 1,
+    updated_at: new Date(),
+  };
+  if (answers) updateFields.answers = answers;
+  if (flagged_question_ids) updateFields.flagged_question_ids = flagged_question_ids;
+
+  await db.collection(COLLECTION_QUIZ_ATTEMPTS).updateOne(
+    { _id: attempt._id },
+    { $set: updateFields }
+  );
+
+  return {
+    attempt_id: attempt.attempt_id,
+    revision: updateFields.revision,
+    saved: true,
+  };
+}
+
+/**
+ * POST /quiz/attempts/:attemptId/submit
+ */
+export async function submitQuizAttempt(attemptId, userId) {
+  const db = await getMongoDb();
+  const attempt = await db.collection(COLLECTION_QUIZ_ATTEMPTS).findOne({
+    attempt_id: String(attemptId),
+    user_id: String(userId),
+  });
+  if (!attempt) throw Object.assign(new Error('Lượt làm bài không tồn tại.'), { status: 404 });
+
+  const quiz = await db.collection(COLLECTION_LESSON_QUIZZES).findOne({
+    lesson_quiz_id: String(attempt.lesson_quiz_id),
+  });
+  const passScorePercent = quiz ? parseInt(quiz.pass_score, 10) || 70 : 70;
+
+  const questions = await db.collection(COLLECTION_QUIZ_QUESTIONS).find({
+    lesson_quiz_id: String(attempt.lesson_quiz_id),
+  }).toArray();
+
+  const questionIds = questions.map(q => String(q.quiz_question_id));
+  const optionsList = await db.collection(COLLECTION_QUIZ_ANSWER_OPTIONS).find({
+    question_id: { $in: questionIds },
+  }).toArray();
+
+  let correctCount = 0;
+  let wrongCount = 0;
+  let unansweredCount = 0;
+
+  questions.forEach(q => {
+    const qId = String(q.quiz_question_id);
+    const selectedOptId = attempt.answers?.[qId];
+    if (!selectedOptId) {
+      unansweredCount++;
+    } else {
+      const correctOpt = optionsList.find(opt => String(opt.question_id) === qId && (opt.is_correct === '1' || opt.is_correct === 1 || opt.is_correct === true));
+      if (correctOpt && String(correctOpt.quiz_answer_option_id) === String(selectedOptId)) {
+        correctCount++;
+      } else {
+        wrongCount++;
+      }
+    }
+  });
+
+  const total = questions.length || 1;
+  const scorePercent = Math.round((correctCount / total) * 100);
+  const passed = scorePercent >= passScorePercent;
+  const now = new Date();
+
+  await db.collection(COLLECTION_QUIZ_ATTEMPTS).updateOne(
+    { _id: attempt._id },
+    {
+      $set: {
+        status: 'submitted',
+        score_percent: scorePercent,
+        correct_count: correctCount,
+        wrong_count: wrongCount,
+        unanswered_count: unansweredCount,
+        passed,
+        submitted_at: now,
+        updated_at: now,
+      },
+    }
+  );
+
+  if (passed) {
+    const quizLesson = await db.collection(COLLECTION_LESSONS).findOne({ lesson_id: String(attempt.lesson_id) });
+    const quizCourseId = String(quizLesson?.course_id || '');
+    await db.collection(COLLECTION_USER_LESSON_PROGRESS).updateOne(
+      { user_id: String(userId), lesson_id: String(attempt.lesson_id) },
+      {
+        $set: {
+          user_id: String(userId),
+          lesson_id: String(attempt.lesson_id),
+          course_id: quizCourseId,
+          is_completed: true,
+          status: 'completed',
+          completed_at: now.toISOString().replace('T', ' ').slice(0, 19),
+          updated_at: now,
+        },
+      },
+      { upsert: true }
+    );
+    try {
+      await createNotificationForEvent(String(userId), {
+        eventKey: 'lesson-completed:' + String(attempt.lesson_id),
+        sourceType: 'lesson',
+        sourceId: String(attempt.lesson_id),
+        category: 'learning',
+        kind: 'quiz',
+        title: 'Đã vượt qua bài kiểm tra',
+        message: 'Bạn đã xuất sắc vượt qua bài kiểm tra “' + (quizLesson?.title || 'Quiz') + '” với ' + scorePercent + '%.',
+        href: '/learning/learn/' + encodeURIComponent(quizCourseId) + '?lesson=' + encodeURIComponent(String(attempt.lesson_id)),
+      }, { db, now });
+    } catch (e) {
+      // Best-effort notification
+    }
+  }
+
+  return {
+    attempt_id: attempt.attempt_id,
+    status: 'submitted',
+    score_percent: scorePercent,
+    correct_count: correctCount,
+    wrong_count: wrongCount,
+    unanswered_count: unansweredCount,
+    passed,
+    submitted_at: now,
+  };
+}
+
+/**
+ * POST /quiz/attempts/:attemptId/abandon
+ */
+export async function abandonQuizAttempt(attemptId, userId) {
+  const db = await getMongoDb();
+  await db.collection(COLLECTION_QUIZ_ATTEMPTS).updateOne(
+    { attempt_id: String(attemptId), user_id: String(userId), status: 'in_progress' },
+    { $set: { status: 'abandoned', updated_at: new Date() } }
+  );
+  return { attempt_id: attemptId, status: 'abandoned' };
+}
+
+/**
+ * GET /quiz/:lessonId/history
+ */
+export async function getQuizHistory(lessonId, userId) {
+  const { lesson, db } = await resolveLessonContext(lessonId, userId);
+  const quiz = await db.collection(COLLECTION_LESSON_QUIZZES).findOne({
+    lesson_id: String(lesson.lesson_id || lesson._id),
+  });
+  if (!quiz) return [];
+
+  const history = await db.collection(COLLECTION_QUIZ_ATTEMPTS).find({
+    user_id: String(userId),
+    lesson_quiz_id: String(quiz.lesson_quiz_id),
+  }).sort({ created_at: -1 }).limit(100).toArray();
+
+  return history.map(h => ({
+    attempt_id: h.attempt_id,
+    status: h.status,
+    score_percent: h.score_percent ?? null,
+    passed: h.passed ?? false,
+    submitted_at: h.submitted_at ?? null,
+    created_at: h.created_at,
+  }));
+}
+
+export function labActivityRows(attempts, users, userId, demos = []) {
+  const names = new Map(users.flatMap(user => [user.user_id, user.id, user._id].filter(value => value != null).map(id => [String(id), user.full_name || user.name || 'Học viên'])));
+  const grouped = new Map();
+  const submissions = [];
+  for (const attempt of attempts) {
+    const exercise = attempt.exercises?.['1'];
+    const tests = exercise?.test_results || [];
+    const count = tests.filter(test => test.passed).length;
+    const score = tests.length ? Math.round(count / tests.length * 100) : 0;
+    const date = new Date(attempt.submitted_at || attempt.updated_at || attempt.created_at);
+    const submittedAt = date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour12: false }).replace(', ', ' ');
+    if (String(attempt.user_id) === String(userId)) {
+      const history = attempt.run_history?.length ? attempt.run_history : tests.length ? [{
+        run_id: attempt.attempt_id, ran_at: attempt.submitted_at || attempt.updated_at || attempt.created_at,
+        test_results: tests, passed: exercise?.status === 'pass', execution_ms: exercise?.execution_ms || 0,
+      }] : [];
+      for (const run of [...history].reverse()) submissions.push({
+        id: run.run_id,
+        submittedAt: new Date(run.ran_at).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour12: false }).replace(', ', ' '),
+        testsPassed: run.test_results.filter(test => test.passed).length, testsTotal: run.test_results.length,
+        status: run.passed ? 'pass' : 'fail', execTime: String(run.execution_ms) + ' ms',
+      });
+    }
+    if (attempt.status !== 'submitted') continue;
+    const id = String(attempt.user_id), previous = grouped.get(id);
+    const entry = { id, name: names.get(id) || 'Học viên', score, attempts: (previous?.attempts || 0) + 1,
+      execution_ms: exercise?.execution_ms || 0, submittedAt };
+    grouped.set(id, previous && (previous.score > score || previous.score === score && previous.execution_ms <= entry.execution_ms) ? { ...previous, attempts: entry.attempts } : entry);
+  }
+  const leaderboard = [...demos, ...grouped.values()].sort((a,b) => b.score - a.score || a.execution_ms - b.execution_ms)
+    .map((entry,index) => ({ ...entry, rank: index + 1, initials: entry.name.split(/\s+/).slice(-2).map(part => part[0]).join(''),
+      color: ['#155DFC','#7C3AED','#059669'][index % 3], execTime: String(entry.execution_ms),
+      medal: ['gold','silver','bronze'][index] }));
+  return { leaderboard, submissions };
+}
+
+export async function getLabActivity(lessonId, userId, options = {}) {
+  const { lesson, db } = await resolveLessonContext(lessonId, userId, options);
+  const id = String(lesson.lesson_id || lesson._id);
+  const attempts = await db.collection(COLLECTION_LAB_ATTEMPTS).find({ lesson_id: id }).sort({ submitted_at: -1, updated_at: -1 }).toArray();
+  const ids = [...new Set(attempts.map(attempt => String(attempt.user_id)))];
+  const users = ids.length ? await db.collection(COLLECTION_USERS).find({ $or: [
+    { user_id: { $in: ids } }, { id: { $in: ids } }, { _id: { $in: ids } }, { _id: { $in: ids.filter(value => ObjectId.isValid(value)).map(value => new ObjectId(value)) } },
+  ] }).toArray() : [];
+  const samples = db.collection('lab_leaderboard_samples');
+  if (!attempts.some(attempt => attempt.status === 'submitted') && !await samples.findOne({ lesson_id: id })) {
+    for (const [index, name] of ['Minh Anh (mẫu)', 'Hoàng Nam (mẫu)', 'Thu Hà (mẫu)'].entries()) {
+      await samples.updateOne({ lesson_id: id, id: 'sample-' + index }, { $setOnInsert: {
+        lesson_id: id, id: 'sample-' + index, name, score: 100 - index * 10, attempts: index + 1,
+        execution_ms: 80 + index * 25, submittedAt: '09:00:00 05/11/2026', is_sample: true,
+      } }, { upsert: true });
+    }
+  }
+  const demos = await samples.find({ lesson_id: id }).toArray();
+  return labActivityRows(attempts, users, userId, demos);
+}
+
+/**
+ * POST /lab/:lessonId/attempts
+ */
+export function labTestCases(lab) {
+  let config = lab?.environment_config || {};
+  if (typeof config === 'string') { try { config = JSON.parse(config); } catch { config = {}; } }
+  const cases = lab?.test_cases || config.test_cases;
+  if (Array.isArray(cases) && cases.length) return cases.map((test, index) => ({
+    id: String(test.id || 't' + (index + 1)), name: test.name || 'Test case ' + (index + 1),
+    input: String(test.input ?? ''), expected_output: String(test.expected_output ?? test.expected ?? ''),
+  }));
+  return [
+    { id: 't1', name: 'Test case cơ bản 1', input: '', expected_output: lab?.expected_output || 'kết quả hợp lệ' },
+    { id: 't2', name: 'Test case trường hợp biên', input: '', expected_output: 'xử lý biên tốt' },
+  ];
+}
+
+export async function startOrResumeLabAttempt(lessonId, userId) {
+  const { lesson, db } = await resolveLessonContext(lessonId, userId);
+  const lab = await db.collection(COLLECTION_LESSON_LABS).findOne({
+    lesson_id: String(lesson.lesson_id || lesson._id),
+  });
+  if (!lab) throw Object.assign(new Error('Bài lab không tồn tại.'), { status: 404 });
+
+  let envConfig = {};
+  if (lab.environment_config) {
+    try { envConfig = typeof lab.environment_config === 'string' ? JSON.parse(lab.environment_config) : lab.environment_config; } catch {}
+  }
+
+  let attempt = await db.collection(COLLECTION_LAB_ATTEMPTS).findOne({
+    user_id: String(userId),
+    lesson_id: String(lesson.lesson_id || lesson._id),
+    status: 'in_progress',
+  });
+
+  if (!attempt) {
+    const attemptId = randomUUID();
+    attempt = {
+      attempt_id: attemptId,
+      user_id: String(userId),
+      lesson_id: String(lesson.lesson_id || lesson._id),
+      lesson_lab_id: String(lab.lesson_lab_id),
+      status: 'in_progress',
+      exercises: {
+        '1': {
+          source_code: lab.sample_code || '',
+          revision: 0,
+          status: 'not-started',
+          test_results: [],
+        },
+      },
+      created_at: new Date(),
+    };
+    await db.collection(COLLECTION_LAB_ATTEMPTS).insertOne(attempt);
+  }
+
+  return {
+    attempt_id: attempt.attempt_id,
+    lesson_id: attempt.lesson_id,
+    requirements: lab.requirements,
+    expected_output: lab.expected_output,
+    environment_config: envConfig,
+    exercise: attempt.exercises?.['1'] || { source_code: lab.sample_code, revision: 0 },
+  };
+}
+
+/**
+ * PUT /lab/:lessonId/attempts/:attemptId/exercises/:exerciseId
+ */
+export async function saveLabDraftCode(lessonId, attemptId, exerciseId, userId, { source_code, revision } = {}) {
+  const { db } = await resolveLessonContext(lessonId, userId);
+  const attempt = await db.collection(COLLECTION_LAB_ATTEMPTS).findOne({
+    attempt_id: String(attemptId),
+    user_id: String(userId),
+    lesson_id: String(lessonId),
+    status: 'in_progress',
+  });
+  if (!attempt) throw Object.assign(new Error('Lượt làm bài lab không tồn tại.'), { status: 404 });
+
+  const currentEx = attempt.exercises?.[exerciseId] || { revision: 0 };
+  if (typeof revision === 'number' && revision !== currentEx.revision) {
+    throw Object.assign(new Error('Mã nguồn đã thay đổi từ phiên khác.'), { status: 409, code: 'STALE_REVISION' });
+  }
+
+  const nextRevision = (currentEx.revision || 0) + 1;
+  await db.collection(COLLECTION_LAB_ATTEMPTS).updateOne(
+    { _id: attempt._id },
+    {
+      $set: {
+        [`exercises.${exerciseId}.source_code`]: source_code,
+        [`exercises.${exerciseId}.revision`]: nextRevision,
+        updated_at: new Date(),
+      },
+    }
+  );
+
+  return { revision: nextRevision, saved: true };
+}
+
+/**
+ * POST /lab/:lessonId/attempts/:attemptId/exercises/:exerciseId/run
+ */
+export async function runLabExercise(lessonId, attemptId, exerciseId, userId, { source_code, revision } = {}) {
+  const { db } = await resolveLessonContext(lessonId, userId);
+  const attempt = await db.collection(COLLECTION_LAB_ATTEMPTS).findOne({
+    attempt_id: String(attemptId),
+    user_id: String(userId),
+    lesson_id: String(lessonId),
+    status: 'in_progress',
+  });
+  if (!attempt) throw Object.assign(new Error('Lượt làm bài lab không tồn tại.'), { status: 404 });
+
+  const exercise = attempt.exercises?.[exerciseId];
+  if (!exercise) throw Object.assign(new Error('Bài tập không tồn tại.'), { status: 404 });
+  if (revision !== exercise.revision) throw Object.assign(new Error('Mã nguồn đã thay đổi từ phiên khác.'), { status: 409, code: 'STALE_REVISION' });
+  const codeToRun = source_code ?? exercise.source_code ?? '';
+  const nextRevision = (revision !== undefined ? revision : (attempt.exercises?.[exerciseId]?.revision || 0)) + 1;
+
+  // Mô phỏng kiểm tra code đơn giản
+  const hasSolution = codeToRun.length > 20 && !codeToRun.includes('return null;');
+  const lab = await db.collection(COLLECTION_LESSON_LABS).findOne({ lesson_id: String(attempt.lesson_id) });
+  const testResults = labTestCases(lab).map(test => ({
+    ...test, passed: hasSolution, actual: hasSolution ? test.expected_output : 'Chưa có kết quả trả về',
+  }));
+  const passed = testResults.every(t => t.passed);
+  const runId = randomUUID();
+  const ranAt = new Date();
+
+  await db.collection(COLLECTION_LAB_ATTEMPTS).updateOne(
+    { _id: attempt._id },
+    {
+      $push: { run_history: { $each: [{ run_id: runId, ran_at: ranAt, test_results: testResults, passed, execution_ms: 124 }], $slice: -100 } },
+      $set: {
+        [`exercises.${exerciseId}.source_code`]: codeToRun,
+        [`exercises.${exerciseId}.revision`]: nextRevision,
+        [`exercises.${exerciseId}.status`]: passed ? 'pass' : 'fail',
+        [`exercises.${exerciseId}.test_results`]: testResults,
+        [`exercises.${exerciseId}.execution_ms`]: 124,
+        updated_at: new Date(),
+      },
+    }
+  );
+
+  return {
+    run_id: runId,
+    revision: nextRevision,
+    test_results: testResults,
+    passed,
+    execution_ms: 124,
+    execution_mode: 'simulation',
+    is_simulated: true,
+  };
+}
+
+/**
+ * POST /lab/:lessonId/attempts/:attemptId/exercises/:exerciseId/reset
+ */
+export async function resetLabExercise(lessonId, attemptId, exerciseId, userId, { revision } = {}) {
+  const { lesson, db } = await resolveLessonContext(lessonId, userId);
+  const lab = await db.collection(COLLECTION_LESSON_LABS).findOne({
+    lesson_id: String(lesson.lesson_id || lesson._id),
+  });
+  const starterCode = lab?.sample_code || '';
+  const nextRevision = (revision || 0) + 1;
+
+  await db.collection(COLLECTION_LAB_ATTEMPTS).updateOne(
+    { attempt_id: String(attemptId), user_id: String(userId) },
+    {
+      $set: {
+        [`exercises.${exerciseId}.source_code`]: starterCode,
+        [`exercises.${exerciseId}.revision`]: nextRevision,
+        [`exercises.${exerciseId}.status`]: 'not-started',
+        [`exercises.${exerciseId}.test_results`]: [],
+        updated_at: new Date(),
+      },
+    }
+  );
+
+  return {
+    source_code: starterCode,
+    revision: nextRevision,
+    reset: true,
+  };
+}
+
+/**
+ * POST /lab/:lessonId/attempts/:attemptId/submit
+ */
+export async function submitLabAttempt(lessonId, attemptId, userId) {
+  const { db } = await resolveLessonContext(lessonId, userId);
+  const attempt = await db.collection(COLLECTION_LAB_ATTEMPTS).findOne({
+    attempt_id: String(attemptId),
+    user_id: String(userId),
+    lesson_id: String(lessonId),
+    status: 'in_progress',
+  });
+  if (!attempt) throw Object.assign(new Error('Lượt làm bài lab không tồn tại.'), { status: 404 });
+
+  const ex = attempt.exercises?.['1'];
+  const passed = ex?.status === 'pass';
+  const now = new Date();
+
+  await db.collection(COLLECTION_LAB_ATTEMPTS).updateOne(
+    { _id: attempt._id },
+    {
+      $set: {
+        status: 'submitted',
+        passed,
+        submitted_at: now,
+        updated_at: now,
+      },
+    }
+  );
+
+  if (passed) {
+    const labLesson = await db.collection(COLLECTION_LESSONS).findOne({ lesson_id: String(attempt.lesson_id) });
+    const labCourseId = String(labLesson?.course_id || '');
+    await db.collection(COLLECTION_USER_LESSON_PROGRESS).updateOne(
+      { user_id: String(userId), lesson_id: String(attempt.lesson_id) },
+      {
+        $set: {
+          user_id: String(userId),
+          lesson_id: String(attempt.lesson_id),
+          course_id: labCourseId,
+          is_completed: true,
+          status: 'completed',
+          completed_at: now.toISOString().replace('T', ' ').slice(0, 19),
+          updated_at: now,
+        },
+      },
+      { upsert: true }
+    );
+    try {
+      await createNotificationForEvent(String(userId), {
+        eventKey: 'lesson-completed:' + String(attempt.lesson_id),
+        sourceType: 'lesson',
+        sourceId: String(attempt.lesson_id),
+        category: 'learning',
+        kind: 'progress',
+        title: 'Đã hoàn thành bài thực hành Lab',
+        message: 'Bạn đã hoàn thành bài thực hành “' + (labLesson?.title || 'Lab') + '”.',
+        href: '/learning/learn/' + encodeURIComponent(labCourseId) + '?lesson=' + encodeURIComponent(String(attempt.lesson_id)),
+      }, { db, now });
+    } catch (e) {
+      // Best-effort notification
+    }
+  }
+
+  return {
+    attempt_id: attempt.attempt_id,
+    passed,
+    status: 'submitted',
+    submitted_at: now,
+  };
+}
+
+/**
+ * GET /video/:lessonId/playback
+ */
+export async function getVideoPlayback(lessonId, userId) {
+  const { lesson, db } = await resolveLessonContext(lessonId, userId);
+  const video = await db.collection(COLLECTION_LESSON_VIDEOS).findOne({
+    lesson_id: String(lesson.lesson_id || lesson._id),
+  });
+
+  return {
+    session_id: randomUUID(),
+    playback_url: video?.video_url || '',
+    duration_seconds: (parseInt(video?.duration, 10) || parseInt(lesson.duration_minutes, 10) || 0) * 60,
+    last_position_seconds: 0,
+    poster_url: null,
+  };
+}
+
+/**
+ * POST /video/:lessonId/heartbeat
+ */
+export async function recordVideoHeartbeat(lessonId, userId, payload = {}) {
+  return { success: true };
+}
+
 // ─── 8. Router Express dành cho Module Bài Học & Tiện Ích Học Tập ─────────────
 
 /**
@@ -1945,11 +2954,15 @@ export async function downloadCourseDocument(documentId, userId, options = {}) {
  * @param {Function} optionalAuth - Middleware xác thực tùy chọn
  * @returns {Router}
  */
-export function createLessonRouter(express, requireAuth, optionalAuth) {
+export function createLessonRouter(express, requireAuth, optionalAuth, activityOptions = {}) {
   const router = express.Router();
 
   const extractAuth = optionalAuth || ((req, res, next) => next());
   const enforceAuth = requireAuth || ((req, res, next) => next());
+
+  router.post('/:lessonId/activity-session', enforceAuth,
+    createLearningActivityStartHandler('lesson', req => ({ course_id: req.body?.course_id, lesson_id: req.params.lessonId }),
+      ['course_id'], activityOptions));
 
   // GET /api/user/lessons/overview/:courseId - Truy vấn Tab Tổng quan (Overview) của khóa học
   router.get('/overview/:courseId', extractAuth, async (req, res, next) => {
@@ -2195,6 +3208,222 @@ export function createLessonRouter(express, requireAuth, optionalAuth) {
         success: true,
         data: result,
       });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // ── ROUTER K.15: BỐN LOẠI BÀI HỌC (READING, VIDEO, QUIZ, LAB) ──
+
+  // GET /api/user/lessons/curriculum/:lessonId
+  router.get('/curriculum/:lessonId', enforceAuth, async (req, res, next) => {
+    try {
+      res.set('Cache-Control', 'no-store');
+      const { lessonId } = req.params;
+      const data = await getLessonCurriculumOverview(lessonId, req.userId);
+      res.json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // GET /api/user/lessons/content/:lessonId
+  router.get('/content/:lessonId', enforceAuth, async (req, res, next) => {
+    try {
+      res.set('Cache-Control', 'no-store');
+      const { lessonId } = req.params;
+      const data = await getLessonContentDetails(lessonId, req.userId);
+      res.json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // POST /api/user/lessons/:lessonId/complete
+  router.post('/:lessonId/complete', enforceAuth, async (req, res, next) => {
+    try {
+      res.set('Cache-Control', 'no-store');
+      const { lessonId } = req.params;
+      const data = await markLessonManualComplete(lessonId, req.userId, req.body || {});
+      res.json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // GET /api/user/lessons/quiz/:lessonId/overview
+  router.get('/quiz/:lessonId/overview', enforceAuth, async (req, res, next) => {
+    try {
+      res.set('Cache-Control', 'no-store');
+      const { lessonId } = req.params;
+      const data = await getQuizOverview(lessonId, req.userId);
+      res.json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // POST /api/user/lessons/quiz/:lessonId/attempts
+  router.post('/quiz/:lessonId/attempts', enforceAuth, async (req, res, next) => {
+    try {
+      res.set('Cache-Control', 'no-store');
+      const { lessonId } = req.params;
+      const { retry } = req.body || {};
+      const data = await startOrResumeQuizAttempt(lessonId, req.userId, { retry: !!retry });
+      res.status(201).json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // GET /api/user/lessons/quiz/attempts/:attemptId
+  router.get('/quiz/attempts/:attemptId', enforceAuth, async (req, res, next) => {
+    try {
+      res.set('Cache-Control', 'no-store');
+      const { attemptId } = req.params;
+      const data = await getQuizAttempt(attemptId, req.userId);
+      res.json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // PUT /api/user/lessons/quiz/attempts/:attemptId/answers
+  router.put('/quiz/attempts/:attemptId/answers', enforceAuth, async (req, res, next) => {
+    try {
+      res.set('Cache-Control', 'no-store');
+      const { attemptId } = req.params;
+      const { answers, flagged_question_ids, revision } = req.body || {};
+      const data = await saveQuizAnswers(attemptId, req.userId, { answers, flagged_question_ids, revision });
+      res.json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // POST /api/user/lessons/quiz/attempts/:attemptId/submit
+  router.post('/quiz/attempts/:attemptId/submit', enforceAuth, async (req, res, next) => {
+    try {
+      res.set('Cache-Control', 'no-store');
+      const { attemptId } = req.params;
+      const data = await submitQuizAttempt(attemptId, req.userId);
+      res.json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // POST /api/user/lessons/quiz/attempts/:attemptId/abandon
+  router.post('/quiz/attempts/:attemptId/abandon', enforceAuth, async (req, res, next) => {
+    try {
+      res.set('Cache-Control', 'no-store');
+      const { attemptId } = req.params;
+      const data = await abandonQuizAttempt(attemptId, req.userId);
+      res.json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // GET /api/user/lessons/quiz/:lessonId/history
+  router.get('/quiz/:lessonId/history', enforceAuth, async (req, res, next) => {
+    try {
+      res.set('Cache-Control', 'no-store');
+      const { lessonId } = req.params;
+      const data = await getQuizHistory(lessonId, req.userId);
+      res.json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // POST /api/user/lessons/lab/:lessonId/attempts
+  router.get('/lab/:lessonId/activity', enforceAuth, async (req, res, next) => {
+    try { res.set('Cache-Control', 'no-store'); res.json({ success: true, data: await getLabActivity(req.params.lessonId, req.userId) }); }
+    catch (error) { next(error); }
+  });
+
+  router.post('/lab/:lessonId/attempts', enforceAuth, async (req, res, next) => {
+    try {
+      res.set('Cache-Control', 'no-store');
+      const { lessonId } = req.params;
+      const data = await startOrResumeLabAttempt(lessonId, req.userId);
+      res.status(201).json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // PUT /api/user/lessons/lab/:lessonId/attempts/:attemptId/exercises/:exerciseId
+  router.put('/lab/:lessonId/attempts/:attemptId/exercises/:exerciseId', enforceAuth, async (req, res, next) => {
+    try {
+      res.set('Cache-Control', 'no-store');
+      const { lessonId, attemptId, exerciseId } = req.params;
+      const { source_code, revision } = req.body || {};
+      const data = await saveLabDraftCode(lessonId, attemptId, exerciseId, req.userId, { source_code, revision });
+      res.json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // POST /api/user/lessons/lab/:lessonId/attempts/:attemptId/exercises/:exerciseId/run
+  router.post('/lab/:lessonId/attempts/:attemptId/exercises/:exerciseId/run', enforceAuth, async (req, res, next) => {
+    try {
+      res.set('Cache-Control', 'no-store');
+      const { lessonId, attemptId, exerciseId } = req.params;
+      const { source_code, revision } = req.body || {};
+      const data = await runLabExercise(lessonId, attemptId, exerciseId, req.userId, { source_code, revision });
+      res.json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // POST /api/user/lessons/lab/:lessonId/attempts/:attemptId/exercises/:exerciseId/reset
+  router.post('/lab/:lessonId/attempts/:attemptId/exercises/:exerciseId/reset', enforceAuth, async (req, res, next) => {
+    try {
+      res.set('Cache-Control', 'no-store');
+      const { lessonId, attemptId, exerciseId } = req.params;
+      const { revision } = req.body || {};
+      const data = await resetLabExercise(lessonId, attemptId, exerciseId, req.userId, { revision });
+      res.json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // POST /api/user/lessons/lab/:lessonId/attempts/:attemptId/submit
+  router.post('/lab/:lessonId/attempts/:attemptId/submit', enforceAuth, async (req, res, next) => {
+    try {
+      res.set('Cache-Control', 'no-store');
+      const { lessonId, attemptId } = req.params;
+      const data = await submitLabAttempt(lessonId, attemptId, req.userId);
+      res.json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // GET /api/user/lessons/video/:lessonId/playback
+  router.get('/video/:lessonId/playback', enforceAuth, async (req, res, next) => {
+    try {
+      res.set('Cache-Control', 'no-store');
+      const { lessonId } = req.params;
+      const data = await getVideoPlayback(lessonId, req.userId);
+      res.json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // POST /api/user/lessons/video/:lessonId/heartbeat
+  router.post('/video/:lessonId/heartbeat', enforceAuth, async (req, res, next) => {
+    try {
+      res.set('Cache-Control', 'no-store');
+      const { lessonId } = req.params;
+      const data = await recordVideoHeartbeat(lessonId, req.userId, req.body || {});
+      res.json({ success: true, data });
     } catch (err) {
       next(err);
     }

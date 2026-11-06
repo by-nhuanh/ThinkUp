@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, output } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { LucideBookmark, LucideShoppingCart, LucideStar, LucideUserRound } from '@lucide/angular';
 import { Course } from '../../../../core/models/course.model';
@@ -21,6 +21,11 @@ export class RoadmapCourseCardComponent {
   readonly addToCart = output<string>();
 
   readonly coverTitle = computed(() => this.course().title.split(' - ')[0]);
+  readonly failedThumbnail = signal<string | undefined>(undefined);
+  readonly thumbnail = computed(() => {
+    const url = this.course().thumbnailUrl;
+    return url && url !== this.failedThumbnail() ? url : null;
+  });
   readonly isFavorite = computed(() => this.favoritesService.isFavorite(this.course().id));
   readonly badge = computed(() => this.course().badge ?? 'HOT');
   readonly tags = computed(() => (this.course().tags ?? []).slice(0, 3));

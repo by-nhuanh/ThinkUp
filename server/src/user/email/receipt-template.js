@@ -43,9 +43,9 @@ export function renderPaymentReceiptEmail({
     </tr>
   `).join('');
 
-  const baseUrl = clientUrl || process.env.CLIENT_URL || 'https://think-up-edu.vercel.app';
-  const myCoursesUrl = `${baseUrl}/main/my-learning`;
-  const invoiceUrl = `${baseUrl}/main/user/billing/${transactionId || orderId}`;
+  const baseUrl = (clientUrl || process.env.CLIENT_URL || 'https://think-up-edu.vercel.app').split(',')[0].trim().replace(/\/+$/, '');
+  const myCoursesUrl = `${baseUrl}/main/my-courses`;
+  const invoiceUrl = `${baseUrl}/main/profile/billing/${encodeURIComponent(orderId)}`;
 
   const contentHtml = `
     <!-- Header Thông báo thành công -->

@@ -1,5 +1,8 @@
 <article class="cc-card">
   <div class="cc-card__cover" [style.background]="card().coverGradient">
+    @if (card().course?.thumbnailUrl; as image) {
+      <img [src]="image" [alt]="card().title" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" />
+    }
     @if (card().badge; as badge) {
       <span class="cc-badge" [class]="'cc-badge--' + badge.tone">{{ badge.text }}</span>
     }
@@ -15,7 +18,7 @@
       <app-icon name="heart" class="h-[14px] w-[14px]" />
     </button>
 
-    <div class="cc-card__cover-text">
+    <div class="cc-card__cover-text" [style.visibility]="card().course?.thumbnailUrl ? 'hidden' : 'visible'">
       <p class="cc-card__cover-title" [class.cc-card__cover-title--lg]="card().coverSize === 'lg'">
         {{ card().coverTitle }}
       </p>
@@ -31,10 +34,14 @@
     <h3 class="cc-card__title">{{ card().title }}</h3>
 
     <div class="cc-card__author">
-      <span class="cc-card__avatar">
-        <app-icon name="user" class="h-[12px] w-[12px]" />
+      <span class="cc-card__avatar overflow-hidden">
+        @if (card().course?.instructorProfile?.avatar) {
+          <img [src]="card().course?.instructorProfile?.avatar" [alt]="card().author" class="h-full w-full object-cover" />
+        } @else {
+          <app-icon name="user" class="h-[12px] w-[12px]" />
+        }
       </span>
-      <span class="cc-card__author-name" [appInstructorTrigger]="card().author">{{ card().author }}</span>
+      <span class="cc-card__author-name" [appInstructorTrigger]="card().course?.instructorId || card().author">{{ card().author }}</span>
       <span class="cc-card__level">{{ card().level }}</span>
     </div>
 

@@ -1,3 +1,4 @@
+import { FacebookAuthService } from '../../../core/services/facebook-auth.service';
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -5,6 +6,7 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { AuthApiError, AuthResponse } from '../../../core/models/user.model';
 import { ToastService } from '../../../core/services/toast.service';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-sign-up',
@@ -17,6 +19,9 @@ export class SignUpComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
   private readonly toastService = inject(ToastService);
+  private googleInitialized = false;
+  private readonly facebook = inject(FacebookAuthService);
+  private readonly facebookReady = this.facebook.prepare().catch(() => undefined);
 
   // Form Fields as Signals for 100% reactive computed tracking
   readonly fullName = signal('');
@@ -280,8 +285,58 @@ export class SignUpComponent implements OnInit {
   }
 
   handleSocialSignUp(provider: 'Google' | 'Facebook'): void {
-    // TODO(pre-deploy): Nhớ thay thông báo này bằng OAuth Google/Facebook có xác minh danh tính thật trước khi mở tính năng.
-    this.toastService.showToast({ type: 'info', message: `Đăng ký bằng ${provider} sẽ được hỗ trợ sau.` });
+    if (provider === 'Facebook') {
+      if (this.loading()) return;
+      this.facebook.login().then(accessToken => {
+        this.loading.set(true);
+        this.authService.signUpWithFacebook(accessToken).subscribe({
+          next: result => { this.loading.set(false); this.handleSignUpSuccess(result); },
+          error: (error: AuthApiError) => { this.loading.set(false); this.handleSignUpFailure(error); },
+        });
+      }).catch(error => this.toastService.showToast({ type: 'error', message: error.message }));
+      return;
+    }
+    if (!environment.googleClientId) {
+      this.toastService.showToast({ type: 'error', message: 'Google Sign-In chưa được cấu hình.' });
+      return;
+    }
+    this.loadGoogleIdentity().then(() => {
+      const google = (window as any).google;
+      if (!this.googleInitialized) {
+        google.accounts.id.initialize({
+          client_id: environment.googleClientId,
+          callback: (response: { credential?: string }) => this.submitGoogleSignUp(response.credential),
+        });
+        this.googleInitialized = true;
+      }
+      google.accounts.id.prompt();
+    }).catch(() => this.toastService.showToast({ type: 'error', message: 'Không thể khởi tạo đăng ký Google. Vui lòng thử lại.' }));
+  }
+
+  private submitGoogleSignUp(idToken?: string): void {
+    if (!idToken || this.loading()) return;
+    this.loading.set(true);
+    this.networkToast.set('');
+    this.successToast.set('');
+    this.authService.signUpWithGoogle(idToken).subscribe({
+      next: (res) => { this.loading.set(false); this.handleSignUpSuccess(res); },
+      error: (err: AuthApiError) => { this.loading.set(false); this.handleSignUpFailure(err); },
+    });
+  }
+
+  private loadGoogleIdentity(): Promise<void> {
+    if ((window as any).google?.accounts?.id) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const existing = document.querySelector<HTMLScriptElement>('script[data-google-identity]');
+      if (existing) {
+        if ((window as any).google?.accounts?.id) { resolve(); return; }
+        existing.addEventListener('load', () => resolve(), { once: true }); existing.addEventListener('error', () => reject(), { once: true }); return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client'; script.async = true; script.defer = true;
+      script.dataset['googleIdentity'] = 'true'; script.onload = () => resolve(); script.onerror = () => reject();
+      document.head.appendChild(script);
+    });
   }
 
 }

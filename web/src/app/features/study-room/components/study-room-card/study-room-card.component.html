@@ -32,9 +32,11 @@
   </div>
   <div class="room-details">
     <h3>{{ room.name }}</h3>
-    <p class="creator">
-      Tạo bởi: <strong>{{ room.creator }}</strong>
-    </p>
+    @if (room.creator) {
+      <p class="creator">
+        Tạo bởi: <strong>{{ room.creator }}</strong>
+      </p>
+    }
     <div class="room-id">
       ID phòng: <strong>#{{ room.roomId.toUpperCase() }}</strong
       ><button

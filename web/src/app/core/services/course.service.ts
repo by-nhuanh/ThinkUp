@@ -1,7 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { Observable, defer, throwError, forkJoin, of, switchMap } from 'rxjs';
+import { AuthService } from './auth.service';
+import { map } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import {
   Course,
@@ -19,8 +20,6 @@ import {
   ReviewBreakdownRow,
 } from '../models/course.model';
 import { StudentPreferences } from '../models/user.model';
-import { MOCK_COURSES, MOCK_CATEGORIES, MOCK_POPULAR_TAGS } from '../data/mock/mock-courses';
-import { MOCK_ENROLLED_COURSES } from '../data/mock/mock-enrolled-courses';
 
 interface CourseCardDto {
   id: string;
@@ -31,7 +30,11 @@ interface CourseCardDto {
   badge?: string;
   level?: string;
   duration_formatted?: string;
-  instructor?: { name?: string };
+  duration_minutes?: number;
+  instructor?: { id?: string; name?: string; avatar_url?: string; avatar?: string };
+  is_in_wishlist?: boolean;
+  is_in_cart?: boolean;
+  is_purchased?: boolean;
   rating?: number | string;
   total_reviews?: number | string;
   total_students?: number | string;
@@ -133,6 +136,8 @@ interface CourseDetailDto {
 
 interface CourseReviewDto {
   review_id: string;
+  user_id?: string;
+  is_mine?: boolean;
   reviewer_name?: string;
   rating?: number | string;
   content?: string;
@@ -141,6 +146,8 @@ interface CourseReviewDto {
 }
 
 interface CourseReviewsDto {
+  has_user_reviewed?: boolean;
+  my_review?: CourseReviewDto | null;
   pagination: {
     page: number;
     limit: number;
@@ -203,6 +210,7 @@ interface CoursePreviewDto {
 }
 
 interface LessonStreamDto {
+  playback: import('../models/course.model').LearningPlayback;
   lesson_id: string;
   video_url: string;
   duration?: string;
@@ -217,43 +225,107 @@ export interface CourseReviewQuery {
   limit?: number;
 }
 
+export function formatCourseLevel(level?: string | null): string {
+  if (!level) return 'Cơ bản';
+  const l = level.trim().toLowerCase();
+  if (l === 'beginner' || l === 'cơ bản') return 'Cơ bản';
+  if (l === 'intermediate' || l === 'trung cấp') return 'Trung cấp';
+  if (l === 'advanced' || l === 'nâng cao') return 'Nâng cao';
+  return level;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CourseService {
   private http = inject(HttpClient);
   private apiUrl = environment.apiUrl;
+  private readonly auth = inject(AuthService);
+  private categoryIds = new Map<string, string>();
+
+  private readonly guardAccount = <T>(source: Observable<T>): Observable<T> => defer(() => {
+    const token = this.auth.getToken();
+    return source.pipe(map(value => {
+      if (token !== this.auth.getToken()) throw new Error('Phiên đăng nhập đã thay đổi.');
+      return value;
+    }));
+  });
 
   getCourses(filters: CourseFilters = {}): Observable<CourseListResponse> {
     let params = new HttpParams();
-    if (filters.query) params = params.set('search', filters.query);
-    if (filters.categories?.length === 1) params = params.set('category_id', filters.categories[0]);
-    if (filters.levels?.length === 1) params = params.set('level', filters.levels[0]);
     if (filters.ratings) params = params.set('min_rating', filters.ratings);
-    if (filters.tags?.length === 1) params = params.set('tag_id', filters.tags[0]);
     if (filters.priceType && filters.priceType !== 'all') params = params.set('price_type', filters.priceType);
     if (filters.sort) params = params.set('sort', this.mapSort(filters.sort));
     params = params.set('limit', 'all');
 
-    return this.http.get<CourseCardsResponse>(`${this.apiUrl}/courses`, { params }).pipe(
-      map(response => ({
-        success: response.success,
-        data: response.data.courses.map(course => this.mapCourseCard(course)),
-        total: response.data.pagination.total_items,
-      }))
-    );
+    const categories = filters.categories?.length ? filters.categories : [null];
+    const requests = categories.map(category => this.http.get<CourseCardsResponse>(`${this.apiUrl}/courses`, {
+      params: category ? params.set('category_id', this.categoryIds.get(category) || category) : params,
+    }));
+    if (categories.length > 1 && ['newest', 'recommended'].includes(filters.sort || '')) requests.push(this.http.get<CourseCardsResponse>(`${this.apiUrl}/courses`, { params }));
+    return forkJoin(requests).pipe(this.guardAccount, map(responses => {
+      if (responses.some(response => response.success !== true || !Array.isArray(response.data?.courses))) {
+        throw new Error('Phản hồi danh sách khóa học không hợp lệ.');
+      }
+      const unique = new Map(responses.slice(0, categories.length).flatMap(response => response.data.courses).map(dto => {
+        const course = this.mapCourseCard(dto); return [course.id, course] as const;
+      }));
+      const levelNames: Record<string, string> = { 'Cơ bản': 'beginner', 'Trung cấp': 'intermediate', 'Nâng cao': 'advanced' };
+      const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
+      const query = normalize(filters.query?.trim() || '');
+      const matchPosition = (course: Course) => {
+        const positions = [course.title, course.instructor, ...(course.tags || [])]
+          .map(value => normalize(value || '').indexOf(query)).filter(position => position >= 0);
+        return positions.length ? Math.min(...positions) : Infinity;
+      };
+      const courses = [...unique.values()].filter(course =>
+        (!query || Number.isFinite(matchPosition(course))) &&
+        (!filters.levels?.length || filters.levels.some(level => level === course.level || (levelNames[level] || level) === course.level?.toLowerCase()))
+        && (!filters.tags?.length || filters.tags.some(tag => course.tags?.includes(tag)))
+        && (!filters.maxDuration || course.durationMinutes == null || course.durationMinutes <= filters.maxDuration * 60)
+      );
+      if (responses.length > 1) {
+        if (filters.sort === 'price-low') courses.sort((a, b) => a.salePrice - b.salePrice);
+        if (filters.sort === 'price-high') courses.sort((a, b) => b.salePrice - a.salePrice);
+        if (filters.sort === 'rating') courses.sort((a, b) => b.rating - a.rating);
+        if (!filters.sort || filters.sort === 'popular') courses.sort((a, b) => (b.studentsCount || 0) - (a.studentsCount || 0));
+        if (filters.sort === 'newest' || filters.sort === 'recommended') {
+          const order = new Map(responses[responses.length - 1].data.courses.map((course, index) => [course.course_id || course.id, index]));
+          courses.sort((a, b) => order.get(a.id)! - order.get(b.id)!);
+        }
+      }
+      if (query) courses.sort((a, b) => matchPosition(a) - matchPosition(b));
+      return { success: true, data: courses, total: courses.length };
+    }));
   }
 
   private mapCourseCard(course: CourseCardDto): Course {
+    const instructorAvatar = course.instructor?.avatar_url || course.instructor?.avatar;
     return {
       id: course.course_id || course.id,
       courseId: course.course_id,
       slug: course.slug,
       title: course.title,
       instructor: course.instructor?.name || 'Giảng viên ThinkUp',
-      level: course.level,
+      instructorId: course.instructor?.id,
+      instructorInitial: (course.instructor?.name || 'G').charAt(0).toUpperCase(),
+      instructorProfile: {
+        id: course.instructor?.id,
+        name: course.instructor?.name || 'Giảng viên ThinkUp',
+        title: '',
+        bio: '',
+        rating: this.toNumber(course.rating),
+        studentsCount: this.toNumber(course.total_students),
+        coursesCount: 0,
+        avatar: instructorAvatar,
+      },
+      level: formatCourseLevel(course.level),
       rating: this.toNumber(course.rating),
       ratingCount: this.toNumber(course.total_reviews),
       studentsCount: this.toNumber(course.total_students),
       duration: course.duration_formatted,
+      durationMinutes: course.duration_minutes,
+      isInWishlist: course.is_in_wishlist,
+      isInCart: course.is_in_cart,
+      isPurchased: course.is_purchased,
       originalPrice: this.toNumber(course.price?.original),
       salePrice: this.toNumber(course.price?.sale),
       badge: course.badge,
@@ -286,7 +358,10 @@ export class CourseService {
       .get<{ success: boolean; data: CourseDetailDto }>(
         `${this.apiUrl}/courses/${encodeURIComponent(courseId)}/detail`
       )
-      .pipe(map(response => this.mapCourseDetail(response.data)));
+      .pipe(this.guardAccount, map(response => {
+        if (!response.success || !response.data?.course_id) throw new Error('Phản hồi chi tiết khóa học không hợp lệ.');
+        return this.mapCourseDetail(response.data);
+      }));
   }
 
   getCoursePreview(courseId: string): Observable<CoursePreview> {
@@ -294,7 +369,10 @@ export class CourseService {
       .get<{ success: boolean; data: CoursePreviewDto }>(
         `${this.apiUrl}/courses/${encodeURIComponent(courseId)}/preview`
       )
-      .pipe(map(response => this.mapCoursePreview(response.data)));
+      .pipe(this.guardAccount, map(response => {
+        if (!response.success) throw new Error('Phản hồi học thử không hợp lệ.');
+        return this.mapCoursePreview(response.data);
+      }));
   }
 
   getCourseReviews(courseId: string, query: CourseReviewQuery = {}): Observable<CourseReviewPage> {
@@ -321,6 +399,7 @@ export class CourseService {
       )
       .pipe(
         map(response => ({
+          playback: response.data.playback,
           lessonId: response.data.lesson_id,
           videoUrl: response.data.video_url,
           duration: response.data.duration,
@@ -354,7 +433,7 @@ export class CourseService {
       instructorId: instructor?.instructor_id,
       instructorInitial: (instructor?.full_name || 'G').charAt(0).toUpperCase(),
       category: dto.category?.name,
-      level: dto.levels?.[0] || dto.level,
+      level: formatCourseLevel(dto.levels?.[0] || dto.level),
       rating,
       ratingCount,
       studentsCount: studentCount,
@@ -466,7 +545,10 @@ export class CourseService {
 
   private mapCourseReviewPage(dto: CourseReviewsDto): CourseReviewPage {
     const total = this.toNumber(dto.filter_summary?.total_reviews);
+    const currentUserId = this.auth.currentUser()?.id;
     return {
+      hasUserReviewed: dto.has_user_reviewed === true || (dto.reviews ?? []).some(r => r.is_mine === true || (currentUserId && String(r.user_id) === String(currentUserId))),
+      myReview: dto.my_review ? this.mapCourseReview(dto.my_review) : null,
       reviews: (dto.reviews ?? []).map(review => this.mapCourseReview(review)),
       pagination: {
         page: dto.pagination?.page ?? 1,
@@ -495,9 +577,12 @@ export class CourseService {
   }
 
   private mapCourseReview(dto: CourseReviewDto): CourseReview {
+    const currentUserId = this.auth.currentUser()?.id;
+    const isMine = dto.is_mine === true || Boolean(currentUserId && String(dto.user_id) === String(currentUserId));
     return {
       id: dto.review_id,
-      author: dto.reviewer_name || 'Học viên ThinkUp',
+      isMine,
+      author: isMine ? 'Bạn' : (dto.reviewer_name || 'Học viên ThinkUp'),
       rating: this.toNumber(dto.rating),
       date: dto.created_at_relative || this.formatDate(dto.created_at) || '',
       comment: dto.content || '',
@@ -575,28 +660,75 @@ export class CourseService {
   }
 
   getFilterOptions(): Observable<{ success: boolean; data: CourseFilterOptions }> {
-    return this.http.get<{ success: boolean; data: CourseFilterOptions }>(`${this.apiUrl}/courses/filters`).pipe(
-      catchError(() => of({
-        success: true,
-        data: { categories: MOCK_CATEGORIES, popularTags: MOCK_POPULAR_TAGS }
-      }))
-    );
+    return forkJoin({
+      careers: this.http.get<{ success: boolean; data: { category_id: number; career_name: string }[] }>(`${this.apiUrl}/user/roadmap/careers`),
+      catalog: this.getCourses(),
+    }).pipe(map(({ careers, catalog }) => {
+      if (!careers.success || !Array.isArray(careers.data)) throw new Error('Không tải được danh mục khóa học.');
+      this.categoryIds = new Map(careers.data.map(item => [item.career_name, String(item.category_id)]));
+      return { success: true, data: {
+        categories: careers.data.map(item => item.career_name),
+        popularTags: [...new Set(catalog.data.flatMap(course => course.tags || []))],
+      } };
+    }));
   }
 
   getRecommendedCourses(interests: string[] = [], excludeIds: string[] = []): Observable<{ success: boolean; data: Course[] }> {
-    let params = new HttpParams();
-    if (interests.length) params = params.set('interests', interests.join(','));
-    if (excludeIds.length) params = params.set('excludeIds', excludeIds.join(','));
-
-    return this.http.get<{ success: boolean; data: Course[] }>(`${this.apiUrl}/courses/recommendations`, { params }).pipe(
-      catchError(() => of({ success: true, data: MOCK_COURSES.slice(0, 4) }))
-    );
+    // No mounted backend route exists for the former /courses/recommendations call.
+    return throwError(() => new Error('API gợi ý khóa học này chưa có hợp đồng được xác minh.'));
   }
 
   getMyCourses(): Observable<{ success: boolean; data: EnrolledCourse[] }> {
-    return this.http.get<{ success: boolean; data: EnrolledCourse[] }>(`${this.apiUrl}/user/dashboard`, { withCredentials: true }).pipe(
-      catchError(() => of({ success: true, data: MOCK_ENROLLED_COURSES }))
-    );
+    return this.http.get<{ success: boolean; data: EnrolledCourse[] }>(`${this.apiUrl}/user/dashboard`, { withCredentials: true }).pipe(this.guardAccount, map(response => {
+      // Section N uses the same field names as EnrolledCourse. Validate the
+      // boundary without inventing lesson counts, progress or course metadata.
+      if (response?.success !== true || !Array.isArray(response.data)) {
+        throw new Error('Không tải được khóa học đã đăng ký.');
+      }
+      const optionalTextFields = ['image', 'thumbnailUrl', 'cover', 'coverTitle', 'coverSubtitle', 'badge', 'lastStudiedAt'] as const;
+      const valid = response.data.every(course => course &&
+        typeof course.id === 'string' && course.id.trim().length > 0 &&
+        typeof course.title === 'string' && typeof course.instructor === 'string' &&
+        Number.isSafeInteger(course.totalLessons) && course.totalLessons >= 0 &&
+        Number.isSafeInteger(course.completedLessons) && course.completedLessons >= 0 &&
+        course.completedLessons <= course.totalLessons &&
+        optionalTextFields.every(field => course[field] === undefined || typeof course[field] === 'string'));
+      if (!valid || new Set(response.data.map(course => course.id)).size !== response.data.length) {
+        throw new Error('Dữ liệu khóa học đã đăng ký không hợp lệ.');
+      }
+      return response;
+    }), switchMap(response => {
+      if (!response.data.length) return of(response);
+      // The list handler can disagree with the learning handler. Use the same
+      // server-owned progress as the course dashboard/player, never infer completion.
+      return forkJoin(response.data.map(course => this.http.get<{
+        success: boolean;
+        data: {
+          actions: {
+            resume_learning: { lesson_id: string | null; title: string };
+            certificate?: { certificate_id?: string | null; certificate_code?: string | null };
+          };
+          course: { course_id: string };
+          learning_progress: {
+            completed_lessons: number; total_lessons: number; progress_percentage: number;
+          };
+        };
+      }>(this.apiUrl + '/user/lessons/study/' + encodeURIComponent(course.id)).pipe(map(study => {
+        const progress = study.data?.learning_progress;
+        if (!study.success || String(study.data?.course?.course_id) !== course.id || !progress ||
+            !Number.isSafeInteger(progress.completed_lessons) || !Number.isSafeInteger(progress.total_lessons) ||
+            progress.total_lessons < 0 || progress.completed_lessons < 0 || progress.completed_lessons > progress.total_lessons ||
+            !Number.isFinite(progress.progress_percentage) || progress.progress_percentage < 0 || progress.progress_percentage > 100) {
+          throw new Error('Không tải được tiến độ khóa học đã xác minh.');
+        }
+        const resume = study.data.actions?.resume_learning;
+        const certAction = study.data.actions?.certificate;
+        return { ...course, completedLessons: progress.completed_lessons, totalLessons: progress.total_lessons,
+          progress: progress.progress_percentage,
+          resumeLesson: resume?.lesson_id ? { id: resume.lesson_id, title: resume.title } : null,
+          certificateCode: certAction?.certificate_id || certAction?.certificate_code || null };
+      })))).pipe(map(data => ({ success: true, data })));
+    }), this.guardAccount);
   }
 
   /**

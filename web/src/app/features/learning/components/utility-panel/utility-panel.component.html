@@ -5,12 +5,16 @@
         type="button"
         role="tab"
         (click)="selectTab(tab.id)"
+        [disabled]="isTabLocked(tab.id)"
         class="relative flex h-8 shrink-0 items-center gap-2 pb-3 text-[14px] font-bold leading-5 transition"
         [class]="activeTab === tab.id ? 'text-[#0072F8]' : 'text-[#62748E] hover:text-[#0F172B]'"
         [attr.aria-selected]="activeTab === tab.id"
       >
         <span class="truncate">{{ tab.label }}</span>
-        @if (tab.id === 'discussion') {
+        @if (isTabLocked(tab.id)) {
+          <svg lucideLock class="h-3.5 w-3.5" aria-label="Chỉ dành cho người đã mua khóa học"></svg>
+        }
+        @if (tab.id === 'discussion' && !isTabLocked(tab.id)) {
           <span class="rounded-full bg-[#0072F8] px-2 py-[1.5px] text-[10px] font-bold leading-[14.29px] text-white">
             {{ discussions.length }}
           </span>
@@ -23,6 +27,9 @@
   </nav>
 
   <div class="min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-5">
+    @if (isTabLocked(activeTab)) {
+      <p class="text-[13px] leading-5 text-[#62748E]">Mua khóa học để sử dụng tài liệu, hỏi đáp và thảo luận.</p>
+    } @else {
     @switch (activeTab) {
       @case ('overview') {
         <div class="space-y-3">
@@ -92,7 +99,7 @@
             @for (post of questions; track post.id) {
               <article class="rounded-xl border border-[#E2E8F0] p-3">
                 <div class="flex items-center gap-2">
-                  <span class="grid h-7 w-7 place-items-center rounded-full bg-[#E8F1FF] text-[11px] font-bold text-[#155DFC]">{{ post.initials }}</span>
+                  <span class="grid h-7 w-7 shrink-0 overflow-hidden place-items-center rounded-full bg-[#E8F1FF] text-[11px] font-bold text-[#155DFC]">@if (post.avatarUrl) { <img [src]="post.avatarUrl" (error)="post.avatarUrl = undefined" alt="" class="block h-full w-full object-cover" /> } @else { {{ post.initials }} }</span>
                   <div class="min-w-0 flex-1">
                     <p class="truncate text-[12px] font-semibold text-[#0F172B]">{{ post.author }}</p>
                     <p class="text-[11px] text-[#90A1B9]">{{ post.createdAt }}</p>
@@ -147,7 +154,7 @@
 
           <form class="rounded-xl border border-[#E2E8F0] p-3" (ngSubmit)="submitComment()">
             <div class="flex gap-2.5">
-              <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#155DFC] text-[12px] font-bold text-white">B</span>
+              <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#155DFC] text-[12px] font-bold text-white overflow-hidden">@if (currentUser()?.avatar; as avatar) { <img [src]="avatar" alt="" class="block h-full w-full object-cover" /> } @else { {{ myInitials }} }</span>
               <textarea
                 name="comment"
                 rows="2"
@@ -172,7 +179,7 @@
             @for (post of discussions; track post.id) {
               <article class="rounded-xl border border-[#E2E8F0] p-3">
                 <div class="flex items-start gap-2.5">
-                  <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#E8F1FF] text-[12px] font-bold text-[#155DFC]">{{ post.initials }}</span>
+                  <span class="grid h-9 w-9 shrink-0 overflow-hidden place-items-center rounded-full bg-[#E8F1FF] text-[12px] font-bold text-[#155DFC]">@if (post.avatarUrl) { <img [src]="post.avatarUrl" alt="" class="block h-full w-full object-cover" /> } @else { {{ post.initials }} }</span>
                   <div class="min-w-0 flex-1">
                     <div class="flex flex-wrap items-center gap-1.5">
                       <p class="text-[13px] font-semibold text-[#0F172B]">{{ post.author }}</p>
@@ -253,6 +260,7 @@
           </button>
         </div>
       }
+    }
     }
   </div>
 </section>

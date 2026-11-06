@@ -13,12 +13,14 @@ import {
   ROADMAP_STATUS_COMPLETED,
   ROADMAP_STATUS_IN_PROGRESS,
   formatDateDDMMYYYY,
+  toObjectId,
   cycleCardStatus,
   normalizeCardStatusAction,
   shuffleCards,
   calculateFlashcardStats,
   createFlashcardList,
   updateFlashcardList,
+  deleteFlashcardList,
   getFlashcardLists,
   getFlashcardsInList,
   getFlashcardListStats,
@@ -30,7 +32,7 @@ import {
 import { getMongoDb, closeMongoDb } from '../../db.js';
 
 test('Flashcard User Backend Service Test Suite', async (t) => {
-  const db = await getMongoDb();
+  const db = await getMongoDb(undefined, `thinkup_flashcard_test_${process.pid}`);
   const flashcardsColl = db.collection(COLLECTION_FLASHCARD_LISTS);
   const roadmapsColl = db.collection(COLLECTION_USER_ROADMAPS);
 
@@ -45,6 +47,7 @@ test('Flashcard User Backend Service Test Suite', async (t) => {
     // Dọn dẹp dữ liệu test sau khi hoàn tất
     await flashcardsColl.deleteMany({ user_id: { $in: [testUserId, otherUserId] } });
     await roadmapsColl.deleteMany({ user_id: testUserId });
+    await db.dropDatabase();
     await closeMongoDb();
   });
 
@@ -146,7 +149,7 @@ test('Flashcard User Backend Service Test Suite', async (t) => {
     }
   });
 
-  await t.test('3. Chỉnh sửa list flashcard và kiểm tra bắt buộc thay đổi trạng thái TẤT CẢ các thẻ thành "chưa học"', async () => {
+  await t.test('3. Chỉnh sửa giữ trạng thái thẻ cũ và chỉ đặt thẻ mới về chưa học', async () => {
     // 3.1 Tạo list ban đầu
     const created = await createFlashcardList(testUserId, {
       title: 'React Hooks Core',
@@ -182,16 +185,23 @@ test('Flashcard User Backend Service Test Suite', async (t) => {
 
     assert.equal(updated.title, 'React Hooks Core (Cập nhật)');
     assert.equal(updated.total_cards, 3);
-    assert.equal(updated.learning_progress, '0/3');
-
-    // QUY TẮC BẮT BUỘC: Sau khi chỉnh sửa, tất cả các thẻ đều phải được reset về "chưa học"
-    for (const card of updated.cards) {
-      assert.equal(
-        card.status,
-        CARD_STATUS_NOT_LEARNED,
-        'Khi chỉnh sửa, thẻ bắt buộc phải chuyển trạng thái về "chưa học"'
-      );
-    }
+    assert.equal(updated.learning_progress, '1/3');
+    assert.equal(updated.cards[0].status, CARD_STATUS_LEARNED);
+    assert.equal(updated.cards[1].status, CARD_STATUS_REVIEW);
+    assert.equal(updated.cards[2].status, CARD_STATUS_NOT_LEARNED);
+    const renamed = await updateFlashcardList(listId, testUserId, { title: 'Renamed only' });
+    assert.deepEqual(renamed.cards, updated.cards);
+    const reordered = await updateFlashcardList(listId, testUserId, {
+      cards: [...updated.cards].reverse().map(card => ({ ...card, status: CARD_STATUS_LEARNED })),
+    });
+    assert.deepEqual(reordered.cards.map(card => card.status),
+      [CARD_STATUS_NOT_LEARNED, CARD_STATUS_REVIEW, CARD_STATUS_LEARNED]);
+    await assert.rejects(() => updateFlashcardList(listId, testUserId, {
+      cards: [updated.cards[0], updated.cards[0]],
+    }), { code: 'INVALID_FLASHCARD_ID' });
+    await assert.rejects(() => updateFlashcardList(listId, testUserId, {
+      cards: [{ card_id: 'foreign-card', knowledge: 'Forged', status: CARD_STATUS_LEARNED }],
+    }), { code: 'INVALID_FLASHCARD_ID' });
   });
 
   await t.test('4. Truy xuất danh sách list flashcard: tiêu đề, mô tả, số thẻ, DD/MM/YYYY, tiến độ x/x', async () => {
@@ -543,5 +553,29 @@ test('Flashcard User Backend Service Test Suite', async (t) => {
       },
       { status: 404 }
     );
+  });
+
+  await t.test('10. Xóa đúng chủ sở hữu và bảo vệ bộ thẻ ôn tập bắt buộc', async () => {
+    const standalone = await createFlashcardList(testUserId, { title: 'Delete test', cards: [] });
+    await assert.rejects(() => deleteFlashcardList(standalone.id, null), { status: 401 });
+    await assert.rejects(() => deleteFlashcardList(standalone.id, otherUserId), { status: 404 });
+    assert.equal((await getFlashcardsInList(standalone.id, testUserId)).id, standalone.id);
+    assert.equal((await deleteFlashcardList(standalone.id, testUserId)).deleted, true);
+    await assert.rejects(() => getFlashcardsInList(standalone.id, testUserId), { status: 404 });
+    await assert.rejects(() => deleteFlashcardList(standalone.id, testUserId), { status: 404 });
+
+    const nodeId = 'delete-review-node';
+    const linked = await createFlashcardList(testUserId, { title: 'Protected', node_id: nodeId, cards: [] });
+    const roadmap = await roadmapsColl.insertOne({ user_id: testUserId, nodes: [
+      { node_id: nodeId, status: ROADMAP_STATUS_REVIEW, is_review: true },
+    ] });
+    await assert.rejects(() => deleteFlashcardList(linked.id, testUserId),
+      { status: 409, code: 'ROADMAP_FLASHCARD_DELETE_FORBIDDEN' });
+    assert.ok(await flashcardsColl.findOne({ _id: toObjectId(linked.id) }));
+    await roadmapsColl.updateOne({ _id: roadmap.insertedId }, { $set: { nodes: [
+      { node_id: nodeId, status: ROADMAP_STATUS_COMPLETED, is_review: false },
+    ] } });
+    assert.equal((await deleteFlashcardList(linked.id, testUserId)).deleted, true);
+    assert.equal((await roadmapsColl.findOne({ _id: roadmap.insertedId })).nodes[0].status, ROADMAP_STATUS_COMPLETED);
   });
 });
