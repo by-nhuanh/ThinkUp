@@ -1,0 +1,61 @@
+:host {
+  display: block;
+}
+
+.status-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 24px;
+  padding: 8px 24px;
+  border-top: 1px solid var(--admin-border-subtle, #e3eaf4);
+  background: var(--admin-surface-subtle, #fbfcfe);
+  color: var(--admin-text-muted, #5b708c);
+  font: var(--admin-text-caption, 600 12px/18px Inter, Arial, sans-serif);
+}
+
+/* Khi thanh tiện ích neo phải/dưới, chừa một khoảng cuối dòng để không chồng lên nó. */
+.status-bar--reserve-dock {
+  padding-right: 132px;
+}
+
+.status-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--admin-success, #16a34a);
+}
+
+.status-dot.is-offline {
+  background: var(--admin-danger, #e8243e);
+}
+
+.status-divider {
+  width: 1px;
+  height: 12px;
+  background: var(--admin-border-strong, #dbe4f0);
+}
+
+@media (max-width: 720px) {
+  .status-bar {
+    margin-top: 16px;
+    padding: 8px 16px;
+    gap: 8px;
+  }
+
+  .status-bar--reserve-dock {
+    padding-right: 16px;
+  }
+
+  .status-divider {
+    display: none;
+  }
+}

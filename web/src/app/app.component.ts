@@ -9,7 +9,9 @@ import { CommonModule } from '@angular/common';
 import { filter } from 'rxjs/operators';
 import { AuthService } from './core/services/auth.service';
 import { BrandOnlyHeaderComponent } from './shared/components/brand-only-header/brand-only-header.component';
-import { HeaderComponent } from './shared/components/header/header.component';
+import { GuestHeaderComponent } from './shared/components/guest-header/guest-header.component';
+import { MemberHeaderComponent } from './shared/components/member-header/member-header.component';
+import { StudyRoomHeaderComponent } from './shared/components/study-room-header/study-room-header.component';
 import { FooterComponent } from './shared/components/footer/footer.component';
 import { ToastComponent } from './shared/components/toast/toast.component';
 import { InstructorCardComponent } from './shared/components/instructor-card/instructor-card.component';
@@ -18,7 +20,7 @@ import { InstructorCardService } from './core/services/instructor-card.service';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, BrandOnlyHeaderComponent, HeaderComponent, FooterComponent, ToastComponent, InstructorCardComponent],
+  imports: [CommonModule, RouterOutlet, BrandOnlyHeaderComponent, GuestHeaderComponent, MemberHeaderComponent, StudyRoomHeaderComponent, FooterComponent, ToastComponent, InstructorCardComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
@@ -32,6 +34,7 @@ export class AppComponent {
   readonly hideFooter = signal(false);
   readonly hideShell = signal(false);
   readonly isStudyLobby = signal(false);
+  readonly isGuestLanding = signal(false);
 
   constructor() {
     const commerce = inject(CommerceService);
@@ -71,6 +74,7 @@ export class AppComponent {
 
   private updateShell(url: string): void {
     this.instructorCardService.close();
+    this.isGuestLanding.set(!this.authService.isAuthenticated() && /^\/main\/?(?:[?#].*)?$/.test(url));
     this.isAuthPage.set(url.startsWith('/auth') || url.startsWith('/api/auth/verify'));
     this.isOnboardingPage.set(url.startsWith('/onboarding'));
     this.isStudyLobby.set(url.startsWith('/learning/study-room') && !/^\/learning\/study-room\/[^/]+/.test(url));

@@ -4,6 +4,8 @@ import { DateTimePickerComponent } from '../../../shared/components/date-time-pi
 import { CustomSelectComponent, CustomSelectOption } from '../../../shared/components/custom-select/custom-select.component';
 import { ExportMenuComponent } from '../../../shared/components/export-menu/export-menu.component';
 import { ExportFormat, downloadTable } from '../../../shared/utils/export-formats';
+import { AdminNumberPipe } from '../../../shared/pipes/admin-number.pipe';
+import { AdminPrivacyPipe } from '../../../shared/pipes/admin-privacy.pipe';
 import { AUDIT_LOGS, DASHBOARD_ACTIONS, DASHBOARD_METRICS, REVENUE_BARS, TOP_COURSES, type AuditLog } from '../../../core/data/mock/dashboard.mock';
 
 type Period = 'Ngày' | 'Tuần' | 'Tháng' | 'Năm' | 'Quý';
@@ -11,7 +13,7 @@ type Period = 'Ngày' | 'Tuần' | 'Tháng' | 'Năm' | 'Quý';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [DateTimePickerComponent, CustomSelectComponent, ExportMenuComponent, LucideArrowRight, LucideCircleDollarSign, LucideGraduationCap, LucideMonitorUp, LucideTrendingUp, LucideUsersRound],
+  imports: [AdminNumberPipe, AdminPrivacyPipe, DateTimePickerComponent, CustomSelectComponent, ExportMenuComponent, LucideArrowRight, LucideCircleDollarSign, LucideGraduationCap, LucideMonitorUp, LucideTrendingUp, LucideUsersRound],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })

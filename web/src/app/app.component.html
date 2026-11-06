@@ -3,11 +3,14 @@
       @if (!hideShell()) {
         @if (isAuthPage() || isOnboardingPage()) {
           <app-brand-only-header />
+        } @else if (isStudyLobby()) {
+          <app-study-room-header />
+        } @else if (isGuestLanding()) {
+          <!-- Landing page renders its own header inside the blue hero shell. -->
+        } @else if (isMember()) {
+          <app-member-header />
         } @else {
-          <app-header
-            [audience]="isMember() ? 'member' : 'guest'"
-            [appearance]="isStudyLobby() ? 'liquid-glass' : 'standard'"
-          />
+          <app-guest-header />
         }
       }
       <div class="flex-1 flex flex-col">

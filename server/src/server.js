@@ -44,6 +44,14 @@ import { createLessonRouter } from './user/lesson/lesson.user.js';
 import { createCertificateRouter } from './user/certificate/certificate.user.js';
 import { createProfileRouter, cleanUpOldActivityLogs } from './user/profile/profile.user.js';
 import { createAdminAuthMiddleware, createAdminAuthRouter } from './admin/auth/auth.admin.js';
+import {
+  createAdminPreferencesRouter,
+  ensureAdminPreferencesIndexes,
+} from './admin/preferences/preferences.admin.js';
+import {
+  createAdminNotificationsRouter,
+  ensureAdminNotificationIndexes,
+} from './admin/notifications/notifications.admin.js';
 import { createNotificationRouter } from './user/notification/notification.user.js';
 import { createSupportRouter } from './user/support/support.user.js';
 import { createAccountSecurityRouter, logoutSecuritySession, recoverSecurityEvents } from './user/account-security/account-security.user.js';
@@ -581,6 +589,17 @@ const adminAuthRouter = createAdminAuthRouter(express);
 app.use('/api/admin/auth', adminAuthRouter);
 app.use('/api/v1/admin/auth', adminAuthRouter); // Hỗ trợ tiền tố v1
 
+// ─── 5l.1 P2 — Tuỳ chọn quản trị: /api/admin/preferences ─────────────────────
+const adminApiAuth = createAdminAuthMiddleware();
+const adminPreferencesRouter = createAdminPreferencesRouter(express, adminApiAuth);
+app.use('/api/admin/preferences', adminPreferencesRouter);
+app.use('/api/v1/admin/preferences', adminPreferencesRouter); // Hỗ trợ tiền tố v1
+
+// ─── 5l.2 P3 — Thông báo quản trị: /api/admin/notifications ──────────────────
+const adminNotificationsRouter = createAdminNotificationsRouter(express, adminApiAuth);
+app.use('/api/admin/notifications', adminNotificationsRouter);
+app.use('/api/v1/admin/notifications', adminNotificationsRouter); // Hỗ trợ tiền tố v1
+
 // ─── 5m. Router Bài Học & Học Tập: /api/user/lessons ─────────────────────────
 const lessonRouter = createLessonRouter(express, requireAuth, optionalAuth);
 app.use('/api/user/lessons', lessonRouter);
@@ -619,6 +638,13 @@ import url from 'node:url';
 
 const isDirectRun = process.argv[1] && import.meta.url === url.pathToFileURL(process.argv[1]).href;
 if (isDirectRun || process.env.NODE_ENV === 'production') {
+  // P2/P3 — index plan idempotent; lỗi kết nối không được chặn khởi động API.
+  ensureAdminPreferencesIndexes().catch((err) => {
+    console.error('[Admin preferences] Không tạo được index:', err.message);
+  });
+  ensureAdminNotificationIndexes().catch((err) => {
+    console.error('[Admin notifications] Không tạo được index:', err.message);
+  });
   app.listen(PORT, () => {
     console.log(`🚀 ThinkUp Backend Server is listening on http://localhost:${PORT}`);
     console.log(`🔗 Allowed Client Demo URL: ${CLIENT_URL}`);

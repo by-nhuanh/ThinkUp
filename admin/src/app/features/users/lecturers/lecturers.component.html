@@ -16,7 +16,7 @@
             <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
           </svg>
         </span>
-        <span class="kpi-value">{{ formatCount(kpis().total) }}</span>
+        <span class="kpi-value">{{ kpis().total | adminNumber }}</span>
       </div>
       <p class="kpi-note">Toàn bộ hồ sơ giảng viên đang quản lý</p>
     </article>
@@ -29,7 +29,7 @@
             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M19 8v6M22 11h-6" />
           </svg>
         </span>
-        <span class="kpi-value">{{ formatCount(kpis().pending) }}</span>
+        <span class="kpi-value">{{ kpis().pending | adminNumber }}</span>
       </div>
       <p class="kpi-note">{{ formatCount(kpis().pending) }} hồ sơ đang chờ xử lý</p>
     </article>
@@ -42,7 +42,7 @@
             <circle cx="12" cy="12" r="9" /><path d="m8.5 12.2 2.4 2.4 4.6-4.9" />
           </svg>
         </span>
-        <span class="kpi-value">{{ formatCount(kpis().active) }}</span>
+        <span class="kpi-value">{{ kpis().active | adminNumber }}</span>
       </div>
       <p class="kpi-note kpi-note--positive">{{ activePercent() }}% tổng số giảng viên</p>
     </article>
@@ -55,7 +55,7 @@
             <rect x="4" y="10" width="16" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" />
           </svg>
         </span>
-        <span class="kpi-value">{{ formatCount(kpis().withViolations) }}</span>
+        <span class="kpi-value">{{ kpis().withViolations | adminNumber }}</span>
       </div>
       <p class="kpi-note kpi-note--danger">{{ kpis().needAction }} tài khoản cần xử lý</p>
     </article>
@@ -189,17 +189,17 @@
                   <span class="avatar avatar--{{ $index % 5 }}" aria-hidden="true">{{ item.initials }}</span>
                   <div class="cell-stack">
                     <strong>{{ item.name }}</strong>
-                    <span>{{ item.email }} · {{ item.id }}</span>
+                    <span><span class="sensitive">{{ item.email | adminPrivacy }}</span> · {{ item.id }}</span>
                   </div>
                 </div>
               </td>
               <td>
                 <div class="cell-stack">
-                  <span>{{ item.phone }}</span>
+                  <span class="sensitive">{{ item.phone | adminPrivacy }}</span>
                   <span>{{ item.specialty }}</span>
                 </div>
               </td>
-              <td class="cell-nowrap">{{ item.courses }} khóa - {{ formatCount(item.learners) }} HV</td>
+              <td class="cell-nowrap">{{ item.courses }} khóa - {{ item.learners | adminNumber }} HV</td>
               <td class="cell-amount">{{ formatCurrency(item.revenue) }}</td>
               <td>
                 <div class="legal-stack">
