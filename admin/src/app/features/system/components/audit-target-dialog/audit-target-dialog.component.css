@@ -1,0 +1,8 @@
+.meta-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.target-lines { display: grid; gap: 6px; }
+.target-lines p { margin: 0; color: #425b7d; font: var(--admin-text-body-compact); overflow-wrap: anywhere; }
+.target-lines strong { color: #102648; }
+
+@media (max-width: 640px) {
+  .meta-grid.three { grid-template-columns: 1fr; }
+}

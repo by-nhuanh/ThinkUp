@@ -1,0 +1,17 @@
+.required-mark { color: #b83e4d; }
+.field-hint { margin: 0; color: #13743b; font: var(--admin-text-caption); }
+.field-hint.warning { color: #8a5a00; }
+.field-hint.error { color: #b83e4d; }
+.callback-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.callback-row input { flex: 1 1 240px; min-width: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; }
+.checkbox-row { display: flex; align-items: center; gap: 9px; color: #172f55; font: var(--admin-text-body-compact); cursor: pointer; }
+.checkbox-row input { width: 16px; height: 16px; accent-color: #0965e4; }
+.unit-input { position: relative; }
+.unit-input input { padding-right: 52px; }
+.unit-input > span { position: absolute; top: 50%; right: 12px; transform: translateY(-50%); color: #64748b; font: var(--admin-text-caption); pointer-events: none; }
+.ping-panel { padding: 14px 16px; border: 1px solid var(--system-border-soft); border-radius: 10px; background: #fbfdff; }
+.ping-panel header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.ping-panel header strong { display: block; color: #0c2048; }
+.ping-panel header small { display: block; margin-top: 2px; color: #64748b; font: var(--admin-text-caption); }
+.ping-status { margin: 0 0 8px; }
+.ping-note { margin: 0; color: #64748b; font: var(--admin-text-body-compact); }

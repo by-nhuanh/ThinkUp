@@ -1,0 +1,157 @@
+<app-admin-dialog [title]="title()" [subtitle]="subtitle()" size="md" (closed)="closed.emit()">
+  <form class="system-form" (ngSubmit)="submit()">
+    @if (locked()) {
+      <div class="notice danger" role="alert">
+        <strong>Tạm khóa chức năng đổi vai trò trong 15 phút</strong>
+        <p>Bạn đã nhập sai mã xác thực quá 3 lần liên tiếp. Có thể thử lại lúc {{ retryLabel() }}.</p>
+      </div>
+    }
+    @if (serverError()) {
+      <div class="notice danger" role="alert">
+        <strong>Không thể lưu thay đổi</strong>
+        <p>Kết nối máy chủ bị gián đoạn. Vai trò hiện tại vẫn được giữ nguyên. Vui lòng thử lại.</p>
+      </div>
+    }
+    @if (formError()) {
+      <div class="notice danger" role="alert"><p>{{ formError() }}</p></div>
+    }
+
+    @if (mode() === 'assign') {
+      <div class="field" [class.invalid]="formError() && !selectedStaff()">
+        <label for="role-dialog-staff">Chọn nhân sự nội bộ <span class="required-mark">*</span></label>
+        <div class="staff-picker">
+          <input
+            id="role-dialog-staff"
+            type="text"
+            autocomplete="off"
+            placeholder="Nhập email @thinkup.vn hoặc tên nhân viên..."
+            [ngModel]="staffSearch()"
+            (ngModelChange)="onStaffSearch($event)"
+            (focus)="pickerOpen.set(true)"
+            name="staffSearch"
+          />
+          @if (selectedStaff()) {
+            <button class="icon-button picker-clear" type="button" aria-label="Bỏ chọn nhân sự" (click)="clearStaff()">×</button>
+          }
+          @if (pickerOpen() && !selectedStaff()) {
+            <ul class="staff-options" role="listbox" aria-label="Nhân sự nội bộ">
+              @for (staff of candidates(); track staff.id) {
+                <li>
+                  <button type="button" role="option" [attr.aria-selected]="false" (click)="pickStaff(staff)">
+                    <span class="avatar">{{ initials(staff.name) }}</span>
+                    <span class="staff-option-copy">
+                      <strong>{{ staff.name }} · {{ staff.email }}</strong>
+                      <small>Đang hoạt động · Chưa có vai trò quản trị</small>
+                    </span>
+                  </button>
+                </li>
+              } @empty {
+                <li class="staff-options-empty">Không tìm thấy nhân sự phù hợp.</li>
+              }
+            </ul>
+          }
+        </div>
+      </div>
+    } @else if (person(); as target) {
+      <div class="person-summary">
+        <span class="avatar">{{ initials(target.name) }}</span>
+        <div class="person-summary-copy">
+          <strong>{{ target.name }} · {{ target.email }}</strong>
+          <small>{{ target.code }} · {{ target.status === 'active' ? 'Đang hoạt động' : target.status === 'locked' ? 'Tạm khóa' : 'Chưa xác minh' }}</small>
+        </div>
+      </div>
+      <div class="field">
+        <label for="role-dialog-current">Vai trò hiện tại</label>
+        <input id="role-dialog-current" type="text" [value]="currentRoleDef()?.label ?? ''" readonly disabled />
+      </div>
+    }
+
+    <div class="field">
+      <label id="role-dialog-role-label">{{ mode() === 'assign' ? 'Vai trò phân bổ' : 'Vai trò mới' }} <span class="required-mark">*</span></label>
+      <div class="role-option-list" role="radiogroup" aria-labelledby="role-dialog-role-label">
+        @for (role of roleChoices(); track role.code) {
+          <button
+            type="button"
+            class="role-option"
+            role="radio"
+            [class.is-selected]="selectedRole() === role.code"
+            [attr.aria-checked]="selectedRole() === role.code"
+            (click)="selectRole(role.code)"
+          >
+            <strong>{{ role.label }}</strong>
+            <span>{{ role.tagline }}</span>
+          </button>
+        }
+      </div>
+      @if (mode() === 'assign' && !selectedRole()) {
+        <p class="field-hint">Phạm vi quyền sẽ hiển thị sau khi chọn vai trò.</p>
+      }
+    </div>
+
+    @if (selectedRoleDef(); as role) {
+      <div class="scope-panel">
+        <h4>Trách nhiệm chính</h4>
+        <p>{{ role.responsibility }}</p>
+        <ul class="scope-list">
+          @for (scope of role.scopes; track scope) {
+            <li>{{ scope }}</li>
+          }
+        </ul>
+        @if (role.warning) {
+          <div class="notice warning"><p>{{ role.warning }}</p></div>
+        }
+      </div>
+    }
+
+    <div class="notice info">
+      <strong>Lưu ý an ninh</strong>
+      <p>{{ securityNote() }}</p>
+    </div>
+
+    <div class="field" [class.invalid]="reasonError()">
+      <label for="role-dialog-reason">{{ mode() === 'assign' ? 'Lý do phân quyền' : 'Lý do thay đổi' }} <span class="required-mark">*</span></label>
+      <textarea
+        id="role-dialog-reason"
+        rows="3"
+        placeholder="Nhập số quyết định phân công, lý do điều chuyển công tác..."
+        [ngModel]="reason()"
+        (ngModelChange)="onReason($event)"
+        name="reason"
+      ></textarea>
+      <div class="reason-row">
+        @if (reasonError()) {
+          <p class="field-error">{{ reasonError() }}</p>
+        }
+        <span class="reason-counter" [class.short]="reasonCount() < 10">{{ reasonCount() }}/10 ký tự tối thiểu</span>
+      </div>
+    </div>
+
+    <div class="field" [class.invalid]="otpError()">
+      <label for="role-dialog-otp">Xác thực danh tính Super Admin <span class="required-mark">*</span></label>
+      <div class="otp-field">
+        <input
+          id="role-dialog-otp"
+          type="text"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          maxlength="6"
+          placeholder="••••••"
+          [ngModel]="otp()"
+          (ngModelChange)="onOtp($event)"
+          name="otp"
+          [disabled]="locked()"
+        />
+      </div>
+      <p class="field-hint">Nhập mã xác thực 6 số từ ứng dụng Authenticator của bạn để phê duyệt.</p>
+      @if (otpError()) {
+        <p class="field-error">{{ otpError() }}</p>
+      }
+    </div>
+
+    <div class="dialog-actions" dialogFooter>
+      <p class="left-note">Thao tác được ghi nhận trong nhật ký kiểm toán.</p>
+      <button class="secondary-button" type="button" (click)="closed.emit()">Hủy bỏ</button>
+      <button class="primary-button" type="submit" [disabled]="locked()">{{ confirmLabel() }}</button>
+    </div>
+  </form>
+</app-admin-dialog>

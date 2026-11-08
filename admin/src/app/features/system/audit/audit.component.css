@@ -1,0 +1,5 @@
+.metric-delta { color: #13743b; }
+.audit-cell-copy { display: block; min-width: 0; }
+.audit-cell-copy small { display: block; margin-top: 2px; color: #64748b; font: var(--admin-text-caption); }
+.audit-table td .status-badge { margin-top: 6px; }
+.audit-table .link-button.mono { padding: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }

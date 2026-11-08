@@ -22,9 +22,8 @@
       }
       <button class="nav-item business-toggle" type="button" [attr.aria-expanded]="supportOpen()" aria-controls="support-subnav" [title]="collapsed() ? 'Quản lý hỗ trợ' : ''" (click)="toggleSupport()"><svg lucideHeadphones aria-hidden="true"></svg>@if (!collapsed()) { <span>Quản lý hỗ trợ</span><svg class="chevron" [class.rotated]="supportOpen()" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg> }</button>
       <div id="support-subnav" class="subnav" [class.open]="supportOpen() && !collapsed()">@for (page of supportPages; track page.path) { <a class="subnav-link" [routerLink]="page.path" routerLinkActive="active">{{ page.label }}</a> }</div>
-      @for (item of nav.slice(4); track item.label) {
-        <div class="nav-item nav-label" [title]="collapsed() ? item.label : ''"><img [src]="'/assets/dashboard/' + item.icon" alt="" width="16" height="16">@if (!collapsed()) { <span>{{ item.label }}</span><svg class="chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg> }</div>
-      }
+      <button class="nav-item business-toggle" type="button" [class.active]="systemActive()" [attr.aria-expanded]="systemOpen()" aria-controls="system-subnav" [title]="collapsed() ? 'Quản trị hệ thống' : ''" (click)="toggleSystem()"><img src="/assets/dashboard/0-settings-gear.svg" alt="" width="16" height="16">@if (!collapsed()) { <span>Quản trị hệ thống</span><svg class="chevron" [class.rotated]="systemOpen()" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg> }</button>
+      <div id="system-subnav" class="subnav" [class.open]="systemOpen() && !collapsed()">@for (page of systemPages; track page.path) { <a class="subnav-link" [routerLink]="page.path" routerLinkActive="active">{{ page.label }}</a> }</div>
     </nav>
   </aside>
   <div class="page-shell">

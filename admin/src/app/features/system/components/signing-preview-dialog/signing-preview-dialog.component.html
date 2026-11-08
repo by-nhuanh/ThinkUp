@@ -1,0 +1,49 @@
+<app-admin-dialog
+  title="Xem trước văn bản ký thử"
+  subtitle="HD-TEST-0001.pdf · Bản mẫu kiểm tra chữ ký và mộc thời gian."
+  size="xl"
+  (closed)="closed.emit()"
+>
+  <div class="signing-preview-layout">
+    <div class="preview-pane">
+      <div class="preview-toolbar">
+        <span>HD-TEST-0001.pdf</span>
+        <span>Trang 1 / 1 &nbsp;·&nbsp; Thu phóng 100%</span>
+      </div>
+      <div class="preview-scroll">
+        <article class="preview-doc">
+          <p class="doc-watermark">VĂN BẢN MẪU · KHÔNG CÓ GIÁ TRỊ PHÁP LÝ</p>
+          <header>
+            <strong>HỢP ĐỒNG HỢP TÁC GIẢNG DẠY</strong>
+            <span>THINKUP VIETNAM · MÃ MẪU HD-TEST-0001</span>
+          </header>
+          <p>Ngày ký thử: 03/11/2026 · Nhà cung cấp: {{ provider() }}</p>
+          <p class="pre-line">Bên A: ThinkUp Vietnam (mẫu kiểm thử)
+Bên B: Giảng viên mẫu
+Mục đích: Kiểm tra kết nối ký số và giao diện chứng thực.</p>
+          <p class="pre-line">Điều khoản mẫu: Tỷ lệ phân chia 60% Sàn / 40% Giảng viên.
+Phương thức xác thực: Mã OTP. Tệp được khóa kèm mộc thời gian sau khi ký.</p>
+          <p class="doc-stamp">ĐÃ KÝ SỐ · BẢN THỬ NGHIỆM</p>
+        </article>
+      </div>
+    </div>
+    <aside class="signature-panel">
+      <h4>Thông tin chữ ký</h4>
+      <div class="notice success">
+        <strong>Chữ ký hợp lệ</strong>
+        Đã kiểm thử thành công trên văn bản mẫu.
+      </div>
+      <dl class="signature-meta">
+        <div><dt>Đơn vị ký</dt><dd>ThinkUp Vietnam</dd></div>
+        <div><dt>Nhà cung cấp chứng thư</dt><dd>{{ provider() }}</dd></div>
+        <div><dt>Trạng thái tài liệu</dt><dd>Đã khóa · Có mộc thời gian</dd></div>
+        <div><dt>Mã hợp đồng mẫu</dt><dd class="mono">HD-TEST-0001</dd></div>
+      </dl>
+      <p class="signature-note">Văn bản này phục vụ kiểm thử kết nối, không phải hợp đồng đang có hiệu lực.</p>
+    </aside>
+  </div>
+  <div dialogFooter class="dialog-actions">
+    <button class="ghost-button" type="button" (click)="closed.emit()">Đóng</button>
+    <button class="primary-button" type="button" (click)="closed.emit()">Quay lại cấu hình Ký số</button>
+  </div>
+</app-admin-dialog>

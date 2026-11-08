@@ -1,0 +1,37 @@
+<app-admin-dialog
+  title="Đồng bộ Cache"
+  subtitle="Cập nhật cấu hình mới trên các máy chủ ứng dụng."
+  size="sm"
+  (closed)="closed.emit()"
+>
+  <div class="system-form">
+    @if (finished()) {
+      <div class="notice success">
+        <strong>Đồng bộ thành công</strong>
+        Tất cả 3/3 máy chủ đã cập nhật cấu hình mới.
+      </div>
+    } @else {
+      <div class="notice info">
+        <strong>Đang đồng bộ cấu hình</strong>
+        {{ doneCount }}/3 máy chủ đã cập nhật. Vui lòng chờ máy chủ còn lại hoàn tất.
+      </div>
+    }
+    <div class="cache-list">
+      @for (server of servers(); track server.name) {
+        <div class="cache-item">
+          <span>{{ server.name }}</span>
+          <span class="status-badge" [class.status-success]="server.done" [class.status-warning]="!server.done">
+            {{ server.done ? 'Đã đồng bộ' : 'Đang cập nhật...' }}
+          </span>
+        </div>
+      }
+    </div>
+    <p class="cache-note">Kết quả thành công chỉ được xác nhận khi toàn bộ máy chủ hoàn tất.</p>
+  </div>
+  <div dialogFooter class="dialog-actions">
+    <button class="ghost-button" type="button" [disabled]="!finished()" (click)="closed.emit()">Đóng</button>
+    @if (!finished()) {
+      <button class="primary-button" type="button" disabled>Đang đồng bộ...</button>
+    }
+  </div>
+</app-admin-dialog>

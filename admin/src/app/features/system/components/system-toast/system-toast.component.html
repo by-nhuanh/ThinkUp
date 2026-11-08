@@ -1,0 +1,6 @@
+@if (toast.message()) {
+  <div class="system-toast" [class]="'system-toast ' + toast.kind()" role="status" aria-live="polite">
+    <strong>{{ toast.message() }}</strong>
+    @if (toast.detail()) { <span>{{ toast.detail() }}</span> }
+  </div>
+}

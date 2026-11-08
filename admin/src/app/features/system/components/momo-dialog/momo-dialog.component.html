@@ -1,0 +1,126 @@
+<app-admin-dialog
+  title="Cấu hình Cổng thanh toán - MoMo"
+  subtitle="Cập nhật thông số kết nối và kiểm thử trước khi áp dụng."
+  size="lg"
+  (closed)="closed.emit()"
+>
+  <div class="system-form">
+    <div class="readonly-lines">
+      <p>Mã dịch vụ: <strong>PAY_MOMO</strong> · Chỉ đọc</p>
+      <p>Thuật toán: <strong>HMAC-SHA256</strong> · Chỉ đọc</p>
+      <div class="ipn-row">
+        <div>
+          <small>Đường dẫn tiếp nhận IPN · Chỉ đọc</small>
+          <strong class="mono">{{ ipnUrl }}</strong>
+        </div>
+        <button class="ghost-button" type="button" (click)="copyIpn()">{{ copied() ? 'Đã sao chép' : 'Sao chép' }}</button>
+      </div>
+    </div>
+
+    <fieldset class="env-fieldset">
+      <legend class="field-caption">Môi trường kết nối</legend>
+      <label class="env-option">
+        <input type="radio" name="momo-env" value="sandbox" [checked]="form().environment === 'sandbox'" (change)="update('environment', 'sandbox')" />
+        <span>Môi trường Thử nghiệm (Sandbox)</span>
+      </label>
+      <label class="env-option">
+        <input type="radio" name="momo-env" value="production" [checked]="form().environment === 'production'" (change)="update('environment', 'production')" />
+        <span>Môi trường Thực tế (Production)</span>
+      </label>
+    </fieldset>
+    @if (form().environment === 'production') {
+      <div class="notice warning">
+        <strong>Đang sử dụng dòng tiền thật</strong>
+        Hệ thống sẽ ghi nhận dòng tiền thật qua tài khoản ngân hàng doanh nghiệp.
+      </div>
+    }
+
+    <div class="form-grid">
+      <label class="field">
+        <span>Mã doanh nghiệp <span class="required-mark">*</span></span>
+        <input type="text" [value]="form().businessCode" (input)="update('businessCode', $any($event.target).value)" />
+      </label>
+      <label class="field">
+        <span>Mã công khai <span class="required-mark">*</span></span>
+        <input type="text" [value]="form().publicKey" (input)="update('publicKey', $any($event.target).value)" />
+      </label>
+      <div class="field full">
+        <span>Mật khẩu bí mật <span class="required-mark">*</span></span>
+        <div class="masked-field">
+          @if (revealed()) {
+            <input type="text" [value]="form().secretKey" (input)="update('secretKey', $any($event.target).value)" />
+          } @else {
+            <input type="text" [value]="maskedSecret()" readonly aria-label="Mật khẩu bí mật đã che" />
+          }
+          <button type="button" [attr.aria-label]="revealed() ? 'Ẩn khóa bí mật' : 'Xem khóa bí mật'" (click)="revealed() ? revealed.set(false) : revealOpen.set(true)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <small>{{ revealed() ? 'Đã xác thực phiên SA · Khóa hiển thị là dữ liệu minh họa.' : 'Nhấn biểu tượng mắt và xác thực lại bằng mật khẩu phiên SA để xem khóa.' }}</small>
+      </div>
+      <label class="field" [class.invalid]="!!timeoutError()">
+        <span>Thời gian chờ giao dịch <span class="required-mark">*</span></span>
+        <div class="unit-input">
+          <input type="number" min="5" max="60" step="1" [value]="timeoutDisplay()" (input)="onTimeout($any($event.target).value)" />
+          <span>giây</span>
+        </div>
+        @if (timeoutError()) {
+          <p class="field-error">{{ timeoutError() }}</p>
+        } @else {
+          <small>Chỉ nhận số nguyên từ 5 đến 60 giây.</small>
+        }
+      </label>
+    </div>
+
+    <div class="toggle-row">
+      <div>
+        <strong>Trạng thái hoạt động</strong>
+        <small>Hiển thị MoMo tại trang thanh toán</small>
+      </div>
+      <button class="toggle" type="button" role="switch" [attr.aria-checked]="form().active" [class.on]="form().active" aria-label="Trạng thái hoạt động của MoMo" (click)="update('active', !form().active)"></button>
+    </div>
+
+    <section class="ping-panel">
+      <header>
+        <div>
+          <strong>Kiểm thử kết nối (Test Ping)</strong>
+          <small>Đo phản hồi và xác minh chữ ký · Tối đa 5 giây</small>
+        </div>
+        <button class="ghost-button" type="button" [disabled]="testState() === 'running' || !valid()" (click)="testPing()">
+          {{ testState() === 'running' ? 'Đang kiểm thử…' : 'Chạy kiểm thử' }}
+        </button>
+      </header>
+      @switch (testState()) {
+        @case ('idle') {
+          <p class="ping-status"><span class="status-badge status-muted">Chưa kiểm thử cấu hình mới</span></p>
+          <p class="ping-note">Nút Lưu chỉ được kích hoạt khi có thay đổi hợp lệ và kiểm thử kết nối thành công.</p>
+        }
+        @case ('running') {
+          <p class="ping-status"><span class="status-badge status-info">Đang kiểm thử kết nối…</span></p>
+          <p class="ping-note">Đang chờ phản hồi từ MoMo</p>
+        }
+        @case ('success') {
+          <div class="notice success">
+            <strong>Kết nối thành công</strong>
+            Phản hồi: 200 OK · Tốc độ: 145ms · Chữ ký bảo mật: Khớp 100%
+          </div>
+        }
+        @case ('failure') {
+          <div class="notice danger" role="alert">
+            <strong>Kiểm thử kết nối thất bại</strong>
+            Mã lỗi đối tác: 401 · INVALID_SIGNATURE. Kiểm tra khóa kết nối rồi thử lại.
+          </div>
+        }
+      }
+    </section>
+  </div>
+  <div dialogFooter class="dialog-actions">
+    <p class="left-note">{{ footerNote() }}</p>
+    <button class="ghost-button" type="button" (click)="closed.emit()">Hủy</button>
+    <button class="primary-button" type="button" [disabled]="!canSave()" (click)="save()">Lưu cấu hình cổng</button>
+  </div>
+</app-admin-dialog>
+
+@if (revealOpen()) {
+  <app-system-secret-reveal-dialog (closed)="revealOpen.set(false)" (verified)="onRevealed()" />
+}
