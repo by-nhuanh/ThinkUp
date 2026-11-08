@@ -115,6 +115,13 @@ interface CourseDetailDto {
     sale_ends_at?: string | null;
   };
   course_outcomes?: CourseOutcomeGroupDto[];
+  purchase_highlights?: { icon?: string; label?: string }[];
+  certificate_sample?: {
+    title?: string;
+    watermark_text?: string;
+    verify_url?: string;
+    template_image_url?: string;
+  } | null;
   sections?: CourseSectionDetailDto[];
   instructor?: CourseInstructorDto | null;
   reviews_summary?: {
@@ -450,6 +457,17 @@ export class CourseService {
       updatedAtLabel: this.formatDate(dto.updated_at),
       previewVideoUrl: dto.preview_video_url,
       saleEndsAt: pricing.sale_ends_at ?? null,
+      purchaseHighlights: (dto.purchase_highlights ?? [])
+        .filter(item => Boolean(item.label))
+        .map(item => ({ icon: item.icon, label: item.label as string })),
+      certificateSample: dto.certificate_sample
+        ? {
+            title: dto.certificate_sample.title,
+            watermarkText: dto.certificate_sample.watermark_text,
+            verifyUrl: dto.certificate_sample.verify_url,
+            templateImageUrl: dto.certificate_sample.template_image_url,
+          }
+        : undefined,
       outcomes: outcomeGroups.flatMap(group => group.items),
       outcomeGroups,
       curriculum: (dto.sections ?? []).map(section => ({

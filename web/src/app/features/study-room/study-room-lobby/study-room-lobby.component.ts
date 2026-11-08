@@ -154,6 +154,7 @@ export class StudyRoomLobbyComponent implements OnInit {
     },
     { id: "genshin-impact", name: "Genshin Impact" },
   ];
+  readonly failedThemeImages = signal<ReadonlySet<string>>(new Set<string>());
   readonly previewPage = signal(0);
   readonly visiblePreviews = computed(() =>
     this.previews.slice(this.previewPage() * 3, this.previewPage() * 3 + 3),
@@ -532,6 +533,14 @@ export class StudyRoomLobbyComponent implements OnInit {
       ? PIXEL_DREAMLAND_MEDIA
       : this.previews.find((preview) => preview.id === theme)?.src ||
           "/assets/study-room/lobby-hero-poster.webp";
+  }
+  themePoster(theme: string): string {
+    return theme === "anime-room"
+      ? "/assets/study-room/lobby-hero-poster.webp"
+      : "";
+  }
+  markThemeImageFailed(theme: string): void {
+    this.failedThemeImages.update((current) => new Set(current).add(theme));
   }
   themeBackground(theme: string): string {
     const backgrounds: Record<string, string> = {

@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnInit, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { IconComponent, IconName } from '../../shared/components/icon/icon.component';
 import { CourseCardComponent } from '../../shared/components/course-card/course-card.component';
@@ -69,6 +69,14 @@ export class HomeComponent implements OnInit {
   readonly heatmapRows = signal<HeatmapCell[][]>([]);
   private overviewRequestId = 0;
 
+  /** Số thẻ cố định trên một trang của khung carousel khóa học đang học. */
+  readonly cardsPerPage = 5;
+  readonly carouselPage = signal(0);
+  readonly carouselPages = computed(() => Math.max(1, Math.ceil(this.myLearning().length / this.cardsPerPage)));
+  readonly carouselPagesArray = computed(() => Array.from({ length: this.carouselPages() }, (_, index) => index));
+  readonly canScrollPrev = computed(() => this.carouselPage() > 0);
+  readonly canScrollNext = computed(() => this.carouselPage() < this.carouselPages() - 1);
+
   ngOnInit(): void {
     this.updateGreetingTime();
     this.loadOverview();
@@ -85,7 +93,37 @@ export class HomeComponent implements OnInit {
   scrollTrack(direction: -1 | 1): void {
     const element = this.track()?.nativeElement;
     if (!element) return;
-    element.scrollBy({ left: direction * element.clientWidth * 0.8, behavior: 'smooth' });
+    const maxPage = this.carouselPages() - 1;
+    const target = Math.min(maxPage, Math.max(0, this.carouselPage() + direction));
+    if (target === this.carouselPage()) return;
+    this.carouselPage.set(target);
+    element.scrollTo({ left: target * this.trackPageWidth(element), behavior: 'smooth' });
+  }
+
+  goToCarouselPage(page: number): void {
+    const element = this.track()?.nativeElement;
+    if (!element) return;
+    const target = Math.min(this.carouselPages() - 1, Math.max(0, page));
+    this.carouselPage.set(target);
+    element.scrollTo({ left: target * this.trackPageWidth(element), behavior: 'smooth' });
+  }
+
+  onTrackScroll(): void {
+    const element = this.track()?.nativeElement;
+    if (!element) return;
+    const pageWidth = this.trackPageWidth(element);
+    if (pageWidth <= 0) return;
+    const page = Math.round(element.scrollLeft / pageWidth);
+    this.carouselPage.set(Math.min(this.carouselPages() - 1, Math.max(0, page)));
+  }
+
+  /** Bề rộng một trang = số thẻ mỗi trang × (bề rộng thẻ + khoảng cách). */
+  private trackPageWidth(element: HTMLElement): number {
+    const card = element.querySelector<HTMLElement>('.hm-course');
+    if (!card) return element.clientWidth;
+    const styles = getComputedStyle(element);
+    const gap = Number.parseFloat(styles.columnGap || styles.gap || '0') || 0;
+    return (card.getBoundingClientRect().width + gap) * this.cardsPerPage;
   }
 
   toggleSave(card: FeaturedCard): void {
@@ -123,6 +161,7 @@ export class HomeComponent implements OnInit {
         this.userName.set(overview.user.full_name ? `${overview.user.full_name}! 👋` : 'Học viên ThinkUp! 👋');
         this.learningCount.set(overview.my_learning.total);
         this.myLearning.set(overview.my_learning.courses.map(course => this.toLearningCard(course)));
+        this.carouselPage.set(0);
         this.roadmap.set(overview.roadmap ? this.toRoadmapBanner(overview.roadmap) : EMPTY_ROADMAP);
         this.featured.set(overview.recommendations.courses.slice(0, 5)
           .map((course, index) => this.fromRecommendation(course, index)));
@@ -132,6 +171,7 @@ export class HomeComponent implements OnInit {
         if (requestId !== this.overviewRequestId) return;
         this.overviewError.set(true);
         this.myLearning.set([]);
+        this.carouselPage.set(0);
         this.roadmap.set(EMPTY_ROADMAP);
         this.featured.set([]);
         this.streakCount.set(null);

@@ -32,6 +32,81 @@
   font-size: 9px;
   font-weight: 600;
   line-height: 1;
+  cursor: help;
+}
+
+.field-hint-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.field-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  z-index: 30;
+  width: max-content;
+  max-width: min(240px, 60vw);
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: #0F172B;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  text-align: left;
+  white-space: normal;
+  box-shadow: 0 10px 24px -12px rgba(15, 23, 43, 0.6);
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, 4px);
+  transition: opacity 140ms ease, transform 140ms ease, visibility 140ms ease;
+  pointer-events: none;
+}
+
+.field-tooltip::after {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  background: #0F172B;
+  content: '';
+  transform: translate(-50%, -4px) rotate(45deg);
+}
+
+.field-hint-wrap:hover .field-tooltip,
+.field-hint-wrap:focus-within .field-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+}
+
+.field-hint:focus-visible {
+  outline: 2px solid #2563EB;
+  outline-offset: 2px;
+}
+
+/*
+ * Khi form thẻ xếp thành một cột (<= 900px), nút "?" nằm sát mép trái nên tooltip
+ * canh giữa sẽ tràn ra ngoài viewport. Neo tooltip vào mép trái của nút thay vì canh giữa.
+ */
+@media (max-width: 900px) {
+  .field-tooltip {
+    left: 0;
+    max-width: min(240px, calc(100vw - 32px));
+    transform: translate(0, 4px);
+  }
+
+  .field-hint-wrap:hover .field-tooltip,
+  .field-hint-wrap:focus-within .field-tooltip {
+    transform: translate(0, 0);
+  }
+
+  .field-tooltip::after {
+    left: 14px;
+  }
 }
 
 .field-control {
