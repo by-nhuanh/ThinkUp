@@ -1,0 +1,30 @@
+:host {
+  display: contents;
+}
+
+.system-toast {
+  position: fixed;
+  z-index: 120;
+  left: 50%;
+  bottom: 24px;
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 12px 20px;
+  border-radius: 10px;
+  background: #0f1f38;
+  color: #fff;
+  font: var(--admin-text-body-default);
+  text-align: center;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+  transform: translateX(-50%);
+}
+
+.system-toast strong { display: block; }
+.system-toast span { display: block; margin-top: 3px; opacity: 0.85; font: var(--admin-text-body-compact); }
+
+.system-toast.error {
+  background: #a32938;
+}
+
+.system-toast.info {
+  background: #102648;
+}

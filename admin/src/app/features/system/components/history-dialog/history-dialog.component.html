@@ -1,0 +1,106 @@
+<app-admin-dialog
+  title="Nhật ký kiểm toán"
+  subtitle="Theo dõi thao tác quản trị · Dữ liệu chỉ xem và không thể chỉnh sửa hoặc xóa"
+  size="xl"
+  (closed)="closed.emit()"
+>
+  <div class="history-workspace">
+    <div class="history-filters">
+      <div class="field">
+        <label for="history-target">Tài khoản bị tác động</label>
+        <input id="history-target" type="text" [value]="person().name + ' · ' + person().email" readonly />
+      </div>
+      <div class="field">
+        <label id="history-action-label" for="history-action">Hành động</label>
+        <app-custom-select
+          controlId="history-action"
+          labelId="history-action-label"
+          [value]="actionFilter()"
+          [options]="actionOptions()"
+          [menuWidth]="220"
+          (valueChange)="setAction($event)"
+        />
+      </div>
+      <div class="field">
+        <label for="history-range">Thời gian</label>
+        <input id="history-range" type="text" value="01/11/2026 – 03/11/2026" readonly />
+      </div>
+      <button class="secondary-button history-reset" type="button" (click)="resetFilters()">Đặt lại</button>
+    </div>
+
+    @if (viewingTarget()) {
+      <div class="history-chip-row">
+        <span>Đang xem lịch sử:</span>
+        <span class="history-chip">
+          {{ person().name }} · {{ person().email }}
+          <button type="button" aria-label="Bỏ lọc tài khoản" (click)="clearTarget()">×</button>
+        </span>
+      </div>
+    }
+
+    <div class="table-scroll">
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th scope="col">Thời gian</th>
+            <th scope="col">Người thực hiện</th>
+            <th scope="col">Hành động</th>
+            <th scope="col">Tài khoản bị tác động</th>
+            <th scope="col">Địa chỉ IP</th>
+            <th scope="col">Chi tiết</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (entry of paged(); track entry.id) {
+            <tr>
+              <td class="mono">{{ entry.at }}</td>
+              <td>
+                <div class="person-cell">
+                  <span class="avatar violet">{{ initials(entry.actor) }}</span>
+                  <span class="person-cell-copy">
+                    <strong>{{ entry.actor }}</strong>
+                    <small>{{ entry.actorRole }}</small>
+                  </span>
+                </div>
+              </td>
+              <td>
+                <strong class="history-action">{{ entry.action }}</strong>
+                <small class="history-change">{{ entry.change }}</small>
+              </td>
+              <td>
+                <div class="person-cell">
+                  <span class="avatar">{{ initials(entry.targetName) }}</span>
+                  <span class="person-cell-copy">
+                    <strong>{{ entry.targetName }}</strong>
+                    <small>{{ entry.targetEmail }}</small>
+                  </span>
+                </div>
+              </td>
+              <td class="mono">{{ entry.ip }}</td>
+              <td>
+                <button class="link-button" type="button" (click)="inspect.emit(entry)">Xem chi tiết →</button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6">
+                <div class="empty-state">
+                  <strong>Không có sự kiện phù hợp</strong>
+                  <p>Thử bỏ bớt bộ lọc hoặc chọn khoảng thời gian khác.</p>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="history-footer">
+      <p>{{ rangeLabel() }}</p>
+      <div class="pagination">
+        <button type="button" aria-label="Trang trước" [disabled]="safePage() <= 1" (click)="goToPage(safePage() - 1)">‹</button>
+        <button type="button" aria-label="Trang sau" [disabled]="safePage() >= totalPages()" (click)="goToPage(safePage() + 1)">›</button>
+      </div>
+    </div>
+  </div>
+</app-admin-dialog>

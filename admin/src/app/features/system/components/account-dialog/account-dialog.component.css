@@ -1,0 +1,4 @@
+.required-mark { color: #b83e4d; }
+.field-hint { margin: 6px 0 0; color: #64748b; font: var(--admin-text-caption); }
+.reason-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.reason-row .field-error { margin: 4px 0 0; }

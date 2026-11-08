@@ -30,6 +30,9 @@ const BREADCRUMB_TITLES: Record<string, string> = {
   '/support/tickets': 'Ticket hỗ trợ',
   '/support/complaints': 'Khiếu nại & Sự cố',
   '/support/faq': 'FAQ',
+  '/system/security': 'Phân quyền & Bảo mật',
+  '/system/audit': 'Nhật ký Kiểm toán',
+  '/system/settings': 'Cấu hình Hệ thống',
   '/auth/change-password': 'Đổi mật khẩu',
   '/auth/setup-2fa': 'Thiết lập xác thực hai lớp',
   '/auth/backup-codes': 'Mã dự phòng',
@@ -41,6 +44,7 @@ const SECTION_TITLES: Record<string, string> = {
   users: 'Quản lý người dùng',
   business: 'Quản lý kinh doanh',
   support: 'Quản lý hỗ trợ',
+  system: 'Quản trị hệ thống',
   auth: 'Bảo mật tài khoản'
 };
 
@@ -131,6 +135,7 @@ export class AdminLayoutComponent {
   readonly businessOpen = signal(typeof window !== 'undefined' && window.location.pathname.startsWith('/business/'));
   readonly supportOpen = signal(typeof window !== 'undefined' && window.location.pathname.startsWith('/support/'));
   readonly usersOpen = signal(typeof window !== 'undefined' && window.location.pathname.startsWith('/users/'));
+  readonly systemOpen = signal(typeof window !== 'undefined' && window.location.pathname.startsWith('/system/'));
   readonly usersActive = toSignal(
     this.router.events.pipe(
       filter((event): event is NavigationEnd => event instanceof NavigationEnd),
@@ -144,6 +149,13 @@ export class AdminLayoutComponent {
       map(() => this.router.url.startsWith('/business/'))
     ),
     { initialValue: typeof window !== 'undefined' && window.location.pathname.startsWith('/business/') }
+  );
+  readonly systemActive = toSignal(
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map(() => this.router.url.startsWith('/system/'))
+    ),
+    { initialValue: typeof window !== 'undefined' && window.location.pathname.startsWith('/system/') }
   );
   readonly nav = [
     { label: 'Quản lý người dùng', icon: '0-svg1.svg' },
@@ -165,6 +177,11 @@ export class AdminLayoutComponent {
   readonly usersPages = [
     { label: 'Giảng viên', path: '/users/lecturers' },
     { label: 'Học viên', path: '/users/students' }
+  ];
+  readonly systemPages = [
+    { label: 'Phân quyền & Bảo mật', path: '/system/security' },
+    { label: 'Nhật ký Kiểm toán', path: '/system/audit' },
+    { label: 'Cấu hình Hệ thống', path: '/system/settings' }
   ];
 
   constructor() {
@@ -326,27 +343,35 @@ export class AdminLayoutComponent {
     if (this.collapsed()) this.collapsed.set(false);
     const open = !this.businessOpen();
     this.businessOpen.set(open);
-    if (open) { this.usersOpen.set(false); this.supportOpen.set(false); }
+    if (open) { this.usersOpen.set(false); this.supportOpen.set(false); this.systemOpen.set(false); }
   }
 
   toggleSupport(): void {
     if (this.collapsed()) this.collapsed.set(false);
     const open = !this.supportOpen();
     this.supportOpen.set(open);
-    if (open) { this.usersOpen.set(false); this.businessOpen.set(false); }
+    if (open) { this.usersOpen.set(false); this.businessOpen.set(false); this.systemOpen.set(false); }
   }
 
   navigatePage(): void {
     this.usersOpen.set(false);
     this.businessOpen.set(false);
     this.supportOpen.set(false);
+    this.systemOpen.set(false);
   }
 
   toggleUsers(): void {
     if (this.collapsed()) this.collapsed.set(false);
     const open = !this.usersOpen();
     this.usersOpen.set(open);
-    if (open) { this.businessOpen.set(false); this.supportOpen.set(false); }
+    if (open) { this.businessOpen.set(false); this.supportOpen.set(false); this.systemOpen.set(false); }
+  }
+
+  toggleSystem(): void {
+    if (this.collapsed()) this.collapsed.set(false);
+    const open = !this.systemOpen();
+    this.systemOpen.set(open);
+    if (open) { this.usersOpen.set(false); this.businessOpen.set(false); this.supportOpen.set(false); }
   }
 
   toggleAccountMenu(): void {

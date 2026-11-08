@@ -1,0 +1,4 @@
+.policy-banner p { margin: 3px 0 0; }
+.policy-banner .link-button { margin-left: auto; white-space: nowrap; }
+.ghost-button.compact { min-height: 36px; padding: 7px 12px; }
+.table-scroll td:last-child { width: 1%; white-space: nowrap; }

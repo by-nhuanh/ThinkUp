@@ -1,0 +1,48 @@
+<app-admin-dialog title="Chi tiết nhật ký kiểm toán" [subtitle]="subtitle()" size="md" (closed)="closed.emit()">
+  <div class="system-form">
+    <div class="notice info">
+      <strong>Nhật ký bất biến</strong>
+      <p>Bản ghi chỉ xem, không cho phép chỉnh sửa hoặc xóa.</p>
+    </div>
+
+    <div class="person-summary">
+      <span class="avatar">{{ initials(entry().targetName) }}</span>
+      <div>
+        <strong>{{ entry().targetName }} · {{ entry().targetEmail }}</strong>
+        <small>Tài khoản bị tác động · {{ targetCode() }}</small>
+      </div>
+    </div>
+
+    <div class="detail-meta">
+      <p>Người thực hiện: <strong>{{ entry().actor }} · {{ entry().actorRole }}</strong></p>
+      <p>IP: <strong class="mono">{{ entry().ip }}</strong> · Thiết bị: <strong>Chrome 130 / Windows 11</strong></p>
+      <p>Hành động: <strong>{{ entry().action }}</strong></p>
+    </div>
+
+    @if (entry().reason) {
+      <section class="detail-section">
+        <h4>{{ reasonLabel() }}</h4>
+        <blockquote class="basis-quote">{{ entry().reason }}</blockquote>
+      </section>
+    }
+
+    <div class="diff-grid">
+      <div class="diff-panel">
+        <h4>Trước thay đổi</h4>
+        @for (line of beforeLines(); track line) {
+          <p class="diff-line">{{ line }}</p>
+        }
+      </div>
+      <div class="diff-panel after">
+        <h4>Sau thay đổi</h4>
+        @for (line of afterLines(); track line) {
+          <p class="diff-line">{{ line }}</p>
+        }
+      </div>
+    </div>
+
+    <div class="dialog-actions" dialogFooter>
+      <button class="secondary-button" type="button" (click)="closed.emit()">Đóng</button>
+    </div>
+  </div>
+</app-admin-dialog>

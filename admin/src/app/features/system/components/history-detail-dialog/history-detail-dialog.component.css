@@ -1,0 +1,10 @@
+.detail-meta { display: grid; gap: 6px; }
+.detail-meta p { margin: 0; color: #425b7d; font: var(--admin-text-body-compact); overflow-wrap: anywhere; }
+.detail-meta strong { color: #102648; }
+.detail-section h4 { margin: 0 0 8px; color: #0c2048; font: var(--admin-text-control-label); }
+.diff-line { margin: 0; padding: 6px 0; border-top: 1px dashed #dbe4ee; color: #102648; font: var(--admin-text-body-compact); overflow-wrap: anywhere; }
+.diff-line:first-of-type { border-top: 0; padding-top: 0; }
+
+@media (max-width: 640px) {
+  .diff-grid { grid-template-columns: 1fr; }
+}

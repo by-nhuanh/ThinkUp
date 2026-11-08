@@ -1,0 +1,68 @@
+<app-admin-dialog [title]="copy().title" [subtitle]="copy().subtitle" size="md" (closed)="closed.emit()">
+  <form class="system-form" (ngSubmit)="submit()">
+    @if (serverError()) {
+      <div class="notice danger" role="alert">
+        <strong>Không thể lưu thay đổi</strong>
+        <p>Kết nối máy chủ bị gián đoạn. Trạng thái tài khoản vẫn được giữ nguyên. Vui lòng thử lại.</p>
+      </div>
+    }
+
+    <div class="notice" [class.info]="copy().noticeKind === 'info'" [class.warning]="copy().noticeKind === 'warning'" [class.danger]="copy().noticeKind === 'danger'" role="note">
+      <strong>{{ copy().noticeTitle }}</strong>
+      <p>{{ copy().noticeBody }}</p>
+    </div>
+
+    <div class="person-summary">
+      <span class="avatar">{{ initials(person().name) }}</span>
+      <div>
+        <strong>{{ person().name }} · {{ person().email }}</strong>
+        <small>{{ summaryLine() }}</small>
+      </div>
+    </div>
+
+    <div class="field" [class.invalid]="reasonError()">
+      <label for="account-dialog-reason">{{ copy().reasonLabel }} <span class="required-mark">*</span></label>
+      <textarea
+        id="account-dialog-reason"
+        rows="3"
+        placeholder="Nhập lý do, số quyết định hoặc căn cứ thực hiện..."
+        [ngModel]="reason()"
+        (ngModelChange)="onReason($event)"
+        name="reason"
+      ></textarea>
+      <div class="reason-row">
+        @if (reasonError()) {
+          <p class="field-error">{{ reasonError() }}</p>
+        }
+        <span class="reason-counter" [class.short]="reasonCount() < 10">{{ reasonCount() }}/10 ký tự tối thiểu</span>
+      </div>
+    </div>
+
+    <div class="field" [class.invalid]="otpError()">
+      <label for="account-dialog-otp">Xác thực danh tính Super Admin <span class="required-mark">*</span></label>
+      <div class="otp-field">
+        <input
+          id="account-dialog-otp"
+          type="text"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          maxlength="6"
+          placeholder="••••••"
+          [ngModel]="otp()"
+          (ngModelChange)="onOtp($event)"
+          name="otp"
+        />
+      </div>
+      <p class="field-hint">Nhập mã xác thực 6 số từ ứng dụng Authenticator của bạn để phê duyệt.</p>
+      @if (otpError()) {
+        <p class="field-error">{{ otpError() }}</p>
+      }
+    </div>
+
+    <div class="dialog-actions" dialogFooter>
+      <p class="left-note">Thao tác được ghi nhận trong nhật ký kiểm toán.</p>
+      <button class="secondary-button" type="button" (click)="closed.emit()">Hủy bỏ</button>
+      <button [class]="kind() === 'lock' ? 'danger-button' : 'primary-button'" type="submit">{{ confirmLabel() }}</button>
+    </div>
+  </form>
+</app-admin-dialog>
