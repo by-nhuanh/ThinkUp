@@ -57,16 +57,16 @@
     </div>
     <div class="limit-filter">
       <span class="filter-label">Hạn mức</span>
-      <button class="limit-trigger" type="button" [class.active]="limitMin() !== null || limitMax() !== null" [attr.aria-expanded]="limitOpen()" aria-haspopup="dialog" (click)="toggleLimit()">
+      <button class="limit-trigger" type="button" [class.active]="limitMin() !== null || limitMax() !== null" [attr.aria-expanded]="limitOpen()" aria-controls="payout-limit-options" aria-haspopup="dialog" (click)="toggleLimit()">
         <span>{{ limitMin() === null || limitMax() === null ? 'Tất cả hạn mức' : formatLimitCompact(limitMin()!) + ' – ' + formatLimitCompact(limitMax()!) }}</span>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
       </button>
       @if (limitOpen()) {
-        <button class="limit-backdrop" type="button" aria-label="Đóng bộ lọc hạn mức" (click)="limitOpen.set(false)"></button>
-        <section class="limit-popover" role="dialog" aria-label="Chọn khoảng hạn mức">
+        <button class="limit-backdrop" type="button" aria-label="Đóng bộ lọc hạn mức" (click)="closeLimitPopover()"></button>
+        <section id="payout-limit-options" class="limit-popover" [style.left.px]="filterPopoverPosition()?.left" [style.top.px]="filterPopoverPosition()?.top" [style.max-height.px]="filterPopoverPosition()?.maxHeight" [style.visibility]="filterPopoverPosition() ? 'visible' : 'hidden'" role="dialog" aria-label="Chọn khoảng hạn mức">
           <div class="limit-popover-head">
             <div><strong>Khoảng hạn mức</strong><span>Chọn số tiền tối thiểu và tối đa</span></div>
-            <button type="button" aria-label="Đóng" (click)="limitOpen.set(false)">×</button>
+            <button type="button" aria-label="Đóng" (click)="closeLimitPopover()">×</button>
           </div>
           <div class="limit-current"><span>Khoảng đang chọn</span><strong>{{ formatLimit(limitMinDraft()) }} – {{ formatLimit(limitMaxDraft()) }} {{ limitUnitLabel() }}</strong></div>
           <div class="limit-dual-slider">
@@ -94,7 +94,7 @@
         <span>{{ dateLabel() }}</span>
       </button>
       @if (quickOpen()) {
-        <div class="date-popover" id="payout-date-options" [style.left.px]="datePopoverPosition()?.left" [style.top.px]="datePopoverPosition()?.top" [style.max-height.px]="datePopoverPosition()?.maxHeight" [style.visibility]="datePopoverPosition() ? 'visible' : 'hidden'">
+        <div class="date-popover" id="payout-date-options" [style.left.px]="filterPopoverPosition()?.left" [style.top.px]="filterPopoverPosition()?.top" [style.max-height.px]="filterPopoverPosition()?.maxHeight" [style.visibility]="filterPopoverPosition() ? 'visible' : 'hidden'">
           <p>Chọn nhanh</p>
           <div class="quick-dates">
             <button type="button" [class.active]="rangeDraft() === 'all'" (click)="selectQuickDate('all')">Tất cả</button>
