@@ -33,6 +33,10 @@
 .mini-map{position:relative;display:block;width:132px;cursor:crosshair;touch-action:none}.map-rect{position:absolute;min-width:4px;min-height:4px;border-radius:3px;background:#ffffff7a;pointer-events:none}.map-rect.viewport{z-index:2;border:1px solid #fff;background:#7dd3fc38;box-shadow:0 0 18px #7dd3fc6b}
 .permission-notice{position:fixed;top:74px;left:50%;z-index:80;transform:translateX(-50%);padding:10px 16px;border:1px solid #ddd6fe;border-radius:10px;background:#ffffffed;color:#5b3d91;box-shadow:0 10px 30px #0002;backdrop-filter:blur(16px);font-size:12px;font-weight:700;animation:notice-in .18s ease-out}@keyframes notice-in{from{opacity:0;transform:translate(-50%,-8px)}}
 .focus-overlay{position:fixed;inset:0;z-index:3;pointer-events:none;background:#0a0a0a66;backdrop-filter:blur(2px)}
+.focus-banner{pointer-events:auto}
+.focus-stop{display:inline-flex;align-items:center;height:30px;margin-left:6px;padding:0 12px;border:1px solid #c4a6ff66;border-radius:999px;background:#c4a6ff1f;color:#e9ddff;font-size:12px;font-weight:700;line-height:1;white-space:nowrap;cursor:pointer;transition:background-color .15s ease,border-color .15s ease}
+.focus-stop:hover{background:#c4a6ff33;border-color:#c4a6ff99}
+.focus-stop:focus-visible{outline:2px solid #c4a6ff;outline-offset:2px}
 
 @media (max-width:1440px){.focus-banner{top:70px}}
 @media (max-width:1366px){.navigator{left:12px;width:148px}.top-bar{top:12px;left:12px;right:12px}.remote-media{right:12px}}

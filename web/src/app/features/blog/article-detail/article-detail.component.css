@@ -1,2 +1,319 @@
-:host{display:block;flex:1}.reaction-button{border-color:#E1E5EB;background:white}.reaction-button:hover{background:#F8FAFD}.reaction-button.liked{background:#E1EBFF;border-color:#3061EF66;color:#1E64EF}.reaction-button.disliked{background:#FEE2E2;border-color:#EF444466;color:#DC2626}.share-button{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;color:#5D646F}.share-button:hover{background:#F8FAFD}button{cursor:pointer}button:focus-visible,a:focus-visible{outline:2px solid #1E64EF;outline-offset:3px}
-:host{line-height:1.6}
+:host {
+  display: block;
+  flex: 1;
+  line-height: 1.6;
+}
+
+.reaction-button {
+  border-color: #e1e5eb;
+  background: white;
+}
+
+.reaction-button:hover {
+  background: #f8fafd;
+}
+
+.reaction-button.liked {
+  background: #e1ebff;
+  border-color: #3061ef66;
+  color: #1e64ef;
+}
+
+.reaction-button.disliked {
+  background: #fee2e2;
+  border-color: #ef444466;
+  color: #dc2626;
+}
+
+.reaction-button:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+
+.share-button {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #5d646f;
+}
+
+.share-button:hover {
+  background: #f8fafd;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid #1e64ef;
+  outline-offset: 3px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Article body rendered from backend/editor HTML via [innerHTML].
+ * These rules intentionally live behind ::ng-deep because injected markup does
+ * not receive Angular's component scope attribute.
+ * ------------------------------------------------------------------------- */
+:host ::ng-deep .article-content {
+  width: 100%;
+  min-width: 0;
+  font-size: 16px;
+  line-height: 1.6;
+  color: #5d646f;
+  overflow-wrap: break-word;
+}
+
+:host ::ng-deep .article-content > :first-child {
+  margin-top: 0;
+}
+
+:host ::ng-deep .article-content > :last-child {
+  margin-bottom: 0;
+}
+
+:host ::ng-deep .article-content h2 {
+  margin: 24px 0 8px;
+  font-size: 20px;
+  line-height: 1.4;
+  font-weight: 700;
+  color: #0f1b2d;
+  scroll-margin-top: 96px;
+}
+
+:host ::ng-deep .article-content h3 {
+  margin: 20px 0 8px;
+  font-size: 18px;
+  line-height: 1.45;
+  font-weight: 600;
+  color: #0f1b2d;
+  scroll-margin-top: 96px;
+}
+
+:host ::ng-deep .article-content h4 {
+  margin: 16px 0 8px;
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 600;
+  color: #0f1b2d;
+}
+
+:host ::ng-deep .article-content p {
+  margin: 0 0 8px;
+}
+
+:host ::ng-deep .article-content ul,
+:host ::ng-deep .article-content ol {
+  margin: 8px 0;
+  padding-left: 24px;
+}
+
+:host ::ng-deep .article-content ul {
+  list-style: disc;
+}
+
+:host ::ng-deep .article-content ol {
+  list-style: decimal;
+}
+
+:host ::ng-deep .article-content li {
+  margin: 4px 0;
+}
+
+:host ::ng-deep .article-content li > ul,
+:host ::ng-deep .article-content li > ol {
+  margin: 4px 0;
+}
+
+:host ::ng-deep .article-content a {
+  color: #1e64ef;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+:host ::ng-deep .article-content strong {
+  color: #0f1b2d;
+  font-weight: 600;
+}
+
+:host ::ng-deep .article-content em {
+  font-style: italic;
+}
+
+:host ::ng-deep .article-content hr {
+  margin: 24px 0;
+  border: 0;
+  border-top: 1px solid #e1e5eb;
+}
+
+:host ::ng-deep .article-content img,
+:host ::ng-deep .article-content video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 12px auto;
+  border-radius: 8px;
+}
+
+:host ::ng-deep .article-content figure {
+  margin: 12px 0;
+}
+
+:host ::ng-deep .article-content figure img {
+  margin: 0;
+}
+
+:host ::ng-deep .article-content figcaption {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #737b87;
+  text-align: center;
+}
+
+:host ::ng-deep .article-content blockquote {
+  margin: 12px 0;
+  padding: 16px;
+  background: #e1ebff;
+  border-left: 3px solid #1e64ef;
+  border-radius: 8px;
+  color: #0f1b2d;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+:host ::ng-deep .article-content blockquote p {
+  margin: 0;
+  color: inherit;
+}
+
+:host ::ng-deep .article-content blockquote p + p {
+  margin-top: 8px;
+}
+
+:host ::ng-deep .article-content pre {
+  position: relative;
+  max-width: 100%;
+  margin: 12px 0;
+  padding: 20px 48px 28px 20px;
+  background: #0f1b2d;
+  border-radius: 8px;
+  color: #dcdcaa;
+  font-family: ui-monospace, sfmono-regular, menlo, consolas, 'liberation mono', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  tab-size: 2;
+  overflow-x: auto;
+  overflow-wrap: normal;
+}
+
+:host ::ng-deep .article-content pre code {
+  display: block;
+  min-width: max-content;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  color: inherit;
+  font: inherit;
+  white-space: pre;
+}
+
+:host ::ng-deep .article-content :not(pre) > code {
+  padding: 2px 5px;
+  background: #e1ebff;
+  border-radius: 4px;
+  color: #1e64ef;
+  font-family: ui-monospace, sfmono-regular, menlo, consolas, 'liberation mono', monospace;
+  font-size: 0.9em;
+  overflow-wrap: anywhere;
+}
+
+:host ::ng-deep .article-code-copy {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 0.08);
+  color: #94a3b8;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+:host ::ng-deep .article-code-copy:hover {
+  background: rgb(255 255 255 / 0.16);
+  color: #e2e8f0;
+}
+
+:host ::ng-deep .article-code-copy:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 2px;
+}
+
+:host ::ng-deep .article-code-copy.is-copied {
+  color: #4ade80;
+}
+
+:host ::ng-deep .article-code-copy svg {
+  width: 16px;
+  height: 16px;
+}
+
+:host ::ng-deep .article-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  margin: 12px 0;
+  border: 1px solid #e1e5eb;
+  border-radius: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+:host ::ng-deep .article-content table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+:host ::ng-deep .article-content th {
+  padding: 14px 16px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  color: #0f172a;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+
+:host ::ng-deep .article-content td {
+  padding: 13px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #475569;
+  vertical-align: top;
+}
+
+:host ::ng-deep .article-content tr:last-child td {
+  border-bottom: 0;
+}
+
+:host ::ng-deep .article-content th + th,
+:host ::ng-deep .article-content td + td {
+  border-left: 1px solid #f1f5f9;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :host ::ng-deep .article-code-copy {
+    transition: none;
+  }
+}

@@ -47,7 +47,7 @@ export class AccountMenuComponent implements OnChanges {
       { label: 'Khóa học yêu thích', href: '/main/favorites', icon: 'heart' },
       { label: 'Khóa học của tôi', href: '/main/my-courses', icon: 'book' },
       { label: 'Flashcard', href: '/learning/flashcards', icon: 'cards' },
-      { label: 'Quản lý bài viết', href: '/main/blog', icon: 'newspaper' },
+      { label: 'Quản lý bài viết', href: '/main/blog/manage', icon: 'newspaper' },
       { label: 'Lịch sử thanh toán', href: '/main/profile/billing', icon: 'credit-card' },
       { label: 'Chứng chỉ', href: '/main/certificates', icon: 'badge' },
       {
@@ -57,7 +57,7 @@ export class AccountMenuComponent implements OnChanges {
         badge: unread > 0 ? unread : undefined,
         dividerBefore: true,
       },
-      { label: 'Cài đặt', href: '/main/profile/edit', icon: 'settings' },
+      { label: 'Cài đặt', href: '/main/settings', icon: 'settings' },
       { label: 'Hồ sơ học viên', href: '/main/profile', icon: 'user', dividerBefore: true },
       { label: 'Liên hệ hỗ trợ', href: '/main/contact', icon: 'lifebuoy' },
       { label: 'Trung tâm trợ giúp', href: '/main/help-center', icon: 'help' },

@@ -129,7 +129,7 @@ export class FlashcardDetailComponent {
 
   addCard(): void {
     this.router.navigate(['/learning/flashcards', this.setId, 'edit'], {
-      queryParams: { add: '1' }
+      queryParams: { add: '1', returnUrl: `/learning/flashcards/${this.setId}` }
     });
   }
 

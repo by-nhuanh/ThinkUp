@@ -67,6 +67,10 @@
   color: #ffffff;
 }
 
+.course-cover__fav.is-active svg {
+  fill: currentColor;
+}
+
 .course-cover__glyph {
   font-size: 24px;
   line-height: 1;

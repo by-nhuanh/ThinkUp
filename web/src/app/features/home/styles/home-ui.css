@@ -213,7 +213,7 @@
 
 .hm-course {
   display: flex;
-  flex: 1 1 0;
+  flex: 0 0 calc((100% - (var(--hm-gap-card) * 4)) / 5);
   flex-direction: column;
   min-width: 0;
   min-height: 250px;
@@ -390,6 +390,18 @@
   right: calc(-1 * clamp(12px, 0.938vw, 18px));
 }
 
+.hm-carousel__arrow:disabled {
+  opacity: 0.4;
+  cursor: default;
+  box-shadow: none;
+}
+
+.hm-carousel__arrow:focus-visible,
+.hm-dot:focus-visible {
+  outline: 2px solid var(--hm-blue);
+  outline-offset: 2px;
+}
+
 .hm-dots {
   display: flex;
   align-items: center;
@@ -401,8 +413,12 @@
   display: block;
   width: 6px;
   height: 6px;
+  padding: 0;
+  border: 0;
   border-radius: 999px;
   background: #cad5e2;
+  cursor: pointer;
+  transition: width 0.18s ease, background-color 0.18s ease;
 }
 
 .hm-dot--active {

@@ -5,6 +5,7 @@ import { passwordPolicyGuard } from './core/guards/password-policy.guard';
 import { twoFactorGuard } from './core/guards/two-factor.guard';
 import { CONTENT_PROVIDERS } from './features/content/services/content.providers';
 import { COURSE_PROVIDERS } from './features/courses/services/course.providers';
+import { SYSTEM_PROVIDERS } from './features/system/data/system.providers';
 
 export const routes: Routes = [
   {
@@ -90,7 +91,16 @@ export const routes: Routes = [
       { path: 'support/tickets', loadComponent: () => import('./features/support/tickets/tickets.component').then(m => m.TicketsComponent) },
       { path: 'support/complaints/:id', loadComponent: () => import('./features/support/complaint-detail/complaint-detail.component').then(m => m.ComplaintDetailComponent) },
       { path: 'support/complaints', loadComponent: () => import('./features/support/complaints/complaints.component').then(m => m.ComplaintsComponent) },
-      { path: 'support/faq', loadComponent: () => import('./features/support/faq/faq.component').then(m => m.FaqComponent) }
+      { path: 'support/faq', loadComponent: () => import('./features/support/faq/faq.component').then(m => m.FaqComponent) },
+      { path: 'system/security', providers: SYSTEM_PROVIDERS, loadComponent: () => import('./features/system/security/security.component').then(m => m.SecurityComponent) },
+      { path: 'system/audit', providers: SYSTEM_PROVIDERS, loadComponent: () => import('./features/system/audit/audit.component').then(m => m.AuditComponent) },
+      {
+        path: 'system/settings',
+        providers: SYSTEM_PROVIDERS,
+        loadComponent: () => import('./features/system/settings/settings.component').then(m => m.SettingsComponent),
+        canDeactivate: [(component, currentRoute, currentState, nextState) =>
+          import('./features/system/settings/settings.component').then(m => m.settingsUnsavedGuard(component, currentRoute, currentState, nextState))]
+      }
     ]
   },
   {

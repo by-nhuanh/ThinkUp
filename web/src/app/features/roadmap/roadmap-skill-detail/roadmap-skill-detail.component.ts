@@ -1,11 +1,14 @@
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Location } from '@angular/common';
 import { catchError, distinctUntilChanged, finalize, map, of, switchMap } from 'rxjs';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
+  LucideArrowLeft,
   LucideArrowRight,
   LucideChartColumn,
   LucideChartPie,
+  LucideChevronDown,
   LucideChevronRight,
   LucideCircleCheck,
   LucideInfo,
@@ -39,9 +42,11 @@ const STATUS_OPTIONS: StatusOption[] = [
   standalone: true,
   imports: [
     RouterLink,
+    LucideArrowLeft,
     LucideArrowRight,
     LucideChartColumn,
     LucideChartPie,
+    LucideChevronDown,
     LucideChevronRight,
     LucideCircleCheck,
     LucideInfo,
@@ -60,6 +65,7 @@ export class RoadmapSkillDetailComponent implements OnInit {
   private readonly commerceService = inject(CommerceService);
   private readonly toastService = inject(ToastService);
   private readonly router = inject(Router);
+  private readonly location = inject(Location);
 
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
@@ -71,6 +77,21 @@ export class RoadmapSkillDetailComponent implements OnInit {
   readonly error = signal<string | null>(null);
   private creatingFlashcard = false;
   readonly savingStatus = signal(false);
+  /** Left roadmap rail collapses into a dropdown so it does not push the page content down. */
+  readonly sidebarOpen = signal(false);
+
+  toggleSidebar(): void {
+    this.sidebarOpen.update((open) => !open);
+  }
+
+  /** Returns to the page the user came from; falls back to the roadmap overview. */
+  goBack(): void {
+    if (window.history.length > 1) {
+      this.location.back();
+      return;
+    }
+    void this.router.navigate(['/learning/roadmap', this.roadmapId]);
+  }
 
   readonly roadmap = computed(() => this.roadmapService.getRoadmapById(this.roadmapId));
   readonly skillInfo = computed(() => this.roadmapService.getSkill(this.roadmapId, this.skillId));
@@ -166,7 +187,10 @@ export class RoadmapSkillDetailComponent implements OnInit {
       .subscribe({
         next: result => {
           this.router.navigate(['/learning/flashcards', result.setId, 'edit'], {
-            queryParams: { add: '1' }
+            queryParams: {
+              add: '1',
+              returnUrl: `/learning/roadmap/${this.roadmapId}/${skill.id}`
+            }
           });
         },
         error: (error: { error?: { message?: string } }) => {

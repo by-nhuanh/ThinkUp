@@ -72,6 +72,7 @@ export const routes: Routes = [
       { path: 'settings/learning-options', loadComponent: () => import('./features/settings/learning-options/learning-options.component').then(m => m.LearningOptionsComponent) },
       { path: 'settings/notifications', loadComponent: () => import('./features/settings/notifications/notifications.component').then(m => m.NotificationsComponent) },
       { path: 'notifications', loadComponent: () => import('./features/notifications/notification-center/notification-center.component').then(m => m.NotificationCenterComponent) },
+      { path: 'notifications/:tab', loadComponent: () => import('./features/notifications/notification-center/notification-center.component').then(m => m.NotificationCenterComponent) },
       { path: 'settings/payment', loadComponent: () => import('./features/settings/payment/payment.component').then(m => m.PaymentComponent) },
       { path: 'my-courses/:courseId/review', loadComponent: () => import('./features/my-courses/review-form/review-form.component').then(m => m.ReviewFormComponent) },
       { path: 'my-courses/:courseId', loadComponent: () => import('./features/my-courses/course-dashboard/course-dashboard.component').then(m => m.CourseDashboardComponent) },

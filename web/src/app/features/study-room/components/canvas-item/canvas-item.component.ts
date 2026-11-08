@@ -32,13 +32,20 @@ export class CanvasItemComponent {
   finishEditing(): void { this.editing.set(false); this.commitPending(); }
   saveUrl(): void {
     if (!this.canManage()) return;
-    const raw=this.urlInput().trim();
+    const raw = this.urlInput().trim();
     try {
-      const url=new URL(raw);
-      if(!['https:','http:'].includes(url.protocol))throw new Error('Đường dẫn phải bắt đầu bằng http hoặc https.');
-      if(this.item().kind==='youtube' && !/(?:^|\.)youtube\.com$|(?:^|\.)youtu\.be$/.test(url.hostname))throw new Error('Vui lòng nhập link YouTube hợp lệ.');
-      this.urlError.set('');this.commit({ url: raw });this.editing.set(false);
-    } catch { this.urlError.set('Vui lòng nhập đường dẫn hợp lệ.'); }
+      const url = new URL(raw);
+      if (!['https:', 'http:'].includes(url.protocol)) throw new Error('Đường dẫn phải bắt đầu bằng http hoặc https.');
+      if (this.item().kind === 'youtube') {
+        if (!/(?:^|\.)(?:youtube\.com|youtu\.be|youtube-nocookie\.com)$/.test(url.hostname)) {
+          throw new Error('Vui lòng nhập link YouTube hợp lệ.');
+        }
+        if (!this.youtubeId(raw)) throw new Error('Link YouTube không hợp lệ.');
+      }
+      this.urlError.set(''); this.commit({ url: raw }); this.editing.set(false);
+    } catch {
+      this.urlError.set('Vui lòng nhập đường dẫn hợp lệ.');
+    }
   }
   editUrl():void {if(!this.canManage())return;this.urlInput.set(this.item().url || '');this.urlError.set('');this.editing.set(true);}
   startMove(event: PointerEvent): void {
@@ -65,7 +72,27 @@ export class CanvasItemComponent {
   }
   endGesture():void {if(!this.gesture)return;this.gesture=null;this.commitPending();}
   canResize(): boolean { return ['image', 'gif', 'youtube'].includes(this.item().kind); }
-  embedUrl(): SafeResourceUrl | null { const url = this.item().url || ''; const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([\w-]+)/); return match ? this.sanitizer.bypassSecurityTrustResourceUrl(`https://www.youtube.com/embed/${match[1]}?autoplay=0`) : null; }
+  embedUrl(): SafeResourceUrl | null {
+    const id = this.youtubeId(this.item().url || '');
+    return id
+      ? this.sanitizer.bypassSecurityTrustResourceUrl(`https://www.youtube.com/embed/${id}?autoplay=0&rel=0`)
+      : null;
+  }
+
+  /** Nhận cả link watch, youtu.be, Shorts, Live, embed và /v/. */
+  private youtubeId(rawUrl: string): string | null {
+    const url = rawUrl.trim();
+    if (!url) return null;
+    const patterns = [
+      /(?:youtube\.com|youtube-nocookie\.com)\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/|live\/|v\/)([\w-]{11})/,
+      /youtu\.be\/([\w-]{11})/,
+    ];
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match) return match[1];
+    }
+    return null;
+  }
   startStroke(event: PointerEvent): void { if (!this.canManage() || !this.drawMode()) return; this.drawing.set(true); this.pendingChange = null; this.priorStrokes = this.item().strokes || []; this.points = [this.point(event)]; this.preview({ strokes: [...this.priorStrokes, this.points.join(' ')] }); (event.target as Element).setPointerCapture(event.pointerId); }
   moveStroke(event: PointerEvent): void { if (!this.drawing()) return; this.points.push(this.point(event)); this.preview({ strokes: [...this.priorStrokes, this.points.join(' ')] }); }
   endStroke(): void { if (!this.drawing()) return; this.drawing.set(false); this.points = []; this.commitPending(); }

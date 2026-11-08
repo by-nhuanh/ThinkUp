@@ -1,0 +1,80 @@
+<app-admin-dialog
+  title="Trích xuất Báo cáo Nhật ký Kiểm toán"
+  subtitle="Xuất toàn bộ bản ghi khớp với điều kiện lọc hiện tại."
+  size="md"
+  (closed)="closed.emit()"
+>
+  <form class="system-form" (ngSubmit)="confirm()">
+    <div class="export-summary">
+      <p><strong>Số lượng bản ghi sẽ xuất:</strong> {{ countLabel() }} bản ghi</p>
+      <p>Thời gian: {{ timeLabel() }} · Phân hệ: {{ moduleLabel() }}</p>
+      <p>Mức độ: {{ riskLabel() }} · Hành động: {{ actionLabel() }} · Không giới hạn ở trang đang xem</p>
+    </div>
+
+    <fieldset class="export-format">
+      <legend>Định dạng file</legend>
+      <label class="format-option" [class.is-selected]="format() === 'xlsx'">
+        <input type="radio" name="exportFormat" value="xlsx" [checked]="format() === 'xlsx'" [disabled]="running()" (change)="pickFormat('xlsx')" />
+        <span>
+          <strong>Microsoft Excel (.xlsx)</strong>
+          <small>Định dạng báo cáo đầy đủ, trực quan</small>
+        </span>
+      </label>
+      <label class="format-option" [class.is-selected]="format() === 'csv'">
+        <input type="radio" name="exportFormat" value="csv" [checked]="format() === 'csv'" [disabled]="running()" (change)="pickFormat('csv')" />
+        <span>
+          <strong>Tệp văn bản tách dấu phẩy (.csv)</strong>
+          <small>Dành cho việc phân tích dữ liệu lớn</small>
+        </span>
+      </label>
+    </fieldset>
+
+    @if (csvRecommended()) {
+      <div class="notice info">
+        <strong>Khuyến nghị định dạng CSV</strong>
+        <p>Có hơn 50.000 bản ghi. CSV giúp xử lý nhanh hơn; bạn vẫn có thể chọn Excel.</p>
+      </div>
+    }
+
+    <div class="field" [class.invalid]="reasonError()">
+      <label for="audit-export-reason">Lý do xuất dữ liệu <span class="required-mark">*</span></label>
+      <textarea
+        id="audit-export-reason"
+        rows="3"
+        placeholder="Nhập lý do trích xuất báo cáo (thanh tra định kỳ, đối soát cơ quan thuế, giải quyết tranh chấp...)..."
+        [ngModel]="reason()"
+        (ngModelChange)="onReason($event)"
+        [disabled]="running()"
+        name="reason"
+      ></textarea>
+      <div class="reason-row">
+        @if (reasonError()) {
+          <p class="field-error">{{ reasonError() }}</p>
+        }
+        <span class="reason-counter" [class.short]="reasonCount() < 10">{{ reasonCount() }}/10 ký tự tối thiểu</span>
+      </div>
+    </div>
+
+    @if (failed()) {
+      <div class="notice danger" role="alert">
+        <strong>Không thể tạo tệp báo cáo</strong>
+        <p>Kết nối máy chủ bị gián đoạn. Bộ lọc và lý do của bạn được giữ lại để thử lại.</p>
+      </div>
+    } @else if (running()) {
+      <div class="export-progress">
+        <p>Đang đóng gói báo cáo · {{ progress() }}%</p>
+        <div class="progress-track"><div class="progress-fill" [style.width.%]="progress()"></div></div>
+      </div>
+    } @else {
+      <div class="notice info">
+        <strong>Báo cáo có mã kiểm tra toàn vẹn</strong>
+        <p>Tệp xuất kèm checksum ở dòng cuối. Thao tác tải báo cáo cũng được lưu nhật ký.</p>
+      </div>
+    }
+
+    <div class="dialog-actions" dialogFooter>
+      <button class="secondary-button" type="button" (click)="cancel()">Hủy</button>
+      <button class="primary-button" type="submit" [disabled]="running()">{{ confirmLabel() }}</button>
+    </div>
+  </form>
+</app-admin-dialog>

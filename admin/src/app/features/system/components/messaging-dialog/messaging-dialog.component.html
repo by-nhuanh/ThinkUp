@@ -1,0 +1,80 @@
+<app-admin-dialog
+  title="Cấu hình Dịch vụ SMS và Email OTP"
+  subtitle="Thiết lập thông tin người gửi, mẫu thư và thời hạn mã xác thực."
+  size="lg"
+  (closed)="closed.emit()"
+>
+  <div class="system-form">
+    <div class="scope-panel">
+      <h4>Quy tắc OTP cố định · Chỉ đọc</h4>
+      <p class="otp-rules">{{ otpRules }}</p>
+    </div>
+
+    <div class="form-grid">
+      <label class="field full">
+        <span>Tên hiển thị người gửi <span class="required-mark">*</span></span>
+        <input type="text" [value]="form().senderName" (input)="update('senderName', $any($event.target).value)" />
+      </label>
+      <label class="field" [class.invalid]="!!systemEmailError()">
+        <span>Email gửi hệ thống <span class="required-mark">*</span></span>
+        <input type="email" [value]="form().systemEmail" (input)="update('systemEmail', $any($event.target).value)" />
+        @if (systemEmailError()) {
+          <p class="field-error">{{ systemEmailError() }}</p>
+        } @else {
+          <small>Địa chỉ gửi thuộc tên miền doanh nghiệp &#64;thinkup.vn.</small>
+        }
+      </label>
+      <label class="field" [class.invalid]="!!replyEmailError()">
+        <span>Email nhận phản hồi <span class="required-mark">*</span></span>
+        <input type="email" [value]="form().replyEmail" (input)="update('replyEmail', $any($event.target).value)" />
+        @if (replyEmailError()) {
+          <p class="field-error">{{ replyEmailError() }}</p>
+        }
+      </label>
+      <label class="field full">
+        <span>Mật khẩu kết nối dịch vụ <span class="required-mark">*</span></span>
+        <input type="password" autocomplete="new-password" [value]="form().servicePassword" (input)="update('servicePassword', $any($event.target).value)" />
+      </label>
+    </div>
+
+    @for (template of [
+      { key: 'lecturerContractTemplate', label: 'Mẫu thư Ký HĐ Giảng viên', state: contractTemplateState(), which: 'contract' },
+      { key: 'adminGrantTemplate', label: 'Mẫu thư Cấp quyền Admin', state: adminTemplateState(), which: 'admin' }
+    ]; track template.key) {
+      <div class="template-block">
+        <label class="field">
+          <span>{{ template.label }} <span class="required-mark">*</span></span>
+          <div class="template-row">
+            <input type="text" [value]="$any(form())[template.key]" (input)="update($any(template.key), $any($event.target).value)" />
+            <button class="ghost-button" type="button" [disabled]="template.state === 'checking'" (click)="checkTemplate($any(template.which))">
+              {{ template.state === 'checking' ? 'Đang kiểm tra…' : 'Kiểm tra Template' }}
+            </button>
+          </div>
+        </label>
+        @if (template.state === 'verified') {
+          <p class="template-result ok"><strong>Đã tìm thấy mẫu thư</strong>Mẫu thư tồn tại trên dịch vụ đối tác.</p>
+        } @else if (template.state === 'failed') {
+          <p class="template-result bad" role="alert"><strong>Không tìm thấy mẫu thư</strong>Mã mẫu thư không tồn tại. Kiểm tra lại Template ID.</p>
+        }
+      </div>
+    }
+
+    <label class="field otp-expiry" [class.invalid]="!!otpExpiryError()">
+      <span>Thời gian hết hạn OTP <span class="required-mark">*</span></span>
+      <div class="unit-input">
+        <input type="number" min="1" step="1" [value]="otpExpiryDisplay()" (input)="onOtpExpiry($any($event.target).value)" />
+        <span>phút</span>
+      </div>
+      @if (otpExpiryError()) {
+        <p class="field-error">{{ otpExpiryError() }}</p>
+      } @else {
+        <small>Số nguyên dương · Cấu hình mặc định: 5 phút.</small>
+      }
+    </label>
+  </div>
+  <div dialogFooter class="dialog-actions">
+    <p class="left-note">{{ footerNote() }}</p>
+    <button class="ghost-button" type="button" (click)="closed.emit()">Hủy</button>
+    <button class="primary-button" type="button" [disabled]="!canSave()" (click)="save()">Lưu cấu hình dịch vụ</button>
+  </div>
+</app-admin-dialog>

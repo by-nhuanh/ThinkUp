@@ -16,9 +16,20 @@
     <!-- Phương thức thanh toán -->
     <section class="rounded-[18px] border border-[#E2E8F0] bg-white p-6">
       <div class="flex flex-col gap-5">
-        <div class="flex flex-col gap-1">
-          <h2 class="text-[16px] font-bold leading-6 text-[#0F172A]">Phương thức thanh toán</h2>
-          <p class="pb-px text-[12.5px] leading-[18.75px] text-[#94A3B8]">Các phương thức thanh toán bạn đã lưu.</p>
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div class="flex flex-col gap-1">
+            <h2 class="text-[16px] font-bold leading-6 text-[#0F172A]">Phương thức thanh toán</h2>
+            <p class="pb-px text-[12.5px] leading-[18.75px] text-[#94A3B8]">Các phương thức thanh toán bạn đã lưu.</p>
+          </div>
+          <button
+            #addMethodButton
+            type="button"
+            class="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border border-[#155DFC] px-3.5 text-[13px] font-semibold text-[#155DFC] transition hover:bg-[#EFF6FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#155DFC]/30"
+            (click)="openAddMethod()"
+          >
+            <svg lucidePlus [size]="16" [strokeWidth]="2" aria-hidden="true"></svg>
+            Thêm phương thức
+          </button>
         </div>
 
         <div class="relative">
@@ -318,4 +329,178 @@
       </section>
     </div>
   </main>
+
+  @if (addOpen()) {
+    <div class="add-method-overlay" (click)="closeAddMethod()">
+      <div
+        #addDialog
+        class="add-method-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-method-title"
+        aria-describedby="add-method-desc"
+        (click)="$event.stopPropagation()"
+        (keydown)="onDialogKeydown($event)"
+      >
+        <header class="add-method-head">
+          <div class="min-w-0">
+            <h2 id="add-method-title" class="add-method-title">Thêm phương thức thanh toán</h2>
+            <p id="add-method-desc" class="add-method-desc">
+              Chọn loại phương thức và nhập thông tin liên kết.
+            </p>
+          </div>
+          <button type="button" class="add-method-close" aria-label="Đóng hộp thoại" (click)="closeAddMethod()">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+            </svg>
+          </button>
+        </header>
+
+        <div class="add-method-body">
+          <div class="add-type-group" role="group" aria-label="Loại phương thức thanh toán">
+            <button type="button" class="add-type" [class.is-active]="addType() === 'momo'" [attr.aria-pressed]="addType() === 'momo'" (click)="setAddType('momo')">
+              <span class="add-type__logo add-type__logo--momo">momo</span>
+              <span>Ví MoMo</span>
+            </button>
+            <button type="button" class="add-type" [class.is-active]="addType() === 'zalopay'" [attr.aria-pressed]="addType() === 'zalopay'" (click)="setAddType('zalopay')">
+              <span class="add-type__logo add-type__logo--zalopay">ZaloPay</span>
+              <span>Ví ZaloPay</span>
+            </button>
+            <button type="button" class="add-type" [class.is-active]="addType() === 'visa'" [attr.aria-pressed]="addType() === 'visa'" (click)="setAddType('visa')">
+              <span class="add-type__logo add-type__logo--visa">VISA</span>
+              <span>Thẻ Visa</span>
+            </button>
+          </div>
+
+          <div class="add-form-grid">
+            <label class="add-field add-field--full">
+              <span class="add-field__label">{{ addType() === 'visa' ? 'Tên chủ thẻ' : 'Tên chủ ví' }}</span>
+              <input
+                class="add-field__input"
+                type="text"
+                autocomplete="name"
+                autofocus
+                [value]="addDraft().owner"
+                (input)="updateAddOwner($event)"
+                [attr.aria-invalid]="addSubmitted() && addErrors()['owner'] ? 'true' : null"
+              />
+              @if (addSubmitted() && addErrors()['owner']; as error) {
+                <span class="add-field__error" role="alert">{{ error }}</span>
+              }
+            </label>
+
+            @if (addType() === 'visa') {
+              <label class="add-field add-field--full">
+                <span class="add-field__label">Số thẻ</span>
+                <input
+                  class="add-field__input"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="cc-number"
+                  placeholder="1234 5678 9012 3456"
+                  [value]="addDraft().cardNumber"
+                  (input)="updateAddCardNumber($event)"
+                  [attr.aria-invalid]="addSubmitted() && addErrors()['cardNumber'] ? 'true' : null"
+                />
+                @if (addSubmitted() && addErrors()['cardNumber']; as error) {
+                  <span class="add-field__error" role="alert">{{ error }}</span>
+                }
+              </label>
+
+              <label class="add-field">
+                <span class="add-field__label">Ngày hết hạn</span>
+                <input
+                  class="add-field__input"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="cc-exp"
+                  placeholder="MM / YY"
+                  maxlength="7"
+                  [value]="addDraft().expiry"
+                  (input)="updateAddExpiry($event)"
+                  [attr.aria-invalid]="addSubmitted() && addErrors()['expiry'] ? 'true' : null"
+                />
+                @if (addSubmitted() && addErrors()['expiry']; as error) {
+                  <span class="add-field__error" role="alert">{{ error }}</span>
+                }
+              </label>
+
+              <label class="add-field">
+                <span class="add-field__label">CVV</span>
+                <input
+                  class="add-field__input"
+                  type="password"
+                  inputmode="numeric"
+                  autocomplete="cc-csc"
+                  placeholder="123"
+                  maxlength="4"
+                  [value]="addDraft().cvv"
+                  (input)="updateAddCvv($event)"
+                  [attr.aria-invalid]="addSubmitted() && addErrors()['cvv'] ? 'true' : null"
+                />
+                @if (addSubmitted() && addErrors()['cvv']; as error) {
+                  <span class="add-field__error" role="alert">{{ error }}</span>
+                }
+              </label>
+
+              <label class="add-field add-field--full">
+                <span class="add-field__label">Địa chỉ thanh toán <span class="add-field__optional">(nếu cổng thanh toán yêu cầu)</span></span>
+                <input
+                  class="add-field__input"
+                  type="text"
+                  autocomplete="billing street-address"
+                  placeholder="Số nhà, đường, quận/huyện, tỉnh/thành phố"
+                  [value]="addDraft().billingAddress"
+                  (input)="updateAddBillingAddress($event)"
+                />
+              </label>
+            } @else {
+              <label class="add-field add-field--full">
+                <span class="add-field__label">Số điện thoại</span>
+                <input
+                  class="add-field__input"
+                  type="tel"
+                  inputmode="tel"
+                  autocomplete="tel"
+                  placeholder="0912 345 678"
+                  [value]="addDraft().phone"
+                  (input)="updateAddPhone($event)"
+                  [attr.aria-invalid]="addSubmitted() && addErrors()['phone'] ? 'true' : null"
+                />
+                @if (addSubmitted() && addErrors()['phone']; as error) {
+                  <span class="add-field__error" role="alert">{{ error }}</span>
+                }
+              </label>
+            }
+          </div>
+
+          <div class="add-default-row">
+            <div class="min-w-0">
+              <p class="add-default-row__title">Đặt làm phương thức mặc định</p>
+              <p class="add-default-row__desc">Phương thức này sẽ được chọn sẵn ở bước thanh toán.</p>
+            </div>
+            <app-settings-toggle
+              size="md"
+              [onColor]="'#145CFC'"
+              [offColor]="'#A6B0C7'"
+              [checked]="addDraft().isDefault"
+              (change)="setAddDefault($event)"
+            />
+          </div>
+        </div>
+
+        <footer class="add-method-foot">
+          @if (addNotice()) {
+            <p class="add-method-notice" role="status">{{ addNotice() }}</p>
+          }
+          <div class="add-method-actions">
+            <button type="button" class="add-method-cancel" (click)="closeAddMethod()">Hủy</button>
+            <button type="button" class="add-method-submit" (click)="submitAddMethod()">
+              {{ addType() === 'visa' ? 'Liên kết thẻ' : 'Xác thực & liên kết' }}
+            </button>
+          </div>
+        </footer>
+      </div>
+    </div>
+  }
 </div>

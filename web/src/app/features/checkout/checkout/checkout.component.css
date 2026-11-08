@@ -210,6 +210,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 3px;
   height: 20px;
   padding: 0 7px;
   border: 1px solid #E2E8F0;
@@ -221,6 +222,43 @@
   line-height: 1;
   letter-spacing: 0.01em;
   white-space: nowrap;
+}
+
+.brand-mark {
+  display: block;
+  width: 15px;
+  height: 10px;
+  flex: none;
+}
+
+.brand-mark--g {
+  width: 10px;
+  height: 10px;
+}
+
+.brand-bars {
+  display: inline-flex;
+  gap: 1px;
+  flex: none;
+}
+
+.brand-bars i {
+  display: block;
+  width: 3px;
+  height: 9px;
+  border-radius: 1px;
+}
+
+.brand-bars .is-blue {
+  background: #0E4C96;
+}
+
+.brand-bars .is-red {
+  background: #D8232A;
+}
+
+.brand-bars .is-green {
+  background: #1B9E48;
 }
 
 .brand-chip--momo {

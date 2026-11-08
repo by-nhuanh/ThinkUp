@@ -40,6 +40,8 @@ export interface Course {
   sectionsCount?: number;
   previewVideoUrl?: string;
   saleEndsAt?: string | null;
+  purchaseHighlights?: CoursePurchaseHighlight[];
+  certificateSample?: CourseCertificateSample;
   ratingBreakdown?: ReviewBreakdownRow[];
   isAuthenticated?: boolean;
   isPurchased?: boolean;
@@ -52,6 +54,18 @@ export interface Course {
 export interface CourseOutcomeGroup {
   title: string;
   items: string[];
+}
+
+export interface CoursePurchaseHighlight {
+  icon?: string;
+  label: string;
+}
+
+export interface CourseCertificateSample {
+  title?: string;
+  watermarkText?: string;
+  verifyUrl?: string;
+  templateImageUrl?: string;
 }
 
 export interface ReviewBreakdownRow {

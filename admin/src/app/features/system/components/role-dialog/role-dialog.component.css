@@ -1,0 +1,56 @@
+.required-mark { color: #b83e4d; }
+.field-hint { margin: 6px 0 0; color: #64748b; font: var(--admin-text-caption); }
+.reason-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.reason-row .field-error { margin: 4px 0 0; }
+.reason-row .reason-counter { margin-top: 4px; }
+
+.staff-picker { position: relative; }
+.staff-picker input { padding-right: 40px; }
+.picker-clear {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  padding: 0;
+  font-size: 16px;
+}
+.staff-options {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  display: grid;
+  gap: 2px;
+  max-height: 240px;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  border: 1px solid #d6e0ec;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(12, 32, 72, 0.14);
+  list-style: none;
+}
+.staff-options button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.staff-options button:hover,
+.staff-options button:focus-visible { background: #f3f8fe; }
+.staff-options .avatar { flex-basis: 36px; width: 36px; height: 36px; font-size: 12px; }
+.staff-option-copy { min-width: 0; }
+.staff-option-copy strong { display: block; color: #0c2048; overflow-wrap: anywhere; }
+.staff-option-copy small { display: block; margin-top: 2px; color: #64748b; font: var(--admin-text-caption); }
+.staff-options-empty { padding: 10px; color: #64748b; font: var(--admin-text-body-compact); }

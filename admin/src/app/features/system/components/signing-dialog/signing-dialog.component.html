@@ -1,0 +1,120 @@
+<app-admin-dialog
+  title="Cấu hình Dịch vụ Ký số Hợp đồng (E-Sign)"
+  subtitle="Quản lý chứng thư doanh nghiệp và kiểm thử trước khi áp dụng."
+  size="lg"
+  (closed)="closed.emit()"
+>
+  <div class="system-form">
+    <div class="scope-panel">
+      <h4>Điều khoản cố định · Chỉ đọc</h4>
+      <ul class="scope-list">
+        <li>Tỷ lệ ăn chia: 60% Sàn / 40% Giảng viên · Không thể chỉnh sửa</li>
+        <li>Phương thức xác thực: Mã OTP xác thực</li>
+        <li>Định dạng lưu trữ: Tệp khóa cứng kèm mộc thời gian</li>
+      </ul>
+    </div>
+
+    <div class="form-grid">
+      <div class="field">
+        <span id="signing-provider-label">Nhà cung cấp chứng thư <span class="required-mark">*</span></span>
+        <app-custom-select
+          labelId="signing-provider-label"
+          controlId="signing-provider"
+          [value]="form().provider"
+          [options]="providerOptions"
+          (valueChange)="update('provider', $event)"
+        />
+      </div>
+      <label class="field">
+        <span>Số Serial chữ ký số <span class="required-mark">*</span></span>
+        <input type="text" [value]="form().serial" (input)="update('serial', $any($event.target).value)" />
+      </label>
+      <label class="field" [class.invalid]="expiryNote().kind === 'error'">
+        <span>Ngày hết hạn chứng thư</span>
+        <input type="text" placeholder="dd/MM/yyyy" [value]="form().expiresAt" (input)="update('expiresAt', $any($event.target).value)" />
+        <p class="field-hint" [class.warning]="expiryNote().kind === 'warning'" [class.error]="expiryNote().kind === 'error'">{{ expiryNote().text }}</p>
+      </label>
+      <label class="field">
+        <span>Mã kết nối dịch vụ <span class="required-mark">*</span></span>
+        <input type="text" [value]="form().clientId" (input)="update('clientId', $any($event.target).value)" />
+      </label>
+      <label class="field full">
+        <span>Mật khẩu kết nối bí mật <span class="required-mark">*</span></span>
+        <input type="password" autocomplete="new-password" [value]="form().secret" (input)="update('secret', $any($event.target).value)" />
+      </label>
+      <div class="field full">
+        <span>Đường dẫn nhận hợp đồng · Chỉ đọc</span>
+        <div class="callback-row">
+          <input type="text" [value]="callbackUrl" readonly aria-label="Đường dẫn nhận hợp đồng" />
+          <button class="ghost-button" type="button" (click)="copyCallback()">{{ copied() ? 'Đã sao chép' : 'Sao chép' }}</button>
+        </div>
+      </div>
+      <label class="field" [class.invalid]="!!maxSignDaysError()">
+        <span>Thời hạn chờ ký tối đa <span class="required-mark">*</span></span>
+        <div class="unit-input">
+          <input type="number" min="3" max="14" step="1" [value]="maxSignDaysDisplay()" (input)="onMaxSignDays($any($event.target).value)" />
+          <span>ngày</span>
+        </div>
+        @if (maxSignDaysError()) {
+          <p class="field-error">{{ maxSignDaysError() }}</p>
+        } @else {
+          <small>Chỉ nhận số nguyên từ 3 đến 14 ngày.</small>
+        }
+      </label>
+      <label class="field" [class.invalid]="!!legalEmailError()">
+        <span>Email phòng Pháp chế <span class="required-mark">*</span></span>
+        <input type="email" [value]="form().legalEmail" (input)="update('legalEmail', $any($event.target).value)" />
+        @if (legalEmailError()) {
+          <p class="field-error">{{ legalEmailError() }}</p>
+        }
+      </label>
+    </div>
+
+    <label class="checkbox-row">
+      <input type="checkbox" [checked]="form().autoSendCopy" (change)="update('autoSendCopy', $any($event.target).checked)" />
+      <span>Tự động gửi bản sao hợp đồng</span>
+    </label>
+
+    <section class="ping-panel">
+      <header>
+        <div>
+          <strong>Ký thử nghiệm văn bản mẫu</strong>
+          <small>PDF mẫu sẽ mở trực tiếp để kiểm tra chữ ký và mộc thời gian.</small>
+        </div>
+        <button class="ghost-button" type="button" [disabled]="testState() === 'running' || !valid()" (click)="testSign()">
+          {{ testState() === 'running' ? 'Đang ký thử…' : 'Ký thử nghiệm' }}
+        </button>
+      </header>
+      @switch (testState()) {
+        @case ('idle') {
+          <p class="ping-status"><span class="status-badge status-muted">Chưa ký thử cấu hình mới</span></p>
+          <p class="ping-note">Nút Lưu chỉ được kích hoạt khi có thay đổi hợp lệ và ký thử nghiệm thành công.</p>
+        }
+        @case ('running') {
+          <p class="ping-status"><span class="status-badge status-info">Đang ký thử văn bản mẫu…</span></p>
+        }
+        @case ('success') {
+          <div class="notice success">
+            <strong>Ký thử nghiệm thành công</strong>
+            Tạo chữ ký số: Thành công · Mã hợp đồng mẫu: HD-TEST-0001
+          </div>
+        }
+        @case ('failure') {
+          <div class="notice danger" role="alert">
+            <strong>Không thể ký thử văn bản mẫu</strong>
+            Mã lỗi đối tác: E-SIGN-401 · Không xác thực được chứng thư. Kiểm tra thông tin kết nối và thử lại.
+          </div>
+        }
+      }
+    </section>
+  </div>
+  <div dialogFooter class="dialog-actions">
+    <p class="left-note">{{ footerNote() }}</p>
+    <button class="ghost-button" type="button" (click)="closed.emit()">Hủy</button>
+    <button class="primary-button" type="button" [disabled]="!canSave()" (click)="save()">Lưu cấu hình Ký số</button>
+  </div>
+</app-admin-dialog>
+
+@if (previewOpen()) {
+  <app-system-signing-preview-dialog [provider]="form().provider" (closed)="previewOpen.set(false)" />
+}

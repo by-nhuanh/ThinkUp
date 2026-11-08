@@ -47,6 +47,8 @@
                 @if (theme.type === "video") {
                   <video
                     [src]="theme.src"
+                    [poster]="themePoster(theme.id)"
+                    autoplay
                     muted
                     loop
                     playsinline
@@ -392,8 +394,25 @@
                     class="theme-chip"
                     [style.background]="themeBackground(theme.id)"
                   >
-                    @if (hasThemeImage(theme.id)) {
-                      <img [src]="themeImage(theme.id)" alt="" />
+                    @if (isVideoTheme(theme.id)) {
+                      <video
+                        [src]="themeVideo(theme.id)"
+                        [poster]="themePoster(theme.id)"
+                        autoplay
+                        muted
+                        loop
+                        playsinline
+                        preload="metadata"
+                      ></video>
+                    } @else if (
+                      hasThemeImage(theme.id) &&
+                      !failedThemeImages().has(theme.id)
+                    ) {
+                      <img
+                        [src]="themeImage(theme.id)"
+                        alt=""
+                        (error)="markThemeImageFailed(theme.id)"
+                      />
                     }</span
                   ><small>{{ theme.name }}</small></label
                 >

@@ -1,0 +1,14 @@
+<app-admin-dialog [title]="title()" [subtitle]="subtitle()" size="sm" (closed)="closed.emit()">
+  <div class="system-form">
+    <div class="confirm-copy">
+      <strong>{{ heading() }}</strong>
+      @for (line of lines(); track line) {
+        <p>{{ line }}</p>
+      }
+    </div>
+  </div>
+  <div dialogFooter class="dialog-actions">
+    <button class="ghost-button" type="button" (click)="closed.emit()">{{ cancelLabel() }}</button>
+    <button [class]="danger() ? 'danger-button' : 'primary-button'" type="button" (click)="confirmed.emit()">{{ confirmLabel() }}</button>
+  </div>
+</app-admin-dialog>

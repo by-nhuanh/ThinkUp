@@ -1,0 +1,38 @@
+<app-admin-dialog
+  title="Xác thực lưu cấu hình"
+  subtitle="Phê duyệt thay đổi trước khi áp dụng cấu hình mới vào hệ thống."
+  size="sm"
+  (closed)="closed.emit()"
+>
+  <div class="system-form">
+    <div class="notice info">
+      <strong>Xác nhận thay đổi cấu hình</strong>
+      Cấu hình chỉ được áp dụng sau khi mã OTP được xác thực thành công.
+    </div>
+    @if (serverError()) {
+      <div class="notice danger" role="alert">{{ serverError() }}</div>
+    }
+    <label class="field" [class.invalid]="!!localError()">
+      <span>Mã xác thực OTP <span class="required-mark">*</span></span>
+      <div class="otp-field">
+        <input
+          type="text"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          placeholder="••••••"
+          [value]="otp()"
+          (input)="onOtp($any($event.target).value)"
+          autofocus
+        />
+      </div>
+      <small>Nhập mã OTP 6 chữ số của bạn để xác nhận lưu cấu hình.</small>
+      @if (localError()) {
+        <p class="field-error">{{ localError() }}</p>
+      }
+    </label>
+  </div>
+  <div dialogFooter class="dialog-actions">
+    <button class="ghost-button" type="button" (click)="closed.emit()">Hủy</button>
+    <button class="primary-button" type="button" (click)="submit()">Xác nhận lưu cấu hình</button>
+  </div>
+</app-admin-dialog>

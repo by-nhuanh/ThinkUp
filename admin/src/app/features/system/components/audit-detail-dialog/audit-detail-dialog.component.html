@@ -1,0 +1,72 @@
+<app-admin-dialog [title]="title()" [subtitle]="subtitle()" size="lg" (closed)="closed.emit()">
+  <div class="system-form">
+    <div class="meta-grid four">
+      <div class="meta-item">
+        <small>Người thực hiện</small>
+        <strong>{{ actorLabel() }}</strong>
+      </div>
+      <div class="meta-item">
+        <small>Vai trò</small>
+        <strong>{{ log().actorRole }}</strong>
+      </div>
+      <div class="meta-item">
+        <small>Địa chỉ IP / Thiết bị</small>
+        <strong>{{ log().ip }} · {{ log().device }}</strong>
+      </div>
+      <div class="meta-item">
+        <small>Mã phiên</small>
+        <strong class="mono">{{ log().sessionId }}</strong>
+      </div>
+    </div>
+
+    <section class="detail-section">
+      <h4>Căn cứ và bằng chứng đính kèm</h4>
+      <blockquote class="basis-quote">{{ log().basis }}</blockquote>
+      <button class="evidence-link" type="button" (click)="evidence.emit(log())">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6z" /><path d="M14 3v5h5" /></svg>
+        {{ log().evidenceName }}
+      </button>
+    </section>
+
+    <div class="diff-grid">
+      <div class="diff-panel">
+        <h4>Dữ liệu trước thao tác (Before)</h4>
+        @for (row of log().before; track row.label) {
+          <div class="diff-row">
+            <span>{{ row.label }}</span>
+            <strong>{{ row.value }}</strong>
+          </div>
+        }
+      </div>
+      <div class="diff-panel after">
+        <h4>Dữ liệu sau thao tác (After)</h4>
+        @for (row of log().after; track row.label) {
+          <div class="diff-row">
+            <span>{{ row.label }}</span>
+            <strong>{{ row.value }}</strong>
+          </div>
+        }
+      </div>
+    </div>
+
+    @if (broken()) {
+      <div class="checksum bad" role="alert">
+        <strong>Không thể chứng thực toàn vẹn — checksum không khớp</strong>
+        <span class="mono">{{ log().checksum }}</span>
+      </div>
+      <div class="notice danger">
+        <p>Chức năng liên quan đã tạm khóa trên toàn hệ thống. Liên hệ quản trị hệ thống để kiểm tra.</p>
+      </div>
+    } @else {
+      <div class="checksum ok">
+        <strong>Đã chứng thực toàn vẹn</strong>
+        <span class="mono">{{ log().checksum }}</span>
+      </div>
+    }
+
+    <div class="dialog-actions" dialogFooter>
+      <button class="secondary-button" type="button" (click)="printRecord.emit()">In / Xuất PDF bản ghi</button>
+      <button class="primary-button" type="button" (click)="closed.emit()">Đóng cửa sổ</button>
+    </div>
+  </div>
+</app-admin-dialog>

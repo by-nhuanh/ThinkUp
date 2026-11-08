@@ -11,7 +11,7 @@
       [attr.aria-label]="isFavorite() ? 'Bỏ khóa học khỏi yêu thích' : 'Thêm khóa học vào yêu thích'"
       (click)="toggleFavorite($event)"
     >
-      <svg lucideBookmark aria-hidden="true" [size]="15" [strokeWidth]="1.8"></svg>
+      <svg lucideHeart aria-hidden="true" [size]="15" [strokeWidth]="1.8"></svg>
     </button>
     @if (!thumbnail()) {
       <span class="course-cover__glyph" aria-hidden="true">{{ course().icon ?? '⚛' }}</span>

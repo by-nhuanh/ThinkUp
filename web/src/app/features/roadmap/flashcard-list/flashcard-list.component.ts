@@ -123,6 +123,8 @@ export class FlashcardListComponent {
 
   edit(setId: string, event: Event): void {
     event.stopPropagation();
-    this.router.navigate(['/learning/flashcards', setId, 'edit']);
+    this.router.navigate(['/learning/flashcards', setId, 'edit'], {
+      queryParams: { returnUrl: '/learning/flashcards' }
+    });
   }
 }

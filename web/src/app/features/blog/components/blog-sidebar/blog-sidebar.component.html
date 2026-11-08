@@ -1,13 +1,70 @@
 <aside class="flex flex-col w-full gap-6 shrink-0">
-  @if (!detail() && (loading() || data().popularTopics.length)) {
-    <section class="flex flex-col w-full bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm"><h3 class="text-base font-extrabold text-[#0F1B2D] mb-4">Chủ đề phổ biến</h3>@if (loading()) {<div class="flex justify-center py-4"><div class="animate-spin rounded-full h-6 w-6 border-b-2 border-[#1E64EF]"></div></div>} @else {<div class="flex flex-col gap-3">@for (topic of data().popularTopics; track topic.id) {<a routerLink="/main/blog" [queryParams]="{topic:topic.id}" class="flex justify-between items-center group"><span class="text-sm font-medium text-[#444E5E] group-hover:text-[#1E64EF]">{{ topic.label }}</span><span class="text-xs font-semibold text-[#737B87] bg-[#F8FAFD] px-2 py-1 rounded-md group-hover:bg-[#EEF7FF] group-hover:text-[#1E64EF]">{{ topic.count }}</span></a>}</div>}</section>
+  @if (loading() || data().popularTopics.length) {
+    <section class="flex flex-col w-full bg-white border border-[#E1E5EB] rounded-xl p-5 gap-4 shadow-sm">
+      <h3 class="text-[16px] font-semibold text-[#0F1B2D] leading-6">Chủ đề phổ biến</h3>
+      @if (loading()) {
+        <div class="flex justify-center py-4"><div class="animate-spin rounded-full h-6 w-6 border-b-2 border-[#1E64EF]"></div></div>
+      } @else {
+        <div class="flex flex-col gap-3">
+          @for (topic of data().popularTopics; track topic.id) {
+            <a routerLink="/main/blog" [queryParams]="{ topic: topic.id }" class="flex items-center justify-between gap-4 group min-w-0">
+              <span class="text-[14px] font-medium text-[#0F1B2D] leading-5 group-hover:text-[#1E64EF] break-words">{{ topic.label }}</span>
+              <span class="text-[14px] text-[#5D646F] leading-5 shrink-0">{{ topic.count }}</span>
+            </a>
+          }
+        </div>
+      }
+    </section>
   }
+
   <app-newsletter-subscribe />
+
   @if (detail() && related().length) {
-    <section class="flex flex-col w-full bg-white border border-[#E1E5EB] rounded-2xl p-5 shadow-sm"><h3 class="text-[16px] font-semibold text-[#0F1B2D] leading-6 mb-4">Bài viết liên quan</h3><div class="flex flex-col gap-4">@for (post of related(); track post.id) {<a [routerLink]="['/main/blog/article',post.id]" class="flex gap-3 group"><div class="relative w-[80px] h-[64px] shrink-0 rounded-md overflow-hidden bg-[#F8FAFD]"><img loading="lazy" [src]="post.coverImage" [attr.srcset]="post.coverImage | blogImageSrcset:false:true" sizes="80px" [alt]="post.title" class="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"></div><div class="flex flex-col flex-1 gap-1.5 justify-center"><h4 class="text-[14px] font-medium text-[#0F1B2D] leading-[19.25px] line-clamp-2 group-hover:text-[#1E64EF]">{{ post.title }}</h4><span class="text-[12px] text-[#5D646F] leading-4"><span>{{ post.category || post.categoryId }}</span> • <span>{{ post.readTime }}</span></span></div></a>}</div></section>
+    <section class="flex flex-col w-full bg-white border border-[#E1E5EB] rounded-xl p-5 gap-4 shadow-sm">
+      <h3 class="text-[16px] font-semibold text-[#0F1B2D] leading-6">Bài viết liên quan</h3>
+      <div class="flex flex-col gap-4">
+        @for (post of related(); track post.id) {
+          <a [routerLink]="['/main/blog/article', post.id]" class="flex gap-3 group min-w-0">
+            <div class="relative w-[80px] h-[64px] shrink-0 rounded-md overflow-hidden bg-[#F8FAFD]">
+              <img loading="lazy" [src]="post.coverImage" [attr.srcset]="post.coverImage | blogImageSrcset:false:true" sizes="80px" [alt]="post.title" class="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300" />
+            </div>
+            <div class="flex flex-col flex-1 min-w-0 gap-1.5 justify-center">
+              <h4 class="text-[14px] font-medium text-[#0F1B2D] leading-[19.25px] line-clamp-2 group-hover:text-[#1E64EF]">{{ post.title }}</h4>
+              <span class="text-[12px] text-[#5D646F] leading-4 truncate">{{ post.category || post.categoryId }} • {{ post.readTime }}</span>
+            </div>
+          </a>
+        }
+      </div>
+    </section>
   }
+
   @if (!detail() && (loading() || data().mostViewedArticles.length)) {
-    <section class="flex flex-col w-full bg-white border border-[#E1E5EB] rounded-2xl p-6 shadow-sm"><h3 class="text-base font-extrabold text-[#0F1B2D] mb-4">Bài viết được xem nhiều</h3>@if (loading()) {<div class="flex justify-center py-4"><div class="animate-spin rounded-full h-6 w-6 border-b-2 border-[#1E64EF]"></div></div>} @else {<div class="flex flex-col gap-4">@for (post of data().mostViewedArticles; track post.id; let index=$index) {<a [routerLink]="['/main/blog/article',post.id]" class="flex gap-3 group"><div class="relative w-14 h-14 shrink-0"><div class="w-full h-full rounded-xl overflow-hidden"><img loading="lazy" [src]="post.coverImage" [attr.srcset]="post.coverImage | blogImageSrcset" sizes="56px" [alt]="post.title" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"></div><span class="absolute -top-1 -left-1 w-5 h-5 bg-[#1E64EF] rounded-full flex items-center justify-center border border-white shadow-sm text-[10px] font-bold text-white">{{ index + 1 }}</span></div><div class="flex flex-col flex-1 pt-0.5 justify-center gap-1"><h4 class="text-sm font-semibold text-[#0F1B2D] leading-[1.4] line-clamp-2 group-hover:text-[#1E64EF]">{{ post.title }}</h4><span class="text-xs text-[#737B87]">{{ formatViews(post.views) }}</span></div></a>}</div>}</section>
+    <section class="flex flex-col w-full bg-white border border-[#E1E5EB] rounded-xl p-5 gap-4 shadow-sm">
+      <h3 class="text-[16px] font-semibold text-[#0F1B2D] leading-6">Bài viết được xem nhiều</h3>
+      @if (loading()) {
+        <div class="flex justify-center py-4"><div class="animate-spin rounded-full h-6 w-6 border-b-2 border-[#1E64EF]"></div></div>
+      } @else {
+        <div class="flex flex-col gap-4">
+          @for (post of data().mostViewedArticles; track post.id; let index = $index) {
+            <a [routerLink]="['/main/blog/article', post.id]" class="flex gap-3 group min-w-0">
+              <div class="relative w-14 h-14 shrink-0">
+                <div class="w-full h-full rounded-xl overflow-hidden">
+                  <img loading="lazy" [src]="post.coverImage" [attr.srcset]="post.coverImage | blogImageSrcset" sizes="56px" [alt]="post.title" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                </div>
+                <span class="absolute -top-1 -left-1 w-5 h-5 bg-[#1E64EF] rounded-full flex items-center justify-center border border-white shadow-sm text-[10px] font-bold text-white">{{ index + 1 }}</span>
+              </div>
+              <div class="flex flex-col flex-1 min-w-0 pt-0.5 justify-center gap-1">
+                <h4 class="text-sm font-semibold text-[#0F1B2D] leading-[1.4] line-clamp-2 group-hover:text-[#1E64EF]">{{ post.title }}</h4>
+                <span class="text-xs text-[#737B87]">{{ formatViews(post.views) }}</span>
+              </div>
+            </a>
+          }
+        </div>
+      }
+    </section>
   }
-  @if (error() && !detail()) { <p role="alert" class="text-sm text-[#677283]">Không thể tải dữ liệu Blog.</p> }
+
+  @if (error() && !detail()) {
+    <p role="alert" class="text-sm text-[#677283]">Không thể tải dữ liệu Blog.</p>
+  }
 </aside>

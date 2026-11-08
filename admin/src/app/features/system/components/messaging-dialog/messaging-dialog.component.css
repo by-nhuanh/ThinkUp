@@ -1,0 +1,13 @@
+.required-mark { color: #b83e4d; }
+.otp-rules { white-space: pre-line; overflow-wrap: anywhere; }
+.template-block { display: grid; gap: 6px; }
+.template-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.template-row input { flex: 1 1 220px; min-width: 0; }
+.template-result { margin: 0; padding: 9px 12px; border-radius: 8px; font: var(--admin-text-body-compact); }
+.template-result strong { display: block; margin-bottom: 2px; }
+.template-result.ok { border: 1px solid #b5e2c4; background: #ecf9f1; color: #136c38; }
+.template-result.bad { border: 1px solid #efb6bd; background: #fff1f2; color: #922d3a; }
+.otp-expiry { max-width: 260px; }
+.unit-input { position: relative; }
+.unit-input input { padding-right: 52px; }
+.unit-input > span { position: absolute; top: 50%; right: 12px; transform: translateY(-50%); color: #64748b; font: var(--admin-text-caption); pointer-events: none; }
