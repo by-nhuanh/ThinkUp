@@ -39,7 +39,7 @@ button.voucher-kpi:hover, button.voucher-kpi.selected { border-color: #91bdf1; b
 .voucher-advanced-filter-count { position: absolute; top: -7px; right: -7px; display: grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border: 2px solid #fff; border-radius: 10px; background: #0965e4; color: #fff; font: var(--admin-text-badge); }
 
 /* Advanced filter popup. */
-.voucher-filter-dialog { display: flex; flex-direction: column; width: min(970px, 100%); height: min(760px, calc(100vh - 40px)); min-height: min(560px, calc(100vh - 40px)); max-height: calc(100vh - 40px); overflow: hidden; }
+.voucher-filter-dialog { display: flex; flex-direction: column; width: min(800px, 100%); min-height: 0; max-height: calc(100dvh - 48px); resize: none; overflow: hidden; }
 .voucher-filter-head { align-items: flex-start; }
 .voucher-filter-head h2 { margin-bottom: 4px; }
 .voucher-filter-head p { margin: 0; color: #647895; font: var(--admin-text-caption); }
@@ -406,7 +406,7 @@ button.voucher-kpi:focus-visible { outline: 2px solid #176de1; outline-offset: 2
 
 /* Create/edit and detail dialogs use the same two-column information architecture:
    working content on the left, a live, sticky voucher overview on the right. */
-.voucher-form-dialog, .voucher-detail { display: flex; flex-direction: column; width: min(1080px, calc(100vw - 48px)); min-width: min(970px, calc(100vw - 48px)); max-height: calc(100vh - 48px); overflow: hidden; }
+.voucher-form-dialog, .voucher-detail { display: flex; flex-direction: column; width: min(960px, 100%); min-width: 0; max-height: calc(100dvh - 48px); overflow: hidden; }
 .voucher-form-dialog > .dialog-head, .voucher-form-dialog > .dialog-footer,
 .voucher-detail > .voucher-detail-head, .voucher-detail > .voucher-detail-footer { flex: none; }
 .voucher-form-dialog > .dialog-body, .voucher-detail > .voucher-detail-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
@@ -477,3 +477,38 @@ button.voucher-kpi:focus-visible { outline: 2px solid #176de1; outline-offset: 2
 .voucher-confirm-warning { display: flex; align-items: flex-start; gap: 9px; margin: 16px 0 0; padding: 12px 13px; border: 1px solid #f3d9a8; border-radius: 9px; background: #fffaef; color: #8a5a12; font: var(--admin-text-caption); line-height: 1.5; }
 .voucher-confirm-warning-icon { flex: none; margin-top: 1px; }
 .voucher-confirm-warning-icon svg { width: 17px; height: 17px; fill: none; stroke: #c2860f; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+@media (max-width: 1150px) {
+  .voucher-kpis { grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); }
+  .voucher-kpi .kpi-label { white-space: normal; }
+  .voucher-toolbar > app-search-field + .custom-select-control { margin-left: 0; }
+  .voucher-toolbar-actions { flex-wrap: wrap; max-width: 100%; padding-left: 0; border-left: 0; }
+  .voucher-selection-bar { position: static; flex-wrap: wrap; max-width: 100%; }
+}
+
+@media (max-width: 1000px) {
+  .voucher-form-layout { grid-template-columns: minmax(0, 1fr); }
+  .voucher-setup-summary { position: static; }
+  .voucher-detail-footer, .voucher-form-footer { flex-wrap: wrap; }
+}
+
+
+@media (max-width: 600px) {
+  .voucher-page { padding-inline: 16px; }
+  .voucher-kpi .kpi-value { white-space: normal; overflow-wrap: anywhere; }
+  .voucher-filter-grid, .voucher-form-dialog .form-grid { grid-template-columns: minmax(0, 1fr); }
+  .voucher-form-dialog .field { min-width: 0; }
+  .voucher-form-dialog .dialog-body { padding-inline: 12px; }
+  .voucher-form-dialog .voucher-help { display: inline-grid; min-width: 0; }
+  .voucher-form-dialog .voucher-help-tooltip { display: none; }
+  .voucher-form-dialog .voucher-help:hover .voucher-help-tooltip,
+  .voucher-form-dialog .voucher-help:focus-within .voucher-help-tooltip {
+    display: block;
+    position: static;
+    width: auto;
+    white-space: normal;
+    transform: none;
+  }
+  .voucher-form-dialog .voucher-help-tooltip::after { content: none; }
+  .voucher-discount-heading-title, .voucher-state-title-row { flex-wrap: wrap; white-space: normal; }
+}

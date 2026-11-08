@@ -1,4 +1,4 @@
-import { Component, computed, signal } from '@angular/core';
+import { afterNextRender, Component, computed, ElementRef, HostListener, inject, Injector, signal, viewChild } from '@angular/core';
 import { LucideArrowRight, LucideCircleDollarSign, LucideGraduationCap, LucideMonitorUp, LucideTrendingUp, LucideUsersRound } from '@lucide/angular';
 import { DateTimePickerComponent } from '../../../shared/components/date-time-picker/date-time-picker.component';
 import { CustomSelectComponent, CustomSelectOption } from '../../../shared/components/custom-select/custom-select.component';
@@ -33,6 +33,10 @@ export class DashboardComponent {
     { value: 'Admin', label: 'Admin' }
   ];
   readonly datePickerOpen = signal(false);
+  readonly datePopoverPosition = signal<{ left: number; top: number; maxHeight: number } | null>(null);
+  private readonly injector = inject(Injector);
+  private readonly dateTrigger = viewChild<ElementRef<HTMLButtonElement>>('dateTrigger');
+  private readonly datePopover = viewChild<ElementRef<HTMLElement>>('datePopover');
   readonly startDate = signal('2026-09-01');
   readonly endDate = signal('2026-09-30');
   readonly rangeLabel = computed(() => `${this.displayDate(this.startDate())} - ${this.displayDate(this.endDate())}`);
@@ -40,6 +44,65 @@ export class DashboardComponent {
   readonly toast = signal<string | null>(null);
   readonly visibleLogs = computed(() => this.filter() === 'Tất cả' ? AUDIT_LOGS : AUDIT_LOGS.filter(log => log.role === this.filter()));
   readonly payoutPath = this.makePayoutPath();
+
+  toggleDatePopover(): void {
+    if (this.datePickerOpen()) {
+      this.closeDatePopover();
+      return;
+    }
+
+    this.datePickerOpen.set(true);
+    afterNextRender(() => this.positionDatePopover(), { injector: this.injector });
+  }
+
+  closeDatePopover(): void {
+    this.datePickerOpen.set(false);
+    this.datePopoverPosition.set(null);
+  }
+
+  @HostListener('document:keydown.escape')
+  closeDatePopoverOnEscape(): void {
+    if (!this.datePickerOpen()) return;
+    this.closeDatePopover();
+    this.dateTrigger()?.nativeElement.focus();
+  }
+
+  @HostListener('document:click', ['$event'])
+  closeDatePopoverOnOutsideClick(event: MouseEvent): void {
+    if (!this.datePickerOpen()) return;
+    const path = event.composedPath();
+    const trigger = this.dateTrigger()?.nativeElement;
+    const popover = this.datePopover()?.nativeElement;
+    if ((trigger && path.includes(trigger)) || (popover && path.includes(popover))) return;
+    this.closeDatePopover();
+  }
+
+  @HostListener('window:resize')
+  @HostListener('window:scroll')
+  positionDatePopover(): void {
+    const trigger = this.dateTrigger()?.nativeElement;
+    const popover = this.datePopover()?.nativeElement;
+    if (!trigger || !popover) return;
+
+    const margin = 12;
+    const gap = 8;
+    const anchor = trigger.getBoundingClientRect();
+    const viewportWidth = document.documentElement.clientWidth;
+    const viewportHeight = document.documentElement.clientHeight;
+    const left = Math.max(margin, Math.min(anchor.right - popover.offsetWidth, viewportWidth - margin - popover.offsetWidth));
+    const below = Math.max(0, viewportHeight - anchor.bottom - gap - margin);
+    const above = Math.max(0, anchor.top - gap - margin);
+    const height = popover.scrollHeight + popover.offsetHeight - popover.clientHeight;
+    const opensAbove = below < height && above > below;
+    const maxHeight = Math.min(opensAbove ? above : below, viewportHeight - 2 * margin);
+    const top = opensAbove ? anchor.top - gap - Math.min(height, maxHeight) : anchor.bottom + gap;
+
+    this.datePopoverPosition.set({
+      left,
+      top: Math.max(margin, Math.min(top, viewportHeight - margin - maxHeight)),
+      maxHeight
+    });
+  }
 
   private makePayoutPath(): string {
     const points = REVENUE_BARS.map((bar, index) => ({ x: 34 + index * 58, y: 305 - bar.payout }));

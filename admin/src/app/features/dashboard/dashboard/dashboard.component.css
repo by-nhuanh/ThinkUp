@@ -245,7 +245,7 @@ h2 { font-size: 23px; line-height: 26px; font-weight: 700; color: #14336b; }
 .period-tabs { height: 38px; border-color: var(--dashboard-border-strong); border-radius: 8px; }
 .period-tabs button { min-width: 58px; padding: 0 10px; border-color: var(--dashboard-border); background: var(--dashboard-surface); color: var(--dashboard-label); font: var(--admin-text-control-label); }
 .period-tabs button.active { background: var(--dashboard-primary); color: #fff; }
-.date-popover { top: 44px; width: min(320px, calc(100vw - 32px)); padding: 14px; border-color: var(--dashboard-border); border-radius: 10px; background: var(--dashboard-surface); box-shadow: 0 14px 34px #173b6d24; }
+.date-popover { position: fixed; right: auto; overflow-y: auto; overscroll-behavior: contain; width: min(320px, calc(100vw - 32px)); padding: 14px; border-color: var(--dashboard-border); border-radius: 10px; background: var(--dashboard-surface); box-shadow: 0 14px 34px #173b6d24; }
 .date-popover label { color: var(--dashboard-label); font: var(--admin-text-control-label); }
 .calendar-footer { gap: 8px; margin-top: 2px; }
 .calendar-footer button { min-height: 34px; padding: 0 12px; border-radius: 8px; font: var(--admin-text-control-label); }
@@ -338,4 +338,33 @@ h2 { font-size: 23px; line-height: 26px; font-weight: 700; color: #14336b; }
   .analytics-grid { grid-template-columns: 1fr; }
   .revenue-panel { height: auto; min-height: 620px; }
   .analytics-side { grid-template-columns: repeat(2,minmax(0,1fr)); grid-template-rows: auto; }
+}
+
+@media (max-width: 1150px) {
+  .metrics-grid, .actions-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  }
+
+  .action-card { height: auto; }
+  .action-footer { height: auto; flex-wrap: wrap; gap: 8px; }
+  .action-card .action-footer button { min-height: 40px; }
+  .analytics-side { grid-template-columns: minmax(0, 1fr); }
+  .progress-panel, .courses-panel { min-height: 0; }
+  .revenue-panel { min-height: 0; }
+  .panel-heading, .revenue-controls, .logs-heading-actions, .chart-legend { flex-wrap: wrap; }
+  .revenue-summary { grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); }
+}
+
+
+@media (max-width: 720px) {
+  .dashboard { padding-inline: 16px; }
+  .dashboard-page-heading { flex-wrap: wrap; }
+  .panel { padding-inline: 12px; }
+  .logs-panel { padding-inline: 0; }
+  .panel-heading h2, .progress-panel h2 { white-space: normal; }
+  .revenue-controls { min-width: 0; }
+  .chart-area { overflow-x: auto; }
+  .chart-plot { min-width: 400px; }
+  .courses-panel td, .courses-panel th { overflow-wrap: anywhere; }
+  .courses-panel th:nth-child(n+3) { white-space: normal; }
 }

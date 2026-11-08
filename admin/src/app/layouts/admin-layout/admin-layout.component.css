@@ -99,3 +99,13 @@
 .admin-breadcrumb__separator { color: var(--admin-text-subtle, #a9b8ca); }
 @media (max-width: 720px) { .admin-breadcrumb { padding: 14px 16px 0; } }
 
+
+/* A zoomed or split window needs the full inline size for page content. */
+@media (max-width: 720px) {
+  .admin-shell { grid-template-columns: minmax(0, 1fr); }
+  .sidebar { position: static; height: auto; max-height: min(40dvh, 320px); }
+  .brand { flex: none; }
+  .is-collapsed .brand { height: 40px; }
+  .is-collapsed .brand > img { opacity: 0; }
+  .is-collapsed .collapse-button { opacity: 1; pointer-events: auto; }
+}

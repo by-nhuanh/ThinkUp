@@ -69,7 +69,7 @@
   </section>
 </main>
 @if (form(); as item) {
-  <div class="dialog-backdrop" (pointerdown)="recordBackdropPointerDown($event)" (click)="closeFromBackdrop($event, 'form')">
+  <div class="dialog-backdrop" (pointerdown)="recordBackdropPointerDown($event)" (click)="closeFromBackdrop($event, 'form')" (window:keydown.escape)="form.set(null)">
     <section class="dialog wide voucher-form-dialog" role="dialog" aria-modal="true" aria-labelledby="voucher-dialog-title" (click)="$event.stopPropagation()">
       <div class="dialog-head"><div class="voucher-dialog-title-row">@if (editing()) { <button class="voucher-edit-back" type="button" aria-label="Trở lại trang chi tiết voucher" (click)="backToVoucherDetail()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button> }<h2 id="voucher-dialog-title">{{ editing() ? 'Chỉnh sửa voucher' : 'Tạo mới voucher' }}</h2></div><button class="button small" type="button" aria-label="Đóng" (click)="form.set(null)">✕</button></div>
       <div class="dialog-body">

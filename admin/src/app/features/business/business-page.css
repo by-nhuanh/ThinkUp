@@ -94,7 +94,7 @@ tbody tr:hover { background: #fbfdff; }
 .row-actions-menu button.danger:hover, .row-actions-menu button.danger:focus-visible { background: #fff1f2; color: #a62f3f; }
 tbody tr.row-menu-open { position: relative; z-index: 4; }
 tbody tr:nth-last-child(-n + 2) .row-actions-menu { top: auto; bottom: calc(100% + 6px); }
-.dialog-backdrop { position: fixed; inset: 0; z-index: 30; background: #061a3a99; display: grid; place-items: center; padding: 24px; }
+.dialog-backdrop { position: fixed; inset: 0; z-index: 30; background: #061a3a99; display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: center; padding: 24px; }
 .dialog { width: min(650px, 100%); min-width: min(420px, 100%); min-height: 240px; max-width: calc(100vw - 48px); max-height: calc(100vh - 48px); overflow: auto; resize: both; background: #fff; border-radius: 16px; box-shadow: 0 24px 80px #07162e50; }
 .dialog.wide { width: min(800px, 100%); }
 .dialog-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 24px 26px 16px; border-bottom: 1px solid #ecf1f7; }
@@ -161,3 +161,7 @@ th { background: #f3f6fa; color: #475d7b; }
 td { color: #172f55; }
 tbody tr { transition: background-color .14s ease; }
 tbody tr:hover { background: #f7faff; }
+
+@media (max-width: 720px) {
+  .pagination { max-width: 100%; flex-wrap: wrap; }
+}
