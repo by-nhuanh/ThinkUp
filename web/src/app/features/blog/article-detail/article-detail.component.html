@@ -1,22 +1,174 @@
 <div class="w-full min-h-screen bg-[#F9F9FF] flex flex-col">
-@if(loading()){<div class="flex-1 flex items-center justify-center py-32 text-[#1E4AD7]" role="status" aria-label="Đang tải bài viết"><app-blog-icon name="loader" [size]="32" class="animate-spin" /></div>}
-@else if(detail();as data){
-<main class="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-[123px] pb-[96px] pt-8 flex flex-col xl:flex-row gap-8 items-start flex-1">
-<article class="flex flex-col flex-1 gap-6 w-full min-w-0 bg-white border border-[#E1E5EB] rounded-xl p-5 md:p-8 shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.1),0px_1px_3px_0px_rgba(0,0,0,0.1)]">
-<header class="flex flex-col items-stretch gap-[7.3px] w-full max-w-[607px]"><span class="text-[12px] font-semibold text-[#1E64EF] tracking-[0.05em] uppercase leading-4">{{ data.post.category }}</span><div class="pb-[0.75px]"><h1 class="text-[30px] font-bold text-[#0F1B2D] leading-[37.5px] whitespace-pre-line">{{ data.post.title }}</h1></div><div class="pt-[4.7px]"><p class="text-[16px] font-normal text-[#5D646F] leading-6 whitespace-pre-line">{{ data.post.description }}</p></div><div class="flex items-center gap-3 pt-[12.7px]"><div class="flex justify-center items-center w-8 h-8 overflow-hidden bg-[#E1EBFF] rounded-full">@if (data.post.authorAvatar) { <img [src]="data.post.authorAvatar" [alt]="data.post.author" class="w-full h-full object-cover" /> } @else { <span class="text-[12px] font-semibold text-[#122F87]">{{ initials() }}</span> }</div><div class="flex flex-col justify-center"><span class="text-[14px] font-medium text-[#0F1B2D] leading-5">{{ data.post.author }}</span></div><span class="text-[14px] text-[#E1E5EB]">•</span><span class="text-[14px] text-[#5D646F] leading-5">{{ data.post.date }}</span><span class="text-[14px] text-[#E1E5EB]">•</span><span class="text-[14px] text-[#5D646F] leading-5">{{ data.post.readTime }}</span></div></header>
-<div class="relative w-full aspect-[16/9] sm:aspect-[21/9] rounded-xl overflow-hidden mt-2"><img [src]="data.post.coverImage" [attr.srcset]="data.post.coverImage | blogImageSrcset:true" sizes="(max-width: 1280px) 100vw, 1270px" [alt]="data.post.title" class="h-full w-full object-cover"></div>
-<div class="flex flex-col w-full gap-8 mt-2">
-@if(headings().length){<nav class="flex flex-col w-full border border-[#E1E5EB] rounded-lg p-5 pt-7 gap-3" aria-label="Mục lục"><button type="button" (click)="expanded.set(!expanded())" [attr.aria-expanded]="expanded()" class="flex justify-between items-center w-full text-left"><h2 class="text-[16px] font-semibold text-[#0F1B2D] leading-6">Nội dung bài viết</h2><app-blog-icon [name]="expanded()?'up':'down'" /></button>@if(expanded()){<ul class="flex flex-col gap-2 w-full mt-1">@for(item of headings();track item.id){<li [class.pl-4]="item.level===3"><a [href]="'#'+item.id" class="text-[14px] text-[#1E64EF] leading-5 hover:underline">{{ item.text }}</a></li>}</ul>}</nav>}
-@if(data.post.content){<div class="flex flex-col w-full gap-8 prose prose-blue max-w-none text-[16px] text-[#5D646F] leading-6" [innerHTML]="data.post.content"></div>}@else{<div class="text-[#5D646F] py-8 text-center">Chưa có nội dung bài viết.</div>}
-@if(data.post.contentImages?.length){<div class="grid grid-cols-2 gap-4">@for(image of data.post.contentImages;track image){@if(!data.post.content.includes(image)){<img [src]="image" alt="Ảnh trong bài viết" class="w-full rounded-lg object-cover">}}</div>}
-<footer class="flex flex-col w-full gap-6">
-@if(tags().length){<div class="flex flex-wrap gap-2 pt-2">@for(tag of tags();track $index){<span class="px-3 py-1 bg-[#F1F5F9] text-[#475569] rounded-[4px] text-[13px] font-medium">{{ tag }}</span>}</div>}
-<div class="flex flex-wrap items-center justify-between w-full border-t border-[#E1E5EB] pt-6 gap-4"><div class="flex items-center gap-3"><span class="text-[14px] text-[#5D646F] leading-5">Bài viết này hữu ích với bạn?</span><button type="button" (click)="react('like')" [disabled]="reacting()" [attr.aria-pressed]="reaction()==='like'" class="reaction-button flex items-center gap-1.5 px-3 py-1.5 border rounded-md text-[#5D646F]" [class.liked]="reaction()==='like'"><svg [lucideIcon]="icons['like']" class="w-4 h-4" aria-hidden="true"></svg><span class="text-[14px]">Hữu ích</span></button><button type="button" (click)="react('dislike')" [disabled]="reacting()" [attr.aria-pressed]="reaction()==='dislike'" class="reaction-button flex items-center gap-1.5 px-3 py-1.5 border rounded-md text-[#5D646F]" [class.disliked]="reaction()==='dislike'"><svg [lucideIcon]="icons['dislike']" class="w-4 h-4" aria-hidden="true"></svg><span class="text-[14px]">Không hữu ích</span></button></div><div class="flex items-center gap-3"><span class="text-[14px] text-[#5D646F]">Chia sẻ:</span><button type="button" (click)="copyLink()" title="Copy Link" aria-label="Sao chép liên kết" class="share-button"><app-blog-icon [name]="copied()?'check':'link'" [size]="18" /></button><button type="button" (click)="share('facebook')" title="Share to Facebook" aria-label="Chia sẻ Facebook" class="share-button"><app-blog-icon name="facebook" [size]="18" /></button><button type="button" (click)="share('linkedin')" title="Share to LinkedIn" aria-label="Chia sẻ LinkedIn" class="share-button"><app-blog-icon name="linkedin" [size]="18" /></button></div></div>
-@if(shareError()){<p role="alert" class="text-xs text-red-600">{{ shareError() }}</p>}
-<div class="flex flex-col sm:flex-row items-stretch justify-center gap-4 w-full pt-2"><a [routerLink]="data.prevPost?['/main/blog/article',data.prevPost.id]:['/main/blog']" class="flex items-center gap-3 w-full p-4 border border-[#E1E5EB] rounded-lg hover:border-[#1E64EF] hover:shadow-sm group bg-white flex-1"><div class="w-8 h-8 flex items-center justify-center shrink-0"><app-blog-icon name="left" [size]="20" class="text-[#5D646F]" /></div><div class="flex flex-col gap-1 min-w-0"><span class="text-[12px] text-[#5D646F] leading-4">{{ data.prevPost?'Bài trước':'Quay lại' }}</span><span class="text-[14px] font-medium text-[#0F1B2D] leading-5 truncate">{{ data.prevPost?.title || 'Danh sách bài viết' }}</span></div></a>@if(data.nextPost;as next){<a [routerLink]="['/main/blog/article',next.id]" class="flex items-center justify-between w-full p-4 border border-[#E1E5EB] rounded-lg hover:border-[#1E64EF] bg-white flex-1"><div class="flex flex-col gap-1 items-end min-w-0 flex-1"><span class="text-[12px] text-[#5D646F] leading-4 text-right">Bài tiếp theo</span><span class="text-[14px] font-medium text-[#0F1B2D] leading-5 text-right truncate w-full">{{ next.title }}</span></div><div class="w-8 h-8 flex items-center justify-center shrink-0 ml-3"><app-blog-icon name="right" [size]="20" class="text-[#5D646F]" /></div></a>}</div>
-</footer></div>
-<app-blog-discussion [postId]="data.post.id" />
-</article><app-blog-sidebar class="w-full xl:w-[320px] shrink-0" [detail]="true" [related]="data.relatedPosts" />
-</main>}
-@else{<div class="flex-1 flex flex-col gap-4 items-center justify-center py-32 text-[#677283]" role="alert"><p>{{ error() || 'Bài viết không tồn tại hoặc đã bị xóa.' }}</p><a routerLink="/main/blog" class="text-[#1E64EF]">Quay lại Blog</a></div>}
+  @if (loading()) {
+    <div class="flex-1 flex items-center justify-center py-32 text-[#1E4AD7]" role="status" aria-label="Đang tải bài viết">
+      <app-blog-icon name="loader" [size]="32" class="animate-spin" />
+    </div>
+  } @else if (detail(); as data) {
+    <main class="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-[123px] pt-8 pb-[96px] flex flex-col xl:flex-row items-start gap-6 xl:gap-8 flex-1">
+      <article class="flex flex-col flex-1 min-w-0 w-full bg-white border border-[#E1E5EB] rounded-xl p-5 md:p-6 lg:p-8 gap-6 shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.1),0px_1px_3px_0px_rgba(0,0,0,0.1)]">
+        <header class="flex flex-col lg:flex-row lg:items-start lg:justify-center gap-6 w-full">
+          <div class="flex flex-col gap-[7.3px] w-full min-w-0 lg:w-[calc(55%-12px)] lg:max-w-[607px] lg:flex-none">
+            <span class="text-[12px] font-semibold text-[#1E64EF] tracking-[0.05em] uppercase leading-4">{{ data.post.category }}</span>
+            <h1 class="text-[30px] font-bold text-[#0F1B2D] leading-[1.25] whitespace-pre-line break-words">{{ data.post.title }}</h1>
+            <p class="text-[16px] font-normal text-[#5D646F] leading-6 whitespace-pre-line break-words">{{ data.post.description }}</p>
+            <div class="flex flex-wrap items-center gap-3 pt-[12.7px]">
+              <div class="flex justify-center items-center w-8 h-8 shrink-0 overflow-hidden bg-[#E1EBFF] rounded-full">
+                @if (data.post.authorAvatar) {
+                  <img [src]="data.post.authorAvatar" [alt]="data.post.author" class="w-full h-full object-cover" />
+                } @else {
+                  <span class="text-[12px] font-semibold text-[#122F87]">{{ initials() }}</span>
+                }
+              </div>
+              <span class="text-[14px] font-medium text-[#0F1B2D] leading-5">{{ data.post.author }}</span>
+              <span class="text-[14px] text-[#E1E5EB]" aria-hidden="true">•</span>
+              <span class="text-[14px] text-[#5D646F] leading-5">{{ data.post.date }}</span>
+              <span class="text-[14px] text-[#E1E5EB]" aria-hidden="true">•</span>
+              <span class="text-[14px] text-[#5D646F] leading-5">{{ data.post.readTime }}</span>
+            </div>
+          </div>
+
+          <div class="relative w-full aspect-[16/9] overflow-hidden bg-[#F1F5F9] lg:w-[calc(45%-12px)] lg:max-w-[505px] lg:flex-none lg:aspect-[505/284]">
+            <img
+              [src]="data.post.coverImage"
+              [attr.srcset]="data.post.coverImage | blogImageSrcset:true"
+              sizes="(max-width: 1023px) 100vw, 505px"
+              [alt]="data.post.title"
+              class="h-full w-full object-cover"
+            />
+          </div>
+        </header>
+
+        @if (headings().length) {
+          <nav class="flex flex-col w-full border border-[#E1E5EB] rounded-lg px-5 pt-5 pb-7 gap-3" aria-label="Mục lục">
+            <button
+              type="button"
+              (click)="expanded.set(!expanded())"
+              [attr.aria-expanded]="expanded()"
+              class="flex justify-between items-center w-full text-left gap-3"
+            >
+              <h2 class="text-[16px] font-semibold text-[#0F1B2D] leading-6">Nội dung bài viết</h2>
+              <app-blog-icon [name]="expanded() ? 'up' : 'down'" />
+            </button>
+            @if (expanded()) {
+              <ol class="flex flex-col gap-2 w-full min-w-0 text-[14px] leading-5">
+                @for (item of headings(); track item.id) {
+                  <li class="min-w-0" [class.pl-4]="item.level >= 3">
+                    <a [href]="'#' + item.id" class="text-[14px] text-[#1E64EF] leading-5 hover:underline break-words">{{ item.text }}</a>
+                  </li>
+                }
+              </ol>
+            }
+          </nav>
+        }
+
+        @if (data.post.content) {
+          <div class="article-content w-full min-w-0" appArticleContent [headings]="headings()" [innerHTML]="data.post.content"></div>
+        } @else {
+          <div class="text-[#5D646F] py-8 text-center">Chưa có nội dung bài viết.</div>
+        }
+
+        @if (data.post.contentImages?.length) {
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full min-w-0">
+            @for (image of data.post.contentImages; track image) {
+              @if (!data.post.content.includes(image)) {
+                <img [src]="image" alt="Ảnh trong bài viết" loading="lazy" class="w-full min-w-0 rounded-lg object-cover" />
+              }
+            }
+          </div>
+        }
+
+        <footer class="flex flex-col w-full gap-6">
+          @if (tags().length) {
+            <div class="flex flex-wrap gap-2 pt-2">
+              @for (tag of tags(); track $index) {
+                <span class="px-3 py-1 bg-[#F1F5F9] text-[#475569] rounded-[4px] text-[13px] font-medium break-words">{{ tag }}</span>
+              }
+            </div>
+          }
+
+          <div class="flex flex-wrap items-center justify-between w-full border-t border-[#E1E5EB] pt-6 gap-4">
+            <div class="flex flex-wrap items-center gap-3">
+              <span class="text-[14px] text-[#5D646F] leading-5">Bài viết này hữu ích với bạn?</span>
+              <button
+                type="button"
+                (click)="react('like')"
+                [disabled]="reacting()"
+                [attr.aria-pressed]="reaction() === 'like'"
+                class="reaction-button flex items-center gap-1.5 px-3 py-1.5 border rounded-md text-[#5D646F]"
+                [class.liked]="reaction() === 'like'"
+              >
+                <svg [lucideIcon]="icons['like']" class="w-4 h-4" aria-hidden="true"></svg>
+                <span class="text-[14px]">Hữu ích</span>
+              </button>
+              <button
+                type="button"
+                (click)="react('dislike')"
+                [disabled]="reacting()"
+                [attr.aria-pressed]="reaction() === 'dislike'"
+                class="reaction-button flex items-center gap-1.5 px-3 py-1.5 border rounded-md text-[#5D646F]"
+                [class.disliked]="reaction() === 'dislike'"
+              >
+                <svg [lucideIcon]="icons['dislike']" class="w-4 h-4" aria-hidden="true"></svg>
+                <span class="text-[14px]">Không hữu ích</span>
+              </button>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="text-[14px] text-[#5D646F]">Chia sẻ:</span>
+              <button type="button" (click)="copyLink()" title="Copy Link" aria-label="Sao chép liên kết" class="share-button">
+                <app-blog-icon [name]="copied() ? 'check' : 'link'" [size]="18" />
+              </button>
+              <button type="button" (click)="share('facebook')" title="Share to Facebook" aria-label="Chia sẻ Facebook" class="share-button">
+                <app-blog-icon name="facebook" [size]="18" />
+              </button>
+              <button type="button" (click)="share('linkedin')" title="Share to LinkedIn" aria-label="Chia sẻ LinkedIn" class="share-button">
+                <app-blog-icon name="linkedin" [size]="18" />
+              </button>
+            </div>
+          </div>
+
+          @if (shareError()) {
+            <p role="alert" class="text-xs text-red-600">{{ shareError() }}</p>
+          }
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+            <a
+              [routerLink]="data.prevPost ? ['/main/blog/article', data.prevPost.id] : ['/main/blog']"
+              class="flex items-center gap-3 w-full min-w-0 p-4 border border-[#E1E5EB] rounded-lg hover:border-[#1E64EF] hover:shadow-sm group bg-white"
+            >
+              <div class="w-8 h-8 flex items-center justify-center shrink-0">
+                <app-blog-icon name="left" [size]="20" class="text-[#5D646F]" />
+              </div>
+              <div class="flex flex-col gap-1 min-w-0">
+                <span class="text-[12px] text-[#5D646F] leading-4">{{ data.prevPost ? 'Bài trước' : 'Quay lại' }}</span>
+                <span class="text-[14px] font-medium text-[#0F1B2D] leading-5 truncate">{{ data.prevPost?.title || 'Danh sách bài viết' }}</span>
+              </div>
+            </a>
+            @if (data.nextPost; as next) {
+              <a
+                [routerLink]="['/main/blog/article', next.id]"
+                class="flex items-center justify-between gap-3 w-full min-w-0 p-4 border border-[#E1E5EB] rounded-lg hover:border-[#1E64EF] hover:shadow-sm bg-white"
+              >
+                <div class="flex flex-col gap-1 items-end min-w-0 flex-1">
+                  <span class="text-[12px] text-[#5D646F] leading-4 text-right">Bài tiếp theo</span>
+                  <span class="text-[14px] font-medium text-[#0F1B2D] leading-5 text-right truncate w-full">{{ next.title }}</span>
+                </div>
+                <div class="w-8 h-8 flex items-center justify-center shrink-0">
+                  <app-blog-icon name="right" [size]="20" class="text-[#5D646F]" />
+                </div>
+              </a>
+            }
+          </div>
+        </footer>
+
+        <app-blog-discussion [postId]="data.post.id" />
+      </article>
+
+      <app-blog-sidebar class="w-full xl:w-[320px] shrink-0" [detail]="true" [related]="data.relatedPosts" />
+    </main>
+  } @else {
+    <div class="flex-1 flex flex-col gap-4 items-center justify-center py-32 text-[#677283]" role="alert">
+      <p>{{ error() || 'Bài viết không tồn tại hoặc đã bị xóa.' }}</p>
+      <a routerLink="/main/blog" class="text-[#1E64EF]">Quay lại Blog</a>
+    </div>
+  }
 </div>

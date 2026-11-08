@@ -1,9 +1,14 @@
-<section class="flex flex-col w-full bg-white border border-[#E1E5EB] rounded-2xl p-6 gap-2 relative overflow-hidden shadow-sm">
+<section class="flex flex-col w-full bg-white border border-[#E1E5EB] rounded-xl p-5 gap-2 relative overflow-hidden shadow-sm">
   @if (status() === 'success') {
-    <div class="flex items-center gap-3"><span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#DCFCE7] text-[#16A34A]"><app-blog-icon name="success" [size]="20" /></span><h3 class="text-base font-extrabold text-[#0F1B2D]">Đăng ký thành công!</h3></div><p class="text-xs text-[#444E5E] leading-[1.6]">Cảm ơn bạn! Bạn sẽ nhận được bản tin mới nhất từ ThinkUp.</p>
+    <div class="flex items-center gap-3"><span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#DCFCE7] text-[#16A34A]"><app-blog-icon name="success" [size]="20" /></span><h3 class="text-[16px] font-semibold text-[#0F1B2D] leading-6">Đăng ký thành công!</h3></div>
+    <p class="text-[14px] text-[#5D646F] leading-5">Cảm ơn bạn! Bạn sẽ nhận được bản tin mới nhất từ ThinkUp.</p>
   } @else {
-    <h3 class="text-base font-extrabold text-[#0F1B2D]">Đăng ký nhận bản tin</h3><p class="text-xs font-normal text-[#444E5E] leading-[1.6] mb-2">Nhận bài viết mới nhất và tài liệu miễn phí mỗi<br>tuần!</p>
-    <form class="grid grid-cols-[minmax(0,1fr)_auto] gap-2 w-full mt-1" (ngSubmit)="submit()"><input type="email" name="email" [(ngModel)]="email" (ngModelChange)="status.set('idle')" placeholder="Nhập email của bạn..." aria-label="Email nhận bản tin" class="min-w-0 w-full bg-[#F8FAFD] border border-[#E1E5EB] rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1E64EF] focus:bg-white placeholder:text-[#737B87] text-[#0F1B2D]" required [disabled]="status() === 'loading'"><button type="submit" [disabled]="status() === 'loading'" class="bg-[#1E64EF] text-white font-semibold text-sm rounded-xl px-4 py-2.5 hover:bg-blue-700 flex items-center justify-center disabled:opacity-70">@if (status() === 'loading') {<app-blog-icon name="loader" class="animate-spin" />} @else {Đăng ký}</button></form>
+    <h3 class="text-[16px] font-semibold text-[#0F1B2D] leading-6">Đăng ký nhận bản tin</h3>
+    <p class="text-[14px] font-normal text-[#5D646F] leading-5">Nhận bài viết mới nhất và tài liệu miễn phí mỗi tuần!</p>
+    <form class="grid grid-cols-[minmax(0,1fr)_auto] gap-2 w-full mt-1" (ngSubmit)="submit()">
+      <input type="email" name="email" [(ngModel)]="email" (ngModelChange)="status.set('idle')" placeholder="Nhập email của bạn..." aria-label="Email nhận bản tin" class="min-w-0 w-full h-[38px] bg-[#F9FAFC] border border-[#E1E5EB] rounded-md px-3 text-[14px] outline-none focus:border-[#1E64EF] focus:bg-white placeholder:text-[#737B87] text-[#0F1B2D]" required [disabled]="status() === 'loading'" />
+      <button type="submit" [disabled]="status() === 'loading'" class="h-[38px] bg-[#1E64EF] text-white font-semibold text-[14px] rounded-md px-4 hover:bg-blue-700 flex items-center justify-center disabled:opacity-70">@if (status() === 'loading') {<app-blog-icon name="loader" class="animate-spin" />} @else {Đăng ký}</button>
+    </form>
     @if (status() === 'already') { <p class="text-xs text-[#D97706] mt-1">✓ Email này đã đăng ký nhận bản tin trước đó.</p> }
     @if (status() === 'error') { <p role="alert" class="text-xs text-[#DC2626] mt-1">{{ error() }}</p> }
   }
