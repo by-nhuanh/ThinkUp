@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-label="Minh hoạ học tập">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#155e75"/><stop offset="1" stop-color="#0e9aa7"/></linearGradient></defs>
+  <rect width="640" height="360" fill="url(#g)"/>
+  <circle cx="500" cy="90" r="120" fill="#ffffff" opacity=".08"/>
+  <rect x="120" y="110" width="300" height="200" rx="18" fill="#ffffff" opacity=".14"/>
+  <rect x="150" y="140" width="180" height="14" rx="7" fill="#bdf3f7"/>
+  <rect x="150" y="174" width="240" height="10" rx="5" fill="#ffffff" opacity=".7"/>
+  <rect x="150" y="198" width="210" height="10" rx="5" fill="#ffffff" opacity=".5"/>
+  <rect x="150" y="222" width="150" height="10" rx="5" fill="#ffffff" opacity=".4"/>
+  <path d="M470 150h70v130h-70z" fill="#ffffff" opacity=".2"/>
+  <path d="M455 160h100v18H455z" fill="#bdf3f7"/>
+  <circle cx="505" cy="240" r="26" fill="#ffffff" opacity=".35"/>
+</svg>

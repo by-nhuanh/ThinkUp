@@ -1,0 +1,66 @@
+<app-admin-dialog
+  title="Từ chối xuất bản khóa học"
+  [subtitle]="workspace().title + '   ·   ' + workspace().courseId + '   ·   ' + workspace().instructor.name"
+  size="xl"
+  (closed)="close()"
+>
+  <div class="alert danger" role="alert">
+    <span><strong>Khóa học sẽ không được phát hành.</strong> Giảng viên sẽ nhận được thông báo kèm lý do từ chối.</span>
+  </div>
+
+  <div class="field" style="margin-bottom: 14px">
+    <label for="reject-reason">Nhóm lý do từ chối *</label>
+    <app-custom-select
+      [value]="reason()"
+      [options]="reasons"
+      placeholder="Chọn lý do từ chối"
+      controlId="reject-reason"
+      [menuWidth]="420"
+      (valueChange)="setReason($event)"
+    />
+  </div>
+
+  <div class="field" style="margin-bottom: 14px">
+    <div class="field-label-row">
+      <label for="reject-detail">Lý do chi tiết *</label>
+      <span>{{ charCount() }} / tối thiểu 20</span>
+    </div>
+    <textarea
+      id="reject-detail"
+      [value]="detail()"
+      placeholder="Mô tả nội dung chưa đạt và căn cứ từ chối. Tối thiểu 20 ký tự…"
+      (input)="setDetail($any($event.target).value)"
+      (blur)="touched.set(true)"
+      [attr.aria-invalid]="error() ? 'true' : null"
+    ></textarea>
+    @if (error()) {
+      <span class="error" role="alert">{{ error() }}</span>
+    }
+  </div>
+
+  <div class="field" style="margin-bottom: 14px">
+    <span class="field-label-row"><label for="reject-evidence">Minh chứng đính kèm *</label></span>
+    <label class="dropzone" for="reject-evidence">
+      <span class="upload-icon" aria-hidden="true">↑</span>
+      <strong>{{ evidenceName() || 'Kéo thả tệp hoặc chọn từ thiết bị' }}</strong>
+      <span>PDF, DOCX, PNG, JPG tối đa 20 MB · hoặc dán đường dẫn minh chứng</span>
+    </label>
+    <input id="reject-evidence" type="file" accept=".pdf,.docx,.png,.jpg,.jpeg" hidden (change)="onFileChange($event)" />
+    <input
+      type="url"
+      [value]="evidenceUrl()"
+      placeholder="https://… (đường dẫn minh chứng)"
+      aria-label="Đường dẫn minh chứng"
+      (input)="setEvidenceUrl($any($event.target).value)"
+    />
+  </div>
+
+  @if (!canConfirm()) {
+    <p class="dialog-note">Chọn lý do và nhập ít nhất 20 ký tự để bật xác nhận.</p>
+  }
+
+  <div dialogFooter style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px">
+    <button class="button" type="button" (click)="close()">Hủy</button>
+    <button class="button danger" type="button" [disabled]="!canConfirm()" (click)="confirm()">Xác nhận từ chối</button>
+  </div>
+</app-admin-dialog>

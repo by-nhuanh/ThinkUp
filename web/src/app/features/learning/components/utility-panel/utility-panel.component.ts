@@ -1,4 +1,5 @@
 import { Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges, inject } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { Observable, Subscription, finalize } from 'rxjs';
 import { LearningService } from '../../services/learning.service';
 import { ToastService } from '../../../../core/services/toast.service';
@@ -29,6 +30,7 @@ import {
   standalone: true,
   imports: [
     FormsModule,
+    DatePipe,
     LucideCheck,
     LucideChevronDown,
     LucideFileDown,
@@ -56,6 +58,14 @@ export class UtilityPanelComponent implements OnChanges, OnDestroy {
   @Input() resources: LearningResource[] = [];
   @Input() qaPosts: CommunityPost[] = [];
   @Input() discussionPosts: CommunityPost[] = [];
+  @Input() discussionRestrictedUntil?: string;
+
+  get discussionRestricted(): boolean {
+    const until = this.discussionRestrictedUntil;
+    if (!until) return false;
+    const time = new Date(until).getTime();
+    return Number.isFinite(time) ? time > Date.now() : true;
+  }
 
   @Output() tabChange = new EventEmitter<UtilityTab>();
   @Output() reportRequested = new EventEmitter<CommunityPost>();

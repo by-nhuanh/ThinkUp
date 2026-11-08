@@ -1,0 +1,25 @@
+<app-admin-dialog
+  title="Tạo gợi ý cho câu hỏi"
+  [subtitle]="questionTitle()"
+  size="md"
+  (closed)="closed.emit()"
+>
+  <div class="dialog-note" style="margin-bottom: 12px">
+    Học viên chỉ thấy gợi ý sau khi làm sai. Câu gợi ý nên dẫn dắt cách suy nghĩ, không nêu trực tiếp đáp án.
+  </div>
+
+  <div class="field">
+    <div class="field-label-row">
+      <label for="hint-content">Nội dung gợi ý <b>*</b></label>
+      <span>{{ charCount() }} ký tự</span>
+    </div>
+    <textarea id="hint-content" rows="5" [value]="draft()" (input)="draft.set($any($event.target).value)"></textarea>
+    <span class="hint">Tối thiểu 10 ký tự. Có thể bấm “Tạo lại” để dùng bản gợi ý tự động.</span>
+  </div>
+
+  <div dialogFooter style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px">
+    <button class="button" type="button" (click)="regenerate()">↻ Tạo lại</button>
+    <button class="button" type="button" (click)="closed.emit()">Hủy</button>
+    <button class="button primary" type="button" [disabled]="!canSave()" (click)="save()">Lưu gợi ý</button>
+  </div>
+</app-admin-dialog>
