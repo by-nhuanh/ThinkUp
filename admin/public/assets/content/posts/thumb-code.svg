@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-label="Minh hoạ mã nguồn">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#102a43"/><stop offset="1" stop-color="#1f4f7a"/></linearGradient></defs>
+  <rect width="640" height="360" fill="url(#g)"/>
+  <rect x="80" y="70" width="480" height="220" rx="14" fill="#06192e" opacity=".85"/>
+  <circle cx="106" cy="94" r="6" fill="#ff6b6b"/><circle cx="128" cy="94" r="6" fill="#ffd93d"/><circle cx="150" cy="94" r="6" fill="#6bcb77"/>
+  <rect x="108" y="130" width="80" height="10" rx="5" fill="#6bcb77"/>
+  <rect x="200" y="130" width="180" height="10" rx="5" fill="#9ecbff"/>
+  <rect x="126" y="156" width="240" height="10" rx="5" fill="#ffffff" opacity=".55"/>
+  <rect x="126" y="182" width="150" height="10" rx="5" fill="#ffd93d" opacity=".8"/>
+  <rect x="126" y="208" width="210" height="10" rx="5" fill="#ffffff" opacity=".4"/>
+  <path d="M480 130 520 170 480 210" stroke="#58a6ff" stroke-width="10" fill="none" stroke-linecap="round"/>
+</svg>

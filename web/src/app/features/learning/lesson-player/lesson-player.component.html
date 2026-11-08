@@ -173,6 +173,7 @@
                 [resources]="resources"
                 [qaPosts]="qaPosts"
                 [discussionPosts]="discussionPosts"
+                [discussionRestrictedUntil]="currentCourse.discussionRestrictedUntil"
                 (tabChange)="activeTab.set($event)"
                 (reportRequested)="openReport($event)"
               />

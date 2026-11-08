@@ -27,6 +27,14 @@ const BREADCRUMB_TITLES: Record<string, string> = {
   '/business/orders': 'Đơn hàng',
   '/business/vouchers': 'Voucher',
   '/business/payouts': 'Chi trả giảng viên',
+  '/courses': 'Tất cả khóa học',
+  '/courses/approvals': 'Hàng đợi phê duyệt',
+  '/courses/roadmaps': 'Quản lý lộ trình học tập',
+  '/content/posts': 'Bài viết',
+  '/content/posts/new': 'Viết bài mới',
+  '/content/comments': 'Bình luận',
+  '/content/reviews': 'Đánh giá khóa học',
+  '/content/reports': 'Báo cáo vi phạm',
   '/support/tickets': 'Ticket hỗ trợ',
   '/support/complaints': 'Khiếu nại & Sự cố',
   '/support/faq': 'FAQ',
@@ -40,6 +48,8 @@ const BREADCRUMB_TITLES: Record<string, string> = {
 const SECTION_TITLES: Record<string, string> = {
   users: 'Quản lý người dùng',
   business: 'Quản lý kinh doanh',
+  courses: 'Quản lý khóa học',
+  content: 'Quản lý nội dung',
   support: 'Quản lý hỗ trợ',
   auth: 'Bảo mật tài khoản'
 };
@@ -129,6 +139,8 @@ export class AdminLayoutComponent {
   );
   readonly breadcrumbs = computed(() => buildBreadcrumbs(this.currentUrl()));
   readonly businessOpen = signal(typeof window !== 'undefined' && window.location.pathname.startsWith('/business/'));
+  readonly coursesOpen = signal(typeof window !== 'undefined' && window.location.pathname.startsWith('/courses'));
+  readonly contentOpen = signal(typeof window !== 'undefined' && window.location.pathname.startsWith('/content/'));
   readonly supportOpen = signal(typeof window !== 'undefined' && window.location.pathname.startsWith('/support/'));
   readonly usersOpen = signal(typeof window !== 'undefined' && window.location.pathname.startsWith('/users/'));
   readonly usersActive = toSignal(
@@ -145,6 +157,20 @@ export class AdminLayoutComponent {
     ),
     { initialValue: typeof window !== 'undefined' && window.location.pathname.startsWith('/business/') }
   );
+  readonly contentActive = toSignal(
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map(() => this.router.url.startsWith('/content/'))
+    ),
+    { initialValue: typeof window !== 'undefined' && window.location.pathname.startsWith('/content/') }
+  );
+  readonly coursesActive = toSignal(
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map(() => this.router.url.startsWith('/courses'))
+    ),
+    { initialValue: typeof window !== 'undefined' && window.location.pathname.startsWith('/courses') }
+  );
   readonly nav = [
     { label: 'Quản lý người dùng', icon: '0-svg1.svg' },
     { label: 'Quản lý khóa học', icon: '0-svg2.svg' },
@@ -156,6 +182,17 @@ export class AdminLayoutComponent {
     { label: 'Đơn hàng', path: '/business/orders' },
     { label: 'Voucher', path: '/business/vouchers' },
     { label: 'Chi trả giảng viên', path: '/business/payouts' }
+  ];
+  readonly coursesPages = [
+    { label: 'Tất cả khóa học', path: '/courses' },
+    { label: 'Hàng đợi phê duyệt', path: '/courses/approvals' },
+    { label: 'Lộ trình học tập', path: '/courses/roadmaps' }
+  ];
+  readonly contentPages = [
+    { label: 'Bài viết', path: '/content/posts' },
+    { label: 'Bình luận', path: '/content/comments' },
+    { label: 'Đánh giá khóa học', path: '/content/reviews' },
+    { label: 'Báo cáo vi phạm', path: '/content/reports' }
   ];
   readonly supportPages = [
     { label: 'Ticket hỗ trợ', path: '/support/tickets' },
@@ -326,19 +363,35 @@ export class AdminLayoutComponent {
     if (this.collapsed()) this.collapsed.set(false);
     const open = !this.businessOpen();
     this.businessOpen.set(open);
-    if (open) { this.usersOpen.set(false); this.supportOpen.set(false); }
+    if (open) { this.usersOpen.set(false); this.coursesOpen.set(false); this.supportOpen.set(false); }
+  }
+
+  toggleCourses(): void {
+    if (this.collapsed()) this.collapsed.set(false);
+    const open = !this.coursesOpen();
+    this.coursesOpen.set(open);
+    if (open) { this.usersOpen.set(false); this.businessOpen.set(false); this.contentOpen.set(false); this.supportOpen.set(false); }
   }
 
   toggleSupport(): void {
     if (this.collapsed()) this.collapsed.set(false);
     const open = !this.supportOpen();
     this.supportOpen.set(open);
-    if (open) { this.usersOpen.set(false); this.businessOpen.set(false); }
+    if (open) { this.usersOpen.set(false); this.businessOpen.set(false); this.coursesOpen.set(false); this.contentOpen.set(false); }
+  }
+
+  toggleContent(): void {
+    if (this.collapsed()) this.collapsed.set(false);
+    const open = !this.contentOpen();
+    this.contentOpen.set(open);
+    if (open) { this.usersOpen.set(false); this.businessOpen.set(false); this.coursesOpen.set(false); this.supportOpen.set(false); }
   }
 
   navigatePage(): void {
     this.usersOpen.set(false);
     this.businessOpen.set(false);
+    this.coursesOpen.set(false);
+    this.contentOpen.set(false);
     this.supportOpen.set(false);
   }
 
@@ -346,7 +399,7 @@ export class AdminLayoutComponent {
     if (this.collapsed()) this.collapsed.set(false);
     const open = !this.usersOpen();
     this.usersOpen.set(open);
-    if (open) { this.businessOpen.set(false); this.supportOpen.set(false); }
+    if (open) { this.businessOpen.set(false); this.coursesOpen.set(false); this.contentOpen.set(false); this.supportOpen.set(false); }
   }
 
   toggleAccountMenu(): void {

@@ -1,0 +1,79 @@
+<app-admin-dialog
+  title="Lưu trữ khóa học"
+  subtitle="Lý do và minh chứng sẽ được ghi vào lịch sử quản trị"
+  size="lg"
+  (closed)="close()"
+>
+  <section class="detail-hero" style="margin-bottom: 16px">
+    <div class="detail-hero-body">
+      <h3>{{ course().title }}</h3>
+      <p class="detail-hero-meta">{{ course().id }}   ·   {{ course().instructor }}</p>
+      <div><span class="badge" [class.success]="course().status === 'published'" [class.pending]="course().status === 'pending'" [class.warning]="course().status === 'hidden'" [class.neutral]="course().status === 'archived'">
+        {{ course().status === 'published' ? 'Đang xuất bản' : course().status === 'pending' ? 'Chờ duyệt' : course().status === 'hidden' ? 'Tạm ẩn' : 'Đã lưu trữ' }}
+      </span></div>
+    </div>
+  </section>
+
+  <div class="field">
+    <label for="archive-reason">Lý do lưu trữ <b>*</b></label>
+    <app-custom-select
+      controlId="archive-reason"
+      [value]="reason()"
+      [options]="reasons"
+      placeholder="Chọn lý do lưu trữ"
+      [menuWidth]="520"
+      (valueChange)="setReason($event)"
+    ></app-custom-select>
+  </div>
+
+  <div class="field" style="margin-top: 14px">
+    <label for="archive-explanation">Giải trình chi tiết <b>*</b></label>
+    <textarea
+      id="archive-explanation"
+      rows="5"
+      [value]="explanation()"
+      placeholder="Mô tả căn cứ, phạm vi ảnh hưởng và cách xử lý…&#10;&#10;Tối thiểu 30 ký tự."
+      [attr.aria-invalid]="explanationError() ? 'true' : null"
+      [attr.aria-describedby]="explanationError() ? 'archive-explanation-error' : 'archive-explanation-hint'"
+      (input)="setExplanation($any($event.target).value)"
+      (blur)="touched.set(true)"
+    ></textarea>
+    <span class="hint" id="archive-explanation-hint">{{ charCount() }} ký tự · Tối thiểu 30 ký tự</span>
+    @if (explanationError()) {
+      <span class="error" id="archive-explanation-error">{{ explanationError() }}</span>
+    }
+  </div>
+
+  <div class="field" style="margin-top: 14px">
+    <label>Bằng chứng đính kèm</label>
+    <div class="file-row" style="flex-wrap: wrap">
+      <span class="file-chip" aria-hidden="true">↑</span>
+      <div class="file-body">
+        <strong>Kéo thả tệp hoặc chọn từ thiết bị</strong>
+        <span>PDF, DOCX, PNG, JPG tối đa 20 MB · hoặc dán đường dẫn minh chứng</span>
+      </div>
+      <label class="button small" style="margin-left: auto">
+        Chọn tệp
+        <input type="file" accept=".pdf,.docx,.png,.jpg,.jpeg" hidden (change)="onFileChange($event)">
+      </label>
+    </div>
+    @if (evidenceName()) {
+      <span class="hint">Đã chọn: {{ evidenceName() }}</span>
+    }
+    <input
+      type="url"
+      placeholder="https://… đường dẫn minh chứng"
+      [value]="evidenceUrl()"
+      (input)="evidenceUrl.set($any($event.target).value)"
+    >
+  </div>
+
+  <div class="alert info" role="note" style="margin-top: 14px">
+    <span>Cần chọn lý do và giải trình hợp lệ để kích hoạt xác nhận. ThinkUp sẽ gửi thông báo và lý do lưu trữ cho giảng viên.</span>
+  </div>
+
+  <div dialogFooter style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 9px">
+    <button class="button" type="button" (click)="close()">Hủy bỏ</button>
+    <button class="button danger" type="button" [disabled]="!canConfirm()" (click)="confirm()">Xác nhận lưu trữ</button>
+  </div>
+</app-admin-dialog>

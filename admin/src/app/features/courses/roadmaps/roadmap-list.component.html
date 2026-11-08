@@ -1,0 +1,177 @@
+<main class="courses-page">
+  <header class="page-heading">
+    <div>
+      <nav class="breadcrumb" aria-label="Đường dẫn trang">
+        <span>Quản lý khóa học</span>
+        <span class="breadcrumb-separator" aria-hidden="true">/</span>
+        <span class="breadcrumb-current" aria-current="page">Lộ trình học tập</span>
+      </nav>
+      <h1>Quản lý lộ trình học tập</h1>
+      <p class="subtitle">Xâu chuỗi khóa học thành lộ trình nghề nghiệp và gán bài kiểm tra cho từng node.</p>
+    </div>
+    <div class="heading-actions">
+      <button class="button primary" type="button" (click)="createRoadmap()">+ Tạo lộ trình mới</button>
+    </div>
+  </header>
+
+  <section class="kpis" aria-label="Tổng quan lộ trình">
+    <div class="kpi">
+      <span class="kpi-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 4 3 7v13l6-3 6 3 6-3V4l-6 3z"/><path d="M9 4v13M15 7v13"/></svg>
+      </span>
+      <span>
+        <span class="kpi-label">Tổng lộ trình</span>
+        <strong class="kpi-value">{{ number(totals.total) }}</strong>
+        <span class="kpi-foot">+2 trong tháng</span>
+      </span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-icon green" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>
+      </span>
+      <span>
+        <span class="kpi-label">Đang hoạt động</span>
+        <strong class="kpi-value">{{ number(totals.active) }}</strong>
+        <span class="kpi-foot">75% tổng lộ trình</span>
+      </span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-icon amber" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.1 2.5-5.5 5.5-5.5s5.5 2.4 5.5 5.5"/><path d="M16 5.4a3.2 3.2 0 0 1 0 5.2M18.5 20c0-2.1-.6-3.9-1.7-5.2"/></svg>
+      </span>
+      <span>
+        <span class="kpi-label">Học viên tham gia</span>
+        <strong class="kpi-value">{{ number(totals.learners) }}</strong>
+        <span class="kpi-foot">+12,5% tháng này</span>
+      </span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-icon red" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V5"/><path d="M4 19h16"/><path d="m7 15 4-4 3 2 4-5"/></svg>
+      </span>
+      <span>
+        <span class="kpi-label">Độ phủ khóa học</span>
+        <strong class="kpi-value">{{ totals.coverage }}</strong>
+        <span class="kpi-foot">6 node cần bổ sung</span>
+      </span>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="Danh sách lộ trình">
+    <div class="toolbar">
+      <div class="grow">
+        <app-search-field
+          label="Tìm lộ trình"
+          placeholder="Tên hoặc mã lộ trình"
+          [value]="search()"
+          (valueChange)="setSearch($event)"
+        ></app-search-field>
+      </div>
+      <div class="filter">
+        <span>Nhóm ngành</span>
+        <app-custom-select controlId="roadmap-industry" [value]="industry()" [options]="industryOptions" placeholder="Tất cả nhóm ngành" [menuWidth]="240" (valueChange)="setIndustry($event)"></app-custom-select>
+      </div>
+      <div class="filter">
+        <span>Độ phủ khóa học</span>
+        <app-custom-select controlId="roadmap-coverage" [value]="coverage()" [options]="coverageOptions" placeholder="Tất cả độ phủ" [menuWidth]="220" (valueChange)="setCoverage($event)"></app-custom-select>
+      </div>
+      <div class="filter">
+        <span>Bài kiểm tra</span>
+        <app-custom-select controlId="roadmap-test" [value]="testState()" [options]="testOptions" placeholder="Tất cả bài kiểm tra" [menuWidth]="210" (valueChange)="setTestState($event)"></app-custom-select>
+      </div>
+      <div class="filter">
+        <span>Tình trạng bài test</span>
+        <app-custom-select controlId="roadmap-test-state" [value]="visibility()" [options]="visibilityOptions" placeholder="Tất cả trạng thái" [menuWidth]="210" (valueChange)="setVisibility($event)"></app-custom-select>
+      </div>
+      <div class="toolbar-end">
+        <button class="icon-button" type="button" aria-label="Đặt lại bộ lọc" title="Đặt lại bộ lọc" (click)="resetFilters()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+        </button>
+        <app-export-menu label="Xuất danh sách lộ trình" (formatChange)="exportList($event)"></app-export-menu>
+      </div>
+    </div>
+
+    @if (loadError()) {
+      <div class="alert danger" role="alert" style="margin: 14px 18px">
+        <span>Không tải được danh sách lộ trình. Vui lòng thử lại.</span>
+        <button class="button small" type="button" (click)="retryLoad()">Thử lại</button>
+      </div>
+    }
+
+    @if (!loadError() && filtered().length === 0) {
+      <div class="empty">
+        <strong>Không tìm thấy lộ trình phù hợp</strong>
+        <p>Thử từ khóa khác hoặc xóa bộ lọc để xem toàn bộ lộ trình.</p>
+        <button class="button" type="button" (click)="resetFilters()">Xóa bộ lọc</button>
+      </div>
+    } @else if (!loadError()) {
+      <div class="table-scroll is-roomy">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Lộ trình / Mã</th>
+              <th scope="col">Giai đoạn / Node</th>
+              <th scope="col">Học viên</th>
+              <th scope="col">Hoàn thành</th>
+              <th scope="col">Khóa học / Node</th>
+              <th scope="col">Bài test</th>
+              <th scope="col">Tình trạng bài test</th>
+              <th scope="col">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of visible(); track item.id) {
+              <tr [class.is-selected]="menuId() === item.id">
+                <td>
+                  <span class="cell-title">{{ item.name }}</span>
+                  <span class="cell-sub">{{ item.code }} · {{ item.industry }}</span>
+                </td>
+                <td>
+                  <span class="cell-title">{{ item.stages }} giai đoạn · {{ item.nodes }} node</span>
+                  <span class="cell-sub">{{ item.hidden ? 'Đang ẩn' : 'Đang hiển thị' }}</span>
+                </td>
+                <td class="nowrap">{{ number(item.learners) }}</td>
+                <td class="nowrap">{{ item.completion }}%</td>
+                <td class="nowrap">{{ item.coverage }}% · TB {{ decimal(item.coverageAvg) }}</td>
+                <td class="nowrap">{{ item.testPassed }}/{{ item.testTotal }}</td>
+                <td>
+                  <span [class]="'badge ' + (item.missingTests === 0 ? 'success' : 'warning')">{{ testLabel(item) }}</span>
+                </td>
+                <td>
+                  <div class="row-menu">
+                    <button class="icon-button" type="button" aria-haspopup="menu" [attr.aria-expanded]="menuId() === item.id" [attr.aria-label]="'Tùy chọn lộ trình ' + item.name" (click)="toggleMenu(item, $event)">•••</button>
+                    @if (menuId() === item.id) {
+                      <div class="row-menu-pop" role="menu">
+                        <button type="button" role="menuitem" (click)="openStudio(item)">Cấu hình lộ trình</button>
+                        <button type="button" role="menuitem" (click)="toggleVisibility(item)">{{ item.hidden ? 'Hiển thị lộ trình' : 'Ẩn lộ trình' }}</button>
+                      </div>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-footer">
+        <span>{{ rangeLabel() }} · Ưu tiên lộ trình cập nhật gần nhất</span>
+        <nav class="pagination" aria-label="Phân trang lộ trình">
+          <button type="button" [disabled]="page() === 1" aria-label="Trang trước" (click)="goToPage(page() - 1)">‹</button>
+          @for (item of pagination(); track $index) {
+            @if (item === '...') {
+              <button type="button" disabled aria-hidden="true">…</button>
+            } @else {
+              <button type="button" [class.current]="item === page()" [attr.aria-current]="item === page() ? 'page' : null" (click)="onPage(item)">{{ item }}</button>
+            }
+          }
+          <button type="button" [disabled]="page() === pages()" aria-label="Trang sau" (click)="goToPage(page() + 1)">›</button>
+        </nav>
+      </div>
+    }
+  </section>
+</main>
+
+@if (toast(); as notice) {
+  <app-course-toast [message]="notice.message" [tone]="notice.tone" (closed)="toast.set(null)" />
+}

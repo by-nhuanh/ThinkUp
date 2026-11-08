@@ -314,7 +314,9 @@ export class LearningService {
     return { id: (dto.discussion_id || dto.qna_id)!, author, initials: this.buildCoverLabel(author),
       body: dto.content, createdAt: dto.created_at_formatted, role: dto.author.role === 'instructor' ? 'Giảng viên' : 'Học viên',
       avatarUrl: dto.author.avatar_url, isOwner: dto.is_owner, lessonId: dto.lesson_id || dto.lesson_info?.lesson_id,
-      likes: dto.likes_count ?? 0, liked: dto.is_liked, replies: (dto.replies || []).map(reply => this.mapCommunity(reply)) };
+      likes: dto.likes_count ?? 0, liked: dto.is_liked, replies: (dto.replies || []).map(reply => this.mapCommunity(reply)),
+      verifiedByAdmin: dto.verified_by_admin === true, moderationState: dto.moderation_state ?? 'visible',
+      moderationNote: dto.moderation_note };
   }
 
   private documents(courseId: string): Observable<DocumentsDto> {

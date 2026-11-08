@@ -1,0 +1,399 @@
+<main class="workspace">
+  @if (workspace(); as ws) {
+    <ng-template #checklistPanel>
+      <section class="section-card">
+        <div class="preview-head">
+          <div>
+            <h3>Checklist phát hành</h3>
+            <p class="cell-sub">{{ checklist().length }} tiêu chí bắt buộc</p>
+          </div>
+          <span class="badge info">{{ doneCount() }}/{{ checklist().length }}</span>
+        </div>
+        <ul class="checklist">
+          @for (item of checklist(); track item.id) {
+            <li [class.done]="item.done">
+              <button
+                class="mark"
+                type="button"
+                style="padding: 0; background: transparent"
+                [attr.aria-pressed]="item.done"
+                [attr.aria-label]="'Đánh dấu tiêu chí ' + item.label"
+                (click)="toggleCheck(item.id, item.done)"
+              >{{ item.done ? '✓' : '' }}</button>
+              <button
+                type="button"
+                class="link"
+                style="min-height: 0; padding: 0; border: 0; background: transparent; color: inherit; font-weight: inherit; text-align: left"
+                (click)="toggleCheck(item.id, item.done)"
+              >{{ item.label }}</button>
+            </li>
+          }
+        </ul>
+        <p class="gate-note" [class.ready]="allDone()">
+          {{ allDone()
+            ? 'Đủ 5 tiêu chí. Bạn có thể phê duyệt và phát hành khóa học.'
+            : 'Hoàn tất đủ 5 tiêu chí để kích hoạt nút Phê duyệt & Phát hành.' }}
+        </p>
+      </section>
+    </ng-template>
+
+    <ng-template #treePanel>
+      <section class="section-card resource-tree">
+        <div class="tree-head">
+          <h3>Cấu trúc khóa học</h3>
+          <p>{{ treeSummary() }}</p>
+        </div>
+        @for (chapter of ws.chapters; track chapter.no) {
+          <button class="tree-phase" type="button" [attr.aria-expanded]="!isCollapsed(chapter.no)" (click)="toggleChapter(chapter.no)">
+            <span aria-hidden="true">{{ isCollapsed(chapter.no) ? '›' : '⌄' }}</span>
+            <span class="idx">{{ chapter.no }}</span>
+            <span>{{ chapter.title }}</span>
+          </button>
+          @if (!isCollapsed(chapter.no)) {
+            @for (lesson of chapter.lessons; track lesson.id) {
+              <div class="lesson-row" [class.is-selected]="lesson.id === 'py-3-1'">
+                <span class="lesson-icon" aria-hidden="true">{{ icon(lesson.kind) }}</span>
+                <span class="lesson-title">{{ lesson.title }}</span>
+                @if (lesson.trial) {
+                  <span class="badge pending lesson-badge">Học thử</span>
+                }
+              </div>
+            }
+          }
+        }
+      </section>
+    </ng-template>
+
+    <section class="workspace-topbar">
+      <button class="button back" type="button" (click)="back()">← Quay lại</button>
+      <div class="workspace-title">
+        <h1>{{ ws.title }}</h1>
+        <span class="sub">{{ ws.courseId }}   ·   Yêu cầu duyệt #{{ ws.approvalId }}</span>
+      </div>
+      <div class="instructor-chip">
+        <span class="avatar" aria-hidden="true">{{ ws.instructor.initials }}</span>
+        <div>
+          <strong>{{ ws.instructor.name }}</strong>
+          <span>{{ ws.instructor.role }}</span>
+        </div>
+        @if (ws.instructor.verified) {
+          <span class="badge success">Đã xác minh</span>
+        }
+      </div>
+      <div class="workspace-actions">
+        <button class="button danger" type="button" (click)="rejectOpen.set(true)">Từ chối xuất bản</button>
+        <button class="button" type="button" (click)="supplementOpen.set(true)">Yêu cầu bổ sung</button>
+        <button
+          class="button primary"
+          type="button"
+          [disabled]="!allDone()"
+          [title]="allDone() ? '' : 'Hoàn tất đủ 5 tiêu chí để phê duyệt'"
+          (click)="approve()"
+        >✓ Phê duyệt &amp; Phát hành</button>
+        <button class="button link" type="button" (click)="historyOpen.set(true)">◷ Lịch sử duyệt</button>
+      </div>
+    </section>
+
+    <nav class="workspace-tabs" role="tablist" aria-label="Nội dung kiểm định khóa học">
+      @for (item of tabs; track item.id) {
+        <button
+          class="tab"
+          type="button"
+          role="tab"
+          [class.active]="tab() === item.id"
+          [attr.aria-selected]="tab() === item.id"
+          (click)="setTab(item.id)"
+        >{{ item.label }}</button>
+      }
+    </nav>
+
+    @switch (tab()) {
+      @case ('overview') {
+        <div class="workspace-grid is-wide">
+          <section class="section-card">
+            <div class="preview-head">
+              <h3>Landing page xem trước</h3>
+              <span class="badge neutral">CHẾ ĐỘ HỌC VIÊN</span>
+            </div>
+            <div class="landing-hero">
+              <div class="trailer">
+                <span>VIDEO GIỚI THIỆU</span>
+                <button class="play" type="button" aria-label="Phát video giới thiệu" (click)="notify('Đang phát video giới thiệu khóa học.', 'info')">▶</button>
+              </div>
+              <div class="landing-body">
+                <h4>{{ ws.title }}</h4>
+                <p>{{ ws.landing.subtitle }}</p>
+                <p class="landing-meta">◉ {{ ws.instructor.name }} · {{ ws.instructor.role }}</p>
+                <p class="landing-meta">{{ ws.landing.stats }}</p>
+                <div class="pill-group">
+                  @if (ws.landing.discount > 0) {
+                    <span class="badge danger">−{{ ws.landing.discount }}%</span>
+                    <span class="badge neutral" style="text-decoration: line-through">{{ money(ws.landing.originalPrice) }}</span>
+                  }
+                  <span class="badge success">{{ money(ws.landing.price) }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="landing-grid">
+              <div class="section-card" style="border: 0; padding: 0">
+                <h3>Bạn sẽ học được gì</h3>
+                <ul class="outcome-list">
+                  @for (outcome of ws.landing.outcomes; track outcome) {
+                    <li>{{ outcome }}</li>
+                  }
+                </ul>
+              </div>
+              <div class="section-card" style="border: 0; padding: 0">
+                <h3>Yêu cầu &amp; phân loại</h3>
+                <p class="cell-sub">Kiến thức đầu vào</p>
+                <p style="margin: 4px 0 0; color: #3c5577; font-size: 13px">{{ ws.landing.requirement }}</p>
+                <p class="cell-sub" style="margin-top: 12px">Danh mục khóa học</p>
+                <div class="pill-group">
+                  @for (category of ws.landing.categories; track category) {
+                    <span class="badge info">{{ category }}</span>
+                  }
+                </div>
+                <p class="cell-sub" style="margin-top: 12px">Subtag</p>
+                <div class="pill-group">
+                  @for (tag of ws.landing.subtags; track tag) {
+                    <span class="badge neutral">{{ tag }}</span>
+                  }
+                </div>
+              </div>
+            </div>
+            <div class="certificate-row">
+              <div class="certificate-mock" aria-hidden="true">
+                <strong>THINKUP</strong>
+                CERTIFICATE OF COMPLETION
+                <b>{{ ws.landing.certificate }}</b>
+              </div>
+              <div class="certificate-copy">
+                <h3>Bản xem trước chứng chỉ</h3>
+                <p>{{ ws.landing.certificateNote }}</p>
+                <p style="margin-top: 5px">Thông tin giới thiệu, mục tiêu và thời lượng cần khớp với nội dung thực tế.</p>
+              </div>
+            </div>
+          </section>
+          <aside class="workspace-side">
+            <ng-container [ngTemplateOutlet]="checklistPanel" />
+          </aside>
+        </div>
+      }
+
+      @case ('video') {
+        <div class="workspace-grid">
+          <ng-container [ngTemplateOutlet]="treePanel" />
+          <section class="section-card">
+            <div class="preview-head">
+              <div>
+                <h3 style="margin: 0; color: #17345d; font-size: 16px">{{ ws.video.title }}</h3>
+                <p class="cell-sub">{{ ws.video.type }}</p>
+              </div>
+            </div>
+            <div class="video-frame">
+              <div style="text-align: center; padding: 16px">
+                <strong style="display: block; margin-bottom: 14px; color: #dbe9fb; font-size: 13px">{{ ws.title }}</strong>
+                <button class="play" type="button" aria-label="Phát bài giảng" (click)="notify('Đang phát bài giảng mẫu trong trình kiểm định.', 'info')">▶</button>
+              </div>
+              <div class="progress" aria-hidden="true"><i [style.width.%]="ws.video.progress"></i></div>
+            </div>
+            <div class="video-meta">
+              <span>▶ {{ ws.video.playback }}</span>
+              <span class="spacer"></span>
+              <span>▰ HD</span>
+              <span>1×</span>
+              <span aria-hidden="true">⚙</span>
+            </div>
+            <div class="lesson-split">
+              <div>
+                <h3 style="margin: 0 0 6px; color: #17345d; font-size: 14px">Mô tả bài học</h3>
+                <p style="margin: 0; color: #3c5577; font-size: 13px; line-height: 1.65">{{ ws.video.description }}</p>
+              </div>
+              <div>
+                <h3 style="margin: 0 0 6px; color: #17345d; font-size: 14px">Tài liệu đính kèm</h3>
+                <div class="attachment-row">
+                  <span class="file-chip pdf" aria-hidden="true">PDF</span>
+                  <span>{{ ws.video.attachments }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="divider"></div>
+            <label class="issue-toggle">
+              <input type="checkbox" [checked]="issueFlag()" (change)="issueFlag.set($any($event.target).checked)" />
+              <span>
+                <strong>Bài học có lỗi</strong>
+                <p>Đánh dấu khi video không phát, âm thanh/hình ảnh kém hoặc nội dung chưa đầy đủ. Ghi chú gắn với bài học này.</p>
+              </span>
+            </label>
+            @if (issueFlag()) {
+              <div class="field" style="margin-top: 10px">
+                <label for="lesson-issue">Ghi chú lỗi</label>
+                <textarea
+                  id="lesson-issue"
+                  [value]="issueNote()"
+                  placeholder="Mô tả lỗi và vị trí cần chỉnh sửa…     + Đính kèm ảnh minh chứng"
+                  (input)="issueNote.set($any($event.target).value)"
+                ></textarea>
+              </div>
+            }
+          </section>
+          <aside class="workspace-side">
+            <ng-container [ngTemplateOutlet]="checklistPanel" />
+          </aside>
+        </div>
+      }
+
+      @case ('ide') {
+        <div class="workspace-grid">
+          <ng-container [ngTemplateOutlet]="treePanel" />
+          <section class="section-card">
+            <div class="preview-head">
+              <h3>{{ ws.ide.title }}</h3>
+              <span class="badge info">Độ khó · {{ ws.ide.difficulty }}</span>
+            </div>
+            <p class="question-index">ĐỀ BÀI</p>
+            <p class="question-text" style="font-size: 13px; margin: 4px 0 0">{{ ws.ide.prompt }}</p>
+            <div class="code-toolbar">
+              <div class="lang">
+                <app-custom-select
+                  [value]="language()"
+                  [options]="languages"
+                  controlId="ide-language"
+                  [menuWidth]="224"
+                  (valueChange)="language.set($event)"
+                />
+              </div>
+              <button class="button" type="button" (click)="runSample()">▶ Chạy thử mã mẫu</button>
+            </div>
+            <div class="code-editor">
+              <div class="code-head">
+                <span>IDE · {{ language() }}</span>
+                <span class="spacer"></span>
+                <span>UTF-8</span>
+              </div>
+              <div class="code-body">
+                <div class="line-numbers" aria-hidden="true">
+                  @for (line of codeLines(); track $index) {
+                    <div>{{ $index + 1 }}</div>
+                  }
+                </div>
+                <pre>{{ ws.ide.code }}</pre>
+              </div>
+            </div>
+            <div class="table-scroll" style="margin-top: 12px; border: 1px solid #e6edf6; border-radius: 9px">
+              <table class="testcase-table" style="min-width: 520px">
+                <thead>
+                  <tr>
+                    <th scope="col">TEST CASES</th>
+                    <th scope="col">KẾT QUẢ CHẠY MẪU</th>
+                    <th scope="col"><span class="sr-only">Trạng thái</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (testcase of ws.ide.testcases; track testcase.id) {
+                    <tr>
+                      <td>{{ testcase.visibility }} · {{ testcase.input }}</td>
+                      <td>{{ testcase.expected }}</td>
+                      <td><span class="badge" [class]="'badge ' + testTone(testcase.state)">{{ testLabel(testcase.state) }}</span></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <div class="run-result" style="margin-top: 10px">✓ {{ ws.ide.result }}</div>
+            <button class="button" type="button" style="margin-top: 10px" (click)="nextCodeLesson()">Chuyển sang bài code tiếp theo</button>
+          </section>
+          <aside class="workspace-side">
+            <ng-container [ngTemplateOutlet]="checklistPanel" />
+          </aside>
+        </div>
+      }
+
+      @case ('quiz') {
+        <div class="workspace-grid is-quiz">
+          <ng-container [ngTemplateOutlet]="treePanel" />
+          <section class="section-card quiz-preview">
+            <div class="quiz-head">
+              <h3>{{ ws.quiz.title }}</h3>
+              <span class="badge info">{{ ws.quiz.question.total }} câu hỏi</span>
+            </div>
+            <span class="question-index">{{ questionIndex() }}</span>
+            <p class="question-text">{{ ws.quiz.question.prompt }}</p>
+            @for (answer of ws.quiz.question.answers; track answer.letter) {
+              <div class="quiz-option" [class.is-correct]="answer.correct">
+                <span class="quiz-letter">{{ answer.letter }}</span>
+                <span>{{ answer.text }}</span>
+                @if (answer.correct) {
+                  <span class="badge success answer-badge">✓</span>
+                }
+              </div>
+            }
+            <div class="explanation">
+              <strong>ĐÁP ÁN ĐÚNG: {{ correctAnswer() }}</strong>
+              {{ ws.quiz.question.explanation }}
+            </div>
+          </section>
+          <aside class="workspace-files">
+            <section class="section-card">
+              <h3>Tài liệu đính kèm</h3>
+              <p class="cell-sub" style="margin-bottom: 10px">Tệp theo từng bài học · kiểm tra an toàn trước khi tải</p>
+              <div class="attachment-list">
+                @for (file of ws.files; track file.id) {
+                  <div class="attachment-item">
+                    <span class="file-chip" [class]="'file-chip ' + file.extension.toLowerCase()" aria-hidden="true">{{ file.extension }}</span>
+                    <span class="file-body">
+                      <strong>{{ file.name }}</strong>
+                      <span>{{ fileMeta(file) }}</span>
+                    </span>
+                    <span class="file-actions">
+                      <button class="icon-button" type="button" [attr.aria-label]="'Xem trước ' + file.name" (click)="openFile(file)">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>
+                      </button>
+                      <button class="icon-button" type="button" [attr.aria-label]="'Tải xuống ' + file.name" (click)="downloadFile(file)">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 4v10m0 0 4-4m-4 4-4-4M5 19h14"/></svg>
+                      </button>
+                    </span>
+                  </div>
+                }
+              </div>
+              <p class="alert" style="margin: 12px 0 0">⚠ Tệp cần được kiểm tra an toàn. Nếu phát hiện nguy cơ, chặn tải xuống và ghi nhận cảnh báo.</p>
+            </section>
+          </aside>
+          <aside class="workspace-side">
+            <ng-container [ngTemplateOutlet]="checklistPanel" />
+          </aside>
+        </div>
+      }
+    }
+
+    @if (historyOpen()) {
+      <app-course-history-dialog
+        [title]="ws.title + ' · ' + ws.courseId"
+        [history]="ws.history"
+        (closed)="historyOpen.set(false)"
+      />
+    }
+
+    @if (rejectOpen()) {
+      <app-course-reject-dialog [workspace]="ws" (closed)="rejectOpen.set(false)" (confirmed)="confirmReject($event)" />
+    }
+
+    @if (supplementOpen()) {
+      <app-course-supplement-dialog [workspace]="ws" (closed)="supplementOpen.set(false)" (confirmed)="confirmSupplement($event)" />
+    }
+
+    @if (riskFile(); as file) {
+      <app-course-risk-dialog [file]="file" (closed)="closeRisk()" (replaceRequested)="requestReplacement()" />
+    }
+  } @else {
+    <section class="empty">
+      <strong>Không tìm thấy hồ sơ duyệt</strong>
+      <p>Yêu cầu có thể đã được xử lý hoặc đường dẫn không còn hiệu lực.</p>
+      <button class="button" type="button" (click)="back()">Quay lại hàng đợi</button>
+    </section>
+  }
+
+  @if (toast(); as t) {
+    <app-course-toast [message]="t.message" [tone]="t.tone" (closed)="toast.set(null)" />
+  }
+</main>

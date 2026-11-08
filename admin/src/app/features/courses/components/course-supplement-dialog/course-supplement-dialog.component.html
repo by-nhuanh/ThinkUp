@@ -1,0 +1,59 @@
+<app-admin-dialog
+  title="Yêu cầu giảng viên bổ sung"
+  [subtitle]="workspace().title + '   ·   ' + workspace().courseId + '   ·   ' + workspace().instructor.name"
+  size="xl"
+  (closed)="close()"
+>
+  <div class="alert" role="alert">
+    <span><strong>Giảng viên cần chỉnh sửa và gửi lại khóa học.</strong> Chọn phạm vi và mô tả rõ phần cần chỉnh sửa trước khi gửi lại.</span>
+  </div>
+
+  <div class="field" style="margin-bottom: 14px">
+    <span class="field-label-row"><span>Hạng mục cần bổ sung *</span></span>
+    <div class="choice-grid" role="group" aria-label="Hạng mục cần bổ sung">
+      @for (item of items; track item.id) {
+        <label class="choice">
+          <input type="checkbox" [checked]="isSelected(item.id)" (change)="toggleItem(item.id)" />
+          <span>{{ item.label }}</span>
+        </label>
+      }
+    </div>
+  </div>
+
+  <div class="field" style="margin-bottom: 14px">
+    <label for="supplement-issue">Loại vấn đề *</label>
+    <app-custom-select
+      [value]="issueType()"
+      [options]="issueTypes"
+      placeholder="Chọn nhóm vấn đề cần khắc phục"
+      controlId="supplement-issue"
+      [menuWidth]="420"
+      (valueChange)="setIssueType($event)"
+    />
+  </div>
+
+  <div class="field" style="margin-bottom: 14px">
+    <div class="field-label-row">
+      <label for="supplement-detail">Nội dung cần bổ sung *</label>
+      <span>{{ charCount() }} / tối thiểu 20</span>
+    </div>
+    <textarea
+      id="supplement-detail"
+      [value]="detail()"
+      placeholder="Nêu vị trí có lỗi, nội dung cần sửa và tiêu chí cần đáp ứng…"
+      (input)="setDetail($any($event.target).value)"
+      (blur)="touched.set(true)"
+      [attr.aria-invalid]="detailError() ? 'true' : null"
+    ></textarea>
+    @if (detailError()) {
+      <span class="error" role="alert">{{ detailError() }}</span>
+    }
+  </div>
+
+  <p class="dialog-note">✉ Hệ thống sẽ gửi hướng dẫn chỉnh sửa và các hạng mục đã chọn đến giảng viên.</p>
+
+  <div dialogFooter style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px">
+    <button class="button" type="button" (click)="close()">Hủy</button>
+    <button class="button primary" type="button" [disabled]="!canConfirm()" (click)="confirm()">Gửi yêu cầu</button>
+  </div>
+</app-admin-dialog>

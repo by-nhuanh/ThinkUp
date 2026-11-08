@@ -1,0 +1,27 @@
+<app-admin-dialog
+  title="Lịch sử duyệt"
+  [subtitle]="title()"
+  size="md"
+  (closed)="close()"
+>
+  @if (history().length) {
+    <ol class="history-list">
+      @for (entry of history(); track $index) {
+        <li>
+          <strong>{{ entry.action }}</strong>
+          <span>{{ dateTime(entry.at) }} · {{ entry.actor }}</span>
+          <p style="margin: 4px 0 0; color: #4c6485">{{ entry.note }}</p>
+        </li>
+      }
+    </ol>
+  } @else {
+    <div class="empty">
+      <strong>Chưa có hoạt động duyệt</strong>
+      <p>Lịch sử sẽ xuất hiện sau khi hồ sơ được xử lý.</p>
+    </div>
+  }
+
+  <div dialogFooter style="display: flex; justify-content: flex-end">
+    <button class="button" type="button" (click)="close()">Đóng</button>
+  </div>
+</app-admin-dialog>
