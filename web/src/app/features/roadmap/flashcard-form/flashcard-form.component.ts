@@ -25,6 +25,19 @@ export class FlashcardFormComponent {
   readonly isEdit = computed(() => Boolean(this.editId));
   readonly set = computed(() => (this.editId ? this.flashcardService.getSet(this.editId) : null));
 
+  /**
+   * The edit screen is reached from two places (the flashcard list and the set
+   * detail). `returnUrl` preserves that origin so "Quay lại"/"Hủy" goes back to
+   * the screen the user actually came from. Direct visits fall back to the set
+   * detail, or the list when creating a new set.
+   */
+  private readonly returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+  readonly backTarget = computed(() => {
+    const requested = this.returnUrl;
+    if (requested && requested.startsWith('/learning/')) return requested;
+    return this.editId ? `/learning/flashcards/${this.editId}` : '/learning/flashcards';
+  });
+
   readonly title = signal('');
   readonly desc = signal('');
   readonly rows = signal<FlashcardCardDraft[]>([]);
@@ -142,7 +155,7 @@ export class FlashcardFormComponent {
       this.flashcardService.updateSet(this.editId, draft).pipe(finalize(() => this.saving = false)).subscribe({
         next: result => {
           this.toastService.showToast({ type: 'success', message: result.message });
-          this.router.navigate(['/learning/flashcards', this.editId]);
+          void this.router.navigateByUrl(this.backTarget());
         },
         error: error => this.toastService.showToast({ type: 'error', message: error?.error?.message || 'Không thể lưu bộ flashcard.' })
       });
@@ -152,17 +165,14 @@ export class FlashcardFormComponent {
     this.flashcardService.createSet(draft).pipe(finalize(() => this.saving = false)).subscribe({
       next: result => {
         this.toastService.showToast({ type: 'success', message: result.message });
-        this.router.navigate(['/learning/flashcards', result.setId]);
+        if (this.returnUrl) void this.router.navigateByUrl(this.backTarget());
+        else this.router.navigate(['/learning/flashcards', result.setId]);
       },
       error: error => this.toastService.showToast({ type: 'error', message: error?.error?.message || 'Không thể tạo bộ flashcard.' })
     });
   }
 
   cancel(): void {
-    if (this.isEdit() && this.editId) {
-      this.router.navigate(['/learning/flashcards', this.editId]);
-      return;
-    }
-    this.router.navigate(['/learning/flashcards']);
+    void this.router.navigateByUrl(this.backTarget());
   }
 }

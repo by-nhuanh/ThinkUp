@@ -3,3 +3,8 @@
 .resize-handle{position:absolute;right:0;bottom:0;z-index:4;width:18px;height:18px;border:0;border-top-left-radius:10px;background:#ffffffd9;cursor:nwse-resize;touch-action:none}.resize-handle::after{content:"";position:absolute;right:4px;bottom:4px;width:8px;height:8px;border-right:2px solid #475569;border-bottom:2px solid #475569}
 
 .url-error{position:absolute;bottom:8px;left:8px;right:8px;margin:0;padding:4px;border-radius:4px;background:#fff;color:#dc2626;font-size:11px}
+
+.item-delete{position:absolute;top:6px;right:6px;z-index:6;display:grid;place-items:center;width:26px;height:26px;padding:0;border:1px solid #fecaca;border-radius:999px;background:#fff;color:#dc2626;box-shadow:0 4px 12px #00000026;cursor:pointer;transition:background-color .15s ease,border-color .15s ease}
+.item-delete svg{width:14px;height:14px}
+.item-delete:hover{background:#fef2f2;border-color:#fca5a5}
+.item-delete:focus-visible{outline:2px solid #714cb6;outline-offset:2px}

@@ -36,11 +36,11 @@
       </header>
 
       <div class="hm-carousel">
-        <button type="button" class="hm-carousel__arrow hm-carousel__arrow--prev" (click)="scrollTrack(-1)" aria-label="Khóa học trước">
+        <button type="button" class="hm-carousel__arrow hm-carousel__arrow--prev" (click)="scrollTrack(-1)" [disabled]="!canScrollPrev()" aria-label="Khóa học trước">
           <app-icon name="chevron-left" class="h-[16px] w-[16px]" />
         </button>
 
-        <div class="hm-track" #track>
+        <div class="hm-track" #track (scroll)="onTrackScroll()">
           @for (item of myLearning(); track item.id) {
             <a class="hm-course" [routerLink]="item.href" [queryParams]="item.lessonId ? { lesson: item.lessonId } : null">
               <div class="hm-course__cover"
@@ -71,16 +71,25 @@
           }
         </div>
 
-        <button type="button" class="hm-carousel__arrow hm-carousel__arrow--next" (click)="scrollTrack(1)" aria-label="Khóa học tiếp theo">
+        <button type="button" class="hm-carousel__arrow hm-carousel__arrow--next" (click)="scrollTrack(1)" [disabled]="!canScrollNext()" aria-label="Khóa học tiếp theo">
           <app-icon name="chevron-right" class="h-[16px] w-[16px]" />
         </button>
       </div>
 
-      <div class="hm-dots" aria-hidden="true">
-        @for (item of myLearning(); track item.id; let first = $first) {
-          <span class="hm-dot" [class.hm-dot--active]="first"></span>
-        }
-      </div>
+      @if (carouselPages() > 1) {
+        <div class="hm-dots">
+          @for (page of carouselPagesArray(); track page) {
+            <button
+              type="button"
+              class="hm-dot"
+              [class.hm-dot--active]="page === carouselPage()"
+              [attr.aria-label]="'Trang ' + (page + 1)"
+              [attr.aria-current]="page === carouselPage() ? 'true' : null"
+              (click)="goToCarouselPage(page)"
+            ></button>
+          }
+        </div>
+      }
     </section>
 
     <!-- 3. Lộ trình -->

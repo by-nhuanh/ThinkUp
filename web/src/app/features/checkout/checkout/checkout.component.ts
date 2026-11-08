@@ -26,6 +26,9 @@ type PendingKind = 'qr' | 'bank' | 'swift';
 
 type BrandId = 'momo' | 'zalopay' | 'vnpay' | 'visa' | 'mastercard' | 'jcb' | 'paypal' | 'gpay' | 'applepay';
 
+/** Phương thức chuyển hướng thẳng sang cổng thanh toán, không có nội dung mở rộng. */
+const DIRECT_METHODS: readonly MethodId[] = ['paypal', 'apple-pay'];
+
 interface PaymentMethodOption {
   id: MethodId;
   title: string;
@@ -330,6 +333,9 @@ export class CheckoutComponent implements OnInit {
       this.selectedMethod.set(method);
       this.expandedMethod.set(method);
     }
+    if (this.isDirectMethod(method)) {
+      this.expandedMethod.set(null);
+    }
     this.paymentError.set('');
 
     if (method === 'bank-transfer' && !this.selectedBank()) {
@@ -337,8 +343,12 @@ export class CheckoutComponent implements OnInit {
     }
   }
 
+  isDirectMethod(method: MethodId): boolean {
+    return DIRECT_METHODS.includes(method);
+  }
+
   isExpanded(method: MethodId): boolean {
-    return this.expandedMethod() === method;
+    return !this.isDirectMethod(method) && this.expandedMethod() === method;
   }
 
   isSelectedMethod(method: MethodId): boolean {
@@ -838,8 +848,10 @@ export class CheckoutComponent implements OnInit {
         return 'PayPal';
       case 'gpay':
         return 'G Pay';
+      case 'applepay':
+        return 'Apple Pay';
       default:
-        return ' Pay';
+        return 'Thẻ';
     }
   }
 

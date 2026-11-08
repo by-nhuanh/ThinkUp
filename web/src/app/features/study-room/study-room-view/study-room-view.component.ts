@@ -430,6 +430,12 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
     this.broadcastTimer();
   }
 
+  stopFocusMode(): void {
+    this.stopTimer();
+    this.broadcastTimer();
+    this.showNotice('Đã dừng chế độ tập trung.');
+  }
+
   sendMessage(text: string): void {
     if (!text.trim() || this.focusLocked() || !this.canUseCapability('chat')) return;
     const user = this.auth.currentUser();

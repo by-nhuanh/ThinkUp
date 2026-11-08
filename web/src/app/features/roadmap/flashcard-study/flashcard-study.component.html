@@ -110,7 +110,7 @@
         <div class="rm-card fs-empty">
           <h1 class="rm-card-title">Bộ flashcard chưa có thẻ</h1>
           <p class="rm-base">Thêm thẻ vào bộ để bắt đầu ôn tập.</p>
-          <a class="rm-btn rm-btn--primary rm-btn--sm" [routerLink]="['/learning/flashcards', s.id, 'edit']">
+          <a class="rm-btn rm-btn--primary rm-btn--sm" [routerLink]="['/learning/flashcards', s.id, 'edit']" [queryParams]="{ returnUrl: '/learning/flashcards/' + s.id + '/study' }">
             Thêm thẻ ngay
           </a>
         </div>

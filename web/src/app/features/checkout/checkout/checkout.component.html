@@ -52,7 +52,7 @@
                 <button
                   type="button"
                   class="method-head"
-                  [attr.aria-expanded]="expanded"
+                  [attr.aria-expanded]="isDirectMethod(method.id) ? null : expanded"
                   (click)="selectMethod(method.id)"
                   [disabled]="processing()"
                 >
@@ -69,11 +69,23 @@
                         </svg>
                       }
                       @case ('wallet') {
-                        <svg viewBox="0 0 24 24" fill="none">
-                          <path d="M3.5 7.4A2.4 2.4 0 0 1 5.9 5h10.7a2 2 0 0 1 2 2v1.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                          <rect x="3.5" y="7.4" width="17" height="11.4" rx="2.4" stroke="currentColor" stroke-width="1.5" />
-                          <path d="M20.5 11.6h-4.3a2 2 0 0 0 0 4h4.3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
-                        </svg>
+                        @if (method.id === 'paypal') {
+                          <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M8.6 19.4h-3l2.4-14h5.4c2.7 0 4.3 1.4 3.9 3.9-.4 2.6-2.4 4-5.2 4H9.9l-.7 3.9a1.4 1.4 0 0 1-1.4 1.2Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
+                            <path d="M11.4 16.7H9.2l1.1-6.2h2.1c1.5 0 2.3.7 2.1 2-.2 1.4-1.3 2.1-2.8 2.1h-1l-.5 2.1Z" fill="currentColor" fill-opacity=".18" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" />
+                          </svg>
+                        } @else if (method.id === 'apple-pay') {
+                          <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M16.9 20.2c-1 .9-2 .8-3 .3-1.1-.4-2.1-.4-3.2 0-1.4.6-2.2.4-3-.3-2.9-3.2-2.2-9.6 3.3-9.8 1.3.1 2.3.7 3.1.8 1.2-.2 2.3-.9 3.6-.8 1.5.1 2.6.7 3.4 1.8-3.1 1.9-2.4 6 .5 7.1-.6 1.5-1.3 3-2.5 4.1Z" fill="currentColor" />
+                            <path d="M12 6.3c-.2-2.2 1.7-4 3.7-4.2.3 2.6-2.3 4.5-3.7 4.2Z" fill="currentColor" />
+                          </svg>
+                        } @else {
+                          <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M3.5 7.4A2.4 2.4 0 0 1 5.9 5h10.7a2 2 0 0 1 2 2v1.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                            <rect x="3.5" y="7.4" width="17" height="11.4" rx="2.4" stroke="currentColor" stroke-width="1.5" />
+                            <path d="M20.5 11.6h-4.3a2 2 0 0 0 0 4h4.3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+                          </svg>
+                        }
                       }
                       @case ('bank') {
                         <svg viewBox="0 0 24 24" fill="none">
@@ -105,16 +117,47 @@
                   @if (method.brands?.length) {
                     <span class="method-brands" aria-hidden="true">
                       @for (brand of method.brands ?? []; track brand) {
-                        <span class="brand-chip" [class]="'brand-chip brand-chip--' + brand">{{ brandText(brand) }}</span>
+                        <span class="brand-chip" [class]="'brand-chip brand-chip--' + brand">
+                          @switch (brand) {
+                            @case ('mastercard') {
+                              <svg class="brand-mark" viewBox="0 0 26 16">
+                                <circle cx="10" cy="8" r="6.4" fill="#EB001B" />
+                                <circle cx="16" cy="8" r="6.4" fill="#F79E1B" fill-opacity=".9" />
+                              </svg>
+                            }
+                            @case ('jcb') {
+                              <span class="brand-bars">
+                                <i class="is-blue"></i><i class="is-red"></i><i class="is-green"></i>
+                              </span>
+                            }
+                            @case ('gpay') {
+                              <svg class="brand-mark brand-mark--g" viewBox="0 0 12 12">
+                                <path fill="#4285F4" d="M11.6 6.1c0-.4 0-.8-.1-1.1H6v2.1h3.1a2.7 2.7 0 0 1-1.2 1.8v1.5h1.9c1.1-1 1.8-2.5 1.8-4.3Z" />
+                                <path fill="#34A853" d="M6 12c1.6 0 3-.5 4-1.5l-1.9-1.5c-.5.4-1.2.6-2.1.6-1.6 0-3-1.1-3.4-2.6H.6v1.6A6 6 0 0 0 6 12Z" />
+                                <path fill="#FBBC05" d="M2.6 7a3.6 3.6 0 0 1 0-2.3V3.1H.6a6 6 0 0 0 0 5.5L2.6 7Z" />
+                                <path fill="#EA4335" d="M6 2.4c.9 0 1.7.3 2.3.9l1.7-1.7A6 6 0 0 0 .6 3.1l2 1.6C3 3.2 4.4 2.4 6 2.4Z" />
+                              </svg>
+                            }
+                            @case ('applepay') {
+                              <svg class="brand-mark" viewBox="0 0 24 24">
+                                <path fill="currentColor" d="M16.9 20.2c-1 .9-2 .8-3 .3-1.1-.4-2.1-.4-3.2 0-1.4.6-2.2.4-3-.3-2.9-3.2-2.2-9.6 3.3-9.8 1.3.1 2.3.7 3.1.8 1.2-.2 2.3-.9 3.6-.8 1.5.1 2.6.7 3.4 1.8-3.1 1.9-2.4 6 .5 7.1-.6 1.5-1.3 3-2.5 4.1Z" />
+                                <path fill="currentColor" d="M12 6.3c-.2-2.2 1.7-4 3.7-4.2.3 2.6-2.3 4.5-3.7 4.2Z" />
+                              </svg>
+                            }
+                          }
+                          {{ brandText(brand) }}
+                        </span>
                       }
                     </span>
                   }
 
-                  <span class="method-chevron" [class.is-open]="expanded" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none">
-                      <path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
-                  </span>
+                  @if (!isDirectMethod(method.id)) {
+                    <span class="method-chevron" [class.is-open]="expanded" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none">
+                        <path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </span>
+                  }
                 </button>
 
                 @if (expanded) {
@@ -321,7 +364,12 @@
                           <label class="field">
                             <span class="field-label">
                               CVV
-                              <span class="field-hint" title="3 hoặc 4 số ở mặt sau thẻ">?</span>
+                              <span class="field-hint-wrap">
+                                <span class="field-hint" tabindex="0" role="button" aria-describedby="checkout-cvv-tip" aria-label="CVV là gì?">?</span>
+                                <span class="field-tooltip" role="tooltip" id="checkout-cvv-tip">
+                                  3 hoặc 4 số ở mặt sau thẻ (mặt trước với American Express).
+                                </span>
+                              </span>
                             </span>
                             <input
                               type="password"
@@ -343,29 +391,6 @@
                             <path d="M12 14v2.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
                           </svg>
                           <span>Thông tin thẻ được mã hóa và bảo mật tuyệt đối.</span>
-                        </div>
-                      }
-
-                      @case ('paypal') {
-                        <div class="redirect-note">
-                          <span class="redirect-note__logo wallet-logo--paypal" aria-hidden="true">PayPal</span>
-                          <div>
-                            <strong>Thanh toán an toàn qua PayPal</strong>
-                            <p>Bạn sẽ được chuyển đến cổng PayPal để đăng nhập và xác nhận giao dịch.</p>
-                          </div>
-                        </div>
-                      }
-
-                      @case ('apple-pay') {
-                        <div class="redirect-note">
-                          <span class="redirect-note__brands" aria-hidden="true">
-                            <span class="brand-chip brand-chip--gpay">G Pay</span>
-                            <span class="brand-chip brand-chip--applepay"> Pay</span>
-                          </span>
-                          <div>
-                            <strong>Thanh toán một chạm</strong>
-                            <p>Bạn sẽ được chuyển đến cổng thanh toán để xác nhận bằng Apple Pay hoặc Google Pay.</p>
-                          </div>
                         </div>
                       }
 

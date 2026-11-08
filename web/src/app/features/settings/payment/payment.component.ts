@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ToastService } from '../../../core/services/toast.service';
 import { PaymentPreferences } from '../../../core/models/payment.model';
@@ -16,6 +16,7 @@ import {
   LucideGift,
   LucideMail,
   LucideMonitorPlay,
+  LucidePlus,
   LucideShieldCheck,
 } from '@lucide/angular';
 import { SettingsService } from '../services/settings.service';
@@ -25,6 +26,27 @@ import { SettingsBackButtonComponent } from '../components/settings-back-button/
 
 type PaymentTone = 'green' | 'pink' | 'yellow';
 type TransactionIcon = 'book' | 'monitor' | 'gift' | 'code' | 'crown';
+type AddMethodType = 'momo' | 'zalopay' | 'visa';
+
+interface AddMethodDraft {
+  owner: string;
+  phone: string;
+  cardNumber: string;
+  expiry: string;
+  cvv: string;
+  billingAddress: string;
+  isDefault: boolean;
+}
+
+const EMPTY_ADD_METHOD_DRAFT: AddMethodDraft = {
+  owner: '',
+  phone: '',
+  cardNumber: '',
+  expiry: '',
+  cvv: '',
+  billingAddress: '',
+  isDefault: false,
+};
 
 interface TransactionItem {
   id: string;
@@ -63,13 +85,14 @@ interface InvoiceItem {
     LucideGift,
     LucideMail,
     LucideMonitorPlay,
+    LucidePlus,
     LucideShieldCheck,
   ],
   templateUrl: './payment.component.html',
   styleUrl: './payment.component.css',
   host: {
     '(document:pointerdown)': 'onDocumentPointerDown($event)',
-    '(document:keydown.escape)': 'closeMenu()',
+    '(document:keydown.escape)': 'onEscape()',
   },
 })
 export class PaymentComponent {
@@ -109,7 +132,54 @@ export class PaymentComponent {
   readonly invoiceEmail = signal(true);
   readonly quickConfirm = signal(false);
 
-  constructor() { this.load(); }
+  // ─── Modal thêm phương thức thanh toán (UI-only) ───────────────────────────
+  readonly addOpen = signal(false);
+  readonly addType = signal<AddMethodType>('momo');
+  readonly addDraft = signal<AddMethodDraft>({ ...EMPTY_ADD_METHOD_DRAFT });
+  readonly addSubmitted = signal(false);
+  readonly addNotice = signal('');
+  private readonly addButton = viewChild<ElementRef<HTMLButtonElement>>('addMethodButton');
+  private readonly addDialog = viewChild<ElementRef<HTMLElement>>('addDialog');
+  private bodyOverflowBeforeModal = '';
+
+  readonly addErrors = computed<Record<string, string>>(() => {
+    const draft = this.addDraft();
+    const errors: Record<string, string> = {};
+    if (!draft.owner.trim()) {
+      errors['owner'] = this.addType() === 'visa'
+        ? 'Vui lòng nhập tên chủ thẻ.'
+        : 'Vui lòng nhập tên chủ ví.';
+    }
+    if (this.addType() === 'visa') {
+      const digits = draft.cardNumber.replace(/\D/g, '');
+      if (digits.length < 13 || digits.length > 19) errors['cardNumber'] = 'Số thẻ phải có từ 13 đến 19 chữ số.';
+      if (!this.isValidExpiry(draft.expiry)) errors['expiry'] = 'Ngày hết hạn không hợp lệ (MM / YY).';
+      if (!/^\d{3,4}$/.test(draft.cvv)) errors['cvv'] = 'CVV phải là 3 hoặc 4 chữ số.';
+    } else {
+      const phone = draft.phone.replace(/[\s.-]/g, '');
+      if (!/^(0|\+84)\d{9,10}$/.test(phone)) errors['phone'] = 'Số điện thoại không hợp lệ.';
+    }
+    return errors;
+  });
+  readonly addValid = computed(() => Object.keys(this.addErrors()).length === 0);
+
+  readonly addTypeLabel = computed(() => {
+    switch (this.addType()) {
+      case 'momo':
+        return 'Ví MoMo';
+      case 'zalopay':
+        return 'Ví ZaloPay';
+      default:
+        return 'Thẻ Visa';
+    }
+  });
+
+  constructor() {
+    this.load();
+    this.destroyRef.onDestroy(() => {
+      if (this.addOpen()) document.body.style.overflow = this.bodyOverflowBeforeModal;
+    });
+  }
 
   load(): void {
     this.loading.set(true); this.error.set('');
@@ -194,6 +264,14 @@ export class PaymentComponent {
     this.openMenuId.set(null);
   }
 
+  onEscape(): void {
+    if (this.addOpen()) {
+      this.closeAddMethod();
+      return;
+    }
+    this.closeMenu();
+  }
+
   setDefaultMethod(id: string): void {
     this.toast.showToast({ type: 'info', message: 'Chưa thể đặt phương thức mặc định.' });
     this.closeMenu();
@@ -206,6 +284,118 @@ export class PaymentComponent {
 
   nextMethods(): void {
     this.carouselStart.update((index) => index + 1);
+  }
+
+  // ─── Modal thêm phương thức ───────────────────────────────────────────────
+
+  openAddMethod(): void {
+    this.closeMenu();
+    this.addType.set('momo');
+    this.addDraft.set({ ...EMPTY_ADD_METHOD_DRAFT });
+    this.addSubmitted.set(false);
+    this.addNotice.set('');
+    this.bodyOverflowBeforeModal = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    this.addOpen.set(true);
+  }
+
+  closeAddMethod(): void {
+    if (!this.addOpen()) return;
+    this.addOpen.set(false);
+    document.body.style.overflow = this.bodyOverflowBeforeModal;
+    this.addButton()?.nativeElement.focus();
+  }
+
+  setAddType(type: AddMethodType): void {
+    if (this.addType() === type) return;
+    this.addType.set(type);
+    this.addDraft.set({ ...EMPTY_ADD_METHOD_DRAFT });
+    this.addSubmitted.set(false);
+    this.addNotice.set('');
+  }
+
+  updateAddOwner(event: Event): void {
+    this.patchAddDraft({ owner: (event.target as HTMLInputElement).value });
+  }
+
+  updateAddPhone(event: Event): void {
+    this.patchAddDraft({ phone: (event.target as HTMLInputElement).value });
+  }
+
+  updateAddCardNumber(event: Event): void {
+    const digits = (event.target as HTMLInputElement).value.replace(/\D/g, '').slice(0, 19);
+    this.patchAddDraft({ cardNumber: digits.replace(/(\d{4})(?=\d)/g, '$1 ') });
+  }
+
+  updateAddExpiry(event: Event): void {
+    const digits = (event.target as HTMLInputElement).value.replace(/\D/g, '').slice(0, 4);
+    const formatted = digits.length > 2 ? `${digits.slice(0, 2)} / ${digits.slice(2)}` : digits;
+    this.patchAddDraft({ expiry: formatted });
+  }
+
+  updateAddCvv(event: Event): void {
+    const digits = (event.target as HTMLInputElement).value.replace(/\D/g, '').slice(0, 4);
+    this.patchAddDraft({ cvv: digits });
+  }
+
+  updateAddBillingAddress(event: Event): void {
+    this.patchAddDraft({ billingAddress: (event.target as HTMLInputElement).value });
+  }
+
+  setAddDefault(value: boolean): void {
+    this.patchAddDraft({ isDefault: value });
+  }
+
+  submitAddMethod(): void {
+    this.addSubmitted.set(true);
+    this.addNotice.set('');
+    if (!this.addValid()) return;
+    // Cần nối backend: POST liên kết phương thức thanh toán (MoMo/ZaloPay/Visa) + trạng thái mặc định.
+    // Chưa có API/cổng thanh toán nên không lưu dữ liệu và không báo thành công giả.
+    this.addNotice.set(
+      `Chưa thể liên kết ${this.addTypeLabel()}: cổng thanh toán chưa được kết nối. Thông tin bạn nhập không được lưu.`,
+    );
+  }
+
+  onDialogKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.closeAddMethod();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const dialog = this.addDialog()?.nativeElement;
+    if (!dialog) return;
+    const focusables = Array.from(
+      dialog.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+      ),
+    ).filter(element => element.offsetParent !== null);
+    if (!focusables.length) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  private patchAddDraft(patch: Partial<AddMethodDraft>): void {
+    this.addDraft.update(draft => ({ ...draft, ...patch }));
+    if (this.addNotice()) this.addNotice.set('');
+  }
+
+  private isValidExpiry(value: string): boolean {
+    const match = value.replace(/\s/g, '').match(/^(\d{2})\/?(\d{2})$/);
+    if (!match) return false;
+    const month = Number(match[1]);
+    if (month < 1 || month > 12) return false;
+    const year = 2000 + Number(match[2]);
+    const now = new Date();
+    return new Date(year, month, 1) > new Date(now.getFullYear(), now.getMonth(), 1);
   }
 
   onDocumentPointerDown(event: PointerEvent): void {
