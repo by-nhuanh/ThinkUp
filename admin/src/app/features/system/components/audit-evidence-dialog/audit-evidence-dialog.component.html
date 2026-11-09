@@ -1,16 +1,22 @@
-<app-admin-dialog [title]="log().evidenceName" subtitle="Tệp bằng chứng đính kèm · Chỉ xem" size="lg" (closed)="closed.emit()">
+<app-admin-dialog
+  [title]="log().evidenceName"
+  subtitle="Tệp bằng chứng đính kèm · Chỉ xem"
+  size="xl"
+  icon="M6 3h8l4 4v14H6z M14 3v4h4 M9 13h6 M9 17h6"
+  (closed)="closed.emit()"
+>
   <div class="evidence-workspace">
     <div class="evidence-toolbar">
       <span>Trang 1 / 1</span>
       <div class="evidence-zoom">
-        <button class="icon-button" type="button" aria-label="Thu nhỏ" [disabled]="zoom() <= 50" (click)="zoomBy(-10)">−</button>
+        <button class="icon-button subtle" type="button" aria-label="Thu nhỏ" [disabled]="zoom() <= 50" (click)="zoomBy(-10)">−</button>
         <span>{{ zoomLabel() }}</span>
-        <button class="icon-button" type="button" aria-label="Phóng to" [disabled]="zoom() >= 200" (click)="zoomBy(10)">+</button>
+        <button class="icon-button subtle" type="button" aria-label="Phóng to" [disabled]="zoom() >= 200" (click)="zoomBy(10)">+</button>
       </div>
     </div>
 
     <div class="evidence-viewport">
-      <div class="evidence-scale" [style.width.%]="zoom()">
+      <div class="evidence-scale" [style.--doc-scale]="zoom() / 100">
         <article class="preview-doc">
           <header>
             <strong>BIÊN BẢN ĐỐI SOÁT LỆNH RÚT TIỀN</strong>
@@ -25,7 +31,7 @@
     </div>
 
     <div class="dialog-actions" dialogFooter>
-      <button class="secondary-button" type="button" (click)="closed.emit()">Đóng cửa sổ</button>
+      <button class="primary-button" type="button" (click)="closed.emit()">Đóng cửa sổ</button>
     </div>
   </div>
 </app-admin-dialog>

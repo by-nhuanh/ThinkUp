@@ -41,16 +41,16 @@ export class SettingsComponent implements OnDestroy {
   protected readonly store = inject(SYSTEM_STORE);
   private readonly toast = inject(SystemToastService);
 
-  readonly tabs: readonly { id: SettingsTab; label: string; icon: string }[] = [
-    { id: 'general', label: 'Cài đặt chung', icon: 'M4 6h16M4 12h16M4 18h10' },
-    { id: 'parameters', label: 'Tham số hệ thống', icon: 'M6 4v16M12 4v16M18 4v16M3 9h6M9 15h6M15 7h6' },
-    { id: 'social', label: 'Xác thực và Mạng xã hội', icon: 'M12 3 5 6v6c0 4.4 3 7.4 7 9 4-1.6 7-4.6 7-9V6z' },
-    { id: 'seo', label: 'SEO và Tracking', icon: 'M4 19V5M4 19h16M8 15l3-4 3 2 4-6' },
-    { id: 'payment', label: 'Cổng thanh toán', icon: 'M3 7h18v10H3zM3 10h18M7 14h4' },
-    { id: 'messaging', label: 'SMS và Email', icon: 'M4 6h16v12H4zM4 7l8 6 8-6' },
-    { id: 'storage', label: 'Lưu trữ S3', icon: 'M5 8h14l1 12H4zM8 8V6a4 4 0 0 1 8 0v2' },
-    { id: 'signing', label: 'Ký số', icon: 'M4 20h16M12 4l4 4-7 7-4 1 1-4z' },
-    { id: 'maintenance', label: 'Bảo trì và Cảnh báo', icon: 'M12 4 21 19H3zM12 10v4M12 16.6v.4' }
+  readonly tabs: readonly { id: SettingsTab; label: string }[] = [
+    { id: 'general', label: 'Cài đặt chung' },
+    { id: 'parameters', label: 'Tham số hệ thống' },
+    { id: 'social', label: 'Xác thực và Mạng xã hội' },
+    { id: 'seo', label: 'SEO và Tracking' },
+    { id: 'payment', label: 'Cổng thanh toán' },
+    { id: 'messaging', label: 'SMS và Email' },
+    { id: 'storage', label: 'Lưu trữ S3' },
+    { id: 'signing', label: 'Ký số' },
+    { id: 'maintenance', label: 'Bảo trì và Cảnh báo' }
   ];
   readonly activeTab = signal<SettingsTab>('general');
   readonly draft = signal<SystemSettings>(structuredClone(this.store.settings()));
@@ -119,6 +119,7 @@ export class SettingsComponent implements OnDestroy {
   readonly paramGroups = [
     {
       title: 'Doanh thu và Thuế',
+      columns: 3,
       keys: ['taxThreshold', 'taxRate', 'superAdminThreshold'],
       note: 'Thu nhập từ 2 triệu khấu trừ 10% TNCN. Lệnh rút từ 20 triệu phải do Super Admin phê duyệt.',
       fields: [
@@ -129,6 +130,7 @@ export class SettingsComponent implements OnDestroy {
     },
     {
       title: 'Đơn hàng và Thanh toán',
+      columns: 2,
       keys: ['paymentTimeout', 'ordersPerPage'],
       note: 'Hết hạn chờ: tự hủy đơn chưa thanh toán và hoàn lại lượt sử dụng voucher.',
       fields: [
@@ -138,6 +140,7 @@ export class SettingsComponent implements OnDestroy {
     },
     {
       title: 'Đào tạo và Thẩm định',
+      columns: 2,
       keys: ['courseReviewHours', 'sMatchThreshold', 'minCoursesPerMilestone', 'testPassScore'],
       note: 'Điểm số hợp lệ từ 1–100. S-Match từ 70 điểm; đạt bài kiểm tra từ 80%.',
       fields: [
@@ -149,6 +152,7 @@ export class SettingsComponent implements OnDestroy {
     },
     {
       title: 'Quy định Kỷ luật',
+      columns: 2,
       keys: ['studentLockReasonMin', 'lecturerDisciplineReasonMin', 'courseRejectReasonMin'],
       note: 'Độ dài tối thiểu được tính sau khi bỏ khoảng trắng thừa. Giá trị mặc định: 10 ký tự.',
       fields: [
@@ -162,11 +166,19 @@ export class SettingsComponent implements OnDestroy {
   readonly editingProvider = signal<SocialProvider | null>(null);
   readonly newKeyId = signal('');
   readonly newKeySecret = signal('');
-  readonly socialCards: readonly { id: SocialProvider; name: string; idLabel: string; secretLabel: string; idKey: keyof SystemSettings['social']; secretKey: keyof SystemSettings['social'] }[] = [
-    { id: 'google', name: 'Google', idLabel: 'Client ID', secretLabel: 'Client Secret', idKey: 'googleClientId', secretKey: 'googleClientSecret' },
-    { id: 'facebook', name: 'Facebook', idLabel: 'Client ID', secretLabel: 'Client Secret', idKey: 'facebookClientId', secretKey: 'facebookClientSecret' },
-    { id: 'apple', name: 'Apple', idLabel: 'Client ID', secretLabel: 'Client Secret', idKey: 'appleClientId', secretKey: 'appleClientSecret' },
-    { id: 'recaptcha', name: 'Google reCAPTCHA v3', idLabel: 'Site Key', secretLabel: 'Secret Key', idKey: 'recaptchaSiteKey', secretKey: 'recaptchaSecretKey' }
+  readonly socialCards: readonly {
+    id: SocialProvider;
+    name: string;
+    idLabel: string;
+    secretLabel: string;
+    enabledKey: keyof SystemSettings['social'];
+    idKey: keyof SystemSettings['social'];
+    secretKey: keyof SystemSettings['social'];
+  }[] = [
+    { id: 'google', name: 'Google', idLabel: 'Client ID', secretLabel: 'Client Secret', enabledKey: 'googleEnabled', idKey: 'googleClientId', secretKey: 'googleClientSecret' },
+    { id: 'facebook', name: 'Facebook', idLabel: 'Client ID', secretLabel: 'Client Secret', enabledKey: 'facebookEnabled', idKey: 'facebookClientId', secretKey: 'facebookClientSecret' },
+    { id: 'apple', name: 'Apple', idLabel: 'Client ID', secretLabel: 'Client Secret', enabledKey: 'appleEnabled', idKey: 'appleClientId', secretKey: 'appleClientSecret' },
+    { id: 'recaptcha', name: 'Google reCAPTCHA v3', idLabel: 'Site Key', secretLabel: 'Secret Key', enabledKey: 'recaptchaEnabled', idKey: 'recaptchaSiteKey', secretKey: 'recaptchaSecretKey' }
   ];
   readonly socialValid = computed(() =>
     this.editingProvider() === null || (this.newKeyId().trim().length > 0 && this.newKeySecret().trim().length > 0));
@@ -253,6 +265,21 @@ export class SettingsComponent implements OnDestroy {
     this.editingProvider.set(provider);
     this.newKeyId.set('');
     this.newKeySecret.set('');
+  }
+
+  toggleSocial(card: { enabledKey: keyof SystemSettings['social'] }): void {
+    const next = !this.draft().social[card.enabledKey];
+    this.updateSection('social', card.enabledKey, next as SystemSettings['social'][typeof card.enabledKey]);
+    this.toast.show(
+      next ? 'Đã bật phương thức đăng nhập' : 'Đã tắt phương thức đăng nhập',
+      'info',
+      3000,
+      'Thay đổi nằm trong bản nháp · nhấn Lưu cấu hình để áp dụng.'
+    );
+  }
+
+  isProviderEnabled(card: { enabledKey: keyof SystemSettings['social'] }): boolean {
+    return this.draft().social[card.enabledKey] === true;
   }
 
   cancelEditKeys(): void {

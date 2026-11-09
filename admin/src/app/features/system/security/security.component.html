@@ -14,41 +14,44 @@
   <div class="system-page">
     <div class="page-heading">
       <div class="heading-copy">
-        <p class="eyebrow">Phân quyền Admin</p>
         <h1>Phân quyền và Bảo mật</h1>
       </div>
       <div class="heading-actions">
-        <button class="primary-button" type="button" (click)="assignOpen.set(true)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-          Phân bổ vai trò
-        </button>
+        <button class="primary-button" type="button" (click)="assignOpen.set(true)">Phân quyền Admin</button>
       </div>
     </div>
 
-    <!-- TODO(pre-deploy): Nhớ xóa ghi chú demo và đấu nối API phân quyền thật. -->
-    <p class="demo-note">Dữ liệu demo · OTP hợp lệ: 123456 · nhập 000000 để mô phỏng lỗi máy chủ · thêm ?denied=1 để xem màn hình không có quyền.</p>
+    <!-- TODO(pre-deploy): Nhớ xóa ghi chú demo trong store và đấu nối API phân quyền thật; OTP demo 123456 nằm ở system.store. -->
 
     <div class="metric-grid">
-      <div class="metric-card">
+      <article class="metric-card">
+        <small>Admin đang hoạt động</small>
         <span class="metric-icon blue" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.4"/><path d="M2.8 20a6.2 6.2 0 0 1 12.4 0"/><path d="M16 4.6a3.4 3.4 0 0 1 0 6.8M17.6 14.2a6.2 6.2 0 0 1 3.6 5.8"/></svg></span>
-        <div><small>Admin đang hoạt động</small><strong>{{ kpi().active }}</strong><p>Trên tổng số {{ kpi().total }} tài khoản</p></div>
-      </div>
-      <div class="metric-card">
+        <strong>{{ kpi().active }}</strong>
+        <p>Trên tổng số {{ kpi().total }} tài khoản</p>
+      </article>
+      <article class="metric-card">
+        <small>Phiên đang mở</small>
         <span class="metric-icon cyan" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></span>
-        <div><small>Phiên đang mở</small><strong>{{ kpi().sessions }}</strong><p>Truy cập trên mọi thiết bị</p></div>
-      </div>
-      <div class="metric-card">
+        <strong>{{ kpi().sessions }}</strong>
+        <p>Truy cập trên mọi thiết bị</p>
+      </article>
+      <article class="metric-card">
+        <small>Đã hoàn tất 2FA</small>
         <span class="metric-icon green" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 8.4-7 10-4-1.6-7-5.4-7-10V6z"/><path d="m9 12 2 2 4-4"/></svg></span>
-        <div><small>Đã hoàn tất 2FA</small><strong>{{ kpi().percentLabel }}</strong><p>{{ kpi().protectedCount }}/{{ kpi().total }} tài khoản đã bảo vệ</p></div>
-      </div>
-      <div class="metric-card">
-        <span class="metric-icon red" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M5.5 5.5l13 13"/></svg></span>
-        <div><small>Địa chỉ IP bị khóa</small><strong>{{ kpi().blockedIps }}</strong><p>Trong danh sách chặn truy cập</p></div>
-      </div>
+        <strong>{{ kpi().percentLabel }}</strong>
+        <p>{{ kpi().protectedCount }}/{{ kpi().total }} tài khoản đã bảo vệ</p>
+      </article>
+      <article class="metric-card">
+        <small>Địa chỉ IP bị khóa</small>
+        <span class="metric-icon red" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span>
+        <strong>{{ kpi().blockedIps }}</strong>
+        <p>Trong danh sách chặn truy cập</p>
+      </article>
     </div>
 
     <div class="policy-banner">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.6-3 8.4-7 10-4-1.6-7-5.4-7-10V6z"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.6-3 8.4-7 10-4-1.6-7-5.4-7-10V6z"/><path d="m9 12 2 2 4-4"/></svg>
       <div>
         <strong>Bảo vệ quyền truy cập quản trị</strong>
         <p>Bắt buộc 2FA cho mọi Admin · Chỉ Super Admin được phân quyền · Mọi thay đổi đều lưu nhật ký</p>
@@ -56,42 +59,38 @@
       <button class="link-button" type="button" (click)="viewAuditLog()">Xem nhật ký →</button>
     </div>
 
-    <section class="workspace-panel" aria-label="Danh sách quản trị viên">
+    <div class="filter-panel">
       <div class="filter-bar security-filters">
         <app-search-field
           [value]="search()"
           placeholder="Tìm theo tên hoặc email..."
-          label="Tìm kiếm quản trị viên"
+          label="Tìm kiếm"
+          [floatLabel]="true"
           inputId="security-search"
           (valueChange)="onSearch($event)"
         />
-        <label>
+        <div class="filter-field">
           <span>Vai trò</span>
           <app-custom-select controlId="security-role" [value]="roleFilter()" [options]="roleOptions" placeholder="Tất cả vai trò" (valueChange)="setFilter('role', $event)" />
-        </label>
-        <label>
+        </div>
+        <div class="filter-field">
           <span>Trạng thái</span>
           <app-custom-select controlId="security-status" [value]="statusFilter()" [options]="statusOptions" placeholder="Tất cả trạng thái" (valueChange)="setFilter('status', $event)" />
-        </label>
-        <label>
+        </div>
+        <div class="filter-field">
           <span>Xác thực 2FA</span>
           <app-custom-select controlId="security-2fa" [value]="twofaFilter()" [options]="twofaOptions" placeholder="Tất cả 2FA" (valueChange)="setFilter('twofa', $event)" />
-        </label>
+        </div>
         <div class="filter-actions">
-          <button class="icon-button" type="button" aria-label="Đặt lại bộ lọc" title="Đặt lại bộ lọc" (click)="resetFilters()">
+          <button class="icon-button filter-reset" type="button" aria-label="Đặt lại bộ lọc" title="Đặt lại bộ lọc" (click)="resetFilters()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
           </button>
-          <app-export-menu label="Xuất danh sách phân quyền" [showText]="true" (formatChange)="export($event)" />
+          <app-export-menu label="Xuất Excel" [showText]="true" (formatChange)="export($event)" />
         </div>
       </div>
+    </div>
 
-      <div class="table-heading">
-        <div>
-          <h2>Nhân sự quản trị</h2>
-          <p>{{ rangeLabel() }}</p>
-        </div>
-      </div>
-
+    <section class="workspace-panel" aria-label="Danh sách quản trị viên">
       @if (paged().length) {
         <div class="table-scroll" tabindex="0" aria-label="Bảng nhân sự quản trị, cuộn ngang khi cần">
           <table>
@@ -102,7 +101,7 @@
                 <th scope="col">Trạng thái 2FA</th>
                 <th scope="col">Đăng nhập gần nhất</th>
                 <th scope="col">Trạng thái tài khoản</th>
-                <th scope="col"><span class="sr-only">Thao tác</span></th>
+                <th scope="col">Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -114,32 +113,36 @@
                       <div>
                         <strong>{{ person.name }}</strong>
                         <small>{{ person.email }}</small>
-                        @if (person.isSelf) { <span class="self-chip">Tài khoản của bạn</span> }
                       </div>
                     </div>
                   </td>
-                  <td><span class="role-chip" [class]="'role-' + person.role.toLowerCase()">{{ roleLabel(person.role) }}</span></td>
+                  <td><span [class]="'role-chip role-' + person.role.toLowerCase()">{{ roleLabel(person.role) }}</span></td>
                   <td>
-                    <span class="status-badge" [class]="person.twoFactor === 'active' ? 'status-success' : 'status-warning'">
+                    <span class="status-badge" [class]="person.twoFactor === 'active' ? 'status-badge status-success' : 'status-badge status-warning'">
                       {{ person.twoFactor === 'active' ? 'Đã kích hoạt' : 'Chưa kích hoạt' }}
                     </span>
                   </td>
-                  <td><strong>{{ person.lastLoginAt }}</strong><small>{{ person.lastLoginDevice }}</small></td>
                   <td>
-                    <span class="status-badge" [class]="person.status === 'active' ? 'status-success' : person.status === 'locked' ? 'status-danger' : 'status-muted'">
+                    <strong>{{ person.lastLoginAt }}</strong>
+                    <small>{{ person.lastLoginDevice }}</small>
+                  </td>
+                  <td>
+                    <span class="status-badge" [class]="person.status === 'active' ? 'status-badge status-success' : person.status === 'locked' ? 'status-badge status-muted' : 'status-badge status-warning'">
                       ● {{ statusLabel(person) }}
                     </span>
                   </td>
                   <td>
                     <div class="cell-actions">
-                      @if (!person.isSelf) {
+                      @if (person.isSelf) {
+                        <span class="cell-note">Tài khoản của bạn</span>
+                      } @else {
                         @if (person.status === 'locked') {
-                          <button class="ghost-button compact" type="button" (click)="openAccount('unlock', person)">Mở khóa</button>
+                          <button class="link-button" type="button" (click)="openAccount('unlock', person)">Mở khóa</button>
                         } @else {
-                          <button class="danger-outline" type="button" (click)="openAccount('lock', person)">Khóa tài khoản</button>
+                          <button class="link-danger" type="button" (click)="openAccount('lock', person)">Khóa tài khoản</button>
                         }
                         <div class="row-menu-anchor">
-                          <button class="icon-button" type="button" [attr.aria-expanded]="rowMenuId() === person.id" aria-haspopup="menu" [attr.aria-label]="'Thao tác với ' + person.name" (click)="toggleRowMenu(person.id)">
+                          <button class="icon-button subtle" type="button" [attr.aria-expanded]="rowMenuId() === person.id" aria-haspopup="menu" [attr.aria-label]="'Thao tác với ' + person.name" (click)="toggleRowMenu(person.id)">
                             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>
                           </button>
                           @if (rowMenuId() === person.id) {
@@ -183,7 +186,7 @@
         </div>
       } @else {
         <div class="empty-state">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8M8.5 11h5"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.4"/><path d="M2.8 20a6.2 6.2 0 0 1 12.4 0"/><path d="M16 4.6a3.4 3.4 0 0 1 0 6.8M17.6 14.2a6.2 6.2 0 0 1 3.6 5.8"/></svg>
           <strong>Không tìm thấy tài khoản phù hợp</strong>
           <p>Thử tìm theo tên hoặc email khác, hoặc đặt lại các bộ lọc.</p>
           <button class="ghost-button" type="button" (click)="resetFilters()">Đặt lại bộ lọc</button>

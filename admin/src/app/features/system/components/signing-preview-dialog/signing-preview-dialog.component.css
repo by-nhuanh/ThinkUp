@@ -1,17 +1,101 @@
-.signing-preview-layout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 16px; align-items: start; }
-.preview-pane { min-width: 0; border: 1px solid #d6e0ec; border-radius: 10px; background: #eef2f7; }
-.preview-toolbar { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 9px 14px; border-bottom: 1px solid #d6e0ec; background: #fff; color: #425b7d; font: var(--admin-text-caption); }
-.preview-scroll { overflow: auto; max-height: min(58vh, 540px); padding: 18px; }
-.doc-watermark { color: #b83e4d; font: var(--admin-text-caption); font-weight: var(--admin-font-weight-semibold); letter-spacing: 0.06em; text-align: center; }
+.preview-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  color: #425b7d;
+  font: var(--admin-text-body-compact);
+}
+.preview-file { display: inline-flex; align-items: center; gap: 8px; color: #1f2b40; }
+.preview-file svg { width: 18px; height: 18px; color: #266ee5; flex: 0 0 auto; }
+.preview-meta { color: #64748b; font: var(--admin-text-caption); }
+
+.signing-preview-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 380px);
+  gap: 16px;
+  align-items: start;
+}
+
+.preview-pane {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--system-border-soft);
+  border-radius: 10px;
+  background: #f8fafc;
+}
+.preview-scroll {
+  overflow: auto;
+  max-height: min(58vh, 560px);
+  border-radius: 8px;
+}
+.preview-doc {
+  display: grid;
+  gap: 10px;
+  padding: 24px 28px 28px;
+  min-height: 100%;
+  border: 1px solid #e6ebf2;
+  border-radius: 8px;
+  background: #fff;
+  color: #334155;
+  font: var(--admin-text-body-default);
+  line-height: 1.5;
+}
+.preview-doc p { margin: 0; overflow-wrap: anywhere; }
+.preview-doc header { display: grid; gap: 4px; margin-bottom: 4px; }
+.preview-doc header strong {
+  color: #102648;
+  font-size: 1.25rem;
+  font-weight: var(--admin-font-weight-bold);
+  letter-spacing: -0.01em;
+}
+.preview-doc header span { color: #64748b; font: var(--admin-text-body-compact); }
+.doc-watermark {
+  color: #a66a12;
+  font: var(--admin-text-caption);
+  font-weight: var(--admin-font-weight-semibold);
+  letter-spacing: 0.06em;
+}
 .pre-line { white-space: pre-line; }
-.doc-stamp { margin-top: 18px; padding: 10px 12px; border: 1.5px dashed #13743b; border-radius: 8px; color: #13743b; font: var(--admin-text-control-label); text-align: center; }
-.signature-panel { min-width: 0; padding: 14px 16px; border: 1px solid var(--system-border-soft); border-radius: 10px; background: #f8fafd; }
-.signature-panel h4 { margin: 0 0 10px; color: #0c2048; font: var(--admin-text-control-label); }
-.signature-meta { margin: 12px 0; display: grid; gap: 9px; }
+.doc-stamp {
+  display: grid;
+  gap: 2px;
+  margin-top: 8px;
+  padding: 12px 14px;
+  border: 1px solid #bcd7fb;
+  border-radius: 8px;
+  background: #eef6ff;
+  color: #1c4d8f;
+  font: var(--admin-text-body-compact);
+}
+.doc-stamp strong { color: #1058b8; font-size: 0.9375rem; }
+
+.signature-panel {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--system-border-soft);
+  border-radius: 10px;
+  background: #fff;
+}
+.signature-panel h3 { margin: 0; color: #102648; font: var(--admin-text-panel-title); }
+.signature-meta { display: grid; gap: 10px; margin: 0; }
 .signature-meta div { min-width: 0; }
 .signature-meta dt { color: #64748b; font: var(--admin-text-caption); }
-.signature-meta dd { margin: 2px 0 0; color: #102648; font: var(--admin-text-body-compact); overflow-wrap: anywhere; }
+.signature-meta dd {
+  margin: 1px 0 0;
+  color: #102648;
+  font: var(--admin-text-body-compact);
+  overflow-wrap: anywhere;
+}
+.signature-meta .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.8125rem; }
 .signature-note { margin: 0; color: #64748b; font: var(--admin-text-caption); line-height: 1.5; }
+
 @media (max-width: 900px) {
   .signing-preview-layout { grid-template-columns: minmax(0, 1fr); }
+  .preview-scroll { max-height: none; }
+  .preview-doc { padding: 18px 16px 20px; }
 }

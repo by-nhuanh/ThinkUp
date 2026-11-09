@@ -8,7 +8,16 @@
   <div class="admin-dialog__surface">
     <header class="admin-dialog__header">
       <div class="admin-dialog__heading">
-        <h2 [id]="titleId">{{ title() }}</h2>
+        <div class="admin-dialog__title-row">
+          @if (icon()) {
+            <span class="admin-dialog__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path [attr.d]="icon()" />
+              </svg>
+            </span>
+          }
+          <h2 [id]="titleId">{{ title() }}</h2>
+        </div>
         @if (subtitle()) {
           <p>{{ subtitle() }}</p>
         }

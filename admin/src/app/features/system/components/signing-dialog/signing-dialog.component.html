@@ -1,20 +1,18 @@
 <app-admin-dialog
   title="Cấu hình Dịch vụ Ký số Hợp đồng (E-Sign)"
   subtitle="Quản lý chứng thư doanh nghiệp và kiểm thử trước khi áp dụng."
-  size="lg"
+  icon="M12 3 4.5 6.2v5.6c0 4.3 3.2 7.8 7.5 9.2 4.3-1.4 7.5-4.9 7.5-9.2V6.2L12 3Z M9 11.9l2.1 2.1 4-4"
+  size="xl"
   (closed)="closed.emit()"
 >
   <div class="system-form">
-    <div class="scope-panel">
-      <h4>Điều khoản cố định · Chỉ đọc</h4>
-      <ul class="scope-list">
-        <li>Tỷ lệ ăn chia: 60% Sàn / 40% Giảng viên · Không thể chỉnh sửa</li>
-        <li>Phương thức xác thực: Mã OTP xác thực</li>
-        <li>Định dạng lưu trữ: Tệp khóa cứng kèm mộc thời gian</li>
-      </ul>
+    <div class="readonly-panel">
+      <p class="readonly-lead">Tỷ lệ ăn chia: 60% Sàn / 40% Giảng viên · Không thể chỉnh sửa</p>
+      <p>Phương thức xác thực: Mã OTP xác thực</p>
+      <p>Định dạng lưu trữ: Tệp khóa cứng kèm mộc thời gian</p>
     </div>
 
-    <div class="form-grid">
+    <div class="form-grid form-grid--three">
       <div class="field">
         <span id="signing-provider-label">Nhà cung cấp chứng thư <span class="required-mark">*</span></span>
         <app-custom-select
@@ -29,26 +27,38 @@
         <span>Số Serial chữ ký số <span class="required-mark">*</span></span>
         <input type="text" [value]="form().serial" (input)="update('serial', $any($event.target).value)" />
       </label>
-      <label class="field" [class.invalid]="expiryNote().kind === 'error'">
+      <label
+        class="field"
+        [class.valid]="expiryNote().kind === 'ok'"
+        [class.warning]="expiryNote().kind === 'warning'"
+        [class.invalid]="expiryNote().kind === 'error'"
+      >
         <span>Ngày hết hạn chứng thư</span>
         <input type="text" placeholder="dd/MM/yyyy" [value]="form().expiresAt" (input)="update('expiresAt', $any($event.target).value)" />
         <p class="field-hint" [class.warning]="expiryNote().kind === 'warning'" [class.error]="expiryNote().kind === 'error'">{{ expiryNote().text }}</p>
       </label>
+    </div>
+
+    <div class="form-grid">
       <label class="field">
         <span>Mã kết nối dịch vụ <span class="required-mark">*</span></span>
         <input type="text" [value]="form().clientId" (input)="update('clientId', $any($event.target).value)" />
       </label>
-      <label class="field full">
+      <label class="field">
         <span>Mật khẩu kết nối bí mật <span class="required-mark">*</span></span>
         <input type="password" autocomplete="new-password" [value]="form().secret" (input)="update('secret', $any($event.target).value)" />
       </label>
-      <div class="field full">
-        <span>Đường dẫn nhận hợp đồng · Chỉ đọc</span>
-        <div class="callback-row">
-          <input type="text" [value]="callbackUrl" readonly aria-label="Đường dẫn nhận hợp đồng" />
-          <button class="ghost-button" type="button" (click)="copyCallback()">{{ copied() ? 'Đã sao chép' : 'Sao chép' }}</button>
-        </div>
+    </div>
+
+    <div class="field">
+      <span>Đường dẫn nhận hợp đồng · Chỉ đọc</span>
+      <div class="callback-row">
+        <code class="callback-url">{{ callbackUrl }}</code>
+        <button class="ghost-button" type="button" (click)="copyCallback()">{{ copied() ? 'Đã sao chép' : 'Sao chép' }}</button>
       </div>
+    </div>
+
+    <div class="form-grid">
       <label class="field" [class.invalid]="!!maxSignDaysError()">
         <span>Thời hạn chờ ký tối đa <span class="required-mark">*</span></span>
         <div class="unit-input">
@@ -75,39 +85,55 @@
       <span>Tự động gửi bản sao hợp đồng</span>
     </label>
 
-    <section class="ping-panel">
-      <header>
-        <div>
-          <strong>Ký thử nghiệm văn bản mẫu</strong>
-          <small>PDF mẫu sẽ mở trực tiếp để kiểm tra chữ ký và mộc thời gian.</small>
-        </div>
-        <button class="ghost-button" type="button" [disabled]="testState() === 'running' || !valid()" (click)="testSign()">
-          {{ testState() === 'running' ? 'Đang ký thử…' : 'Ký thử nghiệm' }}
+    <section class="test-block">
+      <div class="test-row">
+        <button class="ghost-button test-button" type="button" [disabled]="testState() === 'running' || !valid()" (click)="testSign()">
+          {{ testState() === 'running' ? 'Đang ký thử…' : 'Ký thử nghiệm văn bản mẫu' }}
         </button>
-      </header>
+        <p class="test-note">PDF mẫu sẽ mở trực tiếp để kiểm tra chữ ký và mộc thời gian.</p>
+      </div>
+
       @switch (testState()) {
         @case ('idle') {
-          <p class="ping-status"><span class="status-badge status-muted">Chưa ký thử cấu hình mới</span></p>
-          <p class="ping-note">Nút Lưu chỉ được kích hoạt khi có thay đổi hợp lệ và ký thử nghiệm thành công.</p>
+          <div class="notice info has-icon">
+            <svg class="notice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4.5 6.2v5.6c0 4.3 3.2 7.8 7.5 9.2 4.3-1.4 7.5-4.9 7.5-9.2V6.2L12 3Z" /><path d="M12 8.6v4.2" /><path d="M12 16h.01" /></svg>
+            <div class="notice-body">
+              <strong>Chưa ký thử cấu hình mới</strong>
+              <p>Nút Lưu chỉ được kích hoạt khi có thay đổi hợp lệ và ký thử nghiệm thành công.</p>
+            </div>
+          </div>
         }
         @case ('running') {
-          <p class="ping-status"><span class="status-badge status-info">Đang ký thử văn bản mẫu…</span></p>
+          <div class="notice info has-icon" role="status">
+            <svg class="notice-icon test-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9" /></svg>
+            <div class="notice-body">
+              <strong>Đang ký thử văn bản mẫu</strong>
+              <p>Hệ thống đang gửi văn bản mẫu tới nhà cung cấp chứng thư.</p>
+            </div>
+          </div>
         }
         @case ('success') {
-          <div class="notice success">
-            <strong>Ký thử nghiệm thành công</strong>
-            Tạo chữ ký số: Thành công · Mã hợp đồng mẫu: HD-TEST-0001
+          <div class="notice success has-icon" role="status">
+            <svg class="notice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.6" /><path d="m8.4 12.2 2.4 2.4 4.8-4.8" /></svg>
+            <div class="notice-body">
+              <strong>Ký thử nghiệm thành công</strong>
+              <p>Tạo chữ ký số: Thành công · Mã hợp đồng mẫu: HD-TEST-0001</p>
+            </div>
           </div>
         }
         @case ('failure') {
-          <div class="notice danger" role="alert">
-            <strong>Không thể ký thử văn bản mẫu</strong>
-            Mã lỗi đối tác: E-SIGN-401 · Không xác thực được chứng thư. Kiểm tra thông tin kết nối và thử lại.
+          <div class="notice danger has-icon" role="alert">
+            <svg class="notice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 2.5 17.4a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" /><path d="M12 9.4v4.2" /><path d="M12 17h.01" /></svg>
+            <div class="notice-body">
+              <strong>Không thể ký thử văn bản mẫu</strong>
+              <p>Mã lỗi đối tác: E-SIGN-401 · Không xác thực được chứng thư. Kiểm tra thông tin kết nối và thử lại.</p>
+            </div>
           </div>
         }
       }
     </section>
   </div>
+
   <div dialogFooter class="dialog-actions">
     <p class="left-note">{{ footerNote() }}</p>
     <button class="ghost-button" type="button" (click)="closed.emit()">Hủy</button>

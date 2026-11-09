@@ -1,6 +1,7 @@
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AdminDialogComponent } from '../../../../shared/components/admin-dialog/admin-dialog.component';
+import { SystemOtpInputComponent } from '../otp-input/otp-input.component';
 import { AdminPerson } from '../../models/system.models';
 import { SYSTEM_STORE } from '../../data/system.store';
 import { RoleDialogResult } from '../role-dialog/role-dialog.component';
@@ -56,7 +57,7 @@ const COPY: Record<AccountDialogKind, KindCopy> = {
 @Component({
   selector: 'app-system-account-dialog',
   standalone: true,
-  imports: [FormsModule, AdminDialogComponent],
+  imports: [FormsModule, AdminDialogComponent, SystemOtpInputComponent],
   templateUrl: './account-dialog.component.html',
   styleUrls: ['../../system-page.css', './account-dialog.component.css']
 })

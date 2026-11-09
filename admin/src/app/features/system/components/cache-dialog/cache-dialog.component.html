@@ -1,36 +1,55 @@
 <app-admin-dialog
   title="Đồng bộ Cache"
   subtitle="Cập nhật cấu hình mới trên các máy chủ ứng dụng."
-  size="sm"
+  icon="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"
+  size="xl"
   (closed)="closed.emit()"
 >
   <div class="system-form">
     @if (finished()) {
-      <div class="notice success">
-        <strong>Đồng bộ thành công</strong>
-        Tất cả 3/3 máy chủ đã cập nhật cấu hình mới.
+      <div class="notice success has-icon" role="status">
+        <svg class="notice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.6" /><path d="m8.4 12.2 2.4 2.4 4.8-4.8" /></svg>
+        <div class="notice-body">
+          <strong>Đồng bộ thành công</strong>
+          <p>Tất cả 3/3 máy chủ đã cập nhật cấu hình mới.</p>
+        </div>
       </div>
     } @else {
-      <div class="notice info">
-        <strong>Đang đồng bộ cấu hình</strong>
-        {{ doneCount }}/3 máy chủ đã cập nhật. Vui lòng chờ máy chủ còn lại hoàn tất.
+      <div class="notice info has-icon" role="status">
+        <svg class="notice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4.5 6.2v5.6c0 4.3 3.2 7.8 7.5 9.2 4.3-1.4 7.5-4.9 7.5-9.2V6.2L12 3Z" /><path d="M12 8.6v4.2" /><path d="M12 16h.01" /></svg>
+        <div class="notice-body">
+          <strong>Đang đồng bộ cấu hình</strong>
+          <p>{{ doneCount }}/3 máy chủ đã cập nhật. Vui lòng chờ máy chủ còn lại hoàn tất.</p>
+        </div>
       </div>
     }
-    <div class="cache-list">
+
+    <ul class="cache-list">
       @for (server of servers(); track server.name) {
-        <div class="cache-item">
-          <span>{{ server.name }}</span>
-          <span class="status-badge" [class.status-success]="server.done" [class.status-warning]="!server.done">
-            {{ server.done ? 'Đã đồng bộ' : 'Đang cập nhật...' }}
+        <li class="cache-item" [class.is-pending]="!server.done">
+          <span class="cache-name">
+            @if (server.done) {
+              <svg class="cache-icon done" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.6" /><path d="m8.4 12.2 2.4 2.4 4.8-4.8" /></svg>
+            } @else {
+              <svg class="cache-icon pending" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M12 3a9 9 0 1 1-9 9" /></svg>
+            }
+            {{ server.name }}
           </span>
-        </div>
+          <span class="cache-state" [class.done]="server.done">{{ server.done ? 'Đã đồng bộ' : 'Đang cập nhật...' }}</span>
+        </li>
       }
-    </div>
-    <p class="cache-note">Kết quả thành công chỉ được xác nhận khi toàn bộ máy chủ hoàn tất.</p>
-  </div>
-  <div dialogFooter class="dialog-actions">
-    <button class="ghost-button" type="button" [disabled]="!finished()" (click)="closed.emit()">Đóng</button>
+    </ul>
+
     @if (!finished()) {
+      <p class="cache-note">Kết quả thành công chỉ được xác nhận khi toàn bộ máy chủ hoàn tất.</p>
+    }
+  </div>
+
+  <div dialogFooter class="dialog-actions">
+    @if (finished()) {
+      <button class="primary-button" type="button" (click)="closed.emit()">Đóng</button>
+    } @else {
+      <button class="ghost-button" type="button" (click)="closed.emit()">Đóng</button>
       <button class="primary-button" type="button" disabled>Đang đồng bộ...</button>
     }
   </div>
