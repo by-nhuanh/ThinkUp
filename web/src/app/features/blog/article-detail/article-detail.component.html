@@ -53,7 +53,7 @@
               <ol class="flex flex-col gap-2 w-full min-w-0 text-[14px] leading-5">
                 @for (item of headings(); track item.id) {
                   <li class="min-w-0" [class.pl-4]="item.level >= 3">
-                    <a [href]="'#' + item.id" class="text-[14px] text-[#1E64EF] leading-5 hover:underline break-words">{{ item.text }}</a>
+                    <a [href]="'#' + item.id" (click)="scrollToHeading($event, item.id)" class="text-[14px] text-[#1E64EF] leading-5 hover:underline break-words">{{ item.text }}</a>
                   </li>
                 }
               </ol>
