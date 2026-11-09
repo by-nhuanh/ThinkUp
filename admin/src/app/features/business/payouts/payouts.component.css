@@ -44,7 +44,7 @@
 .limit-trigger:focus-visible, .limit-trigger[aria-expanded="true"] { outline: 0; border-color: #0965e4; box-shadow: 0 0 0 3px #0965e426; }
 .limit-trigger.active { color: #075acb; font-weight: var(--admin-font-weight-semibold); }
 .limit-backdrop { position: fixed; z-index: 40; inset: 0; padding: 0; border: 0; background: transparent; cursor: default; }
-.limit-popover { position: absolute; z-index: 41; top: calc(100% + 8px); left: 0; width: 410px; padding: 16px; border: 1px solid #d7e3f0; border-radius: 10px; background: #fff; color: #182c51; box-shadow: 0 16px 40px #10294a2e; }
+.limit-popover { position: fixed; z-index: 41; width: min(410px, calc(100% - 24px)); overflow-y: auto; overscroll-behavior: contain; padding: 16px; border: 1px solid #d7e3f0; border-radius: 10px; background: #fff; color: #182c51; box-shadow: 0 16px 40px #10294a2e; }
 .limit-popover-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .limit-popover-head > div { display: grid; gap: 2px; }
 .limit-popover-head strong { font: var(--admin-text-card-title); color: #0c2048; }
@@ -88,7 +88,7 @@
 .date-trigger span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .date-trigger:hover { border-color: #8eadd2; background: #fbfdff; }
 .date-trigger:focus-visible, .date-trigger[aria-expanded="true"] { outline: 0; border-color: #0965e4; box-shadow: 0 0 0 3px #0965e426; }
-.date-popover { position: fixed; width: max-content; min-width: 365px; max-width: calc(100vw - 24px); z-index: 42; overflow-y: auto; background: #fff; border: 1px solid #d9e4f1; border-radius: 10px; box-shadow: 0 15px 40px #09275726; padding: 17px; }
+.date-popover { position: fixed; width: min(460px, calc(100% - 24px)); z-index: 42; overflow-y: auto; background: #fff; border: 1px solid #d9e4f1; border-radius: 10px; box-shadow: 0 15px 40px #09275726; padding: 17px; }
 .date-popover p { margin: 0 0 10px; color: #182c51; font: var(--admin-text-caption); font-weight: var(--admin-font-weight-bold); }
 .quick-dates { display: flex; flex-wrap: wrap; gap: 6px; }
 .quick-dates button { border: 1px solid #d9e4f1; border-radius: 6px; background: #f7fbff; padding: 6px 8px; color: #265889; font: var(--admin-text-badge); cursor: pointer; }
@@ -308,3 +308,19 @@
 .payout-info-card, .payout-action-form, .reject-summary { border-radius: 10px; }
 .payout-dialog .button, .reject-footer .button { min-height: 44px; border-radius: 8px; }
 .reject-field textarea { min-height: 96px; border-color: #c8ced6; border-radius: 8px; }
+
+@media (max-width: 1150px) {
+  .filters-toolbar { grid-template-columns: repeat(auto-fit, minmax(min(100%, 168px), 1fr)); }
+  .filters-toolbar > * { min-width: 0; max-width: 100%; }
+  .payouts-page .kpi-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+}
+
+@media (max-width: 900px) {
+  .payout-info-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+
+@media (max-width: 600px) {
+  .payouts-page { padding-inline: 16px; }
+  .date-fields { grid-template-columns: minmax(0, 1fr); }
+}

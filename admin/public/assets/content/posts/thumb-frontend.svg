@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-label="Minh hoạ lập trình front-end">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0b3d91"/><stop offset="1" stop-color="#1473d1"/></linearGradient></defs>
+  <rect width="640" height="360" fill="url(#g)"/>
+  <circle cx="520" cy="70" r="110" fill="#ffffff" opacity=".08"/>
+  <circle cx="90" cy="320" r="140" fill="#ffffff" opacity=".06"/>
+  <rect x="90" y="96" width="460" height="190" rx="16" fill="#ffffff" opacity=".12"/>
+  <rect x="112" y="120" width="150" height="12" rx="6" fill="#9ecbff"/>
+  <rect x="112" y="148" width="320" height="10" rx="5" fill="#ffffff" opacity=".7"/>
+  <rect x="112" y="170" width="270" height="10" rx="5" fill="#ffffff" opacity=".5"/>
+  <rect x="112" y="192" width="350" height="10" rx="5" fill="#ffffff" opacity=".4"/>
+  <rect x="112" y="230" width="120" height="34" rx="17" fill="#58a6ff"/>
+  <path d="M430 150 500 190 430 230z" fill="#7fd1ff" opacity=".9"/>
+</svg>

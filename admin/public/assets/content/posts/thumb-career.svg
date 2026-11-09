@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-label="Minh hoạ định hướng nghề nghiệp">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#5b21b6"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient></defs>
+  <rect width="640" height="360" fill="url(#g)"/>
+  <circle cx="540" cy="60" r="120" fill="#ffffff" opacity=".1"/>
+  <path d="M120 270c60-70 110-40 160-95s90-70 150-90" stroke="#e9d5ff" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="1 22"/>
+  <circle cx="130" cy="262" r="16" fill="#fbbf24"/>
+  <circle cx="286" cy="170" r="16" fill="#fbbf24"/>
+  <circle cx="430" cy="86" r="16" fill="#fbbf24"/>
+  <path d="M470 150h80l-18 26 18 26h-80z" fill="#fde68a"/>
+  <rect x="120" y="300" width="400" height="10" rx="5" fill="#ffffff" opacity=".28"/>
+</svg>

@@ -1,0 +1,437 @@
+<main class="content-page">
+  <div class="page-stack">
+    <header class="page-header">
+      <h1 class="page-title">Quản lý bài viết</h1>
+      <div class="page-actions">
+        <a class="btn primary" routerLink="/content/posts/new">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          Tạo bài viết
+        </a>
+      </div>
+    </header>
+
+    <section class="kpis" aria-label="Tổng quan bài viết">
+      <button class="kpi" type="button" [class.is-selected]="status() === ''" (click)="setStatus('')" aria-label="Xem tất cả bài viết">
+        <span class="kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9 12h6M9 16h6"/></svg></span>
+        <span class="kpi-text">
+          <span class="kpi-label">Tổng bài viết</span>
+          <strong class="kpi-value">{{ counts().total }}</strong>
+          <span class="kpi-foot">Toàn bộ bài viết đang quản lý</span>
+        </span>
+      </button>
+      <button class="kpi" type="button" [class.is-selected]="status() === 'published'" (click)="setStatus('published')" aria-label="Lọc bài đã xuất bản">
+        <span class="kpi-icon green" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="m9.5 14 2 2 4-4"/></svg></span>
+        <span class="kpi-text">
+          <span class="kpi-label">Đã xuất bản</span>
+          <strong class="kpi-value">{{ counts().published }}</strong>
+          <span class="kpi-foot">Đang hiển thị · Ghim Home {{ pinnedCount() }}/5</span>
+        </span>
+      </button>
+      <button class="kpi" type="button" [class.is-selected]="status() === 'pending'" (click)="setStatus('pending')" aria-label="Lọc bài chờ duyệt">
+        <span class="kpi-icon amber" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+        <span class="kpi-text">
+          <span class="kpi-label">Chờ duyệt</span>
+          <strong class="kpi-value">{{ counts().pending }}</strong>
+          <span class="kpi-foot">Bài gửi từ Học viên và Giảng viên</span>
+        </span>
+      </button>
+      <button class="kpi" type="button" [class.is-selected]="status() === 'hidden'" (click)="setStatus('hidden')" aria-label="Lọc bài tạm ẩn">
+        <span class="kpi-icon red" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><path d="m4 20 16-16"/></svg></span>
+        <span class="kpi-text">
+          <span class="kpi-label">Tạm ẩn</span>
+          <strong class="kpi-value">{{ counts().hidden }}</strong>
+          <span class="kpi-foot">Đang tạm dừng hiển thị công khai</span>
+        </span>
+      </button>
+    </section>
+
+    <section class="panel" aria-label="Bộ lọc bài viết">
+      <div class="filters">
+        <div class="filters-row">
+          <div class="filter-field filter-search">
+            <label class="floating-label" for="post-search">Tìm kiếm</label>
+            <span class="search-field">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input id="post-search" type="search" autocomplete="off" placeholder="Tìm tiêu đề bài viết, đường dẫn link, tác giả..." [value]="search()" (input)="setSearch($any($event.target).value)">
+            </span>
+          </div>
+          <div class="filter-field basis-category">
+            <span class="floating-label">Chuyên mục</span>
+            <app-custom-select controlId="post-category-filter" [value]="category()" placeholder="Tất cả chuyên mục" [options]="categoryOptions()" [menuWidth]="260" (valueChange)="setCategory($event)"></app-custom-select>
+          </div>
+          <div class="filter-field basis-status">
+            <span class="floating-label">Trạng thái</span>
+            <app-custom-select controlId="post-status-filter" [value]="status()" placeholder="Tất cả trạng thái" [options]="statusOptions" [menuWidth]="240" (valueChange)="setStatus($event)"></app-custom-select>
+          </div>
+          <div class="filter-field basis-author">
+            <span class="floating-label">Tác giả</span>
+            <app-custom-select controlId="post-author-filter" [value]="author()" placeholder="Tất cả tác giả" [options]="authorOptions()" [menuWidth]="280" (valueChange)="setAuthor($event)"></app-custom-select>
+          </div>
+          <div class="filter-actions">
+            <button class="icon-button" type="button" title="Đặt lại bộ lọc" aria-label="Đặt lại bộ lọc" (click)="clearFilters()">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 6.3"/><path d="M20 5v6h-6"/></svg>
+            </button>
+            <app-export-menu label="Xuất danh sách bài viết" (formatChange)="exportList($event)"></app-export-menu>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    @if (visible().length) {
+      <section class="table-card" aria-label="Danh sách bài viết">
+        <div class="table-scroll">
+          <table class="table-posts">
+            <colgroup>
+              <col>
+              <col style="width:190px">
+              <col style="width:220px">
+              <col style="width:155px">
+              <col style="width:110px">
+              <col style="width:165px">
+              <col style="width:235px">
+            </colgroup>
+            <thead>
+              <tr>
+                <th scope="col">Tiêu đề bài viết</th>
+                <th scope="col">Chuyên mục</th>
+                <th scope="col">Tác giả</th>
+                <th scope="col">Cập nhật lần cuối</th>
+                <th scope="col">Ghim Home</th>
+                <th scope="col">Trạng thái</th>
+                <th scope="col">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (post of visible(); track post.id) {
+                <tr class="row-posts">
+                  <td>
+                    <span class="post-title" [title]="post.title">{{ post.title }}</span>
+                    <span class="post-url">/blog/{{ post.slug }}</span>
+                  </td>
+                  <td><span class="badge info">{{ post.category }}</span></td>
+                  <td>
+                    <span class="cell-title">{{ post.author }}</span>
+                    <span class="badge" [class.success]="roleTone(post.authorRole) === 'success'" [class.info]="roleTone(post.authorRole) === 'info'" [class.neutral]="roleTone(post.authorRole) === 'neutral'" style="margin-top:6px">{{ post.authorRole }}</span>
+                  </td>
+                  <td>
+                    <span class="updated-cell">
+                      <strong>{{ date(post.updatedAt) }}</strong>
+                      <span>{{ time(post.updatedAt) }}</span>
+                    </span>
+                  </td>
+                  <td>
+                    <button class="pin-switch" type="button" role="switch" [class.on]="post.pinned" [attr.aria-checked]="post.pinned" [attr.aria-label]="(post.pinned ? 'Bỏ ghim ' : 'Ghim ') + post.title" (click)="togglePin(post)"></button>
+                  </td>
+                  <td><span class="badge" [class.success]="statusTone(post.status) === 'success'" [class.pending]="statusTone(post.status) === 'pending'" [class.danger]="statusTone(post.status) === 'danger'" [class.info]="statusTone(post.status) === 'info'" [class.neutral]="statusTone(post.status) === 'neutral'">{{ statusLabel(post.status) }}</span></td>
+                  <td>
+                    <div class="cell-actions">
+                      <button class="row-icon" type="button" title="Xem bài viết" [attr.aria-label]="'Xem bài viết ' + post.title" (click)="openView(post)">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+                      </button>
+                      <button class="row-icon" type="button" title="Chỉnh sửa" [attr.aria-label]="'Chỉnh sửa ' + post.title" (click)="edit(post)">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+                      </button>
+                      @if (post.status === 'hidden' || post.status === 'archived') {
+                        <button class="row-icon" type="button" title="Khôi phục xuất bản" [attr.aria-label]="'Khôi phục xuất bản ' + post.title" (click)="askRestore(post)">
+                          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5"/></svg>
+                        </button>
+                      }
+                      <button class="row-icon more" type="button" title="Thao tác khác" aria-haspopup="menu" [attr.aria-expanded]="isMenuOpen(post.id)" [attr.aria-label]="'Thao tác khác cho ' + post.title" (click)="openMenu($event, post)">···</button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination-bar">
+          <span class="pagination-summary">{{ rangeLabel() }}</span>
+          <div class="pagination" aria-label="Phân trang bài viết">
+            <button type="button" [disabled]="page() === 1" aria-label="Trang trước" (click)="goToPage(page() - 1)">‹</button>
+            @for (item of pagination(); track $index) {
+              @if (item === '...') {
+                <button type="button" disabled aria-hidden="true">…</button>
+              } @else {
+                <button type="button" [class.current]="item === page()" [attr.aria-current]="item === page() ? 'page' : null" [attr.aria-label]="'Trang ' + item" (click)="goToPage(item)">{{ item }}</button>
+              }
+            }
+            <button type="button" [disabled]="page() >= pages()" aria-label="Trang sau" (click)="goToPage(page() + 1)">›</button>
+          </div>
+        </div>
+      </section>
+    } @else {
+      <section class="state-panel" aria-live="polite">
+        <span class="state-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
+        <h2>Không tìm thấy bài viết phù hợp</h2>
+        <p>Thử từ khóa khác hoặc đặt lại bộ lọc để xem thêm bài viết.</p>
+        <div class="state-actions">
+          <button class="btn" type="button" (click)="clearFilters()">Đặt lại bộ lọc</button>
+        </div>
+      </section>
+    }
+  </div>
+</main>
+
+@if (menu(); as m) {
+  <div class="menu-layer" (click)="closeMenu()"></div>
+  <div class="row-menu" role="menu" [style.top.px]="m.top" [style.left.px]="m.left" [attr.aria-label]="'Thao tác cho ' + m.post.title" (click)="$event.stopPropagation()">
+    @if (m.post.status === 'published') {
+      <button type="button" role="menuitem" (click)="askHide(m.post)">Tạm ẩn bài viết</button>
+    } @else if (m.post.status === 'hidden' || m.post.status === 'archived') {
+      <button type="button" role="menuitem" (click)="askRestore(m.post)">Khôi phục xuất bản</button>
+    } @else {
+      <button type="button" role="menuitem" (click)="askRequestEdit(m.post)">Yêu cầu chỉnh sửa</button>
+    }
+    <button class="danger" type="button" role="menuitem" (click)="askDelete(m.post)">Xóa bài viết</button>
+  </div>
+}
+
+@if (viewTarget(); as post) {
+  <div class="dialog-backdrop" (click)="viewTarget.set(null)">
+    <section class="dialog wide" role="dialog" aria-modal="true" aria-labelledby="post-view-title" (click)="$event.stopPropagation()">
+      <header class="dialog-head">
+        <div class="dialog-head-main">
+          <h2 id="post-view-title">Xem bài viết</h2>
+        </div>
+        <div class="dialog-head-actions">
+          <div class="preview-tabs" role="tablist" aria-label="Chế độ xem trước">
+            <button class="preview-tab" type="button" role="tab" [class.active]="previewDevice() === 'desktop'" [attr.aria-selected]="previewDevice() === 'desktop'" (click)="previewDevice.set('desktop')">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 8-4 4 4 4M16 8l4 4-4 4"/></svg>
+              Máy tính
+            </button>
+            <button class="preview-tab" type="button" role="tab" [class.active]="previewDevice() === 'mobile'" [attr.aria-selected]="previewDevice() === 'mobile'" (click)="previewDevice.set('mobile')">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/></svg>
+              Điện thoại
+            </button>
+          </div>
+          <span class="badge" [class.success]="statusTone(post.status) === 'success'" [class.pending]="statusTone(post.status) === 'pending'" [class.danger]="statusTone(post.status) === 'danger'" [class.info]="statusTone(post.status) === 'info'" [class.neutral]="statusTone(post.status) === 'neutral'">{{ statusLabel(post.status) }}</span>
+          <button class="dialog-close" type="button" aria-label="Đóng xem bài viết" (click)="viewTarget.set(null)">×</button>
+        </div>
+      </header>
+      <div class="dialog-body">
+        <div class="preview-frame" [class.mobile]="previewDevice() === 'mobile'">
+          <article class="preview-article">
+            <img class="preview-cover" [src]="post.thumbnail" [alt]="'Ảnh minh họa: ' + post.title">
+            <h3 class="preview-title">{{ post.title }}</h3>
+            <p class="preview-meta">Tác giả: {{ post.author }} ({{ post.authorRole }}) · Cập nhật: {{ date(post.updatedAt) }} · {{ post.views }} lượt xem</p>
+            <p class="preview-summary">{{ post.excerpt }}</p>
+            <div class="preview-body">
+              @for (paragraph of post.body; track $index) { <p>{{ paragraph }}</p> }
+            </div>
+            <div class="preview-tags">
+              @for (tag of post.tags; track tag) { <span>#{{ tag }}</span> }
+            </div>
+          </article>
+        </div>
+      </div>
+      <footer class="dialog-footer">
+        <button class="btn" type="button" (click)="viewTarget.set(null)">Đóng</button>
+        <button class="btn primary" type="button" (click)="edit(post)">Chỉnh sửa bài viết</button>
+      </footer>
+    </section>
+  </div>
+}
+
+@if (requestTarget(); as post) {
+  <div class="dialog-backdrop" (click)="requestTarget.set(null)">
+    <section class="dialog medium" role="dialog" aria-modal="true" aria-labelledby="post-request-title" (click)="$event.stopPropagation()">
+      <header class="dialog-head">
+        <div class="dialog-head-main">
+          <span class="dialog-head-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></span>
+          <div>
+            <h2 id="post-request-title">Yêu cầu chỉnh sửa bài viết</h2>
+            <p>Chỉ yêu cầu tác giả cập nhật; nội dung bài viết được giữ nguyên.</p>
+          </div>
+        </div>
+        <button class="dialog-close" type="button" aria-label="Đóng yêu cầu chỉnh sửa" (click)="requestTarget.set(null)">×</button>
+      </header>
+      <div class="dialog-body">
+        <div class="dialog-stack">
+          <div class="summary-card">
+            <strong>{{ post.title }}</strong>
+            <span>Tác giả: {{ post.author }} ({{ post.authorRole }}) · Trạng thái: {{ statusLabel(post.status) }}</span>
+          </div>
+          <div class="form-section">
+            <span class="form-section-title">Danh mục nội dung cần sửa</span>
+            <div class="checklist">
+              @for (reason of revisionReasons; track reason) {
+                <label class="check-row">
+                  <input type="checkbox" [checked]="requestReasons().has(reason)" (change)="toggleRequestReason(reason)">
+                  <span>{{ reason }}</span>
+                </label>
+              }
+            </div>
+          </div>
+          <div class="field">
+            <label for="request-note">Ghi chú và Hướng dẫn sửa chi tiết</label>
+            <textarea id="request-note" maxlength="500" placeholder="Nhập cụ thể các đoạn văn hoặc lỗi cần tác giả cập nhật..." [value]="requestNote()" (input)="requestNote.set($any($event.target).value)"></textarea>
+            <div class="field-foot">
+              <span>{{ requestNote().length }}/500 ký tự · Chọn ít nhất một lỗi hoặc nhập hướng dẫn từ 15 ký tự.</span>
+            </div>
+          </div>
+          <div class="notice">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+            <div><span>Hệ thống sẽ tự động gửi email và thông báo In-app cho tác giả kèm lý do yêu cầu sửa (Bắt buộc).</span></div>
+          </div>
+        </div>
+      </div>
+      <footer class="dialog-footer">
+        <button class="btn" type="button" (click)="requestTarget.set(null)">Hủy bỏ</button>
+        <button class="btn primary" type="button" [disabled]="!canRequestEdit()" (click)="submitRequestEdit()">Gửi yêu cầu sửa</button>
+      </footer>
+    </section>
+  </div>
+}
+
+@if (hideTarget(); as post) {
+  <div class="dialog-backdrop" (click)="hideTarget.set(null)">
+    <section class="dialog medium" role="dialog" aria-modal="true" aria-labelledby="post-hide-title" (click)="$event.stopPropagation()">
+      <header class="dialog-head">
+        <div class="dialog-head-main">
+          <span class="dialog-head-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 2.5 20h19L12 3Z"/><path d="M12 9v5M12 17.2v.1"/></svg></span>
+          <div>
+            <h2 id="post-hide-title">Xác nhận tạm ẩn bài viết</h2>
+            <p>Bài viết sẽ ngừng hiển thị công khai sau khi bạn xác nhận.</p>
+          </div>
+        </div>
+        <button class="dialog-close" type="button" aria-label="Đóng tạm ẩn bài viết" (click)="hideTarget.set(null)">×</button>
+      </header>
+      <div class="dialog-body">
+        <div class="dialog-stack">
+          <div class="summary-card">
+            <strong>{{ post.title }}</strong>
+            <span>Tác giả: {{ post.author }} ({{ post.authorRole }}) · {{ post.views }} lượt xem · {{ statusLabel(post.status) }}</span>
+          </div>
+          <div class="notice warning">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.5 20h19L12 3Z"/><path d="M12 9v5M12 17.2v.1"/></svg>
+            <div>
+              <strong>Ngừng hiển thị công khai</strong>
+              <span>Bài viết sẽ được gỡ khỏi trang chủ và chuyên mục. Người học có liên kết cũ sẽ không thể xem nội dung này.</span>
+            </div>
+          </div>
+          @if (hideHasPinNotice()) {
+            <div class="notice">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.5 20h19L12 3Z"/><path d="M12 9v5M12 17.2v.1"/></svg>
+              <div>
+                <strong>Bài viết đang được ghim nổi bật</strong>
+                <span>Hệ thống sẽ tự động gỡ bài khỏi mục nổi bật khi tạm ẩn.</span>
+              </div>
+            </div>
+          }
+          <div class="form-section">
+            <span class="form-section-title">Lý do tạm ẩn <b style="color:var(--c-red)">*</b></span>
+            <div class="radio-list">
+              @for (reason of hideReasons; track reason) {
+                <label class="radio-row">
+                  <input type="radio" name="hide-reason" [checked]="hideReason() === reason" (change)="hideReason.set(reason)">
+                  <span>{{ reason }}</span>
+                </label>
+              }
+            </div>
+          </div>
+          <div class="field">
+            <label for="hide-note">Ghi chú gửi tác giả</label>
+            <textarea id="hide-note" maxlength="500" placeholder="Bổ sung bối cảnh cho tác giả (không bắt buộc)..." [value]="hideNote()" (input)="hideNote.set($any($event.target).value)"></textarea>
+          </div>
+          <div class="notice">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+            <div><span>Hệ thống sẽ tự động gửi email và thông báo In-app cho tác giả kèm lý do yêu cầu sửa (Bắt buộc).</span></div>
+          </div>
+        </div>
+      </div>
+      <footer class="dialog-footer">
+        <button class="btn" type="button" (click)="hideTarget.set(null)">Hủy bỏ</button>
+        <button class="btn primary" type="button" (click)="submitHide()">Xác nhận tạm ẩn</button>
+      </footer>
+    </section>
+  </div>
+}
+
+@if (restoreTarget(); as post) {
+  <div class="dialog-backdrop" (click)="restoreTarget.set(null)">
+    <section class="dialog medium" role="dialog" aria-modal="true" aria-labelledby="post-restore-title" (click)="$event.stopPropagation()">
+      <header class="dialog-head">
+        <div class="dialog-head-main">
+          <span class="dialog-head-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5"/></svg></span>
+          <div>
+            <h2 id="post-restore-title">Khôi phục xuất bản</h2>
+            <p>Đưa bài viết trở lại các trang đọc bài và kết quả tìm kiếm.</p>
+          </div>
+        </div>
+        <button class="dialog-close" type="button" aria-label="Đóng khôi phục xuất bản" (click)="restoreTarget.set(null)">×</button>
+      </header>
+      <div class="dialog-body">
+        <div class="dialog-stack">
+          <div class="summary-card">
+            <strong>{{ post.title }}</strong>
+            <span>Tác giả: {{ post.author }} ({{ post.authorRole }}) · Trạng thái: {{ statusLabel(post.status) }}</span>
+          </div>
+          <p style="margin:0;color:var(--c-body);font-size:16px">Bạn có chắc chắn muốn cho hiển thị công khai lại bài viết này?</p>
+          <div class="notice success">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v6c0 4.4-3 8.4-7 9-4-.6-7-4.6-7-9V6l7-3Z"/><path d="m9 12 2 2 4-4"/></svg>
+            <div>
+              <strong>Bài viết sẽ được mở công khai</strong>
+              <span>Hệ thống gửi email thông báo khôi phục đến tác giả.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer class="dialog-footer">
+        <button class="btn" type="button" (click)="restoreTarget.set(null)">Hủy</button>
+        <button class="btn primary" type="button" (click)="submitRestore()">Xác nhận khôi phục</button>
+      </footer>
+    </section>
+  </div>
+}
+
+@if (deleteTarget(); as post) {
+  <div class="dialog-backdrop" (click)="deleteTarget.set(null)">
+    <section class="dialog medium" role="dialog" aria-modal="true" aria-labelledby="post-delete-title" (click)="$event.stopPropagation()">
+      <header class="dialog-head">
+        <div class="dialog-head-main">
+          <span class="dialog-head-icon" aria-hidden="true" style="color:var(--c-red)"><svg viewBox="0 0 24 24"><path d="M12 3 2.5 20h19L12 3Z"/><path d="M12 9v5M12 17.2v.1"/></svg></span>
+          <div>
+            <h2 id="post-delete-title">Xóa bài viết khỏi hệ thống</h2>
+            <p>Kiểm tra thông tin và giải trình trước khi thực hiện thao tác.</p>
+          </div>
+        </div>
+        <button class="dialog-close" type="button" aria-label="Đóng xóa bài viết" (click)="deleteTarget.set(null)">×</button>
+      </header>
+      <div class="dialog-body">
+        <div class="dialog-stack">
+          <div class="summary-card">
+            <strong>{{ post.title }}</strong>
+            <span>Tác giả: {{ post.author }} ({{ post.authorRole }}) · {{ post.views }} lượt xem · {{ post.commentCount }} bình luận</span>
+          </div>
+          <div class="notice danger">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.5 20h19L12 3Z"/><path d="M12 9v5M12 17.2v.1"/></svg>
+            <div>
+              <strong>CẢNH BÁO: Xóa bài viết khỏi giao diện công khai</strong>
+              <span>Toàn bộ đường dẫn slug sẽ ngừng hoạt động. Các bình luận cũ vẫn được lưu vết nội bộ phục vụ kiểm toán.</span>
+            </div>
+          </div>
+          <div class="field">
+            <label for="delete-reason">Lý do xóa bài <b>*</b></label>
+            <input id="delete-reason" type="text" maxlength="120" placeholder="Ví dụ: Nội dung sai lệch kiến thức" [value]="deleteReason()" (input)="deleteReason.set($any($event.target).value)">
+          </div>
+          <div class="field">
+            <label for="delete-note">Giải trình chi tiết gửi tác giả <b>*</b></label>
+            <textarea id="delete-note" maxlength="500" placeholder="Nhập giải trình chi tiết gửi tác giả..." [value]="deleteNote()" (input)="deleteNote.set($any($event.target).value)"></textarea>
+            <span class="hint">Bắt buộc nhập ít nhất 15 ký tự.</span>
+          </div>
+          <div class="field">
+            <label for="delete-confirm">Nhập chữ XOA để xác nhận thao tác <b>*</b></label>
+            <input id="delete-confirm" type="text" autocomplete="off" spellcheck="false" placeholder="XOA" [value]="deleteConfirm()" (input)="deleteConfirm.set($any($event.target).value)">
+            <span class="hint">Gõ chính xác XOA viết hoa, không có khoảng trắng.</span>
+          </div>
+        </div>
+      </div>
+      <footer class="dialog-footer">
+        <button class="btn" type="button" (click)="deleteTarget.set(null)">Giữ lại bài viết</button>
+        <button class="btn danger-solid" type="button" [disabled]="!canDelete()" (click)="submitDelete()">Xác nhận xóa vĩnh viễn</button>
+      </footer>
+    </section>
+  </div>
+}
+
+<app-content-toast [message]="toast()?.message ?? ''" [description]="toast()?.description ?? ''" [tone]="toast()?.tone ?? 'info'" (closed)="toast.set(null)"></app-content-toast>

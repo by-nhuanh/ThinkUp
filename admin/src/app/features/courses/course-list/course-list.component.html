@@ -1,0 +1,210 @@
+<main class="courses-page">
+  <header class="page-heading">
+    <div>
+      <nav class="breadcrumb" aria-label="Đường dẫn trang">
+        <span>Quản lý khóa học</span>
+        <span class="breadcrumb-separator" aria-hidden="true">/</span>
+        <span class="breadcrumb-current" aria-current="page">Tất cả khóa học</span>
+      </nav>
+      <h1>Quản lý khóa học</h1>
+    </div>
+  </header>
+
+  <section class="kpis" aria-label="Tổng quan khóa học">
+    <button class="kpi" type="button" [class.is-selected]="status() === ''" (click)="setStatus('')" aria-label="Lọc tất cả khóa học">
+      <span class="kpi-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h16v12H4z"/><path d="M8 21h8M12 17v4M8 9h8"/></svg>
+      </span>
+      <span>
+        <span class="kpi-label">Tổng khóa học</span>
+        <strong class="kpi-value">{{ number(totals.total) }}</strong>
+        <span class="kpi-foot">+12,8% so với kỳ trước</span>
+      </span>
+    </button>
+    <button class="kpi" type="button" [class.is-selected]="status() === 'published'" (click)="setStatus('published')" aria-label="Lọc khóa học đang xuất bản">
+      <span class="kpi-icon green" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>
+      </span>
+      <span>
+        <span class="kpi-label">Đang xuất bản</span>
+        <strong class="kpi-value">{{ number(totals.published) }}</strong>
+        <span class="kpi-foot">78,5% tổng số</span>
+      </span>
+    </button>
+    <button class="kpi" type="button" [class.is-selected]="status() === 'pending'" (click)="setStatus('pending')" aria-label="Lọc khóa học chờ duyệt">
+      <span class="kpi-icon amber" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      </span>
+      <span>
+        <span class="kpi-label">Chờ duyệt</span>
+        <strong class="kpi-value">{{ number(totals.pending) }}</strong>
+        <span class="kpi-foot">Hồ sơ chờ kiểm định</span>
+      </span>
+    </button>
+    <button class="kpi" type="button" [class.is-selected]="status() === 'archived'" (click)="setStatus('archived')" aria-label="Lọc khóa học đã ẩn hoặc lưu trữ">
+      <span class="kpi-icon red" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M5 6v13h14V6M9 10v5M15 10v5M8 3h8l2 3H6z"/></svg>
+      </span>
+      <span>
+        <span class="kpi-label">Đã ẩn / lưu trữ</span>
+        <strong class="kpi-value">{{ number(totals.archived) }}</strong>
+        <span class="kpi-foot">18,6% tổng số</span>
+      </span>
+    </button>
+  </section>
+
+  <section class="quick-cards" aria-label="Lối tắt quản lý">
+    <a class="quick-card" routerLink="/courses/approvals">
+      <span class="quick-card-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>
+      </span>
+      <span class="copy">
+        <strong>Duyệt khóa học</strong>
+        <span>Kiểm định bài giảng, video, quiz, lab và tài liệu</span>
+      </span>
+      <span class="badge pending">36 chờ duyệt</span>
+    </a>
+    <a class="quick-card" routerLink="/courses/roadmaps">
+      <span class="quick-card-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 4 3 7v13l6-3 6 3 6-3V4l-6 3z"/><path d="M9 4v13M15 7v13"/></svg>
+      </span>
+      <span class="copy">
+        <strong>Lộ trình học tập</strong>
+        <span>Xâu chuỗi khóa học thành lộ trình nghề nghiệp</span>
+      </span>
+      <span class="cta">Mở trang →</span>
+    </a>
+  </section>
+
+  <section class="panel" aria-label="Danh sách khóa học">
+    <div class="toolbar">
+      <div class="grow">
+        <app-search-field
+          label="Tìm khóa học"
+          placeholder="Mã, tên khóa học, giảng viên"
+          [value]="search()"
+          (valueChange)="setSearch($event)"
+        ></app-search-field>
+      </div>
+      <div class="filter">
+        <span>Danh mục</span>
+        <app-custom-select controlId="course-category" [value]="category()" [options]="categoryOptions" placeholder="Tất cả danh mục" [menuWidth]="260" (valueChange)="setCategory($event)"></app-custom-select>
+      </div>
+      <div class="filter">
+        <span>Cấp độ</span>
+        <app-custom-select controlId="course-level" [value]="level()" [options]="levelOptions" placeholder="Tất cả cấp độ" (valueChange)="setLevel($event)"></app-custom-select>
+      </div>
+      <div class="filter">
+        <span>Trạng thái</span>
+        <app-custom-select controlId="course-status" [value]="status()" [options]="statusOptions" placeholder="Tất cả trạng thái" (valueChange)="setStatus($event)"></app-custom-select>
+      </div>
+      <div class="filter">
+        <span>Thời gian tạo</span>
+        <app-custom-select controlId="course-range" [value]="createdRange()" [options]="rangeOptions" placeholder="Tất cả thời gian" [menuWidth]="216" (valueChange)="setRange($event)"></app-custom-select>
+      </div>
+      <div class="toolbar-end">
+        <button class="icon-button" type="button" aria-label="Đặt lại bộ lọc" title="Đặt lại bộ lọc" (click)="resetFilters()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+        </button>
+        <app-export-menu label="Xuất danh sách khóa học" (formatChange)="exportList($event)"></app-export-menu>
+      </div>
+    </div>
+
+    @if (loadError()) {
+      <div class="alert danger" role="alert" style="margin: 14px 18px">
+        <span>Không tải được danh sách khóa học. Vui lòng thử lại.</span>
+        <button class="button small" type="button" (click)="retryLoad()">Thử lại</button>
+      </div>
+    }
+
+    @if (!loadError() && filtered().length === 0) {
+      <div class="empty">
+        <strong>Không tìm thấy khóa học phù hợp</strong>
+        <p>Thử từ khóa khác hoặc xóa bộ lọc để xem toàn bộ khóa học.</p>
+        <button class="button" type="button" (click)="resetFilters()">Xóa bộ lọc</button>
+      </div>
+    } @else if (!loadError()) {
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Khóa học</th>
+              <th scope="col">Danh mục</th>
+              <th scope="col">Giảng viên</th>
+              <th scope="col">Học viên</th>
+              <th scope="col">Giá bán</th>
+              <th scope="col">Đánh giá</th>
+              <th scope="col">Trạng thái</th>
+              <th scope="col">Thời gian</th>
+              <th scope="col">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of visible(); track item.id) {
+              <tr>
+                <td>
+                  <span class="cell-title">{{ item.title }}</span>
+                  <span class="cell-sub">{{ item.id }} · {{ item.level }}</span>
+                </td>
+                <td>{{ item.category }}</td>
+                <td>
+                  <span class="cell-title">{{ item.instructor }}</span>
+                  <span class="cell-sub">{{ item.instructorId }}</span>
+                </td>
+                <td class="nowrap">{{ item.students === null ? '-' : number(item.students) }}</td>
+                <td class="nowrap">{{ money(item.price) }}</td>
+                <td class="nowrap">
+                  @if (item.rating === null) { - } @else { ★ {{ item.rating.toFixed(1) }} ({{ item.reviewCount }}) }
+                </td>
+                <td>
+                  <span [class]="'badge ' + statusTone(item.status)">{{ statusText(item.status) }}</span>
+                </td>
+                <td class="nowrap">
+                  <span class="cell-title">{{ date(item.createdAt) }}</span>
+                  <span class="cell-sub">{{ time(item.createdAt) }}</span>
+                </td>
+                <td>
+                  <div class="row-actions">
+                    <button class="button link small" type="button" (click)="inspectCourse(item)">
+                      {{ item.status === 'pending' ? 'Mở kiểm duyệt' : 'Chi tiết' }}
+                    </button>
+                    @if (canArchive(item.status)) {
+                      <button class="button link small danger-text" type="button" (click)="openArchive(item)">Lưu trữ</button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-footer">
+        <span>{{ rangeLabel() }}</span>
+        <nav class="pagination" aria-label="Phân trang khóa học">
+          <button type="button" [disabled]="page() === 1" aria-label="Trang trước" (click)="goToPage(page() - 1)">‹</button>
+          @for (item of pagination(); track $index) {
+            @if (item === '...') {
+              <button type="button" disabled aria-hidden="true">…</button>
+            } @else {
+              <button type="button" [class.current]="item === page()" [attr.aria-current]="item === page() ? 'page' : null" (click)="onPage(item)">{{ item }}</button>
+            }
+          }
+          <button type="button" [disabled]="page() === pages()" aria-label="Trang sau" (click)="goToPage(page() + 1)">›</button>
+        </nav>
+      </div>
+    }
+  </section>
+</main>
+
+@if (detail(); as item) {
+  <app-course-detail-dialog [course]="item" (closed)="closeDetail()" />
+}
+
+@if (archiveTarget(); as item) {
+  <app-course-archive-dialog [course]="item" (closed)="closeArchive()" (confirmed)="confirmArchive($event)" />
+}
+
+@if (toast(); as notice) {
+  <app-course-toast [message]="notice.message" [tone]="notice.tone" (closed)="toast.set(null)" />
+}

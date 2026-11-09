@@ -1,5 +1,5 @@
 import { DOCUMENT } from '@angular/common';
-import { Component, DestroyRef, HostListener, computed, inject, signal } from '@angular/core';
+import { afterNextRender, Component, DestroyRef, HostListener, Injector, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { LucideInfo, LucideUpload, LucideX } from '@lucide/angular';
 import { BusinessDemoService } from '../services/business-demo.service';
@@ -27,7 +27,8 @@ export class PayoutsComponent {
   private readonly data = inject(BusinessDemoService);
   private readonly document = inject(DOCUMENT);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly repositionDatePopover = () => this.positionDatePopover();
+  private readonly injector = inject(Injector);
+  private readonly repositionFilterPopover = () => this.positionFilterPopover();
   private copyToastTimer: ReturnType<typeof setTimeout> | null = null;
   readonly money = money;
   readonly dateTime = dateTime;
@@ -49,7 +50,7 @@ export class PayoutsComponent {
   readonly limitMaxDraft = signal(999000);
   readonly limitOpen = signal(false);
   readonly quickOpen = signal(false);
-  readonly datePopoverPosition = signal<{ left: number; top: number; maxHeight: number } | null>(null);
+  readonly filterPopoverPosition = signal<{ left: number; top: number; maxHeight: number } | null>(null);
   /** Trần hạn mức: 999 tỷ. */
   readonly maxLimit = 999_000_000_000;
   /** Đơn vị nhập hạn mức: số tiền rất lớn nên người dùng chọn đơn vị thay vì chỉ dùng VNĐ. */
@@ -118,7 +119,7 @@ export class PayoutsComponent {
   readonly taxAmount = computed(() => this.payouts().filter(item => item.status === 'paid' && item.paidAt?.slice(0, 7) === new Date().toISOString().slice(0, 7)).reduce((sum, item) => sum + item.taxAmount, 0));
 
   constructor() {
-    this.destroyRef.onDestroy(() => this.removeDatePopoverListeners());
+    this.destroyRef.onDestroy(() => this.removeFilterPopoverListeners());
   }
 
   statusLabel(value: PayoutStatus): string { return { pending: 'Chờ duyệt', approved: 'Chờ giải ngân', paid: 'Đã giải ngân', rejected: 'Bị từ chối' }[value]; }
@@ -126,7 +127,7 @@ export class PayoutsComponent {
   closeRowActions(): void { this.openActionMenuId.set(null); }
   setStatus(value: PayoutStatus | ''): void { this.status.set(value); this.taxOnly.set(false); this.paidMonthOnly.set(false); this.page.set(1); }
   filterFromKpi(value: PayoutStatus): void { this.setStatus(value); this.clearDateRange(); }
-  clear(): void { this.search.set(''); this.status.set(''); this.limitMin.set(null); this.limitMax.set(null); this.limitMinDraft.set(0); this.limitMaxDraft.set(this.limitSliderMax()); this.limitOpen.set(false); this.closeDatePopover(); this.clearDateRange(); this.taxOnly.set(false); this.paidMonthOnly.set(false); this.sort.set('newest'); this.page.set(1); }
+  clear(): void { this.search.set(''); this.status.set(''); this.limitMin.set(null); this.limitMax.set(null); this.limitMinDraft.set(0); this.limitMaxDraft.set(this.limitSliderMax()); this.closeLimitPopover(); this.closeDatePopover(); this.clearDateRange(); this.taxOnly.set(false); this.paidMonthOnly.set(false); this.sort.set('newest'); this.page.set(1); }
   toggleSort(): void { this.sort.update(value => value === 'newest' ? 'oldest' : 'newest'); this.page.set(1); }
   formatLimit(value: number): string { return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: this.limitPrecision() }).format(value); }
   /** Rút gọn số tiền cho nút trên toolbar: 1.234.567.890 → "1,2 tỷ". */
@@ -171,7 +172,19 @@ export class PayoutsComponent {
     this.limitMinDraft.set(this.limitMin() === null ? 0 : this.limitMin()! / this.limitFactor());
     this.limitMaxDraft.set(this.limitMax() === null ? this.limitSliderMax() : this.limitMax()! / this.limitFactor());
     this.closeDatePopover();
-    this.limitOpen.update(open => !open);
+    if (this.limitOpen()) {
+      this.closeLimitPopover();
+      return;
+    }
+    this.limitOpen.set(true);
+    this.watchFilterPopover();
+  }
+
+  closeLimitPopover(): void {
+    if (!this.limitOpen()) return;
+    this.limitOpen.set(false);
+    this.filterPopoverPosition.set(null);
+    this.removeFilterPopoverListeners();
   }
   /** Hệ số quy đổi của đơn vị đang chọn. */
   private limitFactor(): number {
@@ -221,7 +234,7 @@ export class PayoutsComponent {
   applyLimit(): void {
     this.limitMin.set(this.limitToVnd(this.limitMinDraft()));
     this.limitMax.set(this.limitToVnd(this.limitMaxDraft()));
-    this.limitOpen.set(false);
+    this.closeLimitPopover();
     this.page.set(1);
   }
   resetLimit(): void {
@@ -229,7 +242,7 @@ export class PayoutsComponent {
     this.limitMax.set(null);
     this.limitMinDraft.set(0);
     this.limitMaxDraft.set(this.limitSliderMax());
-    this.limitOpen.set(false);
+    this.closeLimitPopover();
     this.page.set(1);
   }
   /** Chỉnh ngày bắt đầu trong popover, chưa áp dụng cho bộ lọc. */
@@ -278,50 +291,58 @@ export class PayoutsComponent {
   }
   shortDate(value: string): string { return value ? `${value.slice(8, 10)}/${value.slice(5, 7)}/${value.slice(0, 4)}` : ''; }
   toggleQuickRange(): void {
-    this.limitOpen.set(false);
+    this.closeLimitPopover();
     if (this.quickOpen()) { this.closeDatePopover(); return; }
-    this.datePopoverPosition.set(null);
+    this.filterPopoverPosition.set(null);
     // Popover mở ra với bản nháp bằng đúng khoảng thời gian đang áp dụng.
     this.fromDraft.set(this.from());
     this.toDraft.set(this.to());
     this.rangeDraft.set(this.quickRange());
     this.quickOpen.set(true);
+    this.watchFilterPopover();
+  }
+
+  private watchFilterPopover(): void {
     const view = this.document.defaultView;
-    view?.addEventListener('resize', this.repositionDatePopover);
-    view?.addEventListener('scroll', this.repositionDatePopover, true);
-    setTimeout(() => this.positionDatePopover());
+    view?.addEventListener('resize', this.repositionFilterPopover);
+    view?.addEventListener('scroll', this.repositionFilterPopover, true);
+    afterNextRender(() => this.positionFilterPopover(), { injector: this.injector });
   }
   closeDatePopover(): void {
     this.quickOpen.set(false);
-    this.datePopoverPosition.set(null);
-    this.removeDatePopoverListeners();
+    this.filterPopoverPosition.set(null);
+    this.removeFilterPopoverListeners();
   }
-  private removeDatePopoverListeners(): void {
+  private removeFilterPopoverListeners(): void {
     const view = this.document.defaultView;
-    view?.removeEventListener('resize', this.repositionDatePopover);
-    view?.removeEventListener('scroll', this.repositionDatePopover, true);
+    view?.removeEventListener('resize', this.repositionFilterPopover);
+    view?.removeEventListener('scroll', this.repositionFilterPopover, true);
   }
-  private positionDatePopover(): void {
-    if (!this.quickOpen()) return;
+  private positionFilterPopover(): void {
+    const limit = this.limitOpen();
+    if (!limit && !this.quickOpen()) return;
     const view = this.document.defaultView;
-    const trigger = this.document.querySelector<HTMLElement>('.payouts-page .date-trigger');
-    const popover = this.document.getElementById('payout-date-options');
+    const trigger = this.document.querySelector<HTMLElement>(limit ? '.payouts-page .limit-trigger' : '.payouts-page .date-trigger');
+    const popover = this.document.getElementById(limit ? 'payout-limit-options' : 'payout-date-options');
     if (!view || !trigger || !popover) return;
     const margin = 12;
     const gap = 8;
     const triggerRect = trigger.getBoundingClientRect();
     const popoverRect = popover.getBoundingClientRect();
-    const width = Math.min(popoverRect.width, view.innerWidth - margin * 2);
+    const viewportWidth = this.document.documentElement.clientWidth;
+    const width = popoverRect.width;
     // Keep the popover attached to the trigger's right edge. This prevents a
     // wide, content-sized date panel from being clipped at the viewport edge.
-    const preferredLeft = triggerRect.right - width;
-    const left = Math.max(margin, Math.min(preferredLeft, view.innerWidth - margin - width));
-    const below = view.innerHeight - triggerRect.bottom - gap - margin;
-    const above = triggerRect.top - gap - margin;
-    const openAbove = below < popoverRect.height && above > below;
-    const maxHeight = Math.max(0, openAbove ? above : below);
-    const top = openAbove ? Math.max(margin, triggerRect.top - gap - Math.min(popoverRect.height, maxHeight)) : triggerRect.bottom + gap;
-    this.datePopoverPosition.set({ left, top, maxHeight });
+    const preferredLeft = limit ? triggerRect.left : triggerRect.right - width;
+    const left = Math.max(margin, Math.min(preferredLeft, viewportWidth - margin - width));
+    const below = Math.max(0, view.innerHeight - triggerRect.bottom - gap - margin);
+    const above = Math.max(0, triggerRect.top - gap - margin);
+    const height = popover.scrollHeight + popover.offsetHeight - popover.clientHeight;
+    const openAbove = below < height && above > below;
+    const maxHeight = Math.min(openAbove ? above : below, view.innerHeight - margin * 2);
+    const desiredTop = openAbove ? triggerRect.top - gap - Math.min(height, maxHeight) : triggerRect.bottom + gap;
+    const top = Math.max(margin, Math.min(desiredTop, view.innerHeight - margin - maxHeight));
+    this.filterPopoverPosition.set({ left, top, maxHeight });
   }
   quickDate(value: string): void {
     const range = this.periodRange(value);
@@ -352,7 +373,7 @@ export class PayoutsComponent {
   cancelReject(): void { this.error.set(''); this.dialog.set(this.returnFromReject()); }
   @HostListener('document:keydown.escape')
   onEscape(): void {
-    if (this.limitOpen()) this.limitOpen.set(false);
+    if (this.limitOpen()) this.closeLimitPopover();
     else if (this.quickOpen()) this.closeDatePopover();
     else if (this.dialog() === 'reject') this.cancelReject();
     else if (this.selected()) this.close();

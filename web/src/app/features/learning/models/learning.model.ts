@@ -169,6 +169,7 @@ export interface LearningCourse {
   chapters: LearningChapter[];
   isPurchased?: boolean;
   playerConfig?: LearningPlayerConfig;
+  discussionRestrictedUntil?: string;
 }
 
 export interface CommunityReply {
@@ -183,6 +184,9 @@ export interface CommunityReply {
   createdAt: string;
   likes: number;
   liked?: boolean;
+  verifiedByAdmin?: boolean;
+  moderationState?: 'visible' | 'hidden' | 'removed';
+  moderationNote?: string;
 }
 
 export interface CommunityPost extends CommunityReply {

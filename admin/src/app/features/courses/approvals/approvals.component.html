@@ -1,0 +1,222 @@
+<main class="courses-page">
+  <header class="page-heading">
+    <div>
+      <nav class="breadcrumb" aria-label="Đường dẫn trang">
+        <span>Quản lý học tập</span>
+        <span class="breadcrumb-separator" aria-hidden="true">/</span>
+        <span class="breadcrumb-current" aria-current="page">Duyệt khóa học</span>
+      </nav>
+      <h1>Duyệt khóa học</h1>
+    </div>
+  </header>
+
+  <section class="kpis" aria-label="Tổng quan duyệt khóa học">
+    <button class="kpi" type="button" [class.is-selected]="status() === ''" (click)="setStatus('')" aria-label="Xem tất cả yêu cầu duyệt">
+      <span class="kpi-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3h8l4 4v14H4V3z"/><path d="M9 11h6M9 15h6M9 7h2"/></svg>
+      </span>
+      <span>
+        <span class="kpi-label">Tổng yêu cầu duyệt</span>
+        <strong class="kpi-value">284</strong>
+        <span class="kpi-foot">↑ 18,2% so với kỳ trước</span>
+      </span>
+    </button>
+    <button class="kpi" type="button" [class.is-selected]="status() === 'remaining'" (click)="setStatus('remaining')" aria-label="Lọc hồ sơ chờ thẩm định mới">
+      <span class="kpi-icon amber" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      </span>
+      <span>
+        <span class="kpi-label">Chờ thẩm định mới</span>
+        <strong class="kpi-value">18</strong>
+        <span class="kpi-foot">3 hồ sơ sắp/quá hạn 48h</span>
+      </span>
+    </button>
+    <button class="kpi" type="button" [class.is-selected]="status() === 'waiting'" (click)="setStatus('waiting')" aria-label="Lọc hồ sơ chờ giảng viên bổ sung">
+      <span class="kpi-icon red" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v10l4 2"/><circle cx="12" cy="12" r="9"/><path d="M8 17l-2 3M16 17l2 3"/></svg>
+      </span>
+      <span>
+        <span class="kpi-label">Chờ GV bổ sung</span>
+        <strong class="kpi-value">42</strong>
+        <span class="kpi-foot">14,8% tổng yêu cầu</span>
+      </span>
+    </button>
+    <button class="kpi" type="button" [class.is-selected]="status() === 'approved'" (click)="setStatus('approved')" aria-label="Lọc hồ sơ đã duyệt trong kỳ">
+      <span class="kpi-icon green" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>
+      </span>
+      <span>
+        <span class="kpi-label">Đã duyệt trong kỳ</span>
+        <strong class="kpi-value">196</strong>
+        <span class="kpi-foot">Tỷ lệ duyệt thành công 86,7%</span>
+      </span>
+    </button>
+  </section>
+
+  @if (loadError()) {
+    <div class="alert danger" role="alert">
+      <span><strong>Không tải được hàng đợi phê duyệt.</strong> Vui lòng thử lại.</span>
+      <button class="button small" type="button" (click)="retryLoad()">Thử lại</button>
+    </div>
+  }
+
+  <section class="panel" aria-label="Hàng đợi duyệt khóa học">
+    <div class="toolbar">
+      <div class="grow">
+        <app-search-field
+          [value]="search()"
+          placeholder="Mã, tên, giảng viên"
+          label="Tìm khóa học cần duyệt"
+          inputId="approval-search"
+          (valueChange)="setSearch($event)"
+        />
+      </div>
+      <label class="filter">
+        <span>Danh mục</span>
+        <app-custom-select
+          [value]="category()"
+          [options]="categoryOptions()"
+          placeholder="Tất cả danh mục"
+          controlId="approval-category"
+          [menuWidth]="210"
+          (valueChange)="setCategory($event)"
+        />
+      </label>
+      <label class="filter">
+        <span>Cấp độ</span>
+        <app-custom-select
+          [value]="level()"
+          [options]="levelOptions"
+          placeholder="Tất cả cấp độ"
+          controlId="approval-level"
+          [menuWidth]="180"
+          (valueChange)="setLevel($event)"
+        />
+      </label>
+      <label class="filter">
+        <span>Học phần</span>
+        <app-custom-select
+          [value]="component()"
+          [options]="componentOptions"
+          placeholder="Tất cả học phần"
+          controlId="approval-component"
+          [menuWidth]="230"
+          (valueChange)="setComponent($event)"
+        />
+      </label>
+      <label class="filter">
+        <span>Trạng thái</span>
+        <app-custom-select
+          [value]="status()"
+          [options]="statusOptions"
+          placeholder="Tất cả trạng thái"
+          controlId="approval-status"
+          [menuWidth]="210"
+          (valueChange)="setStatus($event)"
+        />
+      </label>
+      <label class="filter">
+        <span>Thời gian nộp</span>
+        <app-custom-select
+          [value]="range()"
+          [options]="rangeOptions"
+          placeholder="Tháng này"
+          controlId="approval-range"
+          [menuWidth]="220"
+          (valueChange)="setRange($event)"
+        />
+      </label>
+      <div class="toolbar-end">
+        <button class="button" type="button" (click)="clearFilters()">Xóa bộ lọc</button>
+        <app-export-menu label="Xuất hàng đợi duyệt" [showText]="true" (formatChange)="exportList($event)" />
+      </div>
+    </div>
+
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Khóa học</th>
+            <th scope="col">Giảng viên</th>
+            <th scope="col">Cấu trúc tài nguyên</th>
+            <th scope="col">Giá đề xuất</th>
+            <th scope="col">Thời gian nộp</th>
+            <th scope="col">SLA 48h</th>
+            <th scope="col">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of visible(); track item.id) {
+            <tr>
+              <td>
+                <span class="cell-title">{{ item.courseTitle }}</span>
+                <span class="cell-sub">{{ item.courseId }} · {{ item.level }}</span>
+              </td>
+              <td>
+                <span class="cell-title">{{ item.instructor }}</span>
+                <span class="cell-sub">{{ item.instructorRole }}</span>
+              </td>
+              <td>
+                <span class="cell-sub" style="white-space: pre-line">{{ item.resources }}</span>
+              </td>
+              <td class="nowrap">
+                <span class="cell-title">{{ money(item.suggestedPrice) }}</span>
+                <span class="cell-sub">{{ discountLabel(item) }}</span>
+              </td>
+              <td class="nowrap">
+                <span class="cell-title">{{ submittedLabel(item.submittedAt) }}</span>
+                <span class="cell-sub">{{ submittedTime(item.submittedAt) }}</span>
+              </td>
+              <td>
+                <span class="badge" [class]="'badge ' + statusTone(item)">{{ item.slaLabel }}</span>
+                @if (item.slaHint) {
+                  <span class="cell-sub">{{ item.slaHint }}</span>
+                }
+              </td>
+              <td>
+                <div class="row-actions">
+                  @if (item.action === 'history') {
+                    <button class="button small" type="button" (click)="openHistory(item)">Xem lịch sử</button>
+                  } @else {
+                    <button class="button small" [class.primary]="item.action === 'inspect'" type="button" (click)="open(item)">
+                      {{ actionLabel(item) }}
+                    </button>
+                  }
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="7">
+                <div class="empty">
+                  <strong>Không có yêu cầu duyệt phù hợp</strong>
+                  <p>Điều chỉnh bộ lọc hoặc xóa bộ lọc để xem toàn bộ hàng đợi.</p>
+                  <button class="button" type="button" (click)="clearFilters()">Xóa bộ lọc</button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <footer class="table-footer">
+      <span>{{ rangeLabel() }} · Ưu tiên SLA gần nhất</span>
+      <nav class="pagination" aria-label="Phân trang hàng đợi duyệt">
+        <button type="button" aria-label="Trang trước" [disabled]="page() === 1" (click)="goToPage(page() - 1)">‹</button>
+        @for (item of pagination(); track $index) {
+          @if (item === '...') {
+            <button type="button" disabled aria-hidden="true">…</button>
+          } @else {
+            <button type="button" [class.current]="item === page()" [attr.aria-current]="item === page() ? 'page' : null" (click)="goToPage(item)">{{ item }}</button>
+          }
+        }
+        <button type="button" aria-label="Trang sau" [disabled]="page() === pages()" (click)="goToPage(page() + 1)">›</button>
+      </nav>
+    </footer>
+  </section>
+
+  @if (toast(); as t) {
+    <app-course-toast [message]="t.message" [tone]="t.tone" (closed)="toast.set(null)" />
+  }
+</main>

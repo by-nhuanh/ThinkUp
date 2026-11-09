@@ -1,0 +1,182 @@
+<app-admin-dialog
+  [title]="course().title"
+  [subtitle]="course().id + '   ·   ' + course().instructor"
+  size="xl"
+  (closed)="close()"
+>
+  <div class="detail-hero">
+    <div class="detail-cover" aria-hidden="true">{{ course().category }}</div>
+    <div class="detail-hero-body">
+      <div class="detail-hero-tags">
+        <span [class]="'badge ' + statusTone()">{{ statusLabel() }}</span>
+        <span [class]="'badge ' + levelTone()">{{ course().level }}</span>
+        <span class="badge neutral">{{ course().durationHours }} giờ học</span>
+      </div>
+      <p class="detail-hero-meta">{{ course().tags.join('  ·  ') }}</p>
+      <p class="detail-hero-meta">{{ course().description }}</p>
+      <p class="detail-hero-meta">
+        @if (course().students !== null) { {{ number(course().students ?? 0) }} học viên } @else { Chưa có học viên }
+        @if (course().rating !== null) { · ★ {{ (course().rating ?? 0).toFixed(1) }} ({{ course().reviewCount }} đánh giá) }
+        · Cập nhật {{ date(course().updatedAt) }}
+      </p>
+    </div>
+  </div>
+
+  <div class="tabs" role="tablist" aria-label="Chi tiết khóa học">
+    @for (item of tabs; track item.id) {
+      <button
+        class="tab"
+        type="button"
+        role="tab"
+        [class.active]="tab() === item.id"
+        [attr.aria-selected]="tab() === item.id"
+        (click)="setTab(item.id)"
+      >{{ item.label }}</button>
+    }
+  </div>
+
+  @switch (tab()) {
+    @case ('overview') {
+      <div class="detail-columns" style="margin-top: 16px">
+        <div class="detail-main">
+          <section class="section-card">
+            <h3>Tóm tắt chương trình học</h3>
+            <p class="detail-hero-meta">{{ course().curriculumSummary }}</p>
+            <div class="curriculum" style="margin-top: 12px">
+              @for (chapter of course().chapters; track chapter.no) {
+                <div class="chapter">
+                  <div class="chapter-head">
+                    <span class="idx">{{ chapter.no }}</span>
+                    <span>{{ chapter.title }}</span>
+                    <span class="count">{{ chapter.meta }}</span>
+                  </div>
+                </div>
+              }
+            </div>
+          </section>
+        </div>
+        <aside class="detail-side">
+          <section class="section-card">
+            <h3>Thông tin &amp; tài chính</h3>
+            <dl class="meta-grid" style="grid-template-columns: minmax(0, 1fr)">
+              <div class="meta"><dt>Giá niêm yết</dt><dd>{{ course().finance.listPrice }}</dd></div>
+              <div class="meta"><dt>Giảng viên nhận</dt><dd>{{ course().finance.instructorShare }}</dd></div>
+              <div class="meta"><dt>Sàn giữ lại</dt><dd>{{ course().finance.platformShare }}</dd></div>
+              <div class="meta"><dt>Doanh thu tích lũy</dt><dd>{{ course().finance.revenue }}</dd></div>
+              <div class="meta"><dt>Voucher</dt><dd>{{ course().finance.voucher }}</dd></div>
+            </dl>
+            <div style="margin-top: 10px">
+              <span class="badge" [class.success]="course().finance.voucherActive" [class.neutral]="!course().finance.voucherActive">
+                {{ course().finance.voucherActive ? 'Đang hoạt động' : 'Chưa áp dụng' }}
+              </span>
+            </div>
+          </section>
+          <section class="section-card">
+            <h3>Danh mục</h3>
+            <dl class="meta-grid" style="grid-template-columns: minmax(0, 1fr)">
+              <div class="meta"><dt>Nhóm ngành</dt><dd>{{ course().category }}</dd></div>
+              <div class="meta"><dt>Cấp độ</dt><dd>{{ course().level }}</dd></div>
+              <div class="meta"><dt>Mã giảng viên</dt><dd>{{ course().instructorId }}</dd></div>
+              <div class="meta"><dt>Ngày tạo</dt><dd>{{ dateTime(course().createdAt) }}</dd></div>
+            </dl>
+          </section>
+        </aside>
+      </div>
+    }
+
+    @case ('content') {
+      <section class="section-card" style="margin-top: 16px">
+        <h3>Nội dung học</h3>
+        <p class="detail-hero-meta">{{ course().curriculumSummary }}</p>
+        <div class="curriculum" style="margin-top: 12px">
+          @for (chapter of course().chapters; track chapter.no) {
+            <div class="chapter">
+              <div class="chapter-head">
+                <span class="idx">{{ chapter.no }}</span>
+                <span>{{ chapter.title }}</span>
+                <span class="count">{{ chapter.meta }}</span>
+              </div>
+              <div class="lesson-row">
+                <span class="lesson-icon" aria-hidden="true">▤</span>
+                <span class="lesson-title">Nội dung chương được quản lý trong trình soạn khóa học của giảng viên.</span>
+              </div>
+            </div>
+          }
+        </div>
+      </section>
+    }
+
+    @case ('learners') {
+      <section class="section-card" style="margin-top: 16px">
+        <h3>Học viên</h3>
+        @if (learners().length) {
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Học viên</th>
+                  <th scope="col">Tham gia</th>
+                  <th scope="col">Tiến độ</th>
+                  <th scope="col">Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (learner of learners(); track learner.email) {
+                  <tr>
+                    <td>
+                      <span class="cell-title">{{ learner.name }}</span>
+                      <span class="cell-sub">{{ learner.email }}</span>
+                    </td>
+                    <td class="nowrap">{{ date(learner.enrolledAt) }}</td>
+                    <td>
+                      <span class="cell-title">{{ learner.progress }}%</span>
+                      <span class="cell-sub">Hoàn thành bài học</span>
+                    </td>
+                    <td>
+                      <span class="badge" [class.success]="learner.status === 'Hoàn thành'"
+                        [class.pending]="learner.status === 'Tạm dừng'" [class.info]="learner.status === 'Đang học'">
+                        {{ learner.status }}
+                      </span>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <div class="empty">
+            <strong>Chưa có học viên</strong>
+            <p>Khóa học đang chờ duyệt nên chưa ghi nhận lượt đăng ký.</p>
+          </div>
+        }
+      </section>
+    }
+
+    @case ('finance') {
+      <section class="section-card" style="margin-top: 16px">
+        <h3>Đối soát tài chính</h3>
+        <dl class="meta-grid">
+          <div class="meta"><dt>Giá niêm yết</dt><dd>{{ course().finance.listPrice }}</dd></div>
+          <div class="meta"><dt>Giá hiển thị</dt><dd>{{ money(course().price) }}</dd></div>
+          <div class="meta"><dt>Giảng viên nhận</dt><dd>{{ course().finance.instructorShare }}</dd></div>
+          <div class="meta"><dt>Sàn giữ lại</dt><dd>{{ course().finance.platformShare }}</dd></div>
+          <div class="meta full"><dt>Doanh thu tích lũy</dt><dd>{{ course().finance.revenue }}</dd></div>
+          <div class="meta full"><dt>Voucher</dt><dd>{{ course().finance.voucher }}</dd></div>
+        </dl>
+        <p style="margin-top: 12px">
+          <span class="badge" [class.success]="course().finance.voucherActive" [class.neutral]="!course().finance.voucherActive">
+            {{ course().finance.voucherActive ? 'Đang hoạt động' : 'Chưa áp dụng' }}
+          </span>
+        </p>
+      </section>
+    }
+  }
+
+  <p class="detail-hero-meta" style="margin: 16px 0 0">
+    Chế độ chỉ xem · Các tab hiển thị nội dung, học viên và doanh thu
+  </p>
+
+  <div dialogFooter style="display: flex; justify-content: flex-end">
+    <button class="button" type="button" (click)="close()">Đóng</button>
+  </div>
+</app-admin-dialog>

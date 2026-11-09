@@ -1,0 +1,368 @@
+@if (roadmap(); as rm) {
+  @if (studio(); as st) {
+    <main class="studio">
+      <header class="studio-head">
+        <div>
+          <h1>{{ rm.name }}</h1>
+          <p class="sub">{{ rm.code }} · {{ rm.industry }} · {{ rm.stages }} giai đoạn · {{ rm.nodes }} node</p>
+        </div>
+        <div class="studio-actions">
+          <button class="button ghost" type="button" (click)="back()">← Danh sách lộ trình</button>
+          <button class="button" type="button" (click)="saveDraft()">Lưu bản nháp</button>
+          <button class="button primary" type="button" (click)="publish()">Xuất bản</button>
+        </div>
+      </header>
+
+      <div class="studio-tabs" role="tablist" aria-label="Roadmap Studio">
+        <button
+          class="tab"
+          type="button"
+          role="tab"
+          [class.active]="tab() === 'structure'"
+          [attr.aria-selected]="tab() === 'structure'"
+          (click)="tab.set('structure')"
+        >Cấu trúc &amp; node</button>
+        <button
+          class="tab"
+          type="button"
+          role="tab"
+          [class.active]="tab() === 'test'"
+          [attr.aria-selected]="tab() === 'test'"
+          (click)="tab.set('test')"
+        >Bài kiểm tra</button>
+      </div>
+
+      @if (tab() === 'structure') {
+        <div class="studio-grid">
+          <section class="panel" aria-label="Cấu trúc lộ trình">
+            <div class="panel-head">
+              <h2 class="studio-panel-title">Cấu trúc lộ trình</h2>
+            </div>
+            <div class="panel-body">
+              <button class="button block" type="button" (click)="addPhase()">+ Thêm giai đoạn mới</button>
+              <div class="tree-list" style="margin-top: 10px">
+                @for (phase of st.phases; track phase.id) {
+                  <div class="tree-phase">
+                    <span class="idx">{{ phase.no }}</span>
+                    <span class="tree-label">{{ phase.name }}</span>
+                    <button class="icon-button add" type="button" [attr.aria-label]="'Thêm node vào giai đoạn ' + phase.name" (click)="addNode(phase)">+</button>
+                  </div>
+                  @for (node of phase.nodes; track node.id) {
+                    <button
+                      class="tree-node"
+                      type="button"
+                      [class.is-selected]="node.id === selectedNodeId()"
+                      [attr.aria-current]="node.id === selectedNodeId() ? 'true' : null"
+                      (click)="selectNode(node)"
+                    >{{ node.id === selectedNodeId() ? (nodeDraft()?.name ?? node.name) : node.name }}</button>
+                  }
+                }
+              </div>
+            </div>
+          </section>
+
+          <section class="panel" aria-label="Cấu hình node">
+            <div class="panel-head">
+              <h2 class="studio-panel-title">Cấu hình node</h2>
+              @if (nodeDraft(); as activeNode) {
+                <span [class]="'badge ' + levelTone(activeNode.level)">{{ activeNode.level }}</span>
+              }
+            </div>
+            <div class="panel-body">
+              @if (nodeDraft(); as node) {
+                <div class="node-form">
+                  <div class="form-grid">
+                    <div class="field full">
+                      <label for="node-name">Tên node <b>*</b></label>
+                      <input id="node-name" [value]="node.name" [attr.aria-invalid]="nameError()" (input)="patchNode({ name: $any($event.target).value })" />
+                      @if (nameError()) { <span class="error">Vui lòng nhập tên node.</span> }
+                    </div>
+                    <div class="field">
+                      <label id="node-type-label">Loại node</label>
+                      <app-custom-select controlId="node-type" labelId="node-type-label" [value]="node.type" [options]="typeOptions" placeholder="Chọn loại node" (valueChange)="setNodeType($event)"></app-custom-select>
+                    </div>
+                    <div class="field">
+                      <label id="node-level-label">Cấp độ yêu cầu</label>
+                      <app-custom-select controlId="node-level" labelId="node-level-label" [value]="node.level" [options]="levelOptions" placeholder="Chọn cấp độ" (valueChange)="setNodeLevel($event)"></app-custom-select>
+                    </div>
+                    <div class="field full">
+                      <label for="node-industry">Nhóm ngành liên quan</label>
+                      <input id="node-industry" [value]="node.industry" (input)="patchNode({ industry: $any($event.target).value })" />
+                    </div>
+                    <div class="field full">
+                      <label for="node-description">Mô tả node <b>*</b></label>
+                      <textarea id="node-description" rows="3" [value]="node.description" [attr.aria-invalid]="descriptionError()" (input)="patchNode({ description: $any($event.target).value })"></textarea>
+                      @if (descriptionError()) { <span class="error">Vui lòng nhập mô tả node.</span> }
+                    </div>
+                    <div class="field full">
+                      <label for="node-outcomes">Bạn sẽ học được gì <b>*</b></label>
+                      <textarea id="node-outcomes" rows="2" [value]="node.outcomes" [attr.aria-invalid]="outcomesError()" (input)="patchNode({ outcomes: $any($event.target).value })"></textarea>
+                      @if (outcomesError()) { <span class="error">Vui lòng nhập kết quả học được.</span> }
+                    </div>
+                    <div class="field full">
+                      <span class="field-label">Sub-tag tìm kiếm</span>
+                      <div class="subtag-list">
+                        @for (tag of node.tags; track tag) {
+                          @if (editingTag() === tag) {
+                            <span class="subtag is-editing">
+                              <input
+                                class="tag-inline"
+                                [value]="editingTagValue()"
+                                [attr.aria-label]="'Sửa sub-tag ' + tag"
+                                (input)="editingTagValue.set($any($event.target).value)"
+                                (keydown.enter)="confirmEditTag(tag)"
+                                (keydown.escape)="cancelEditTag()"
+                              />
+                              <button class="tag-action" type="button" [attr.aria-label]="'Lưu sub-tag ' + tag" (click)="confirmEditTag(tag)">✓</button>
+                              <button class="tag-action" type="button" [attr.aria-label]="'Hủy sửa sub-tag ' + tag" (click)="cancelEditTag()">✕</button>
+                            </span>
+                          } @else {
+                            <span class="subtag">
+                              {{ tag }}
+                              <button class="tag-action" type="button" [attr.aria-label]="'Sửa sub-tag ' + tag" (click)="startEditTag(tag)">✎</button>
+                              <button class="tag-action" type="button" [attr.aria-label]="'Xóa sub-tag ' + tag" (click)="removeTag(tag)">✕</button>
+                            </span>
+                          }
+                        }
+                      </div>
+                      <div class="subtag-add">
+                        <input
+                          placeholder="Nhập sub-tag mới…"
+                          aria-label="Nhập sub-tag mới"
+                          [value]="newTag()"
+                          (input)="newTag.set($any($event.target).value)"
+                          (keydown.enter)="addTag()"
+                        />
+                        <button class="button" type="button" (click)="addTag()">+ Thêm</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              } @else {
+                <div class="empty">
+                  <strong>Chọn một node</strong>
+                  <p>Chọn node trong cây cấu trúc để chỉnh sửa nội dung.</p>
+                </div>
+              }
+            </div>
+          </section>
+
+          <aside class="studio-side is-single">
+            <section class="panel" aria-label="Khóa học đề xuất">
+              <div class="panel-head">
+                <h2 class="studio-panel-title">Khóa học đề xuất</h2>
+              </div>
+              <div class="panel-body">
+                <div class="threshold-row">
+                  <label for="threshold">Ngưỡng phù hợp tối thiểu</label>
+                  <span class="threshold-input">
+                    <input id="threshold" type="number" min="0" max="100" step="1" [value]="threshold()" (input)="setThreshold($any($event.target).value)" />
+                    <span aria-hidden="true">%</span>
+                  </span>
+                </div>
+                <p class="suggestion-count">Đạt ngưỡng · {{ qualifiedCount() }} khóa học</p>
+                <div class="suggestions">
+                  @for (item of visibleSuggestions(); track item.id) {
+                    <article class="suggestion">
+                      <div class="suggestion-head">
+                        <strong>{{ item.title }}</strong>
+                        <span class="match">{{ item.match }}%</span>
+                      </div>
+                      <div class="row">
+                        <span [class]="'badge ' + levelTone(item.level)">{{ item.level }}</span>
+                        <button
+                          class="attach"
+                          type="button"
+                          [disabled]="attachedIds().includes(item.id)"
+                          (click)="attach(item)"
+                        >{{ attachedIds().includes(item.id) ? 'Đã gắn' : '+ Gắn vào node' }}</button>
+                      </div>
+                    </article>
+                  } @empty {
+                    <p class="hint">Chưa có khóa học đề xuất cho node này.</p>
+                  }
+                </div>
+              </div>
+            </section>
+          </aside>
+        </div>
+      } @else {
+        <div class="test-layout">
+          <section class="panel" aria-label="Thiết lập bài kiểm tra">
+            <div class="panel-head">
+              <h2 class="studio-panel-title">Thiết lập bài kiểm tra</h2>
+            </div>
+            <div class="panel-body">
+              @if (testDraft(); as test) {
+                <div class="node-form">
+                  <div class="field">
+                    <label for="test-name">Tên bài kiểm tra <b>*</b></label>
+                    <input id="test-name" [value]="test.name" (input)="patchTest({ name: $any($event.target).value })" />
+                  </div>
+                  <div class="field-row">
+                    <div class="field">
+                      <label for="test-duration">Thời gian làm bài</label>
+                      <span class="input-suffix">
+                        <input id="test-duration" type="number" min="1" step="1" [value]="test.duration" (input)="setDuration($any($event.target).value)" />
+                        <span>phút</span>
+                      </span>
+                    </div>
+                    <div class="field">
+                      <label for="test-pass">Điểm đạt yêu cầu</label>
+                      <span class="input-suffix">
+                        <input id="test-pass" type="number" min="0" max="100" step="1" [value]="test.passScore" (input)="setPassScore($any($event.target).value)" />
+                        <span>%</span>
+                      </span>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label id="test-stage-label">Giai đoạn</label>
+                    <app-custom-select controlId="test-stage" labelId="test-stage-label" [value]="test.stage" [options]="stageOptions()" placeholder="Chọn giai đoạn" (valueChange)="setStage($event)"></app-custom-select>
+                  </div>
+                  <div class="divider"></div>
+                  <div class="field-label-row">
+                    <span class="field-label">Câu hỏi trong bài</span>
+                    <span class="badge neutral">{{ questionsCount() }} câu hỏi</span>
+                  </div>
+                  <div class="question-list">
+                    @for (question of test.questions; track question.id) {
+                      <button
+                        class="question-row"
+                        type="button"
+                        [class.is-selected]="question.id === selectedQuestionId()"
+                        [attr.aria-current]="question.id === selectedQuestionId() ? 'true' : null"
+                        (click)="selectQuestion(question.id)"
+                      >
+                        <span class="idx">{{ questionIndex(question.index) }}</span>
+                        <span class="q-body">
+                          <strong>{{ question.title }}</strong>
+                          <span>{{ question.meta }}</span>
+                        </span>
+                      </button>
+                    } @empty {
+                      <p class="hint">Bài kiểm tra chưa có câu hỏi nào.</p>
+                    }
+                  </div>
+                  <button class="button block" type="button" (click)="addQuestion()">+ Thêm câu hỏi</button>
+                </div>
+              }
+            </div>
+          </section>
+
+          <section class="panel" aria-label="Chỉnh sửa câu hỏi">
+            <div class="panel-body">
+              @if (activeQuestion(); as question) {
+                <div class="editor-head">
+                  <h2 class="studio-panel-title">Chỉnh sửa câu hỏi {{ questionIndex(question.index) }}</h2>
+                  <button class="button small" type="button" (click)="openHint()">✦ Tạo gợi ý</button>
+                </div>
+                <div class="node-form">
+                  <div class="field">
+                    <label for="question-prompt">Nội dung câu hỏi <b>*</b></label>
+                    <textarea id="question-prompt" rows="3" [value]="question.prompt" (input)="patchQuestion({ prompt: $any($event.target).value })"></textarea>
+                  </div>
+                  <div class="field">
+                    <label for="question-code">Mã nguồn (tùy chọn)</label>
+                    <div class="code-editor">
+                      <div class="code-head">
+                        <span>{{ question.language }}</span>
+                        <span class="spacer"></span>
+                        <span>{{ question.code.split('\n').length }} dòng</span>
+                      </div>
+                      <textarea
+                        id="question-code"
+                        class="code-input"
+                        rows="6"
+                        spellcheck="false"
+                        [value]="question.code"
+                        (input)="patchQuestion({ code: $any($event.target).value })"
+                      ></textarea>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <div class="field-label-row">
+                      <span class="field-label">Phương án trả lời</span>
+                      <span>Chọn một đáp án đúng</span>
+                    </div>
+                    <div class="answer-list">
+                      @for (answer of question.answers; track answer.letter) {
+                        <div class="answer-edit" [class.is-correct]="answer.correct">
+                          <input
+                            type="radio"
+                            [name]="'correct-' + question.id"
+                            [checked]="answer.correct"
+                            [attr.aria-label]="'Đánh dấu đáp án ' + answer.letter + ' là đúng'"
+                            (change)="setCorrectAnswer(answer.letter)"
+                          />
+                          <span class="answer-letter">{{ answer.letter }}.</span>
+                          <input
+                            class="answer-text"
+                            type="text"
+                            [value]="answer.text"
+                            [attr.aria-label]="'Nội dung phương án ' + answer.letter"
+                            (input)="setAnswerText(answer.letter, $any($event.target).value)"
+                          />
+                          @if (answer.correct) {
+                            <span class="badge success">Đáp án đúng</span>
+                          }
+                        </div>
+                      }
+                    </div>
+                  </div>
+                  @if (question.hintSaved && question.hint) {
+                    <div class="field">
+                      <div class="field-label-row">
+                        <span class="field-label">Gợi ý đã lưu</span>
+                        <button class="button link small" type="button" (click)="openHint()">Sửa gợi ý</button>
+                      </div>
+                      <div class="hint-preview">{{ question.hint }}</div>
+                    </div>
+                  }
+                  <p class="muted-note">Chưa đạt điểm chuẩn: gợi ý khóa học phù hợp với node và flashcard ôn tập.</p>
+                </div>
+              } @else {
+                <div class="empty">
+                  <strong>Chưa chọn câu hỏi</strong>
+                  <p>Thêm câu hỏi mới để bắt đầu soạn nội dung bài kiểm tra.</p>
+                  <button class="button" type="button" (click)="addQuestion()">+ Thêm câu hỏi</button>
+                </div>
+              }
+            </div>
+          </section>
+        </div>
+      }
+    </main>
+
+    @if (hintOpen()) {
+      @if (activeQuestion(); as question) {
+        <app-roadmap-hint-dialog
+          [questionTitle]="question.title"
+          [prompt]="question.prompt"
+          [hint]="question.hint"
+          (closed)="closeHint()"
+          (saved)="saveHint($event)"
+        />
+      }
+    }
+  } @else {
+    <main class="studio">
+      <div class="panel empty">
+        <strong>Lộ trình chưa có cấu hình Studio</strong>
+        <p>Chọn một lộ trình khác hoặc quay lại danh sách để tiếp tục.</p>
+        <button class="button" type="button" (click)="back()">Quay lại danh sách lộ trình</button>
+      </div>
+    </main>
+  }
+} @else {
+  <main class="studio">
+    <div class="panel empty">
+      <strong>Không tìm thấy lộ trình</strong>
+      <p>Lộ trình có thể đã bị xóa hoặc đường dẫn không hợp lệ.</p>
+      <button class="button" type="button" (click)="back()">Quay lại danh sách lộ trình</button>
+    </div>
+  </main>
+}
+
+@if (toast(); as notice) {
+  <app-course-toast [message]="notice.message" [tone]="notice.tone" (closed)="toast.set(null)" />
+}

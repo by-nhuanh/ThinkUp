@@ -1,0 +1,27 @@
+<app-admin-dialog
+  title="Phát hiện tệp có nguy cơ"
+  subtitle="Hệ thống đã chặn thao tác tải xuống để bảo vệ thiết bị."
+  size="md"
+  (closed)="close()"
+>
+  <div class="risk-box" role="alert">
+    <strong>Không thể tải xuống tệp {{ file().name }}</strong>
+    <p>Tệp có dấu hiệu chứa nội dung không an toàn. Không mở hoặc chia sẻ tệp cho đến khi giảng viên cung cấp phiên bản thay thế.</p>
+  </div>
+
+  <section class="section-card" style="margin-top: 14px">
+    <h3>Chi tiết phát hiện</h3>
+    <dl class="detail-rows">
+      <div><dt>Tên tệp</dt><dd>{{ file().name }}</dd></div>
+      <div><dt>Loại nguy cơ</dt><dd>Tệp nén chứa mã thực thi đáng ngờ</dd></div>
+      <div><dt>Trạng thái</dt><dd>Đã chặn tải xuống</dd></div>
+    </dl>
+  </section>
+
+  <p class="dialog-note" style="margin-top: 14px">Hãy yêu cầu giảng viên xóa tệp và tải lên phiên bản đã được kiểm tra an toàn.</p>
+
+  <div dialogFooter style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px">
+    <button class="button" type="button" (click)="close()">Đóng</button>
+    <button class="button primary" type="button" (click)="requestReplace()">Yêu cầu thay thế tệp</button>
+  </div>
+</app-admin-dialog>

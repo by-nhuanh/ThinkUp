@@ -21,6 +21,9 @@ export interface CommunityDto {
   author: { full_name: string; role: string; avatar_url?: string };
   content: string; created_at: string; created_at_formatted: string;
   likes_count?: number; is_liked?: boolean; is_owner: boolean; replies?: CommunityDto[];
+  verified_by_admin?: boolean;
+  moderation_state?: 'visible' | 'hidden' | 'removed';
+  moderation_note?: string;
 }
 export interface CommunityPageDto {
   pagination: { page: number; total_pages: number };

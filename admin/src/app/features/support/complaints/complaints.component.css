@@ -195,3 +195,21 @@
 .action-modal app-custom-select { display: block; width: 100%; --custom-select-width: 100%; --custom-select-max-width: 100%; --custom-select-trigger-height: 40px; }
 .complaint-filter-actions { display: flex; align-items: flex-end; justify-content: flex-end; gap: 8px; align-self: end; }
 .normal-case-headings th { text-transform: none; letter-spacing: 0; }
+
+@media (max-width: 1150px) {
+  .complaint-metrics { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+  .complaint-metrics .complaint-metric { height: auto; }
+  .complaint-metrics .complaint-metric > div { min-width: 0; }
+  .money-metric { white-space: normal; overflow-wrap: anywhere; }
+}
+
+@media (max-width: 900px) {
+  .case-workspace, .case-decision-footer { grid-template-columns: minmax(0, 1fr); }
+  .decision-footer-actions { flex-wrap: wrap; }
+}
+
+
+@media (max-width: 600px) {
+  .complaint-filters { grid-template-columns: minmax(0, 1fr); }
+  .complaint-filter-actions { flex-wrap: wrap; }
+}
