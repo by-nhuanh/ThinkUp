@@ -164,7 +164,7 @@ a:focus-visible {
 }
 
 :host ::ng-deep .article-content figure img {
-  margin: 0;
+  margin: 0 auto;
 }
 
 :host ::ng-deep .article-content figcaption {
