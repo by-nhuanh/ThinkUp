@@ -24,4 +24,7 @@ export class ArticleDetailComponent {
   react(action:'like'|'dislike'):void{const id=this.detail()?.post.id;if(!id||this.reacting())return;const next=this.reaction()===action?'none':action;this.reacting.set(true);this.blog.react(id,next).subscribe({next:()=>{this.reaction.set(next);this.reacting.set(false);},error:()=>{this.reacting.set(false);this.shareError.set('Không thể lưu phản hồi. Vui lòng thử lại.');}});}
   async copyLink():Promise<void>{try{await navigator.clipboard.writeText(window.location.href);this.copied.set(true);setTimeout(()=>this.copied.set(false),2000);}catch{this.shareError.set('Không thể sao chép liên kết.');}}
   share(network:'facebook'|'linkedin'):void{const url=encodeURIComponent(window.location.href);window.open(network==='facebook'?`https://www.facebook.com/sharer/sharer.php?u=${url}`:`https://www.linkedin.com/sharing/share-offsite/?url=${url}`,'_blank','noopener,noreferrer');}
+  // A fragment-only href resolves against <base href="/">, which would navigate away
+  // from the article route. Scroll in place and keep the URL in sync instead.
+  scrollToHeading(event:Event,id:string):void{const target=document.getElementById(id);if(!target)return;event.preventDefault();const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;target.scrollIntoView({behavior:reduce?'auto':'smooth',block:'start'});try{const url=new URL(window.location.href);url.hash=id;history.replaceState(history.state,'',url.toString());}catch{/* ignore */}}
 }
