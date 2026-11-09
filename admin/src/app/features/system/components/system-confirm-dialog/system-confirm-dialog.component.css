@@ -1,3 +1,6 @@
-.confirm-copy strong { display: block; margin-bottom: 8px; color: #0c2048; font: var(--admin-text-panel-title); }
-.confirm-copy p { margin: 0 0 8px; color: #425b7d; font: var(--admin-text-body-compact); line-height: 1.55; }
-.confirm-copy p:last-child { margin-bottom: 0; }
+.confirm-note {
+  margin: 0;
+  color: #64748b;
+  font: var(--admin-text-body-compact);
+  line-height: 1.5;
+}

@@ -17,6 +17,8 @@ export class SearchFieldComponent {
   @Input() placeholder = '';
   /** Accessible name of the input, e.g. "Tìm mã voucher". */
   @Input() label = '';
+  /** Hiển thị nhãn nổi phía trên placeholder (dùng cho bộ lọc dạng filled field). */
+  @Input() floatLabel = false;
   @Input() inputId = '';
   @Output() readonly valueChange = new EventEmitter<string>();
 

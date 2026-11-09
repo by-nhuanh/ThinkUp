@@ -1,15 +1,20 @@
 <app-admin-dialog
   title="Xem trước văn bản ký thử"
   subtitle="HD-TEST-0001.pdf · Bản mẫu kiểm tra chữ ký và mộc thời gian."
+  icon="M12 3 4.5 6.2v5.6c0 4.3 3.2 7.8 7.5 9.2 4.3-1.4 7.5-4.9 7.5-9.2V6.2L12 3Z M9 11.9l2.1 2.1 4-4"
   size="xl"
   (closed)="closed.emit()"
 >
+  <div class="preview-toolbar">
+    <span class="preview-file">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z" /><path d="M14 3v5h5" /></svg>
+      HD-TEST-0001.pdf
+    </span>
+    <span class="preview-meta">Trang 1 / 1 <span aria-hidden="true">·</span> Thu phóng 100%</span>
+  </div>
+
   <div class="signing-preview-layout">
     <div class="preview-pane">
-      <div class="preview-toolbar">
-        <span>HD-TEST-0001.pdf</span>
-        <span>Trang 1 / 1 &nbsp;·&nbsp; Thu phóng 100%</span>
-      </div>
       <div class="preview-scroll">
         <article class="preview-doc">
           <p class="doc-watermark">VĂN BẢN MẪU · KHÔNG CÓ GIÁ TRỊ PHÁP LÝ</p>
@@ -23,18 +28,26 @@ Bên B: Giảng viên mẫu
 Mục đích: Kiểm tra kết nối ký số và giao diện chứng thực.</p>
           <p class="pre-line">Điều khoản mẫu: Tỷ lệ phân chia 60% Sàn / 40% Giảng viên.
 Phương thức xác thực: Mã OTP. Tệp được khóa kèm mộc thời gian sau khi ký.</p>
-          <p class="doc-stamp">ĐÃ KÝ SỐ · BẢN THỬ NGHIỆM</p>
+          <div class="doc-stamp">
+            <strong>ĐÃ KÝ SỐ · BẢN THỬ NGHIỆM</strong>
+            <span class="pre-line">ThinkUp Vietnam (mẫu) · Chứng thư {{ provider() }}
+Mộc thời gian: 03/11/2026 10:30:00 (UTC+7)</span>
+          </div>
         </article>
       </div>
     </div>
+
     <aside class="signature-panel">
-      <h4>Thông tin chữ ký</h4>
-      <div class="notice success">
-        <strong>Chữ ký hợp lệ</strong>
-        Đã kiểm thử thành công trên văn bản mẫu.
+      <h3>Thông tin chữ ký</h3>
+      <div class="notice success has-icon">
+        <svg class="notice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.6" /><path d="m8.4 12.2 2.4 2.4 4.8-4.8" /></svg>
+        <div class="notice-body">
+          <strong>Chữ ký hợp lệ</strong>
+          <p>Đã kiểm thử thành công trên văn bản mẫu.</p>
+        </div>
       </div>
       <dl class="signature-meta">
-        <div><dt>Đơn vị ký</dt><dd>ThinkUp Vietnam</dd></div>
+        <div><dt>Đơn vị ký</dt><dd>ThinkUp Vietnam (mẫu)</dd></div>
         <div><dt>Nhà cung cấp chứng thư</dt><dd>{{ provider() }}</dd></div>
         <div><dt>Trạng thái tài liệu</dt><dd>Đã khóa · Có mộc thời gian</dd></div>
         <div><dt>Mã hợp đồng mẫu</dt><dd class="mono">HD-TEST-0001</dd></div>
@@ -42,6 +55,7 @@ Phương thức xác thực: Mã OTP. Tệp được khóa kèm mộc thời gia
       <p class="signature-note">Văn bản này phục vụ kiểm thử kết nối, không phải hợp đồng đang có hiệu lực.</p>
     </aside>
   </div>
+
   <div dialogFooter class="dialog-actions">
     <button class="ghost-button" type="button" (click)="closed.emit()">Đóng</button>
     <button class="primary-button" type="button" (click)="closed.emit()">Quay lại cấu hình Ký số</button>

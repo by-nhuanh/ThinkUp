@@ -1,29 +1,39 @@
-<app-admin-dialog [title]="title()" [subtitle]="subtitle()" size="lg" (closed)="closed.emit()">
-  <div class="system-form">
-    <div class="meta-grid four">
-      <div class="meta-item">
-        <small>Người thực hiện</small>
-        <strong>{{ actorLabel() }}</strong>
+<app-admin-dialog
+  [title]="title()"
+  [subtitle]="subtitle()"
+  size="xl"
+  icon="M6 3h8l4 4v14H6z M14 3v4h4 M9 13h6 M9 17h6"
+  (closed)="closed.emit()"
+>
+  <div class="system-form audit-detail">
+    <div class="meta-pair">
+      <div class="meta-panel">
+        <div class="meta-line">
+          <span>Người thực hiện</span>
+          <strong>{{ actorLabel() }}</strong>
+        </div>
+        <div class="meta-line">
+          <span>Vai trò</span>
+          <strong>{{ log().actorRole }}</strong>
+        </div>
       </div>
-      <div class="meta-item">
-        <small>Vai trò</small>
-        <strong>{{ log().actorRole }}</strong>
-      </div>
-      <div class="meta-item">
-        <small>Địa chỉ IP / Thiết bị</small>
-        <strong>{{ log().ip }} · {{ log().device }}</strong>
-      </div>
-      <div class="meta-item">
-        <small>Mã phiên</small>
-        <strong class="mono">{{ log().sessionId }}</strong>
+      <div class="meta-panel">
+        <div class="meta-line">
+          <span>Địa chỉ IP / Thiết bị</span>
+          <strong>{{ log().ip }} · {{ log().device }}</strong>
+        </div>
+        <div class="meta-line">
+          <span>Mã phiên</span>
+          <strong class="mono">{{ log().sessionId }}</strong>
+        </div>
       </div>
     </div>
 
-    <section class="detail-section">
+    <section class="basis-card">
       <h4>Căn cứ và bằng chứng đính kèm</h4>
-      <blockquote class="basis-quote">{{ log().basis }}</blockquote>
+      <p class="basis-quote">{{ log().basis }}</p>
       <button class="evidence-link" type="button" (click)="evidence.emit(log())">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6z" /><path d="M14 3v5h5" /></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6z" /><path d="M14 3v5h5" /></svg>
         {{ log().evidenceName }}
       </button>
     </section>
@@ -51,21 +61,25 @@
 
     @if (broken()) {
       <div class="checksum bad" role="alert">
-        <strong>Không thể chứng thực toàn vẹn — checksum không khớp</strong>
-        <span class="mono">{{ log().checksum }}</span>
-      </div>
-      <div class="notice danger">
-        <p>Chức năng liên quan đã tạm khóa trên toàn hệ thống. Liên hệ quản trị hệ thống để kiểm tra.</p>
+        <p class="checksum-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 4 21 19H3z" /><path d="M12 10v4M12 16.6v.4" /></svg>
+          Không thể chứng thực toàn vẹn — checksum không khớp
+        </p>
+        <p class="checksum-hash">{{ log().checksum }}</p>
+        <p class="checksum-note">Chức năng liên quan đã tạm khóa trên toàn hệ thống. Liên hệ quản trị hệ thống để kiểm tra.</p>
       </div>
     } @else {
       <div class="checksum ok">
-        <strong>Đã chứng thực toàn vẹn</strong>
-        <span class="mono">{{ log().checksum }}</span>
+        <p class="checksum-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="m8.5 12 2.5 2.5 4.5-5" /></svg>
+          Đã chứng thực toàn vẹn
+        </p>
+        <p class="checksum-hash">{{ log().checksum }}</p>
       </div>
     }
 
     <div class="dialog-actions" dialogFooter>
-      <button class="secondary-button" type="button" (click)="printRecord.emit()">In / Xuất PDF bản ghi</button>
+      <button class="ghost-button" type="button" [disabled]="broken()" (click)="printRecord.emit()">In / Xuất PDF bản ghi</button>
       <button class="primary-button" type="button" (click)="closed.emit()">Đóng cửa sổ</button>
     </div>
   </div>

@@ -49,6 +49,8 @@ export class AdminDialogComponent implements AfterViewInit, OnDestroy {
 
   readonly title = input.required<string>();
   readonly subtitle = input('');
+  /** Path SVG tuỳ chọn hiển thị cạnh tiêu đề (dùng cho các hộp thoại nghiệp vụ hệ thống). */
+  readonly icon = input('');
   readonly size = input<AdminDialogSize>('md');
   /** Bỏ padding thân để nội dung tự dựng bố cục toàn khung (ví dụ settings 2 cột). */
   readonly flushBody = input(false);

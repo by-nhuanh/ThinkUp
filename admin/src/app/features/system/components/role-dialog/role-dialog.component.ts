@@ -1,6 +1,7 @@
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AdminDialogComponent } from '../../../../shared/components/admin-dialog/admin-dialog.component';
+import { SystemOtpInputComponent } from '../otp-input/otp-input.component';
 import { AdminPerson, AdminRoleCode, AdminRoleDefinition, InternalStaff } from '../../models/system.models';
 import { SYSTEM_STORE } from '../../data/system.store';
 
@@ -16,7 +17,7 @@ const LOCK_MINUTES = 15;
 @Component({
   selector: 'app-system-role-dialog',
   standalone: true,
-  imports: [FormsModule, AdminDialogComponent],
+  imports: [FormsModule, AdminDialogComponent, SystemOtpInputComponent],
   templateUrl: './role-dialog.component.html',
   styleUrls: ['../../system-page.css', './role-dialog.component.css']
 })
@@ -31,6 +32,7 @@ export class RoleDialogComponent {
   readonly staffSearch = signal('');
   readonly selectedStaff = signal<InternalStaff | null>(null);
   readonly pickerOpen = signal(false);
+  readonly roleMenuOpen = signal(false);
   readonly selectedRole = signal<AdminRoleCode | ''>('');
   readonly reason = signal('');
   readonly otp = signal('');
@@ -105,6 +107,7 @@ export class RoleDialogComponent {
 
   selectRole(code: string): void {
     this.selectedRole.set(code as AdminRoleCode);
+    this.roleMenuOpen.set(false);
     this.formError.set('');
   }
 

@@ -496,12 +496,16 @@ export const SYSTEM_SETTINGS: SystemSettings = {
     courseRejectReasonMin: 10
   },
   social: {
+    googleEnabled: true,
     googleClientId: 'google-client-id.apps.googleusercontent.com',
     googleClientSecret: 'google-secret-demo',
+    facebookEnabled: false,
     facebookClientId: 'facebook-app-id-demo',
     facebookClientSecret: 'facebook-secret-demo',
+    appleEnabled: false,
     appleClientId: 'apple-service-id-demo',
     appleClientSecret: 'apple-secret-demo',
+    recaptchaEnabled: true,
     recaptchaSiteKey: 'recaptcha-site-demo',
     recaptchaSecretKey: 'recaptcha-secret-demo'
   },

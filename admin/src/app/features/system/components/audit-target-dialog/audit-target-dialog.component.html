@@ -1,20 +1,26 @@
-<app-admin-dialog title="Chi tiết lệnh rút tiền" [subtitle]="subtitle()" size="md" (closed)="closed.emit()">
+<app-admin-dialog
+  title="Chi tiết lệnh rút tiền"
+  [subtitle]="subtitle()"
+  size="md"
+  icon="M6 3h8l4 4v14H6z M14 3v4h4 M9 13h6 M9 17h6"
+  (closed)="closed.emit()"
+>
   <div class="system-form">
     <div class="notice info">
       <strong>Chế độ chỉ xem</strong>
       <p>Thông tin được mở từ liên kết đối tượng trong Nhật ký Kiểm toán.</p>
     </div>
 
-    <div class="meta-grid three">
-      <div class="meta-item">
+    <div class="target-metrics">
+      <div class="target-metric">
         <small>Số tiền yêu cầu</small>
         <strong>{{ amounts().requested }}</strong>
       </div>
-      <div class="meta-item">
+      <div class="target-metric tax">
         <small>Thuế TNCN (10%)</small>
         <strong>{{ amounts().tax }}</strong>
       </div>
-      <div class="meta-item">
+      <div class="target-metric net">
         <small>Thực nhận</small>
         <strong>{{ amounts().net }}</strong>
       </div>
@@ -22,13 +28,13 @@
 
     <div class="target-lines">
       <p>{{ log().targetName }} · <span class="mono">{{ lecturerCode() }}</span></p>
-      <p>Trạng thái: <strong>Chờ giải ngân</strong></p>
+      <p>Trạng thái: <strong class="status-text">Chờ giải ngân</strong></p>
       <p>Người phê duyệt: <strong>{{ log().actorName }} · {{ log().actorRole }}</strong></p>
       <p>Thời điểm phê duyệt: <strong>{{ log().at }} (UTC+7)</strong></p>
     </div>
 
     <div class="dialog-actions" dialogFooter>
-      <button class="secondary-button" type="button" (click)="closed.emit()">Đóng cửa sổ</button>
+      <button class="primary-button" type="button" (click)="closed.emit()">Đóng cửa sổ</button>
     </div>
   </div>
 </app-admin-dialog>

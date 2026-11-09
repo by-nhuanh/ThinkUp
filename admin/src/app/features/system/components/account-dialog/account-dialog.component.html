@@ -1,4 +1,10 @@
-<app-admin-dialog [title]="copy().title" [subtitle]="copy().subtitle" size="md" (closed)="closed.emit()">
+<app-admin-dialog
+  [title]="copy().title"
+  [subtitle]="copy().subtitle"
+  icon="M12 3l7 3v5c0 4.6-3 8.4-7 10-4-1.6-7-5.4-7-10V6z"
+  size="xl"
+  (closed)="closed.emit()"
+>
   <form class="system-form" (ngSubmit)="submit()">
     @if (serverError()) {
       <div class="notice danger" role="alert">
@@ -7,17 +13,17 @@
       </div>
     }
 
-    <div class="notice" [class.info]="copy().noticeKind === 'info'" [class.warning]="copy().noticeKind === 'warning'" [class.danger]="copy().noticeKind === 'danger'" role="note">
-      <strong>{{ copy().noticeTitle }}</strong>
-      <p>{{ copy().noticeBody }}</p>
-    </div>
-
     <div class="person-summary">
       <span class="avatar">{{ initials(person().name) }}</span>
       <div>
         <strong>{{ person().name }} · {{ person().email }}</strong>
         <small>{{ summaryLine() }}</small>
       </div>
+    </div>
+
+    <div class="notice" [class.info]="copy().noticeKind === 'info'" [class.warning]="copy().noticeKind === 'warning'" [class.danger]="copy().noticeKind === 'danger'" role="note">
+      <strong>{{ copy().noticeTitle }}</strong>
+      <p>{{ copy().noticeBody }}</p>
     </div>
 
     <div class="field" [class.invalid]="reasonError()">
@@ -39,20 +45,8 @@
     </div>
 
     <div class="field" [class.invalid]="otpError()">
-      <label for="account-dialog-otp">Xác thực danh tính Super Admin <span class="required-mark">*</span></label>
-      <div class="otp-field">
-        <input
-          id="account-dialog-otp"
-          type="text"
-          inputmode="numeric"
-          autocomplete="one-time-code"
-          maxlength="6"
-          placeholder="••••••"
-          [ngModel]="otp()"
-          (ngModelChange)="onOtp($event)"
-          name="otp"
-        />
-      </div>
+      <span>Xác thực danh tính Super Admin <span class="required-mark">*</span></span>
+      <app-system-otp-input [value]="otp()" [invalid]="!!otpError()" (valueChange)="onOtp($event)" />
       <p class="field-hint">Nhập mã xác thực 6 số từ ứng dụng Authenticator của bạn để phê duyệt.</p>
       @if (otpError()) {
         <p class="field-error">{{ otpError() }}</p>

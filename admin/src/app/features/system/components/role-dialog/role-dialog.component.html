@@ -1,4 +1,10 @@
-<app-admin-dialog [title]="title()" [subtitle]="subtitle()" size="md" (closed)="closed.emit()">
+<app-admin-dialog
+  [title]="title()"
+  [subtitle]="subtitle()"
+  icon="M12 3l7 3v5c0 4.6-3 8.4-7 10-4-1.6-7-5.4-7-10V6z"
+  size="xl"
+  (closed)="closed.emit()"
+>
   <form class="system-form" (ngSubmit)="submit()">
     @if (locked()) {
       <div class="notice danger" role="alert">
@@ -17,7 +23,7 @@
     }
 
     @if (mode() === 'assign') {
-      <div class="field" [class.invalid]="formError() && !selectedStaff()">
+      <div class="field control-field" [class.invalid]="formError() && !selectedStaff()">
         <label for="role-dialog-staff">Chọn nhân sự nội bộ <span class="required-mark">*</span></label>
         <div class="staff-picker">
           <input
@@ -31,7 +37,9 @@
             name="staffSearch"
           />
           @if (selectedStaff()) {
-            <button class="icon-button picker-clear" type="button" aria-label="Bỏ chọn nhân sự" (click)="clearStaff()">×</button>
+            <button class="picker-clear" type="button" aria-label="Bỏ chọn nhân sự" (click)="clearStaff()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+            </button>
           }
           @if (pickerOpen() && !selectedStaff()) {
             <ul class="staff-options" role="listbox" aria-label="Nhân sự nội bộ">
@@ -60,53 +68,131 @@
           <small>{{ target.code }} · {{ target.status === 'active' ? 'Đang hoạt động' : target.status === 'locked' ? 'Tạm khóa' : 'Chưa xác minh' }}</small>
         </div>
       </div>
-      <div class="field">
-        <label for="role-dialog-current">Vai trò hiện tại</label>
-        <input id="role-dialog-current" type="text" [value]="currentRoleDef()?.label ?? ''" readonly disabled />
-      </div>
     }
 
-    <div class="field">
-      <label id="role-dialog-role-label">{{ mode() === 'assign' ? 'Vai trò phân bổ' : 'Vai trò mới' }} <span class="required-mark">*</span></label>
-      <div class="role-option-list" role="radiogroup" aria-labelledby="role-dialog-role-label">
-        @for (role of roleChoices(); track role.code) {
+    @if (mode() === 'assign') {
+      <div class="field control-field" [class.invalid]="formError() && !selectedRole()">
+        <label id="role-dialog-role-label">{{ mode() === 'assign' ? 'Vai trò phân bổ' : 'Vai trò mới' }} <span class="required-mark">*</span></label>
+        <div class="role-select" (click)="$event.stopPropagation()" (window:click)="roleMenuOpen.set(false)">
           <button
+            id="role-dialog-role-trigger"
+            class="select-control"
             type="button"
-            class="role-option"
-            role="radio"
-            [class.is-selected]="selectedRole() === role.code"
-            [attr.aria-checked]="selectedRole() === role.code"
-            (click)="selectRole(role.code)"
+            aria-haspopup="listbox"
+            aria-labelledby="role-dialog-role-label"
+            [attr.aria-expanded]="roleMenuOpen()"
+            (click)="roleMenuOpen.set(!roleMenuOpen())"
           >
-            <strong>{{ role.label }}</strong>
-            <span>{{ role.tagline }}</span>
+            <span [class.placeholder]="!selectedRoleDef()">{{ selectedRoleDef()?.label ?? 'Chọn vai trò phân bổ...' }}</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
           </button>
-        }
-      </div>
-      @if (mode() === 'assign' && !selectedRole()) {
-        <p class="field-hint">Phạm vi quyền sẽ hiển thị sau khi chọn vai trò.</p>
-      }
-    </div>
-
-    @if (selectedRoleDef(); as role) {
-      <div class="scope-panel">
-        <h4>Trách nhiệm chính</h4>
-        <p>{{ role.responsibility }}</p>
-        <ul class="scope-list">
-          @for (scope of role.scopes; track scope) {
-            <li>{{ scope }}</li>
+          @if (roleMenuOpen()) {
+            <ul class="role-menu" role="listbox" aria-labelledby="role-dialog-role-label">
+              @for (role of roleChoices(); track role.code) {
+                <li>
+                  <button
+                    type="button"
+                    role="option"
+                    [attr.aria-selected]="selectedRole() === role.code"
+                    [class.is-selected]="selectedRole() === role.code"
+                    (click)="selectRole(role.code)"
+                  >
+                    <strong>{{ role.label }}</strong>
+                    <small>{{ role.tagline }}</small>
+                  </button>
+                </li>
+              }
+            </ul>
           }
-        </ul>
-        @if (role.warning) {
-          <div class="notice warning"><p>{{ role.warning }}</p></div>
-        }
+        </div>
       </div>
+
+      @if (selectedRoleDef(); as role) {
+        <div class="scope-panel">
+          <h4>Trách nhiệm chính</h4>
+          <p>{{ role.responsibility }}</p>
+          <div class="scope-chips">
+            @for (scope of role.scopes; track scope) {
+              <span class="scope-chip">{{ scope }}</span>
+            }
+          </div>
+          @if (role.warning) {
+            <p class="scope-warning">{{ role.warning }}</p>
+          }
+        </div>
+      } @else {
+        <div class="scope-placeholder">Phạm vi quyền sẽ hiển thị sau khi chọn vai trò.</div>
+      }
+    } @else if (person()) {
+      <div class="field-row role-change-grid">
+        <div class="field">
+          <span>Vai trò hiện tại</span>
+          <div class="current-role">
+            <span [class]="'role-chip role-' + (person()?.role ?? '').toLowerCase()">{{ currentRoleDef()?.label ?? '—' }}</span>
+          </div>
+        </div>
+        <div class="field control-field" [class.invalid]="formError() && !selectedRole()">
+          <label id="role-dialog-new-role-label">Vai trò mới <span class="required-mark">*</span></label>
+          <div class="role-select" (click)="$event.stopPropagation()" (window:click)="roleMenuOpen.set(false)">
+            <button
+              id="role-dialog-new-role-trigger"
+              class="select-control"
+              type="button"
+              aria-haspopup="listbox"
+              aria-labelledby="role-dialog-new-role-label"
+              [attr.aria-expanded]="roleMenuOpen()"
+              (click)="roleMenuOpen.set(!roleMenuOpen())"
+            >
+              <span [class.placeholder]="!selectedRoleDef()">{{ selectedRoleDef()?.label ?? 'Chọn vai trò mới...' }}</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+            </button>
+            @if (roleMenuOpen()) {
+              <ul class="role-menu" role="listbox" aria-labelledby="role-dialog-new-role-label">
+                @for (role of roleChoices(); track role.code) {
+                  <li>
+                    <button
+                      type="button"
+                      role="option"
+                      [attr.aria-selected]="selectedRole() === role.code"
+                      [class.is-selected]="selectedRole() === role.code"
+                      (click)="selectRole(role.code)"
+                    >
+                      <strong>{{ role.label }}</strong>
+                      <small>{{ role.tagline }}</small>
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+        </div>
+      </div>
+
+      @if (selectedRoleDef(); as role) {
+        <div class="scope-panel">
+          <h4>Trách nhiệm chính</h4>
+          <p>{{ role.responsibility }}</p>
+          <div class="scope-chips">
+            @for (scope of role.scopes; track scope) {
+              <span class="scope-chip">{{ scope }}</span>
+            }
+          </div>
+          @if (role.warning) {
+            <p class="scope-warning">{{ role.warning }}</p>
+          }
+        </div>
+      }
     }
 
-    <div class="notice info">
-      <strong>Lưu ý an ninh</strong>
-      <p>{{ securityNote() }}</p>
-    </div>
+    @if (mode() === 'assign') {
+      <div class="security-note" role="note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4 21 19H3z" /><path d="M12 10v4M12 16.6v.4" /></svg>
+        <div>
+          <strong>Lưu ý an ninh</strong>
+          <p>{{ securityNote() }}</p>
+        </div>
+      </div>
+    }
 
     <div class="field" [class.invalid]="reasonError()">
       <label for="role-dialog-reason">{{ mode() === 'assign' ? 'Lý do phân quyền' : 'Lý do thay đổi' }} <span class="required-mark">*</span></label>
@@ -128,20 +214,13 @@
 
     <div class="field" [class.invalid]="otpError()">
       <label for="role-dialog-otp">Xác thực danh tính Super Admin <span class="required-mark">*</span></label>
-      <div class="otp-field">
-        <input
-          id="role-dialog-otp"
-          type="text"
-          inputmode="numeric"
-          autocomplete="one-time-code"
-          maxlength="6"
-          placeholder="••••••"
-          [ngModel]="otp()"
-          (ngModelChange)="onOtp($event)"
-          name="otp"
-          [disabled]="locked()"
-        />
-      </div>
+      <app-system-otp-input
+        id="role-dialog-otp"
+        [value]="otp()"
+        [invalid]="!!otpError()"
+        [disabled]="locked()"
+        (valueChange)="onOtp($event)"
+      />
       <p class="field-hint">Nhập mã xác thực 6 số từ ứng dụng Authenticator của bạn để phê duyệt.</p>
       @if (otpError()) {
         <p class="field-error">{{ otpError() }}</p>
@@ -150,7 +229,7 @@
 
     <div class="dialog-actions" dialogFooter>
       <p class="left-note">Thao tác được ghi nhận trong nhật ký kiểm toán.</p>
-      <button class="secondary-button" type="button" (click)="closed.emit()">Hủy bỏ</button>
+      <button class="ghost-button" type="button" (click)="closed.emit()">Hủy bỏ</button>
       <button class="primary-button" type="submit" [disabled]="locked()">{{ confirmLabel() }}</button>
     </div>
   </form>
