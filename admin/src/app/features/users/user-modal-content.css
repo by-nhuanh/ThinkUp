@@ -2,10 +2,11 @@
    Nội dung bên trong các hộp thoại của module quản lý người dùng.
    Dùng kèm `user-page.css` (cùng bộ token --user-*). Các khối 2 cột tự
    chuyển về 1 cột theo container query của .user-modal__body.
+   Bám frame Figma: nền #f5f7fc cho thẻ, viền #dee5f0, chữ nhấn #1a2e4f.
    ========================================================================= */
 
 .modal-section {
-  margin: 0 0 18px;
+  margin: 0 0 20px;
 }
 
 .modal-section:last-child {
@@ -13,48 +14,138 @@
 }
 
 .modal-section > h3 {
+  display: block;
   margin: 0 0 10px;
-  color: #14243b;
-  font: var(--admin-text-card-title);
+  color: var(--user-ink-strong);
+  font: var(--admin-text-panel-title);
+  overflow-wrap: anywhere;
 }
 
-.modal-section > h3 .required {
+.section-label {
+  display: block;
+  margin: 0 0 10px;
+  color: var(--user-ink-strong);
+  font: var(--admin-text-card-title);
+  overflow-wrap: anywhere;
+}
+
+.modal-section > h3 .required,
+.section-label .required {
   color: var(--user-danger);
 }
 
-.modal-section > p {
+.modal-section > p:not([class]) {
   margin: 0 0 10px;
   color: var(--user-muted);
   font: var(--admin-text-caption);
+}
+
+/* ---------- Tiêu đề khối kèm hành động phụ ---------- */
+
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin: 0 0 10px;
+}
+
+.section-head > h3 {
+  margin: 0;
+  color: var(--user-ink-strong);
+  font: var(--admin-text-panel-title);
+}
+
+/* Nút dạng liên kết ("Xem tất cả", "Chọn tệp") — vẫn giữ vùng bấm 40px. */
+.link-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--user-primary);
+  font: var(--admin-text-control-label);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.link-action:hover {
+  color: var(--user-primary-strong);
+  text-decoration: underline;
+}
+
+.link-action:focus-visible {
+  outline: 2px solid var(--user-primary);
+  outline-offset: 2px;
 }
 
 /* ---------- Tóm tắt đối tượng bị thao tác ---------- */
 
+.profile-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 0 0 20px;
+}
+
+.profile-hero .avatar {
+  width: 56px;
+  height: 56px;
+  background: var(--user-primary-soft);
+  color: var(--user-primary);
+  font: var(--admin-text-card-title);
+  font-weight: var(--admin-font-weight-bold);
+}
+
+.profile-hero__name {
+  min-width: 0;
+  margin: 0;
+  color: var(--user-ink-strong);
+  font: var(--admin-text-metric-primary);
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
 .subject-card {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border: 1px solid var(--user-border-soft);
-  border-radius: 10px;
-  background: var(--user-surface-alt);
+  gap: 14px;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--user-neutral-surface);
 }
 
-.subject-card .identity {
-  gap: 12px;
+.subject-card .avatar {
+  width: 48px;
+  height: 48px;
+  background: var(--user-primary-soft);
+  color: var(--user-primary);
+  font: var(--admin-text-control-label);
+  font-weight: var(--admin-font-weight-bold);
 }
 
-.subject-name {
-  display: block;
-  color: #14243b;
-  font: var(--admin-text-card-title);
+/* Ba dòng "Học viên / Mã / Email" của hộp thoại khoá tài khoản. */
+.subject-lines {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  color: var(--user-ink);
+  font: var(--admin-text-body-default);
 }
 
-.subject-meta {
-  display: block;
-  color: var(--user-muted);
-  font: var(--admin-text-caption);
+.subject-lines > span {
   overflow-wrap: anywhere;
+}
+
+.subject-lines b {
+  color: var(--user-ink-strong);
+  font-weight: var(--admin-font-weight-semibold);
 }
 
 /* ---------- Dải thông tin / cảnh báo ---------- */
@@ -66,7 +157,9 @@
   padding: 12px 14px;
   border: 1px solid transparent;
   border-radius: 10px;
+  color: var(--user-ink);
   font: var(--admin-text-body-default);
+  overflow-wrap: anywhere;
 }
 
 .info-strip strong {
@@ -74,14 +167,20 @@
 }
 
 .info-strip--amber {
-  border-color: #f2dfb4;
+  border-color: #f6e3bd;
   background: var(--user-warning-soft);
+}
+
+.info-strip--amber strong {
   color: var(--user-warning);
 }
 
 .info-strip--danger {
   border-color: #f6cdd1;
   background: var(--user-danger-soft);
+}
+
+.info-strip--danger strong {
   color: var(--user-danger-strong);
 }
 
@@ -110,8 +209,6 @@
 .choice-list legend {
   padding: 0;
   margin-bottom: 2px;
-  color: var(--user-ink);
-  font: var(--admin-text-control-label);
 }
 
 .choice-card {
@@ -119,9 +216,9 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: start;
-  gap: 10px;
-  padding: 12px 14px;
-  border: 1px solid var(--user-border);
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--user-border-strong);
   border-radius: 10px;
   background: #fff;
   cursor: pointer;
@@ -138,9 +235,9 @@
 }
 
 .choice-card input {
-  width: 16px;
-  height: 16px;
-  margin: 3px 0 0;
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
   accent-color: var(--user-primary);
 }
 
@@ -155,20 +252,21 @@
 
 .choice-copy strong {
   display: block;
-  color: #14243b;
+  color: var(--user-ink-strong);
   font: var(--admin-text-card-title);
 }
 
-.choice-copy p {
+.choice-copy .choice-desc {
+  display: block;
   margin: 4px 0 0;
   color: var(--user-muted);
-  font: var(--admin-text-caption);
+  font: var(--admin-text-body-default);
   overflow-wrap: anywhere;
 }
 
 .choice-meta {
   display: block;
-  margin-top: 6px;
+  margin-top: 8px;
   color: var(--user-muted-soft);
   font: var(--admin-text-caption);
 }
@@ -177,18 +275,17 @@
   color: var(--user-primary-strong);
 }
 
+/* Nhãn thời hạn ở góc phải thẻ mức (chỉ dùng cho hộp thoại khoá học viên). */
 .choice-tag {
   flex: none;
-  padding: 3px 9px;
-  border-radius: 999px;
-  background: var(--user-primary-soft);
-  color: var(--user-primary-strong);
-  font: var(--admin-text-badge);
+  padding-top: 2px;
+  color: var(--user-primary);
+  font: var(--admin-text-control-label);
   white-space: nowrap;
 }
 
 .choice-card.is-selected .choice-tag {
-  background: #fff;
+  color: var(--user-primary-strong);
 }
 
 /* ---------- Vùng nhập liệu ---------- */
@@ -202,6 +299,12 @@
 .field-block > label {
   color: var(--user-ink);
   font: var(--admin-text-control-label);
+}
+
+/* Nhãn của ô nhập chính trong hộp thoại — ngang cấp tiêu đề khối. */
+.field-block > .field-title {
+  color: var(--user-ink-strong);
+  font: var(--admin-text-card-title);
 }
 
 .field-block textarea,
@@ -218,7 +321,7 @@
 }
 
 .field-block textarea {
-  min-height: 84px;
+  min-height: 96px;
   resize: vertical;
   line-height: 1.5;
 }
@@ -267,9 +370,9 @@
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  border: 1px dashed #c8d5e6;
+  border: 1px solid var(--user-border);
   border-radius: 10px;
-  background: var(--user-surface-alt);
+  background: #fff;
 }
 
 .uploader svg {
@@ -286,15 +389,17 @@
 
 .upload-copy strong {
   display: block;
-  color: #14243b;
+  color: var(--user-ink-strong);
   font: var(--admin-text-control-label);
   overflow-wrap: anywhere;
 }
 
 .upload-copy span {
   display: block;
+  margin-top: 2px;
   color: var(--user-muted-soft);
   font: var(--admin-text-caption);
+  overflow-wrap: anywhere;
 }
 
 .uploader > button {
@@ -311,26 +416,13 @@
   border: 0;
 }
 
-/* Bảng chọn khóa học của Mức 2 nằm trên nền xám nhạt để tách khỏi danh sách mức. */
-.course-panel {
-  margin: 10px 0 0;
-  padding: 12px;
-  border: 0;
-  border-radius: 10px;
-  background: var(--user-neutral-surface);
-}
-
-.check-list--grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
 .check-row {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
   border: 1px solid var(--user-border);
-  border-radius: 10px;
+  border-radius: 8px;
   background: #fff;
   cursor: pointer;
 }
@@ -347,6 +439,7 @@
 .check-row input {
   width: 16px;
   height: 16px;
+  flex: none;
   accent-color: var(--user-primary);
 }
 
@@ -362,6 +455,36 @@
   outline-offset: 2px;
 }
 
+/* Dòng có 2 tầng chữ (tên khóa học + mã/học viên). */
+.check-row--stacked {
+  align-items: flex-start;
+  padding: 8px 12px;
+  border-color: transparent;
+}
+
+.check-row--stacked.is-selected {
+  border-color: var(--user-accent);
+}
+
+.check-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.check-copy strong {
+  color: var(--user-ink-strong);
+  font: var(--admin-text-control-label);
+  overflow-wrap: anywhere;
+}
+
+.check-copy span {
+  color: var(--user-muted-soft);
+  font: var(--admin-text-caption);
+  overflow-wrap: anywhere;
+}
+
 .doc-state {
   flex: none;
   padding: 3px 9px;
@@ -375,6 +498,77 @@
 .doc-state--pending { background: var(--user-warning-soft); color: var(--user-warning); }
 .doc-state--not-started { background: #eef1f6; color: var(--user-muted); }
 
+/* ---------- Khóa học bị ảnh hưởng (Mức 2) ---------- */
+
+.course-panel {
+  margin: 0;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--user-neutral-surface);
+}
+
+.course-panel__head {
+  margin: 0 0 8px;
+  color: var(--user-muted);
+  font: var(--admin-text-control-label);
+}
+
+.course-panel__head span {
+  font-weight: var(--admin-font-weight-regular);
+}
+
+.course-panel__hint {
+  margin: 0;
+  color: var(--user-muted-soft);
+  font: var(--admin-text-body-default);
+}
+
+.course-panel .char-count {
+  margin-top: 6px;
+}
+
+.course-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.course-search svg {
+  position: absolute;
+  left: 12px;
+  width: 16px;
+  height: 16px;
+  color: var(--user-muted-soft);
+  pointer-events: none;
+}
+
+.course-search input {
+  width: 100%;
+  height: var(--user-control-height);
+  padding: 0 12px 0 36px;
+  border: 1px solid var(--user-border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--user-ink);
+  font: var(--admin-text-body-default);
+  outline: none;
+}
+
+.course-search input::placeholder {
+  color: var(--user-muted-soft);
+}
+
+.course-search input:hover {
+  border-color: #b9c9e8;
+}
+
+.course-search input:focus {
+  border-color: var(--user-primary);
+  box-shadow: var(--user-focus);
+}
+
 /* ---------- Phân đoạn (thời hạn bổ sung) ---------- */
 
 .segmented {
@@ -384,9 +578,9 @@
 }
 
 .segmented button {
-  min-width: 84px;
+  min-width: 96px;
   height: var(--user-control-height);
-  padding: 0 14px;
+  padding: 0 16px;
   border: 1px solid var(--user-border);
   border-radius: var(--user-radius-control);
   background: #fff;
@@ -418,7 +612,7 @@
   gap: 10px;
   padding: 10px 12px;
   border: 1px solid #cfe3fb;
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--user-info-soft);
   color: var(--user-primary-strong);
   font: var(--admin-text-body-default);
@@ -428,6 +622,7 @@
 .option-row input {
   width: 16px;
   height: 16px;
+  flex: none;
   accent-color: var(--user-primary);
 }
 
@@ -445,25 +640,42 @@
 }
 
 .stat-tile {
-  padding: 12px 14px;
-  border: 1px solid var(--user-border-soft);
-  border-radius: 10px;
-  background: var(--user-surface-alt);
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--user-neutral-surface);
+}
+
+.stat-tile__label {
+  display: block;
+  color: var(--user-muted);
+  font: var(--admin-text-caption);
 }
 
 .stat-tile strong {
   display: block;
-  color: #14243b;
+  color: var(--user-ink-strong);
   font: var(--admin-text-metric-secondary);
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
 
-.stat-tile span {
-  display: block;
+.stat-tile__label + strong {
   margin-top: 2px;
-  color: var(--user-muted);
-  font: var(--admin-text-caption);
+}
+
+/* Hồ sơ giảng viên đặt số liệu lên trước nhãn — chỉ đổi thứ tự thị giác. */
+.stat-tiles--value-first .stat-tile {
+  display: flex;
+  flex-direction: column-reverse;
+}
+
+.stat-tiles--value-first .stat-tile__label + strong {
+  margin-top: 0;
+}
+
+.stat-tiles--value-first .stat-tile__label {
+  margin-top: 2px;
 }
 
 /* ---------- Danh sách nhãn – giá trị ---------- */
@@ -471,11 +683,11 @@
 .kv-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px 20px;
+  gap: 12px 24px;
   margin: 0;
-  padding: 14px;
-  border-radius: 10px;
-  background: var(--user-surface-alt);
+  padding: 16px;
+  border-radius: 8px;
+  background: var(--user-neutral-surface);
 }
 
 .kv-grid div {
@@ -489,14 +701,15 @@
 
 .kv-grid dd {
   margin: 2px 0 0;
-  color: #14243b;
+  color: var(--user-ink-strong);
   font: var(--admin-text-body-default);
+  font-weight: var(--admin-font-weight-semibold);
   overflow-wrap: anywhere;
 }
 
 .kv-rows {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   margin: 0;
 }
 
@@ -513,8 +726,37 @@
 
 .kv-rows dd {
   margin: 0;
-  color: #14243b;
+  color: var(--user-ink-strong);
+  font: var(--admin-text-body-default);
+  font-weight: var(--admin-font-weight-semibold);
   overflow-wrap: anywhere;
+}
+
+/* ---------- Năng lực & giới thiệu ---------- */
+
+.subject-competency {
+  display: grid;
+  gap: 4px;
+}
+
+.subject-competency p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.subject-competency__field {
+  color: var(--user-ink-strong);
+  font: var(--admin-text-card-title);
+}
+
+.subject-competency__stack {
+  color: var(--user-ink);
+  font: var(--admin-text-body-default);
+}
+
+.subject-competency__bio {
+  color: var(--user-muted);
+  font: var(--admin-text-body-default);
 }
 
 /* ---------- Liên kết ngoài ---------- */
@@ -527,8 +769,8 @@
 
 .link-tile {
   padding: 10px 12px;
-  border: 1px solid var(--user-border);
-  border-radius: var(--user-radius-control);
+  border: 1px solid var(--user-border-strong);
+  border-radius: 8px;
   background: #fff;
 }
 
@@ -559,16 +801,42 @@
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
-  border: 1px solid var(--user-border-soft);
-  border-radius: 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   background: var(--user-surface-alt);
 }
 
-.file-row svg {
+.file-row--plain {
+  border-color: var(--user-border-strong);
+  background: #fff;
+}
+
+.file-row--signed strong {
+  color: var(--user-success-strong);
+  font-weight: var(--admin-font-weight-semibold);
+}
+
+.file-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #e9f0fd;
+  color: var(--user-primary);
+}
+
+.file-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.file-row > svg {
   width: 20px;
   height: 20px;
   flex: none;
-  color: var(--user-danger-strong);
+  color: var(--user-primary);
 }
 
 .file-row .file-copy {
@@ -578,7 +846,7 @@
 
 .file-row strong {
   display: block;
-  color: #14243b;
+  color: var(--user-ink-strong);
   font: var(--admin-text-control-label);
   overflow-wrap: anywhere;
 }
@@ -587,6 +855,7 @@
   display: block;
   color: var(--user-muted);
   font: var(--admin-text-caption);
+  overflow-wrap: anywhere;
 }
 
 .file-actions {
@@ -600,7 +869,7 @@
 
 .progress-list {
   display: grid;
-  gap: 14px;
+  gap: 16px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -611,7 +880,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
-  color: #14243b;
+  color: var(--user-ink-strong);
   font: var(--admin-text-control-label);
 }
 
@@ -641,18 +910,20 @@
 .order-tile {
   padding: 12px 14px;
   border: 1px solid var(--user-border);
-  border-radius: 10px;
+  border-radius: 8px;
+  background: #fff;
 }
 
 .order-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px 10px;
 }
 
 .order-head strong {
-  color: #14243b;
+  color: var(--user-ink-strong);
   font: var(--admin-text-control-label);
   overflow-wrap: anywhere;
 }
@@ -671,7 +942,7 @@
 }
 
 .order-meta b {
-  color: #14243b;
+  color: var(--user-ink-strong);
   font: var(--admin-text-control-label);
   font-variant-numeric: tabular-nums;
 }
@@ -682,12 +953,85 @@
   font: var(--admin-text-caption);
 }
 
+/* ---------- Lịch sử vi phạm ---------- */
+
+.violation-list {
+  display: grid;
+  gap: 8px;
+}
+
+.violation-pill {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--user-warning-soft);
+  font: var(--admin-text-body-default);
+}
+
+.violation-pill strong {
+  color: var(--user-warning);
+  font: var(--admin-text-control-label);
+}
+
+.violation-pill span {
+  color: var(--user-ink);
+  overflow-wrap: anywhere;
+}
+
+.violation-panel {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--user-surface-alt);
+}
+
+.violation-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.violation-card__copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.violation-card__copy time {
+  color: var(--user-muted-soft);
+  font: var(--admin-text-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.violation-card__copy b {
+  color: var(--user-ink-strong);
+  font: var(--admin-text-control-label);
+  overflow-wrap: anywhere;
+}
+
+.violation-empty {
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--user-surface-alt);
+  color: var(--user-muted);
+  font: var(--admin-text-body-default);
+}
+
 /* ---------- Bố cục hai cột của hộp thoại ---------- */
 
 .profile-columns {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
+  gap: 28px;
 }
 
 .profile-columns > div {
@@ -747,9 +1091,9 @@
 
 /* Nút phá huỷ nhẹ: nền trắng, viền và chữ đỏ — dùng ở footer hồ sơ. */
 .btn--ghost-danger {
-  border-color: var(--user-danger-text);
+  border-color: var(--user-danger);
   background: #fff;
-  color: var(--user-danger-text);
+  color: var(--user-danger);
 }
 
 .btn--ghost-danger:hover:not(:disabled) { background: var(--user-danger-soft-strong); }
@@ -761,13 +1105,6 @@
 }
 
 .btn--outline:hover:not(:disabled) { border-color: #b9c9d8; }
-
-.btn--soft {
-  background: var(--user-primary-soft);
-  color: var(--user-primary-strong);
-}
-
-.btn--soft:hover:not(:disabled) { background: #dcecff; }
 
 .btn--sm {
   min-height: 32px;
@@ -785,6 +1122,11 @@
 
   .kv-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .profile-columns {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
   }
 
   .modal-footer-split {
@@ -808,15 +1150,6 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .profile-columns {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0;
-  }
-
-  .check-list--grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .kv-rows > div {
     grid-template-columns: minmax(0, 1fr);
     gap: 2px;
@@ -829,6 +1162,27 @@
 
   .uploader > button,
   .file-actions {
+    width: 100%;
+  }
+
+  .file-actions .btn {
+    flex: 1 1 auto;
+  }
+
+  .choice-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .choice-tag {
+    grid-column: 2;
+    padding-top: 0;
+  }
+
+  .modal-footer-actions {
+    flex-direction: column;
+  }
+
+  .modal-footer-actions .btn {
     width: 100%;
   }
 }

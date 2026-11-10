@@ -88,6 +88,10 @@ export interface Lecturer {
   cv: { fileName: string; size: string; uploadedAt: string };
   kyc: { cccd: string; taxCode: string; address: string; verified: boolean };
   violations: DisciplineRecord[];
+  /** Mức kỷ luật đang áp dụng — hiển thị trong popup "Mở khóa tài khoản". */
+  lockLevel?: DisciplineLevel;
+  /** Hạn mở khóa, ISO 8601. Không có = khoá vĩnh viễn. */
+  lockedUntil?: string;
   documents: LecturerDocument[];
   /** Yêu cầu bổ sung hồ sơ gần nhất (nếu có). */
   documentRequest?: LecturerDocumentRequest;
@@ -99,6 +103,8 @@ export interface Lecturer {
 
 /** Một dòng trong popup "Khóa học của giảng viên". */
 export interface LecturerCourseRow {
+  /** Mã khóa học, ví dụ "KH-2026-014" — dùng làm khoá chọn ở Mức 2. */
+  code: string;
   name: string;
   status: 'published' | 'draft' | 'hidden';
   learners: number;
