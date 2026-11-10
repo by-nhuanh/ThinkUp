@@ -1,12 +1,13 @@
 <app-admin-dialog
   title="Trích xuất Báo cáo Nhật ký Kiểm toán"
   subtitle="Xuất toàn bộ bản ghi khớp với điều kiện lọc hiện tại."
-  size="md"
+  size="xl"
+  icon="M6 3h8l4 4v14H6z M14 3v4h4 M9 13h6 M9 17h6"
   (closed)="closed.emit()"
 >
   <form class="system-form" (ngSubmit)="confirm()">
     <div class="export-summary">
-      <p><strong>Số lượng bản ghi sẽ xuất:</strong> {{ countLabel() }} bản ghi</p>
+      <p><strong>Số lượng bản ghi sẽ xuất: {{ countLabel() }} bản ghi</strong></p>
       <p>Thời gian: {{ timeLabel() }} · Phân hệ: {{ moduleLabel() }}</p>
       <p>Mức độ: {{ riskLabel() }} · Hành động: {{ actionLabel() }} · Không giới hạn ở trang đang xem</p>
     </div>
@@ -30,7 +31,7 @@
     </fieldset>
 
     @if (csvRecommended()) {
-      <div class="notice info">
+      <div class="notice warning">
         <strong>Khuyến nghị định dạng CSV</strong>
         <p>Có hơn 50.000 bản ghi. CSV giúp xử lý nhanh hơn; bạn vẫn có thể chọn Excel.</p>
       </div>
@@ -73,8 +74,13 @@
     }
 
     <div class="dialog-actions" dialogFooter>
-      <button class="secondary-button" type="button" (click)="cancel()">Hủy</button>
-      <button class="primary-button" type="submit" [disabled]="running()">{{ confirmLabel() }}</button>
+      <button class="ghost-button" type="button" (click)="cancel()">Hủy</button>
+      <button class="primary-button" type="submit" [disabled]="running()">
+        @if (running()) {
+          <svg class="button-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9" /></svg>
+        }
+        {{ confirmLabel() }}
+      </button>
     </div>
   </form>
 </app-admin-dialog>

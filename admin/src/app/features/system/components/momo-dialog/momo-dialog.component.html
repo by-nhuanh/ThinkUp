@@ -1,15 +1,18 @@
 <app-admin-dialog
   title="Cấu hình Cổng thanh toán - MoMo"
   subtitle="Cập nhật thông số kết nối và kiểm thử trước khi áp dụng."
-  size="lg"
+  icon="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"
+  size="xl"
   (closed)="closed.emit()"
 >
   <div class="system-form">
-    <div class="readonly-lines">
-      <p>Mã dịch vụ: <strong>PAY_MOMO</strong> · Chỉ đọc</p>
-      <p>Thuật toán: <strong>HMAC-SHA256</strong> · Chỉ đọc</p>
+    <div class="readonly-panel">
+      <div class="readonly-pairs">
+        <p>Mã dịch vụ: <strong>PAY_MOMO</strong> <span>· Chỉ đọc</span></p>
+        <p>Thuật toán: <strong>HMAC-SHA256</strong> <span>· Chỉ đọc</span></p>
+      </div>
       <div class="ipn-row">
-        <div>
+        <div class="ipn-copy">
           <small>Đường dẫn tiếp nhận IPN · Chỉ đọc</small>
           <strong class="mono">{{ ipnUrl }}</strong>
         </div>
@@ -17,21 +20,24 @@
       </div>
     </div>
 
-    <fieldset class="env-fieldset">
-      <legend class="field-caption">Môi trường kết nối</legend>
-      <label class="env-option">
+    <div class="env-grid" role="radiogroup" aria-label="Môi trường kết nối">
+      <label class="env-option" [class.is-selected]="form().environment === 'sandbox'">
         <input type="radio" name="momo-env" value="sandbox" [checked]="form().environment === 'sandbox'" (change)="update('environment', 'sandbox')" />
         <span>Môi trường Thử nghiệm (Sandbox)</span>
       </label>
-      <label class="env-option">
+      <label class="env-option" [class.is-selected]="form().environment === 'production'">
         <input type="radio" name="momo-env" value="production" [checked]="form().environment === 'production'" (change)="update('environment', 'production')" />
         <span>Môi trường Thực tế (Production)</span>
       </label>
-    </fieldset>
+    </div>
+
     @if (form().environment === 'production') {
-      <div class="notice warning">
-        <strong>Đang sử dụng dòng tiền thật</strong>
-        Hệ thống sẽ ghi nhận dòng tiền thật qua tài khoản ngân hàng doanh nghiệp.
+      <div class="notice danger has-icon">
+        <svg class="notice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5 21 20H3L12 3.5Z" /><path d="M12 10v4" /><path d="M12 17.2h.01" /></svg>
+        <div class="notice-body">
+          <strong>Đang sử dụng dòng tiền thật</strong>
+          <p>Hệ thống sẽ ghi nhận dòng tiền thật qua tài khoản ngân hàng doanh nghiệp.</p>
+        </div>
       </div>
     }
 
@@ -44,7 +50,7 @@
         <span>Mã công khai <span class="required-mark">*</span></span>
         <input type="text" [value]="form().publicKey" (input)="update('publicKey', $any($event.target).value)" />
       </label>
-      <div class="field full">
+      <div class="field">
         <span>Mật khẩu bí mật <span class="required-mark">*</span></span>
         <div class="masked-field">
           @if (revealed()) {
@@ -72,48 +78,60 @@
       </label>
     </div>
 
-    <div class="toggle-row">
-      <div>
-        <strong>Trạng thái hoạt động</strong>
-        <small>Hiển thị MoMo tại trang thanh toán</small>
-      </div>
+    <div class="switch-line">
+      <span><strong>Trạng thái hoạt động</strong> · Hiển thị MoMo tại trang thanh toán</span>
       <button class="toggle" type="button" role="switch" [attr.aria-checked]="form().active" [class.on]="form().active" aria-label="Trạng thái hoạt động của MoMo" (click)="update('active', !form().active)"></button>
     </div>
 
     <section class="ping-panel">
-      <header>
-        <div>
-          <strong>Kiểm thử kết nối (Test Ping)</strong>
-          <small>Đo phản hồi và xác minh chữ ký · Tối đa 5 giây</small>
-        </div>
+      <div class="ping-row">
         <button class="ghost-button" type="button" [disabled]="testState() === 'running' || !valid()" (click)="testPing()">
-          {{ testState() === 'running' ? 'Đang kiểm thử…' : 'Chạy kiểm thử' }}
+          {{ testState() === 'running' ? 'Đang kiểm thử…' : 'Kiểm thử kết nối (Test Ping)' }}
         </button>
-      </header>
+        <small>Đo phản hồi và xác minh chữ ký · Tối đa 5 giây</small>
+      </div>
+
       @switch (testState()) {
         @case ('idle') {
-          <p class="ping-status"><span class="status-badge status-muted">Chưa kiểm thử cấu hình mới</span></p>
-          <p class="ping-note">Nút Lưu chỉ được kích hoạt khi có thay đổi hợp lệ và kiểm thử kết nối thành công.</p>
+          <div class="notice info has-icon">
+            <svg class="notice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.2 19 6v6c0 4.2-2.9 7.4-7 9-4.1-1.6-7-4.8-7-9V6l7-2.8Z" /><path d="m9 12 2.1 2.1L15 10" /></svg>
+            <div class="notice-body">
+              <strong>Chưa kiểm thử cấu hình mới</strong>
+              <p>Nút Lưu chỉ được kích hoạt khi có thay đổi hợp lệ và kiểm thử kết nối thành công.</p>
+            </div>
+          </div>
         }
         @case ('running') {
-          <p class="ping-status"><span class="status-badge status-info">Đang kiểm thử kết nối…</span></p>
-          <p class="ping-note">Đang chờ phản hồi từ MoMo</p>
+          <div class="notice info has-icon">
+            <svg class="notice-icon ping-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9" /></svg>
+            <div class="notice-body">
+              <strong>Đang kiểm thử kết nối…</strong>
+              <p>Đang chờ phản hồi từ MoMo</p>
+            </div>
+          </div>
         }
         @case ('success') {
-          <div class="notice success">
-            <strong>Kết nối thành công</strong>
-            Phản hồi: 200 OK · Tốc độ: 145ms · Chữ ký bảo mật: Khớp 100%
+          <div class="notice success has-icon">
+            <svg class="notice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.6" /><path d="m8.4 12.2 2.4 2.4 4.8-4.8" /></svg>
+            <div class="notice-body">
+              <strong>Kết nối thành công</strong>
+              <p>Phản hồi: 200 OK · Tốc độ: 145ms · Chữ ký bảo mật: Khớp 100%</p>
+            </div>
           </div>
         }
         @case ('failure') {
-          <div class="notice danger" role="alert">
-            <strong>Kiểm thử kết nối thất bại</strong>
-            Mã lỗi đối tác: 401 · INVALID_SIGNATURE. Kiểm tra khóa kết nối rồi thử lại.
+          <div class="notice danger has-icon" role="alert">
+            <svg class="notice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5 21 20H3L12 3.5Z" /><path d="M12 10v4" /><path d="M12 17.2h.01" /></svg>
+            <div class="notice-body">
+              <strong>Kiểm thử kết nối thất bại</strong>
+              <p>Mã lỗi đối tác: 401 · INVALID_SIGNATURE. Kiểm tra khóa kết nối rồi thử lại.</p>
+            </div>
           </div>
         }
       }
     </section>
   </div>
+
   <div dialogFooter class="dialog-actions">
     <p class="left-note">{{ footerNote() }}</p>
     <button class="ghost-button" type="button" (click)="closed.emit()">Hủy</button>

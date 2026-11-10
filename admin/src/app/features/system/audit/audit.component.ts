@@ -138,7 +138,27 @@ export class AuditComponent {
   }
 
   riskClass(risk: AuditRisk): string {
-    return risk === 'high' ? 'status-danger' : risk === 'attention' ? 'status-warning' : 'status-muted';
+    return risk === 'high' ? 'status-badge status-danger' : risk === 'attention' ? 'status-badge status-warning' : 'status-badge status-info';
+  }
+
+  /** Mã vai trò rút từ chuỗi "Finance Admin (FA)" để dùng đúng bảng màu chip của trang phân quyền. */
+  roleCode(role: string): string {
+    const match = role.match(/\(([A-Z]{2})\)/);
+    return match ? match[1].toLowerCase() : 'ca';
+  }
+
+  moduleChipClass(module: string): string {
+    const map: Record<string, string> = {
+      'Rút tiền giảng viên': 'module-chip chip-blue',
+      'Quản lý Đơn hàng': 'module-chip chip-cyan',
+      'Duyệt Khóa học': 'module-chip chip-violet',
+      'Quản lý Giảng viên': 'module-chip chip-green',
+      'Quản lý Học viên': 'module-chip chip-green',
+      'Quản lý Voucher': 'module-chip chip-amber',
+      'Cấu hình sàn': 'module-chip chip-grey',
+      'Phân quyền Admin': 'module-chip chip-violet'
+    };
+    return map[module] ?? 'module-chip chip-grey';
   }
 
   setFilter(kind: 'time' | 'module' | 'risk' | 'action', value: string): void {

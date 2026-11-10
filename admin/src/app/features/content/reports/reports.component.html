@@ -3,7 +3,7 @@
     <div>
       <nav class="breadcrumb" aria-label="Đường dẫn trang"><span>Quản lý nội dung</span><span class="breadcrumb-separator" aria-hidden="true">/</span><span class="breadcrumb-current" aria-current="page">Báo cáo vi phạm</span></nav>
       <h1>Báo cáo vi phạm</h1>
-      <p class="subtitle">Tiếp nhận, phân loại và xử lý báo cáo nội dung theo cam kết SLA 24 giờ.</p>
+      <p class="subtitle">Tiếp nhận, phân loại và xử lý báo cáo nội dung theo cam kết SLA 4 giờ.</p>
     </div>
     <div class="heading-actions"><button class="button" type="button" (click)="clearFilters()">Đặt lại bộ lọc</button></div>
   </header>
@@ -16,19 +16,19 @@
   <section class="kpis" aria-label="Tổng quan báo cáo">
     <button class="kpi" type="button" [class.is-selected]="status() === ''" (click)="setStatus('')" aria-label="Xem tất cả báo cáo">
       <span class="kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 3v18"/><path d="M5 4h11l-2 4 2 4H5"/></svg></span>
-      <span><span class="kpi-label">Tổng báo cáo</span><strong class="kpi-value">{{ counts().total }}</strong><span class="kpi-foot">Toàn bộ thời gian</span></span>
+      <span><span class="kpi-label">Vụ việc đang chờ</span><strong class="kpi-value">{{ counts().fresh }}</strong><span class="kpi-foot">Án đang chờ thụ lý</span></span>
     </button>
     <button class="kpi" type="button" [class.is-selected]="status() === 'new'" (click)="setStatus('new')" aria-label="Lọc báo cáo mới">
       <span class="kpi-icon amber" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v10"/><circle cx="12" cy="18" r="1.5"/></svg></span>
-      <span><span class="kpi-label">Mới tiếp nhận</span><strong class="kpi-value">{{ counts().fresh }}</strong><span class="kpi-foot">Chưa có người xử lý</span></span>
+      <span><span class="kpi-label">Mức độ khẩn cấp</span><strong class="kpi-value">{{ counts().urgent }}</strong><span class="kpi-foot">Vụ việc khẩn cấp đang chờ</span></span>
     </button>
     <button class="kpi" type="button" [class.is-selected]="status() === 'processing'" (click)="setStatus('processing')" aria-label="Lọc báo cáo đang xử lý">
       <span class="kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg></span>
-      <span><span class="kpi-label">Đang xử lý</span><strong class="kpi-value">{{ counts().processing }}</strong><span class="kpi-foot">Trong hạn SLA</span></span>
+      <span><span class="kpi-label">Đã xử lý hôm nay</span><strong class="kpi-value">{{ counts().resolved }}</strong><span class="kpi-foot">Đã giải quyết hoặc bác bỏ</span></span>
     </button>
     <div class="kpi">
       <span class="kpi-icon red" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 8v5"/><circle cx="12" cy="16.5" r="1"/><path d="M10.3 3.6 2.6 17a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 3.6a2 2 0 0 0-3.4 0Z"/></svg></span>
-      <span><span class="kpi-label">Quá hạn SLA</span><strong class="kpi-value">{{ counts().overdue }}</strong><span class="kpi-foot">Cần xử lý ngay</span></span>
+      <span><span class="kpi-label">Vi phạm SLA (&gt;4h)</span><strong class="kpi-value">{{ counts().overdue }}</strong><span class="kpi-foot">SLA cam kết xử lý trong 4 giờ</span></span>
     </div>
   </section>
 
@@ -56,11 +56,11 @@
 
     <div class="tabs" role="tablist" aria-label="Lọc theo trạng thái">
       <button class="tab" type="button" role="tab" [class.active]="status() === ''" [attr.aria-selected]="status() === ''" (click)="setStatus('')">Tất cả <span class="chip-count">{{ counts().total }}</span></button>
-      <button class="tab" type="button" role="tab" [class.active]="status() === 'new'" [attr.aria-selected]="status() === 'new'" (click)="setStatus('new')">Mới tiếp nhận <span class="chip-count">{{ counts().fresh }}</span></button>
-      <button class="tab" type="button" role="tab" [class.active]="status() === 'processing'" [attr.aria-selected]="status() === 'processing'" (click)="setStatus('processing')">Đang xử lý <span class="chip-count">{{ counts().processing }}</span></button>
+      <button class="tab" type="button" role="tab" [class.active]="status() === 'new'" [attr.aria-selected]="status() === 'new'" (click)="setStatus('new')">Chờ xử lý <span class="chip-count">{{ counts().fresh }}</span></button>
+      <button class="tab" type="button" role="tab" [class.active]="status() === 'processing'" [attr.aria-selected]="status() === 'processing'" (click)="setStatus('processing')">Đang điều tra <span class="chip-count">{{ counts().processing }}</span></button>
       <button class="tab" type="button" role="tab" [class.active]="status() === 'escalated'" [attr.aria-selected]="status() === 'escalated'" (click)="setStatus('escalated')">Đã leo thang</button>
-      <button class="tab" type="button" role="tab" [class.active]="status() === 'resolved'" [attr.aria-selected]="status() === 'resolved'" (click)="setStatus('resolved')">Đã xử lý</button>
-      <button class="tab" type="button" role="tab" [class.active]="status() === 'dismissed'" [attr.aria-selected]="status() === 'dismissed'" (click)="setStatus('dismissed')">Đã bỏ qua</button>
+      <button class="tab" type="button" role="tab" [class.active]="status() === 'resolved'" [attr.aria-selected]="status() === 'resolved'" (click)="setStatus('resolved')">Đã giải quyết <span class="chip-count">{{ counts().resolvedOnly }}</span></button>
+      <button class="tab" type="button" role="tab" [class.active]="status() === 'dismissed'" [attr.aria-selected]="status() === 'dismissed'" (click)="setStatus('dismissed')">Bác bỏ <span class="chip-count">{{ counts().dismissed }}</span></button>
     </div>
 
     @if (loadError()) {
@@ -146,76 +146,107 @@
   <div class="dialog-backdrop" (click)="closeDetail()" (window:keydown.escape)="closeDetail()">
     <section class="dialog wide" role="dialog" aria-modal="true" aria-labelledby="report-detail-title" (click)="$event.stopPropagation()">
       <header class="dialog-head">
-        <div><h2 id="report-detail-title">{{ item.code }} · {{ item.type }}</h2><p>{{ item.id }} · Tạo lúc {{ dateTime(item.createdAt) }}</p></div>
+        <div><h2 id="report-detail-title">Hồ sơ thụ lý vi phạm – {{ item.code }}</h2><p>{{ item.id }} · {{ item.type }} · Tạo lúc {{ dateTime(item.createdAt) }}</p></div>
         <button class="icon-button" type="button" aria-label="Đóng chi tiết" (click)="closeDetail()">×</button>
       </header>
       <div class="dialog-body">
-        <div class="detail-columns">
-          <div class="detail-main">
-            <div class="section-card">
-              <h3>Nội dung bị báo cáo</h3>
-              <p class="quote">{{ item.targetTitle }}</p>
-              <p style="margin-top:8px;color:#64748b;font-size:12px">Tác giả: {{ item.targetAuthor }} · Mã đối tượng: {{ item.targetId }}</p>
-            </div>
-            <div class="section-card">
-              <h3>Mô tả từ người báo cáo</h3>
-              <p>{{ item.description }}</p>
-              <p style="margin-top:8px;color:#64748b;font-size:12px">Người báo cáo: {{ item.reportedBy }} · Lý do: {{ item.reason }}</p>
-            </div>
-            <div class="section-card">
-              <h3>Bằng chứng đính kèm</h3>
-              <ul class="side-list">
-                @for (evidence of item.evidence; track evidence) { <li><span>{{ evidence }}</span><strong>Đã tải lên</strong></li> }
-              </ul>
-            </div>
-            <div class="section-card">
-              <h3>Lịch sử xử lý</h3>
-              <ul class="timeline">
-                <li><strong>Tiếp nhận báo cáo</strong><span>{{ dateTime(item.createdAt) }}</span></li>
-                @for (log of detailLogs(); track log.id) {
-                  <li><strong>{{ log.action }}</strong><span>{{ dateTime(log.at) }} · {{ log.actor }}</span>@if (log.note) { <p>{{ log.note }}</p> }</li>
-                }
-                @if (!detailLogs().length) { <li><strong>Chưa có ghi nhận xử lý</strong><span>Báo cáo đang chờ quản trị viên phân công.</span></li> }
-                @if (item.resolvedAt) { <li><strong>Hoàn tất xử lý</strong><span>{{ dateTime(item.resolvedAt) }}</span></li> }
-              </ul>
-            </div>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px">
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <span [class]="'badge ' + severityTone(item.severity)">{{ severityLabel(item.severity) }}</span>
+            <span [class]="'badge ' + statusTone(item.status)">{{ statusLabel(item.status) }}</span>
           </div>
-          <aside class="detail-side">
-            <div class="section-card">
-              <h3>Trạng thái &amp; SLA</h3>
-              <div style="display:flex;flex-wrap:wrap;gap:6px">
-                <span [class]="'badge ' + statusTone(item.status)">{{ statusLabel(item.status) }}</span>
-                <span [class]="'badge ' + severityTone(item.severity)">{{ severityLabel(item.severity) }}</span>
-                @if (isOverdue(item)) { <span class="badge danger">Quá hạn SLA</span> }
-              </div>
-              <dl class="meta-grid" style="grid-template-columns:1fr;margin-top:14px">
-                <div class="meta"><dt>Hạn xử lý</dt><dd>{{ dateTime(item.slaDueAt) }}</dd></div>
-                <div class="meta"><dt>Phụ trách</dt><dd>{{ item.assignee }}</dd></div>
-                <div class="meta"><dt>Loại nội dung</dt><dd>{{ item.type }}</dd></div>
-              </dl>
-            </div>
-            <div class="section-card">
-              <h3>Kết luận xử lý</h3>
-              <div class="field">
-                <label for="resolution-note">Kết luận <b>*</b></label>
-                <textarea id="resolution-note" [value]="resolutionNote()" maxlength="600" placeholder="Mô tả hành động đã thực hiện và căn cứ..." (input)="resolutionNote.set($any($event.target).value)"></textarea>
-                @if (noteError()) { <span class="error" role="alert">{{ noteError() }}</span> } @else { <span class="hint">Bắt buộc khi xử lý hoặc bỏ qua báo cáo.</span> }
-              </div>
-              @if (item.resolutionNote) { <div class="quote" style="margin-top:10px">{{ item.resolutionNote }}</div> }
-            </div>
-            <div class="section-card">
-              <h3>Thao tác</h3>
-              <div style="display:grid;gap:8px">
-                @if (item.status === 'new') { <button class="button primary" type="button" (click)="startProcessing(item)">Nhận xử lý</button> }
-                <button class="button primary" type="button" (click)="resolve(item, 'resolved')">Xác nhận vi phạm &amp; xử lý</button>
-                <button class="button" type="button" (click)="resolve(item, 'dismissed')">Bỏ qua báo cáo</button>
-                @if (item.status !== 'escalated') { <button class="button danger" type="button" (click)="escalate(item)">Leo thang cấp cao</button> }
-              </div>
-            </div>
-          </aside>
+          <div style="text-align:right">
+            <strong [style.color]="isOverdue(item) ? '#bd4050' : '#1f6fd0'">{{ slaRemaining(item) }}</strong>
+            <span class="cell-sub" style="margin-top:2px">SLA cam kết xử lý trong 4 giờ</span>
+          </div>
+        </div>
+
+        <div class="section-card" style="margin-top:16px">
+          <h3>1. Bằng chứng vi phạm</h3>
+          <p class="quote">{{ item.evidenceSnippet }}</p>
+          <p style="margin-top:10px;color:#3c5577;font-size:13px">{{ item.targetTitle }}</p>
+          <p style="margin-top:4px;color:#64748b;font-size:12px">Đối tượng: {{ item.targetId }} · Tác giả: {{ item.targetAuthor }}</p>
+          <button class="button" type="button" style="margin-top:10px" (click)="openOriginal(item)">Xem nội dung gốc ↗</button>
+        </div>
+
+        <div class="section-card">
+          <h3>2. Bên tố cáo</h3>
+          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px">
+            <strong style="color:#071b48">{{ item.reportedBy }}</strong>
+            <span class="badge pending">Lý do: {{ item.reason }}</span>
+          </div>
+          <p style="margin-top:10px;color:#3c5577">{{ item.description }}</p>
+        </div>
+
+        <div class="section-card">
+          <h3>3. Bên bị tố cáo</h3>
+          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px">
+            <strong style="color:#071b48">{{ item.targetAuthor }}</strong>
+            <span [class]="'badge ' + (item.priorOffenses ? 'danger' : 'success')">{{ item.priorOffenses ? 'Đã từng bị phạt ' + item.priorOffenses + ' lần' : 'Chưa có tiền án' }}</span>
+          </div>
+          <p style="margin-top:10px;color:#3c5577">Trạng thái hiện tại: {{ item.type }} · Đang bị hạn chế theo quyết định gần nhất.</p>
+          <button class="button" type="button" style="margin-top:10px" (click)="toggleHistory()">{{ historyOpen() ? 'Ẩn lịch sử vi phạm' : 'Xem lịch sử vi phạm' }}</button>
+          @if (historyOpen()) {
+            <ul class="timeline" style="margin-top:12px">
+              @for (offense of priorOffenseList(item); track offense) {
+                <li><strong>Vi phạm trước #{{ offense }}</strong><span>{{ item.reason }} · Đã xử lý</span></li>
+              }
+              @if (!item.priorOffenses) { <li><strong>Không có vi phạm trước đây</strong><span>Đây là lần đầu tài khoản bị báo cáo.</span></li> }
+            </ul>
+          }
+        </div>
+
+        <div class="section-card">
+          <h3>Bằng chứng đính kèm</h3>
+          <ul class="side-list">
+            @for (evidence of item.evidence; track evidence) { <li><span>{{ evidence }}</span><strong>Đã tải lên</strong></li> }
+          </ul>
+        </div>
+
+        <div class="section-card">
+          <h3>Kết luận xử lý</h3>
+          <div class="field">
+            <label for="resolution-note">Kết luận <b>*</b></label>
+            <textarea id="resolution-note" [value]="resolutionNote()" maxlength="600" placeholder="Mô tả hành động đã thực hiện và căn cứ..." (input)="resolutionNote.set($any($event.target).value)"></textarea>
+            @if (noteError()) { <span class="error" role="alert">{{ noteError() }}</span> } @else { <span class="hint">Bắt buộc khi áp dụng chế tài hoặc bác bỏ cáo.</span> }
+          </div>
+          <div class="field" style="margin-top:14px">
+            <label for="report-enforcement">Hình thức xử lý khi xác nhận vi phạm <b>*</b></label>
+            <app-custom-select controlId="report-enforcement" [value]="enforcement()" placeholder="Chọn hình thức xử lý" [options]="enforcementOptions" (valueChange)="enforcement.set($event)"></app-custom-select>
+          </div>
+          <div class="field" style="margin-top:14px">
+            <label for="report-dismissal">Lý do bác bỏ báo cáo <b>*</b></label>
+            <app-custom-select controlId="report-dismissal" [value]="dismissalReason()" placeholder="Chọn lý do bác bỏ" [options]="dismissalOptions" (valueChange)="dismissalReason.set($event)"></app-custom-select>
+          </div>
+          @if (actionError()) { <span class="error" role="alert">{{ actionError() }}</span> }
+          @if (item.resolutionNote) { <div class="quote" style="margin-top:10px">{{ item.resolutionNote }}</div> }
+        </div>
+
+        <div class="alert info" style="margin-top:14px">
+          <span aria-hidden="true">ⓘ</span>
+          <span>Hồ sơ đã được thụ lý — Trạng thái <strong>Đang điều tra</strong> được ghi nhận khi mở Drawer. Chế tài hoặc bác bỏ chỉ có hiệu lực sau khi bạn xác nhận.</span>
+        </div>
+
+        <div class="section-card">
+          <h3>Lịch sử xử lý</h3>
+          <ul class="timeline">
+            <li><strong>Tiếp nhận báo cáo</strong><span>{{ dateTime(item.createdAt) }}</span></li>
+            @for (log of detailLogs(); track log.id) {
+              <li><strong>{{ log.action }}</strong><span>{{ dateTime(log.at) }} · {{ log.actor }}</span>@if (log.note) { <p>{{ log.note }}</p> }</li>
+            }
+            @if (!detailLogs().length) { <li><strong>Chưa có ghi nhận xử lý</strong><span>Hồ sơ vừa được mở để điều tra.</span></li> }
+            @if (item.resolvedAt) { <li><strong>Hoàn tất xử lý</strong><span>{{ dateTime(item.resolvedAt) }}</span></li> }
+          </ul>
         </div>
       </div>
-      <footer class="dialog-footer"><span class="left">Cam kết xử lý trong 24 giờ kể từ khi tiếp nhận.</span><button class="button" type="button" (click)="closeDetail()">Đóng</button></footer>
+      <footer class="dialog-footer" style="justify-content:space-between">
+        <span class="left">Quyết định được lưu vào lịch sử hồ sơ.</span>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          @if (item.status !== 'escalated') { <button class="button" type="button" (click)="escalate(item)">Leo thang</button> }
+          <button class="button" type="button" (click)="resolve(item, 'dismissed')">Bác bỏ cáo</button>
+          <button class="button primary" type="button" (click)="resolve(item, 'resolved')">Áp dụng chế tài</button>
+        </div>
+      </footer>
     </section>
   </div>
 }

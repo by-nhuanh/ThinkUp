@@ -48,6 +48,11 @@
               @if (excerptError()) { <span class="error" role="alert">{{ excerptError() }}</span> } @else { <span class="hint">{{ excerpt().length }}/320 ký tự</span> }
             </div>
             <div class="field full">
+              <label for="post-callout">Nội dung nổi bật</label>
+              <textarea id="post-callout" [value]="callout()" maxlength="280" placeholder="Nhập nội dung tóm tắt nổi bật ở đầu bài viết..." (input)="callout.set($any($event.target).value)"></textarea>
+              <span class="hint">{{ callout().length }}/280 ký tự · Hiển thị trong khối nổi bật đầu bài.</span>
+            </div>
+            <div class="field full">
               <label for="post-body">Nội dung bài viết <b>*</b></label>
               <textarea id="post-body" style="min-height:260px" [value]="bodyText()" placeholder="Nhập nội dung. Mỗi dòng là một đoạn văn." (input)="bodyText.set($any($event.target).value)"></textarea>
               @if (bodyError()) { <span class="error" role="alert">{{ bodyError() }}</span> } @else { <span class="hint">{{ wordCount() }} từ · Mỗi dòng là một đoạn văn</span> }
@@ -59,6 +64,16 @@
                 @for (tag of tags(); track tag) { <span class="tag">#{{ tag }}</span> }
                 @if (!tags().length) { <span class="hint">Phân tách các thẻ bằng dấu phẩy.</span> }
               </div>
+            </div>
+            <div class="field full">
+              <label for="post-seo-title">SEO Title</label>
+              <input id="post-seo-title" type="text" [value]="seoTitle()" maxlength="60" placeholder="Tiêu đề hiển thị trên kết quả tìm kiếm" (input)="seoTitle.set($any($event.target).value)">
+              <span class="hint">{{ seoTitle().length }}/60 ký tự · Để trống sẽ dùng tiêu đề bài viết.</span>
+            </div>
+            <div class="field full">
+              <label for="post-seo-description">SEO Description</label>
+              <textarea id="post-seo-description" [value]="seoDescription()" maxlength="160" placeholder="Nhập mô tả ngắn cho kết quả tìm kiếm..." (input)="seoDescription.set($any($event.target).value)"></textarea>
+              <span class="hint">{{ seoDescription().length }}/160 ký tự · Để trống sẽ dùng mô tả ngắn.</span>
             </div>
           </div>
         </div>
@@ -78,6 +93,8 @@
           <div class="form-section">
             <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#3c5577"><input class="checkbox" type="checkbox" [checked]="featured()" (change)="featured.set($any($event.target).checked)"> Bài viết nổi bật</label>
             <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#3c5577;margin-top:9px"><input class="checkbox" type="checkbox" [checked]="pinned()" (change)="pinned.set($any($event.target).checked)"> Ghim lên đầu danh sách</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#3c5577;margin-top:9px"><input class="checkbox" type="checkbox" [checked]="allowComments()" (change)="allowComments.set($any($event.target).checked)"> Cho phép bình luận</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#3c5577;margin-top:9px"><input class="checkbox" type="checkbox" [checked]="loginRequired()" (change)="loginRequired.set($any($event.target).checked)"> Yêu cầu đăng nhập để đọc</label>
           </div>
           <div style="display:grid;gap:8px;margin-top:16px">
             <button class="button primary" type="button" (click)="save()">{{ editing() ? 'Lưu thay đổi' : 'Lưu bài viết' }}</button>
@@ -127,9 +144,10 @@
         <p class="tag" style="margin-top:14px">{{ category() }}</p>
         <h2 style="margin:10px 0 6px;color:#071b48">{{ title() || 'Tiêu đề bài viết' }}</h2>
         <p style="color:#64748b;font-size:13px;margin:0 0 14px">{{ excerpt() || 'Mô tả ngắn của bài viết sẽ hiển thị tại đây.' }}</p>
-        <div class="quote">{{ excerpt() }}</div>
+        <div class="quote">{{ callout() || excerpt() }}</div>
         @for (paragraph of bodyParagraphs(); track $index) { <p style="margin:10px 0 0;color:#3c5577;font-size:14px;line-height:1.7">{{ paragraph }}</p> }
         <div class="tag-list" style="margin-top:14px">@for (tag of tags(); track tag) { <span class="tag">#{{ tag }}</span> }</div>
+        @if (!loginRequired()) { <p style="margin-top:12px;color:#64748b;font-size:12px">Bài viết công khai · {{ allowComments() ? 'Cho phép bình luận' : 'Tắt bình luận' }}</p> } @else { <p style="margin-top:12px;color:#64748b;font-size:12px">Yêu cầu đăng nhập để đọc · {{ allowComments() ? 'Cho phép bình luận' : 'Tắt bình luận' }}</p> }
       </div>
       <footer class="dialog-footer">
         <button class="button" type="button" (click)="previewOpen.set(false)">Đóng xem trước</button>

@@ -1,10 +1,11 @@
 import { Component, input, output, signal } from '@angular/core';
 import { AdminDialogComponent } from '../../../../shared/components/admin-dialog/admin-dialog.component';
+import { SystemOtpInputComponent } from '../otp-input/otp-input.component';
 
 @Component({
   selector: 'app-system-settings-otp-dialog',
   standalone: true,
-  imports: [AdminDialogComponent],
+  imports: [AdminDialogComponent, SystemOtpInputComponent],
   templateUrl: './settings-otp-dialog.component.html',
   styleUrls: ['../../system-page.css', './settings-otp-dialog.component.css']
 })

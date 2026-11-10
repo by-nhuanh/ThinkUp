@@ -6,3 +6,6 @@
 .search-field input { display: block; box-sizing: border-box; width: 100%; height: 40px; padding: 0 14px 0 41px; border: 1px solid #c8ced6; border-radius: 8px; background: #fff; color: #071b48; outline: none; font: var(--admin-text-control-input); }
 .search-field input:hover { border-color: #8fa8c5; }
 .search-field input:focus { border-color: #0965e4; box-shadow: 0 0 0 3px #0965e426; }
+.search-field__label { position: absolute; top: 4px; left: 41px; z-index: 1; color: #64748b; font: var(--admin-text-caption); font-size: 10.5px; line-height: 13px; pointer-events: none; }
+.search-field.has-label input { height: 44px; padding: 14px 14px 0 41px; }
+.search-field.has-label svg { top: 15px; }

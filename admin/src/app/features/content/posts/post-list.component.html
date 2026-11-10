@@ -214,7 +214,7 @@
             <img class="preview-cover" [src]="post.thumbnail" [alt]="'Ảnh minh họa: ' + post.title">
             <h3 class="preview-title">{{ post.title }}</h3>
             <p class="preview-meta">Tác giả: {{ post.author }} ({{ post.authorRole }}) · Cập nhật: {{ date(post.updatedAt) }} · {{ post.views }} lượt xem</p>
-            <p class="preview-summary">{{ post.excerpt }}</p>
+            <p class="preview-summary">{{ post.callout || post.excerpt }}</p>
             <div class="preview-body">
               @for (paragraph of post.body; track $index) { <p>{{ paragraph }}</p> }
             </div>

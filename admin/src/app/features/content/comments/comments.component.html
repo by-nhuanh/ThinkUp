@@ -2,61 +2,60 @@
   <header class="page-heading">
     <div>
       <nav class="breadcrumb" aria-label="Đường dẫn trang"><span>Quản lý nội dung</span><span class="breadcrumb-separator" aria-hidden="true">/</span><span class="breadcrumb-current" aria-current="page">Bình luận</span></nav>
-      <h1>Quản lý bình luận</h1>
+      <h1>Kiểm duyệt bình luận</h1>
       <p class="subtitle">Kiểm duyệt thảo luận dưới bài viết và phản hồi học viên kịp thời.</p>
     </div>
     <div class="heading-actions">
-      <button class="button" type="button" (click)="clearFilters()">Đặt lại bộ lọc</button>
+      <app-export-menu label="Xuất danh sách bình luận" (formatChange)="exportList($event)"></app-export-menu>
     </div>
   </header>
 
   <section class="kpis" aria-label="Tổng quan bình luận">
     <button class="kpi" type="button" [class.is-selected]="status() === ''" (click)="setStatus('')" aria-label="Xem tất cả bình luận">
       <span class="kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12a8 8 0 0 1-8 8H7l-4 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z"/></svg></span>
-      <span><span class="kpi-label">Tổng bình luận</span><strong class="kpi-value">{{ counts().total }}</strong><span class="kpi-foot">Trên toàn bộ bài viết</span></span>
-    </button>
-    <button class="kpi" type="button" [class.is-selected]="status() === 'visible'" (click)="setStatus('visible')" aria-label="Lọc bình luận đang hiển thị">
-      <span class="kpi-icon green" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m2 12 4-4 4 4 5-6 5 6 2-2"/><path d="M3 19h18"/></svg></span>
-      <span><span class="kpi-label">Đang hiển thị</span><strong class="kpi-value">{{ counts().visible }}</strong><span class="kpi-foot">Công khai với học viên</span></span>
+      <span><span class="kpi-label">Tổng thảo luận</span><strong class="kpi-value">{{ number(counts().total) }}</strong><span class="kpi-foot">Trên toàn hệ thống</span></span>
     </button>
     <button class="kpi" type="button" [class.is-selected]="status() === 'pending'" (click)="setStatus('pending')" aria-label="Lọc bình luận chờ duyệt">
       <span class="kpi-icon amber" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
-      <span><span class="kpi-label">Chờ duyệt</span><strong class="kpi-value">{{ counts().pending }}</strong><span class="kpi-foot">Cần kiểm duyệt thủ công</span></span>
+      <span><span class="kpi-label">Chờ duyệt / Nghi vấn</span><strong class="kpi-value">{{ number(counts().pending + counts().flagged) }}</strong><span class="kpi-foot">Từ cảnh báo báo cáo chưa xử lý</span></span>
     </button>
-    <button class="kpi" type="button" [class.is-selected]="status() === 'flagged'" (click)="setStatus('flagged')" aria-label="Lọc bình luận bị báo cáo">
-      <span class="kpi-icon red" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 3v18"/><path d="M5 4h11l-2 4 2 4H5"/></svg></span>
-      <span><span class="kpi-label">Bị báo cáo</span><strong class="kpi-value">{{ counts().flagged }}</strong><span class="kpi-foot">Ưu tiên xử lý</span></span>
+    <button class="kpi" type="button" [class.is-selected]="status() === 'visible'" (click)="setStatus('visible')" aria-label="Lọc bình luận đang hiển thị">
+      <span class="kpi-icon green" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></span>
+      <span><span class="kpi-label">Đã hiển thị</span><strong class="kpi-value">{{ number(counts().visible) }}</strong><span class="kpi-foot">Đang hiển thị công khai</span></span>
+    </button>
+    <button class="kpi" type="button" [class.is-selected]="status() === 'hidden'" (click)="setStatus('hidden')" aria-label="Lọc bình luận vi phạm đã ẩn">
+      <span class="kpi-icon red" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span>
+      <span><span class="kpi-label">Đã ẩn vi phạm</span><strong class="kpi-value">{{ number(counts().hidden) }}</strong><span class="kpi-foot">Nội dung vi phạm đã được ẩn</span></span>
     </button>
   </section>
 
   <section class="panel" aria-label="Danh sách bình luận">
     <div class="toolbar">
       <div class="grow">
-        <app-search-field label="Tìm bình luận" placeholder="Tìm nội dung, người bình luận hoặc bài viết..." [value]="search()" (valueChange)="setSearch($event)"></app-search-field>
-      </div>
-      <div class="filter custom-select-control">
-        <span>Bài viết</span>
-        <app-custom-select controlId="comment-post" [value]="postFilter()" [options]="postOptions()" [menuWidth]="300" (valueChange)="setPost($event)"></app-custom-select>
+        <app-search-field label="Tìm bình luận" placeholder="Tìm nội dung, tên người dùng, bài học..." [value]="search()" (valueChange)="setSearch($event)"></app-search-field>
       </div>
       <div class="filter custom-select-control">
         <span>Trạng thái</span>
         <app-custom-select controlId="comment-status" [value]="status()" [options]="statusOptions" (valueChange)="setStatus($event)"></app-custom-select>
       </div>
       <div class="filter custom-select-control">
-        <span>Sắp xếp</span>
-        <app-custom-select controlId="comment-sort" [value]="sort()" [options]="sortOptions" (valueChange)="setSort($event)"></app-custom-select>
+        <span>Vai trò</span>
+        <app-custom-select controlId="comment-role" [value]="role()" [options]="roleOptions" (valueChange)="setRole($event)"></app-custom-select>
+      </div>
+      <div class="filter custom-select-control">
+        <span>Thời gian</span>
+        <app-custom-select controlId="comment-time" [value]="timeRange()" [options]="timeOptions" (valueChange)="setTime($event)"></app-custom-select>
       </div>
       <div class="toolbar-end">
-        <app-export-menu label="Xuất danh sách bình luận" (formatChange)="exportList($event)"></app-export-menu>
+        <button class="button" type="button" (click)="clearFilters()">Làm mới</button>
       </div>
     </div>
 
-    <div class="tabs" role="tablist" aria-label="Lọc theo trạng thái">
-      <button class="tab" type="button" role="tab" [class.active]="status() === ''" [attr.aria-selected]="status() === ''" (click)="setStatus('')">Tất cả <span class="chip-count">{{ counts().total }}</span></button>
-      <button class="tab" type="button" role="tab" [class.active]="status() === 'visible'" [attr.aria-selected]="status() === 'visible'" (click)="setStatus('visible')">Đang hiển thị <span class="chip-count">{{ counts().visible }}</span></button>
-      <button class="tab" type="button" role="tab" [class.active]="status() === 'pending'" [attr.aria-selected]="status() === 'pending'" (click)="setStatus('pending')">Chờ duyệt <span class="chip-count">{{ counts().pending }}</span></button>
-      <button class="tab" type="button" role="tab" [class.active]="status() === 'flagged'" [attr.aria-selected]="status() === 'flagged'" (click)="setStatus('flagged')">Bị báo cáo <span class="chip-count">{{ counts().flagged }}</span></button>
-      <button class="tab" type="button" role="tab" [class.active]="status() === 'hidden'" [attr.aria-selected]="status() === 'hidden'" (click)="setStatus('hidden')">Đã ẩn</button>
+    <div class="tabs" role="tablist" aria-label="Lọc theo nguồn bình luận">
+      <button class="tab" type="button" role="tab" [class.active]="source() === 'all'" [attr.aria-selected]="source() === 'all'" (click)="setSource('all')">Tất cả</button>
+      <button class="tab" type="button" role="tab" [class.active]="source() === 'course'" [attr.aria-selected]="source() === 'course'" (click)="setSource('course')">Khóa học và Bài giảng</button>
+      <button class="tab" type="button" role="tab" [class.active]="source() === 'blog'" [attr.aria-selected]="source() === 'blog'" (click)="setSource('blog')">Bài viết Blog</button>
+      <span style="margin-left:auto;color:#64748b;font-size:13.6px">Lọc kết hợp theo nguồn và điều kiện</span>
     </div>
 
     @if (loadError()) {
@@ -82,32 +81,54 @@
         <thead>
           <tr>
             <th scope="col" style="width:44px"><input class="checkbox" type="checkbox" [checked]="allVisibleSelected()" aria-label="Chọn tất cả bình luận trên trang" (change)="toggleAll()"></th>
-            <th scope="col">Bình luận</th>
-            <th scope="col">Bài viết</th>
+            <th scope="col">Người bình luận</th>
+            <th scope="col">Nội dung bình luận</th>
+            <th scope="col">Ngữ cảnh xuất hiện</th>
+            <th scope="col">Thời gian và tương tác</th>
+            <th scope="col">Cờ cảnh báo</th>
             <th scope="col">Trạng thái</th>
-            <th scope="col">Tương tác</th>
-            <th scope="col">Thời gian</th>
             <th scope="col">Thao tác</th>
           </tr>
         </thead>
         <tbody>
           @for (item of visible(); track item.id) {
-            <tr [class.is-selected]="isSelected(item.id)">
+            <tr class="row-comments" [class.is-selected]="isSelected(item.id)">
               <td><input class="checkbox" type="checkbox" [checked]="isSelected(item.id)" [attr.aria-label]="'Chọn bình luận của ' + item.author" (change)="toggle(item)"></td>
               <td>
-                <button type="button" style="border:0;background:none;padding:0;text-align:left" (click)="openDetail(item)"><span class="cell-title">{{ item.author }}</span></button>
-                <span class="cell-sub">{{ truncate(item.content) }}</span>
-                <span class="cell-sub">{{ item.email }}</span>
+                <div class="actor">
+                  <span class="avatar" aria-hidden="true">{{ initials(item.author) }}</span>
+                  <span class="identity">
+                    <strong>{{ item.author }}</strong>
+                    <span [class]="'badge ' + roleTone(item.authorRole)" style="width:max-content">{{ item.authorRole }}</span>
+                  </span>
+                </div>
               </td>
-              <td><span class="cell-title" style="max-width:220px">{{ truncate(item.postTitle) }}</span><span class="cell-sub">{{ item.postId }}</span></td>
+              <td>
+                <button type="button" style="border:0;background:none;padding:0;text-align:left" (click)="openDetail(item)">
+                  <span class="cell-title" style="font-size:15px;font-weight:400;max-width:330px">{{ truncate(item.content) }}</span>
+                </button>
+              </td>
+              <td>
+                <button type="button" class="link" style="border:0;background:none;padding:0;text-align:left;max-width:240px" (click)="openDetail(item)">{{ item.contextTitle }}</button>
+                <span class="cell-sub">{{ sourceLabel(item.contextType) }}</span>
+              </td>
+              <td class="nowrap">{{ dateTime(item.createdAt) }}<span class="cell-sub">{{ item.likeCount }} thích · {{ item.replyCount }} phản hồi</span></td>
+              <td><span [class]="'badge ' + safetyTone(item)">{{ safetyLabel(item) }}</span></td>
               <td><span [class]="'badge ' + statusTone(item.status)"><span class="dot" aria-hidden="true"></span>{{ statusLabel(item.status) }}</span></td>
-              <td class="nowrap"><strong>{{ item.likeCount }}</strong> thích<span class="cell-sub">{{ item.replyCount }} phản hồi · {{ item.reportCount }} báo cáo</span></td>
-              <td class="nowrap">{{ ago(item.createdAt) }}<span class="cell-sub">{{ dateTime(item.createdAt) }}</span></td>
               <td>
                 <div class="row-actions">
-                  <button class="icon-button" type="button" title="Xem chi tiết" [attr.aria-label]="'Xem bình luận của ' + item.author" (click)="openDetail(item)">
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
-                  </button>
+                  @if (item.status === 'visible') {
+                    <button class="button small" type="button" (click)="changeStatus(item, 'hidden')">Ẩn</button>
+                  }
+                  @if (item.status === 'pending' || item.status === 'flagged' || item.status === 'spam') {
+                    <button class="button small primary" type="button" (click)="changeStatus(item, 'visible')">Duyệt</button>
+                  }
+                  @if (item.status === 'pending' || item.status === 'flagged') {
+                    <button class="button small" type="button" (click)="changeStatus(item, 'hidden')">Ẩn</button>
+                  }
+                  @if (item.status === 'hidden' || item.status === 'spam') {
+                    <button class="button small" type="button" (click)="changeStatus(item, 'visible')">Khôi phục</button>
+                  }
                   <button class="icon-button" type="button" title="Phản hồi" [attr.aria-label]="'Phản hồi ' + item.author" (click)="openReply(item)">
                     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 17 4 12l5-5"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
                   </button>
@@ -119,7 +140,7 @@
             </tr>
           }
           @if (!visible().length) {
-            <tr><td colspan="7"><div class="empty"><strong>Không có bình luận phù hợp</strong><p>Thử thay đổi từ khóa hoặc bộ lọc trạng thái.</p><button class="button" type="button" (click)="clearFilters()">Đặt lại bộ lọc</button></div></td></tr>
+            <tr><td colspan="8"><div class="empty"><strong>Không có bình luận phù hợp</strong><p>Thử thay đổi từ khóa hoặc bộ lọc nguồn, vai trò, thời gian.</p><button class="button" type="button" (click)="clearFilters()">Đặt lại bộ lọc</button></div></td></tr>
           }
         </tbody>
       </table>
@@ -156,9 +177,9 @@
               @if (item.moderationNote) { <p style="margin-top:10px;color:#a43a49;font-size:12px">Ghi chú kiểm duyệt: {{ item.moderationNote }}</p> }
             </div>
             <div class="section-card">
-              <h3>Ngữ cảnh bài viết</h3>
-              <p><strong>{{ item.postTitle }}</strong></p>
-              <p style="margin-top:5px;color:#64748b;font-size:12px">Mã bài viết: {{ item.postId }} · {{ item.replyCount }} phản hồi · {{ item.likeCount }} lượt thích</p>
+              <h3>Ngữ cảnh xuất hiện</h3>
+              <p><strong>{{ item.contextTitle }}</strong></p>
+              <p style="margin-top:5px;color:#64748b;font-size:12px">{{ sourceLabel(item.contextType) }} · {{ item.replyCount }} phản hồi · {{ item.likeCount }} lượt thích</p>
             </div>
             <div class="section-card">
               <h3>Lịch sử kiểm duyệt</h3>
@@ -211,7 +232,7 @@
         <div class="field">
           <label for="reply-content">Nội dung phản hồi <b>*</b></label>
           <textarea id="reply-content" [value]="replyText()" maxlength="500" placeholder="Nhập phản hồi công khai tới học viên..." (input)="replyText.set($any($event.target).value)"></textarea>
-          @if (replyError()) { <span class="error" role="alert">{{ replyError() }}</span> } @else { <span class="hint">{{ replyText().length }}/500 ký tự</span> }
+          @if (replyError()) { <span class="error" role="alert">{{ replyError() }}</span> } @else { <span class="hint">{{ replyText().length }}/500 ký tự · tối thiểu 10 ký tự</span> }
         </div>
       </div>
       <footer class="dialog-footer">

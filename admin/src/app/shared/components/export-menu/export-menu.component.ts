@@ -12,11 +12,18 @@ export class ExportMenuComponent {
   @Input() label = 'Xuất dữ liệu';
   /** Hiển thị nhãn trên trigger khi toolbar có đủ không gian; mặc định giữ dạng icon-only. */
   @Input() showText = false;
+  /** Kiểu nút: primary (xanh đặc) cho thao tác chính, secondary (nền trắng) cho toolbar phụ. */
+  @Input() variant: 'primary' | 'secondary' = 'primary';
+  /** Khoá xuất dữ liệu khi nghiệp vụ đang bị chặn (ví dụ checksum kiểm toán sai lệch). */
+  @Input() disabled = false;
   @Output() readonly formatChange = new EventEmitter<ExportFormat>();
   readonly open = signal(false);
   readonly options = EXPORT_FORMAT_OPTIONS;
 
-  toggle(): void { this.open.update(value => !value); }
+  toggle(): void {
+    if (this.disabled) return;
+    this.open.update(value => !value);
+  }
   close(): void { this.open.set(false); }
   choose(format: ExportFormat): void {
     this.formatChange.emit(format);
