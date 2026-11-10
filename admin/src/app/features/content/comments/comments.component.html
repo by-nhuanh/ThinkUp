@@ -136,11 +136,8 @@
                   @if (item.status === 'hidden' || item.status === 'spam') {
                     <button class="button small" type="button" (click)="changeStatus(item, 'visible')">Khôi phục</button>
                   }
-                  <button class="icon-button" type="button" title="Phản hồi" [attr.aria-label]="'Phản hồi ' + item.author" (click)="openReply(item)">
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 17 4 12l5-5"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
-                  </button>
-                  <button class="icon-button" type="button" title="Xóa bình luận" [attr.aria-label]="'Xóa bình luận của ' + item.author" (click)="deleteTarget.set(item)">
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+                  <button class="icon-button" type="button" title="Thao tác khác" aria-haspopup="menu" [attr.aria-expanded]="isMenuOpen(item.id)" [attr.aria-label]="'Thao tác khác cho bình luận của ' + item.author" (click)="openMenu($event, item)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="12" r="2"/></svg>
                   </button>
                 </div>
               </td>
@@ -232,20 +229,37 @@
   <div class="dialog-backdrop" (click)="replyId.set(null)" (window:keydown.escape)="replyId.set(null)">
     <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="reply-title" (click)="$event.stopPropagation()">
       <header class="dialog-head">
-        <div><h2 id="reply-title">Phản hồi bình luận</h2><p>Trả lời {{ item.author }} · {{ item.id }}</p></div>
+        <div>
+          <h2 id="reply-title">Phản hồi bình luận hệ thống</h2>
+          <p>Câu trả lời được đăng công khai dưới danh nghĩa Ban Quản Trị ThinkUp.</p>
+        </div>
         <button class="icon-button" type="button" aria-label="Đóng" (click)="replyId.set(null)">×</button>
       </header>
       <div class="dialog-body">
-        <div class="quote" style="margin-bottom:14px">{{ item.content }}</div>
+        <div class="section-card" style="margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+            <strong>{{ item.author }}</strong>
+            <span [class]="'badge ' + roleTone(item.authorRole)">{{ item.authorRole }}</span>
+          </div>
+          <div style="color:var(--c-muted);font-size:13px;margin-bottom:8px">{{ item.contextTitle }}</div>
+          <p class="quote">“{{ item.content }}”</p>
+        </div>
         <div class="field">
-          <label for="reply-content">Nội dung phản hồi <b>*</b></label>
-          <textarea id="reply-content" [value]="replyText()" maxlength="500" placeholder="Nhập phản hồi công khai tới học viên..." (input)="replyText.set($any($event.target).value)"></textarea>
-          @if (replyError()) { <span class="error" role="alert">{{ replyError() }}</span> } @else { <span class="hint">{{ replyText().length }}/500 ký tự · tối thiểu 10 ký tự</span> }
+          <label for="reply-content">Nội dung phản hồi chính thức <b>*</b></label>
+          <textarea id="reply-content" rows="4" [value]="replyText()" maxlength="300" placeholder="Nhập nội dung phản hồi chính thức dưới danh nghĩa Ban Quản Trị ThinkUp..." (input)="replyText.set($any($event.target).value)"></textarea>
+          @if (replyError()) { <span class="error" role="alert">{{ replyError() }}</span> } @else { <span class="hint">{{ replyText().length }}/300 ký tự · Tối thiểu 10 ký tự.</span> }
+        </div>
+        <div class="alert info" style="margin-top:14px">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex:none;margin-top:2px" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+          <div>
+            <strong>Ban Quản Trị ThinkUp đã xác minh</strong>
+            <div style="color:inherit;opacity:.9;margin-top:2px">Phản hồi sẽ hiển thị bên dưới bình luận gốc, kèm nhãn Ban Quản Trị và dấu tích xanh.</div>
+          </div>
         </div>
       </div>
       <footer class="dialog-footer">
-        <button class="button" type="button" (click)="replyId.set(null)">Hủy</button>
-        <button class="button primary" type="button" (click)="sendReply()">Gửi phản hồi</button>
+        <button class="button" type="button" (click)="replyId.set(null)">Hủy bỏ</button>
+        <button class="button primary" type="button" (click)="sendReply()">Đăng phản hồi công khai</button>
       </footer>
     </section>
   </div>
@@ -267,23 +281,52 @@
 @if (spamTarget(); as item) {
   <div class="dialog-backdrop" (click)="spamTarget.set(null)" (window:keydown.escape)="spamTarget.set(null)">
     <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="comment-spam-title" (click)="$event.stopPropagation()">
-      <header class="dialog-head"><div><h2 id="comment-spam-title">Đánh dấu spam</h2><p>Bình luận của {{ item.author }} sẽ bị ẩn và học viên bị hạn chế bình luận.</p></div></header>
+      <header class="dialog-head">
+        <div>
+          <h2 id="comment-spam-title">Đánh dấu spam và Hạn chế tài khoản</h2>
+          <p>Chọn thời hạn hạn chế quyền gửi bình luận của người dùng.</p>
+        </div>
+        <button class="icon-button" type="button" aria-label="Đóng" (click)="spamTarget.set(null)">×</button>
+      </header>
       <div class="dialog-body">
-        <div class="form-grid">
-          <div class="field full">
-            <span>Thời hạn hạn chế bình luận</span>
-            <div role="radiogroup" aria-label="Thời hạn hạn chế bình luận" style="display:grid;gap:8px">
-              <label style="display:flex;align-items:center;gap:8px;font-size:13px"><input class="checkbox" type="radio" name="spam-duration" [checked]="spamDuration() === '24h'" (change)="spamDuration.set('24h')"> 24 giờ</label>
-              <label style="display:flex;align-items:center;gap:8px;font-size:13px"><input class="checkbox" type="radio" name="spam-duration" [checked]="spamDuration() === '7d'" (change)="spamDuration.set('7d')"> 7 ngày</label>
-              <label style="display:flex;align-items:center;gap:8px;font-size:13px"><input class="checkbox" type="radio" name="spam-duration" [checked]="spamDuration() === 'forever'" (change)="spamDuration.set('forever')"> Vĩnh viễn</label>
-            </div>
+        <div class="alert warning" style="margin-bottom:14px">
+          <div>
+            <strong>Bình luận sẽ được chuyển sang Spam</strong>
+            <div style="margin-top:2px">Hệ thống ẩn bình luận khỏi giao diện công khai và áp dụng hạn chế gửi bình luận cho tài khoản này.</div>
           </div>
         </div>
-        <div class="alert" style="margin-top:16px">Hành vi spam lặp lại có thể dẫn đến việc khóa tài khoản vĩnh viễn.</div>
+        <div class="section-card" style="margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+            <strong>{{ item.author }}</strong>
+            <span [class]="'badge ' + roleTone(item.authorRole)">{{ item.authorRole }}</span>
+          </div>
+          <div style="color:var(--c-muted);font-size:13px">Lịch sử: {{ item.reportCount ? item.reportCount + ' lần bị báo cáo trước đây' : '2 lần vi phạm trước đây' }}</div>
+        </div>
+        <div class="field full">
+          <label style="font-weight:600;margin-bottom:8px;display:block">Thời gian cấm bình luận <b>*</b></label>
+          <div role="radiogroup" aria-label="Thời gian cấm bình luận" style="display:grid;gap:10px">
+            <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--c-border);border-radius:8px;background:#fbfcfe;cursor:pointer">
+              <input class="checkbox" type="radio" name="spam-duration" [checked]="spamDuration() === '24h'" (change)="spamDuration.set('24h')">
+              <span>Khóa tính năng bình luận trong 24 giờ</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--c-border);border-radius:8px;background:#fbfcfe;cursor:pointer">
+              <input class="checkbox" type="radio" name="spam-duration" [checked]="spamDuration() === '7d'" (change)="spamDuration.set('7d')">
+              <span>Khóa tính năng bình luận trong 7 ngày</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--c-border);border-radius:8px;background:#fbfcfe;cursor:pointer">
+              <input class="checkbox" type="radio" name="spam-duration" [checked]="spamDuration() === 'forever'" (change)="spamDuration.set('forever')">
+              <span>Khóa tính năng bình luận vĩnh viễn</span>
+            </label>
+          </div>
+        </div>
+        <div class="alert info" style="margin-top:14px">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="flex:none;margin-top:1px" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <div>Hệ thống sẽ tự động gửi email cảnh báo và thông báo chuông đến tài khoản học viên, nêu rõ lý do và thời gian bị hạn chế.</div>
+        </div>
       </div>
       <footer class="dialog-footer">
-        <button class="button" type="button" (click)="spamTarget.set(null)">Hủy</button>
-        <button class="button danger" type="button" (click)="sendSpam()">Đánh dấu spam & hạn chế</button>
+        <button class="button" type="button" (click)="spamTarget.set(null)">Giữ lại bình luận</button>
+        <button class="button danger" type="button" (click)="sendSpam()">Xác nhận phạt</button>
       </footer>
     </section>
   </div>
@@ -291,30 +334,92 @@
 
 @if (transferTarget(); as item) {
   <div class="dialog-backdrop" (click)="transferTarget.set(null)" (window:keydown.escape)="transferTarget.set(null)">
-    <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="comment-transfer-title" (click)="$event.stopPropagation()">
-      <header class="dialog-head"><div><h2 id="comment-transfer-title">Chuyển hồ sơ vi phạm</h2><p>Tạo hồ sơ xử lý cho bình luận của {{ item.author }}.</p></div></header>
+    <section class="dialog wide" role="dialog" aria-modal="true" aria-labelledby="comment-transfer-title" (click)="$event.stopPropagation()">
+      <header class="dialog-head">
+        <div>
+          <h2 id="comment-transfer-title">Chuyển hồ sơ sang hàng đợi xử lý vi phạm</h2>
+          <p>Đóng gói chứng cứ và chuyển bình luận sang phân hệ Báo cáo vi phạm.</p>
+        </div>
+        <button class="icon-button" type="button" aria-label="Đóng" (click)="transferTarget.set(null)">×</button>
+      </header>
       <div class="dialog-body">
-        <div class="form-grid">
-          <div class="field">
-            <label>Mức độ vi phạm</label>
-            <select [value]="transferSeverity()" (change)="transferSeverity.set($any($event.target).value)">
-              <option value="low">Thấp</option>
-              <option value="medium">Trung bình</option>
-              <option value="high">Cao</option>
-            </select>
+        <div class="section-card" style="margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+            <strong>Đối tượng bị tố cáo: {{ item.author }}</strong>
+            <span [class]="'badge ' + roleTone(item.authorRole)">{{ item.authorRole }}</span>
           </div>
-          <div class="field full">
-            <label>Lý do chuyển hồ sơ</label>
-            <textarea rows="4" [value]="transferReason()" (input)="transferReason.set($any($event.target).value)" placeholder="Mô tả hành vi vi phạm và căn cứ xử lý..."></textarea>
-            @if (transferError()) { <span class="error" role="alert">{{ transferError() }}</span> } @else { <span class="hint">{{ transferReason().length }}/500 ký tự · tối thiểu 15 ký tự</span> }
+          <div style="color:var(--c-muted);font-size:13px;margin-bottom:6px">{{ item.contextTitle }}</div>
+          <p class="quote" style="margin-bottom:8px">“{{ item.content }}”</p>
+          <div style="color:var(--c-muted);font-size:12px">Mã bình luận: {{ item.id }} · Mã bài học: LES-REACT-005 · IP: 118.69.182.45</div>
+        </div>
+
+        <div class="field full" style="margin-bottom:16px">
+          <label style="font-weight:600;margin-bottom:8px;display:block">Mức độ nghiêm trọng <b>*</b></label>
+          <div role="radiogroup" aria-label="Mức độ nghiêm trọng" style="display:grid;gap:10px">
+            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border:1px solid var(--c-border);border-radius:8px;background:#fbfcfe;cursor:pointer">
+              <input class="checkbox" type="radio" name="transfer-severity" [checked]="transferSeverity() === 'medium'" (change)="transferSeverity.set('medium')" style="margin-top:3px">
+              <div>
+                <strong>Mức độ trung bình</strong>
+                <div style="color:var(--c-muted);font-size:13px">Vi phạm quy chuẩn ngôn từ, gây gổ</div>
+              </div>
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border:1px solid var(--c-border);border-radius:8px;background:#fbfcfe;cursor:pointer">
+              <input class="checkbox" type="radio" name="transfer-severity" [checked]="transferSeverity() === 'high'" (change)="transferSeverity.set('high')" style="margin-top:3px">
+              <div>
+                <strong>Mức độ cao</strong>
+                <div style="color:var(--c-muted);font-size:13px">Lừa đảo, quảng cáo độc hại, thông tin sai sự thật</div>
+              </div>
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border:1px solid var(--c-border);border-radius:8px;background:#fbfcfe;cursor:pointer">
+              <input class="checkbox" type="radio" name="transfer-severity" [checked]="transferSeverity() === 'severe'" (change)="transferSeverity.set('severe')" style="margin-top:3px">
+              <div>
+                <strong>Mức độ nghiêm trọng</strong>
+                <div style="color:var(--c-muted);font-size:13px">Phá hoại hệ thống, ngôn từ cực đoan</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="field full">
+          <label for="transfer-reason">Ghi chú bàn giao công việc <b>*</b></label>
+          <textarea id="transfer-reason" rows="3" [value]="transferReason()" (input)="transferReason.set($any($event.target).value)" placeholder="Nhập lý do chuyển giao hồ sơ (tối thiểu 15 ký tự)..."></textarea>
+          @if (transferError()) { <span class="error" role="alert">{{ transferError() }}</span> } @else { <span class="hint">{{ transferReason().length }}/15 ký tự tối thiểu</span> }
+        </div>
+
+        <div class="alert warning" style="margin-top:14px">
+          <div>
+            <strong>Chuyển giao dứt điểm</strong>
+            <div style="margin-top:2px">Bình luận sẽ được gỡ khỏi hàng đợi này. Điều tra, xử phạt và khôi phục chỉ tiếp tục ở Báo cáo vi phạm.</div>
           </div>
         </div>
       </div>
       <footer class="dialog-footer">
-        <button class="button" type="button" (click)="transferTarget.set(null)">Hủy</button>
-        <button class="button primary" type="button" (click)="sendTransfer()">Bàn giao hồ sơ</button>
+        <button class="button" type="button" (click)="transferTarget.set(null)">Hủy bỏ</button>
+        <button class="button primary" type="button" (click)="sendTransfer()">Xác nhận chuyển giao hồ sơ</button>
       </footer>
     </section>
+  </div>
+}
+
+@if (menu(); as m) {
+  <div class="menu-layer" (click)="closeMenu()"></div>
+  <div class="row-menu" role="menu" [style.top.px]="m.top" [style.left.px]="m.left" [attr.aria-label]="'Thao tác cho bình luận của ' + m.comment.author" (click)="$event.stopPropagation()">
+    <button type="button" role="menuitem" (click)="openReply(m.comment); closeMenu()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="margin-right:10px" aria-hidden="true"><path d="M9 17 4 12l5-5"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
+      Phản hồi đại diện Admin
+    </button>
+    <button type="button" role="menuitem" (click)="openSpam(m.comment); closeMenu()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="margin-right:10px" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+      Đánh dấu Spam
+    </button>
+    <button type="button" role="menuitem" (click)="openTransfer(m.comment); closeMenu()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="margin-right:10px" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Chuyển thành Án vi phạm
+    </button>
+    <button class="danger" type="button" role="menuitem" (click)="deleteTarget.set(m.comment); closeMenu()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="margin-right:10px" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+      Xóa bình luận
+    </button>
   </div>
 }
 

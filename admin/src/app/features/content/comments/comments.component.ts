@@ -37,10 +37,11 @@ export class ContentCommentsComponent {
   readonly spamTarget = signal<ContentComment | null>(null);
   readonly spamDuration = signal<'24h' | '7d' | 'forever'>('24h');
   readonly transferTarget = signal<ContentComment | null>(null);
-  readonly transferSeverity = signal<'low' | 'medium' | 'high'>('high');
+  readonly transferSeverity = signal<'medium' | 'high' | 'severe'>('high');
   readonly transferReason = signal('');
   readonly transferTouched = signal(false);
   readonly toast = signal<{ message: string; tone: ToastTone } | null>(null);
+  readonly menu = signal<{ comment: ContentComment; top: number; left: number } | null>(null);
 
   readonly counts = computed(() => {
     const items = this.comments();
@@ -166,8 +167,45 @@ export class ContentCommentsComponent {
   closeDetail(): void { this.detailId.set(null); }
 
   changeStatus(item: ContentComment, status: CommentStatus): void {
+    const prevStatus = item.status;
     this.store.updateComment(item.id, { status }, `Chuyển trạng thái sang ${COMMENT_STATUS_LABELS[status]}.`);
-    this.notify(`Đã chuyển bình luận ${item.id} sang ${COMMENT_STATUS_LABELS[status]}.`, 'success');
+    if (status === 'hidden') {
+      this.notify('Đã ẩn bình luận khỏi giao diện công khai', 'success');
+    } else if (status === 'visible') {
+      if (prevStatus === 'hidden' || prevStatus === 'spam') {
+        this.notify('Đã khôi phục bình luận về trạng thái trước đó', 'success');
+      } else {
+        this.notify('Đã duyệt bình luận nghi vấn', 'success');
+      }
+    } else {
+      this.notify(`Đã chuyển bình luận sang ${COMMENT_STATUS_LABELS[status]}.`, 'success');
+    }
+  }
+
+  /* ---------- row action menu ---------- */
+
+  openMenu(event: MouseEvent, comment: ContentComment): void {
+    event.stopPropagation();
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const width = 300;
+    const height = 180;
+    const gap = 6;
+    const margin = 12;
+    const below = window.innerHeight - rect.bottom - gap - margin;
+    const openAbove = below < height && rect.top - gap - margin > height;
+    const top = openAbove
+      ? Math.max(margin, rect.top - gap - height)
+      : Math.min(rect.bottom + gap, window.innerHeight - margin - height);
+    const left = Math.max(margin, Math.min(rect.right - width, window.innerWidth - margin - width));
+    this.menu.set({ comment, top, left });
+  }
+
+  closeMenu(): void {
+    this.menu.set(null);
+  }
+
+  isMenuOpen(id: string): boolean {
+    return this.menu()?.comment.id === id;
   }
 
   bulkStatus(status: CommentStatus): void {
@@ -205,9 +243,9 @@ export class ContentCommentsComponent {
     this.replyTouched.set(true);
     const target = this.replyTarget();
     if (!target || this.replyText().trim().length < 10) return;
-    this.store.replyComment(target.id, this.replyText().trim(), 'Quản trị viên');
+    this.store.replyComment(target.id, this.replyText().trim(), 'Ban Quản Trị');
     this.replyId.set(null);
-    this.notify(`Đã gửi phản hồi cho ${target.author}.`, 'success');
+    this.notify('Đã đăng phản hồi đại diện Admin', 'success');
   }
 
   retryLoad(): void {
@@ -229,9 +267,9 @@ export class ContentCommentsComponent {
     if (!target) return;
     const duration = this.spamDuration();
     const label = duration === '24h' ? '24 giờ' : duration === '7d' ? '7 ngày' : 'vĩnh viễn';
-    this.store.updateComment(target.id, { status: 'hidden', moderationNote: `Đánh dấu spam — hạn chế bình luận ${label}.` }, `Đánh dấu spam và hạn chế bình luận ${label}.`);
+    this.store.updateComment(target.id, { status: 'spam', moderationNote: `Đánh dấu spam — hạn chế bình luận ${label}.` }, `Đánh dấu spam và hạn chế bình luận ${label}.`);
     this.spamTarget.set(null);
-    this.notify(`Đã đánh dấu spam và hạn chế bình luận ${label}.`, 'success');
+    this.notify('Đã đánh dấu Spam và hạn chế bình luận', 'success');
   }
 
   openTransfer(item: ContentComment): void {
@@ -245,10 +283,10 @@ export class ContentCommentsComponent {
     this.transferTouched.set(true);
     const target = this.transferTarget();
     if (!target || this.transferError()) return;
-    const code = `RP-2026-${String(300 + Math.floor(Math.random() * 699)).padStart(4, '0')}`;
+    const code = `RP-2026-${String(280 + Math.floor(Math.random() * 50)).padStart(4, '0')}`;
     this.store.updateComment(target.id, { status: 'flagged', moderationNote: `Đã chuyển hồ sơ ${code} (mức độ ${this.transferSeverity()}).` }, `Chuyển hồ sơ vi phạm ${code}.`);
     this.transferTarget.set(null);
-    this.notify(`Đã bàn giao hồ sơ ${code} cho bộ phận xử lý vi phạm.`, 'success');
+    this.notify(`Đã bàn giao hồ sơ ${code}`, 'success');
   }
 
   notify(message: string, tone: ToastTone): void {
