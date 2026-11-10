@@ -2,7 +2,7 @@
   <header class="page-heading">
     <div>
       <nav class="breadcrumb" aria-label="Đường dẫn trang"><span>Quản lý nội dung</span><span class="breadcrumb-separator" aria-hidden="true">/</span><span class="breadcrumb-current" aria-current="page">Bình luận</span></nav>
-      <h1>Quản lý bình luận</h1>
+      <h1>Kiểm duyệt bình luận</h1>
       <p class="subtitle">Kiểm duyệt thảo luận dưới bài viết và phản hồi học viên kịp thời.</p>
     </div>
     <div class="heading-actions">
@@ -13,19 +13,19 @@
   <section class="kpis" aria-label="Tổng quan bình luận">
     <button class="kpi" type="button" [class.is-selected]="status() === ''" (click)="setStatus('')" aria-label="Xem tất cả bình luận">
       <span class="kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12a8 8 0 0 1-8 8H7l-4 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z"/></svg></span>
-      <span><span class="kpi-label">Tổng bình luận</span><strong class="kpi-value">{{ counts().total }}</strong><span class="kpi-foot">Trên toàn bộ bài viết</span></span>
+      <span><span class="kpi-label">Tổng thảo luận</span><strong class="kpi-value">{{ counts().total }}</strong><span class="kpi-foot">Trên toàn hệ thống</span></span>
     </button>
     <button class="kpi" type="button" [class.is-selected]="status() === 'visible'" (click)="setStatus('visible')" aria-label="Lọc bình luận đang hiển thị">
       <span class="kpi-icon green" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m2 12 4-4 4 4 5-6 5 6 2-2"/><path d="M3 19h18"/></svg></span>
-      <span><span class="kpi-label">Đang hiển thị</span><strong class="kpi-value">{{ counts().visible }}</strong><span class="kpi-foot">Công khai với học viên</span></span>
+      <span><span class="kpi-label">Đã hiển thị</span><strong class="kpi-value">{{ counts().visible }}</strong><span class="kpi-foot">Đang hiển thị công khai</span></span>
     </button>
     <button class="kpi" type="button" [class.is-selected]="status() === 'pending'" (click)="setStatus('pending')" aria-label="Lọc bình luận chờ duyệt">
       <span class="kpi-icon amber" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
-      <span><span class="kpi-label">Chờ duyệt</span><strong class="kpi-value">{{ counts().pending }}</strong><span class="kpi-foot">Cần kiểm duyệt thủ công</span></span>
+      <span><span class="kpi-label">Chờ duyệt / Nghi vấn</span><strong class="kpi-value">{{ counts().pending + counts().flagged }}</strong><span class="kpi-foot">Từ cảnh báo báo cáo chưa xử lý</span></span>
     </button>
     <button class="kpi" type="button" [class.is-selected]="status() === 'flagged'" (click)="setStatus('flagged')" aria-label="Lọc bình luận bị báo cáo">
       <span class="kpi-icon red" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 3v18"/><path d="M5 4h11l-2 4 2 4H5"/></svg></span>
-      <span><span class="kpi-label">Bị báo cáo</span><strong class="kpi-value">{{ counts().flagged }}</strong><span class="kpi-foot">Ưu tiên xử lý</span></span>
+      <span><span class="kpi-label">Đã ẩn vi phạm</span><strong class="kpi-value">{{ counts().flagged }}</strong><span class="kpi-foot">Nội dung vi phạm đã được ẩn</span></span>
     </button>
   </section>
 
@@ -211,7 +211,7 @@
         <div class="field">
           <label for="reply-content">Nội dung phản hồi <b>*</b></label>
           <textarea id="reply-content" [value]="replyText()" maxlength="500" placeholder="Nhập phản hồi công khai tới học viên..." (input)="replyText.set($any($event.target).value)"></textarea>
-          @if (replyError()) { <span class="error" role="alert">{{ replyError() }}</span> } @else { <span class="hint">{{ replyText().length }}/500 ký tự</span> }
+          @if (replyError()) { <span class="error" role="alert">{{ replyError() }}</span> } @else { <span class="hint">{{ replyText().length }}/500 ký tự · tối thiểu 10 ký tự</span> }
         </div>
       </div>
       <footer class="dialog-footer">

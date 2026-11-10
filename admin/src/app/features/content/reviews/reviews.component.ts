@@ -9,6 +9,14 @@ import {
 import { ContentReview, ReviewStatus } from '../models/content.models';
 import { ContentStore } from '../services/content.store';
 
+const HIDE_REASONS = [
+  'Nội dung sai lệch so với trải nghiệm khóa học',
+  'Ngôn từ xúc phạm, quấy rối hoặc phân biệt đối xử',
+  'Nội dung quảng cáo, spam hoặc chèn liên kết',
+  'Thông tin cá nhân của người khác',
+  'Lý do khác'
+] as const;
+
 @Component({
   selector: 'app-content-reviews',
   standalone: true,
@@ -31,6 +39,10 @@ export class ContentReviewsComponent {
   readonly selected = signal<ReadonlySet<string>>(new Set());
   readonly detailId = signal<string | null>(null);
   readonly deleteTarget = signal<ContentReview | null>(null);
+  readonly hideTarget = signal<ContentReview | null>(null);
+  readonly hideReason = signal<string>(HIDE_REASONS[0]);
+  readonly hideNote = signal('');
+  readonly hideTouched = signal(false);
   readonly replyText = signal('');
   readonly replyTouched = signal(false);
   readonly toast = signal<{ message: string; tone: ToastTone } | null>(null);
@@ -107,7 +119,17 @@ export class ContentReviewsComponent {
     return items.length > 0 && items.every(item => chosen.has(item.id));
   });
   readonly selectedList = computed(() => [...this.selected()]);
-  readonly replyError = computed(() => this.replyTouched() && this.replyText().trim().length < 5 ? 'Phản hồi cần tối thiểu 5 ký tự.' : '');
+  readonly replyError = computed(() => this.replyTouched() && this.replyText().trim().length < 20 ? 'Phản hồi cần tối thiểu 20 ký tự.' : '');
+  readonly hideReasons = HIDE_REASONS;
+  readonly hideError = computed(() => {
+    if (!this.hideTouched()) return '';
+    if (this.hideReason() === 'Lý do khác' && this.hideNote().trim().length < 15) {
+      return 'Giải trình cho lý do khác cần tối thiểu 15 ký tự.';
+    }
+    return '';
+  });
+  readonly canHide = computed(() => !!this.hideReason()
+    && (this.hideReason() !== 'Lý do khác' || this.hideNote().trim().length >= 15));
   readonly stars = [1, 2, 3, 4, 5];
 
   setSearch(value: string): void { this.search.set(value); this.page.set(1); }
@@ -143,9 +165,33 @@ export class ContentReviewsComponent {
   closeDetail(): void { this.detailId.set(null); }
 
   changeStatus(item: ContentReview, status: ReviewStatus): void {
+    if (status === 'hidden') {
+      this.askHide(item);
+      return;
+    }
     this.store.updateReview(item.id, { status, rejectionReason: status === 'rejected' ? 'Vi phạm tiêu chuẩn đánh giá của ThinkUp.' : undefined },
       `Chuyển trạng thái sang ${REVIEW_STATUS_LABELS[status]}.`);
     this.notify(`Đã chuyển đánh giá ${item.id} sang ${REVIEW_STATUS_LABELS[status]}.`, 'success');
+  }
+
+  askHide(item: ContentReview): void {
+    this.hideTarget.set(item);
+    this.hideReason.set(HIDE_REASONS[0]);
+    this.hideNote.set('');
+    this.hideTouched.set(false);
+  }
+
+  submitHide(): void {
+    this.hideTouched.set(true);
+    const item = this.hideTarget();
+    if (!item || !this.canHide()) return;
+    const reason = this.hideReason() === 'Lý do khác'
+      ? `${this.hideReason()}: ${this.hideNote().trim()}`
+      : this.hideReason();
+    this.store.updateReview(item.id, { status: 'hidden', rejectionReason: reason },
+      `Ẩn đánh giá: ${reason}`);
+    this.hideTarget.set(null);
+    this.notify(`Đã ẩn đánh giá ${item.id} và khóa phản hồi công khai.`, 'success');
   }
 
   bulkStatus(status: ReviewStatus): void {
@@ -176,7 +222,7 @@ export class ContentReviewsComponent {
   sendReply(): void {
     this.replyTouched.set(true);
     const item = this.detail();
-    if (!item || this.replyError()) return;
+    if (!item || this.replyText().trim().length < 20) return;
     this.store.replyReview(item.id, this.replyText().trim(), 'Quản trị viên');
     this.replyText.set('');
     this.replyTouched.set(false);

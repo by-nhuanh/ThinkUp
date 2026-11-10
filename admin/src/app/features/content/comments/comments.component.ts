@@ -103,7 +103,7 @@ export class ContentCommentsComponent {
     return items.length > 0 && items.every(item => chosen.has(item.id));
   });
   readonly selectedList = computed(() => [...this.selected()]);
-  readonly replyError = computed(() => this.replyTouched() && this.replyText().trim().length < 5 ? 'Phản hồi cần tối thiểu 5 ký tự.' : '');
+  readonly replyError = computed(() => this.replyTouched() && this.replyText().trim().length < 10 ? 'Phản hồi cần tối thiểu 10 ký tự.' : '');
   readonly transferError = computed(() => this.transferTouched() && this.transferReason().trim().length < 15 ? 'Lý do chuyển hồ sơ cần tối thiểu 15 ký tự.' : '');
 
   setSearch(value: string): void { this.search.set(value); this.page.set(1); }
@@ -180,7 +180,7 @@ export class ContentCommentsComponent {
   sendReply(): void {
     this.replyTouched.set(true);
     const target = this.replyTarget();
-    if (!target || this.replyError()) return;
+    if (!target || this.replyText().trim().length < 10) return;
     this.store.replyComment(target.id, this.replyText().trim(), 'Quản trị viên');
     this.replyId.set(null);
     this.notify(`Đã gửi phản hồi cho ${target.author}.`, 'success');

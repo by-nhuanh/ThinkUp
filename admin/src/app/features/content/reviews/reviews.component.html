@@ -2,7 +2,7 @@
   <header class="page-heading">
     <div>
       <nav class="breadcrumb" aria-label="Đường dẫn trang"><span>Quản lý nội dung</span><span class="breadcrumb-separator" aria-hidden="true">/</span><span class="breadcrumb-current" aria-current="page">Đánh giá khóa học</span></nav>
-      <h1>Quản lý đánh giá</h1>
+      <h1>Quản lý đánh giá khóa học</h1>
       <p class="subtitle">Duyệt đánh giá, phản hồi học viên và giữ chất lượng phản hồi trên toàn hệ thống.</p>
     </div>
     <div class="heading-actions"><button class="button" type="button" (click)="clearFilters()">Đặt lại bộ lọc</button></div>
@@ -168,10 +168,15 @@
               }
               <div class="field" style="margin-top:12px">
                 <label for="review-reply">Gửi phản hồi</label>
-                <textarea id="review-reply" [value]="replyText()" maxlength="600" placeholder="Cảm ơn bạn đã chia sẻ..." (input)="replyText.set($any($event.target).value)"></textarea>
-                @if (replyError()) { <span class="error" role="alert">{{ replyError() }}</span> }
+                @if (item.status === 'hidden') {
+                  <div class="alert warning">Đánh giá đang tạm ẩn nên phản hồi bị khóa. Hiện lại đánh giá trước khi phản hồi công khai.</div>
+                } @else {
+                  <textarea id="review-reply" [value]="replyText()" maxlength="600" placeholder="Cảm ơn bạn đã chia sẻ..." (input)="replyText.set($any($event.target).value)"></textarea>
+                  @if (!replyError()) { <span class="hint">{{ replyText().length }}/600 ký tự · tối thiểu 20 ký tự</span> }
+                  @if (replyError()) { <span class="error" role="alert">{{ replyError() }}</span> }
+                }
               </div>
-              <button class="button primary" type="button" style="margin-top:10px" (click)="sendReply()">Gửi phản hồi</button>
+              <button class="button primary" type="button" style="margin-top:10px" [disabled]="item.status === 'hidden'" (click)="sendReply()">Gửi phản hồi</button>
             </div>
           </div>
           <aside class="detail-side">
@@ -192,6 +197,7 @@
                 @if (item.status !== 'approved') { <button class="button primary" type="button" (click)="changeStatus(item, 'approved')">Duyệt đánh giá</button> }
                 @if (item.status !== 'rejected') { <button class="button" type="button" (click)="changeStatus(item, 'rejected')">Từ chối</button> }
                 @if (item.status !== 'hidden') { <button class="button" type="button" (click)="changeStatus(item, 'hidden')">Ẩn đánh giá</button> }
+                @if (item.status === 'hidden') { <button class="button" type="button" (click)="changeStatus(item, 'approved')">Hiện lại đánh giá</button> }
                 <button class="button danger" type="button" (click)="deleteTarget.set(item)">Xóa đánh giá</button>
               </div>
             </div>
@@ -199,6 +205,42 @@
         </div>
       </div>
       <footer class="dialog-footer"><button class="button" type="button" (click)="closeDetail()">Đóng</button></footer>
+    </section>
+  </div>
+}
+
+@if (hideTarget(); as item) {
+  <div class="dialog-backdrop" (click)="hideTarget.set(null)" (window:keydown.escape)="hideTarget.set(null)">
+    <section class="dialog narrow" role="dialog" aria-modal="true" aria-labelledby="review-hide-title" (click)="$event.stopPropagation()">
+      <header class="dialog-head">
+        <div><h2 id="review-hide-title">Ẩn đánh giá</h2><p>Đánh giá sẽ bị gỡ khỏi trang khóa học và khóa phản hồi công khai.</p></div>
+        <button class="icon-button" type="button" aria-label="Đóng" (click)="hideTarget.set(null)">×</button>
+      </header>
+      <div class="dialog-body">
+        <div class="alert">Đánh giá của <strong>{{ item.learner }}</strong> cho khóa “{{ item.courseTitle }}”.</div>
+        <div class="field" style="margin-top:14px">
+          <label for="review-hide-reason">Lý do ẩn <b>*</b></label>
+          <div class="checklist">
+            @for (reason of hideReasons; track reason) {
+              <label class="radio-row">
+                <input type="radio" name="review-hide-reason" [checked]="hideReason() === reason" (change)="hideReason.set(reason)">
+                <span>{{ reason }}</span>
+              </label>
+            }
+          </div>
+        </div>
+        @if (hideReason() === 'Lý do khác') {
+          <div class="field" style="margin-top:14px">
+            <label for="review-hide-note">Giải trình chi tiết <b>*</b></label>
+            <textarea id="review-hide-note" maxlength="500" placeholder="Nêu rõ căn cứ ẩn đánh giá..." [value]="hideNote()" (input)="hideNote.set($any($event.target).value)"></textarea>
+            @if (hideError()) { <span class="error" role="alert">{{ hideError() }}</span> } @else { <span class="hint">{{ hideNote().length }}/500 ký tự · tối thiểu 15 ký tự</span> }
+          </div>
+        }
+      </div>
+      <footer class="dialog-footer">
+        <button class="button" type="button" (click)="hideTarget.set(null)">Hủy</button>
+        <button class="button primary" type="button" (click)="submitHide()">Xác nhận ẩn</button>
+      </footer>
     </section>
   </div>
 }
