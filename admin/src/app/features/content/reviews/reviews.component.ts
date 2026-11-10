@@ -1,7 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CustomSelectComponent, CustomSelectOption } from '../../../shared/components/custom-select/custom-select.component';
 import { ExportMenuComponent } from '../../../shared/components/export-menu/export-menu.component';
-import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
 import { ContentToastComponent, ToastTone } from '../components/content-toast.component';
 import {
   formatDateTime, initials, npsBand, number, paginationRange, relativeTime,
@@ -21,7 +20,7 @@ const HIDE_REASONS = [
 @Component({
   selector: 'app-content-reviews',
   standalone: true,
-  imports: [CustomSelectComponent, SearchFieldComponent, ExportMenuComponent, ContentToastComponent],
+  imports: [CustomSelectComponent, ExportMenuComponent, ContentToastComponent],
   templateUrl: './reviews.component.html',
   styleUrl: '../content-page.css'
 })

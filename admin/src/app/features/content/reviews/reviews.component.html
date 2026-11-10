@@ -1,11 +1,11 @@
 <main class="content-page">
+  <div class="page-stack">
   <header class="page-heading">
     <div>
       <nav class="breadcrumb" aria-label="Đường dẫn trang"><span>Quản lý nội dung</span><span class="breadcrumb-separator" aria-hidden="true">/</span><span class="breadcrumb-current" aria-current="page">Đánh giá khóa học</span></nav>
       <h1>Quản lý đánh giá khóa học</h1>
       <p class="subtitle">Duyệt đánh giá, phản hồi học viên và giữ chất lượng phản hồi trên toàn hệ thống.</p>
     </div>
-    <div class="heading-actions"><app-export-menu label="Xuất danh sách đánh giá" (formatChange)="exportList($event)"></app-export-menu></div>
   </header>
 
   <section class="kpis" aria-label="Tổng quan đánh giá">
@@ -28,31 +28,43 @@
   </section>
 
   <section class="panel" aria-label="Danh sách đánh giá">
-    <div class="toolbar">
-      <div class="grow"><app-search-field label="Tìm đánh giá" placeholder="Tìm theo khóa học, giảng viên, nội dung nhận xét..." [value]="search()" (valueChange)="setSearch($event)"></app-search-field></div>
-      <div class="toolbar-end"><button class="button" type="button" (click)="clearFilters()">Làm mới</button></div>
-    </div>
-
-    <div class="toolbar" style="padding-top:0">
-      <div class="filter custom-select-control">
-        <span>Số sao</span>
-        <app-custom-select controlId="review-rating" [value]="rating()" [options]="ratingOptions" (valueChange)="setRating($event)"></app-custom-select>
+    <div class="filters">
+      <div class="filters-row">
+        <div class="filter-field filter-search">
+          <label class="floating-label" for="review-search">Tìm kiếm</label>
+          <span class="search-field">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input id="review-search" type="search" autocomplete="off" placeholder="Tìm theo khóa học, giảng viên, nội dung nhận xét..." [value]="search()" (input)="setSearch($any($event.target).value)">
+          </span>
+        </div>
+        <div class="filter-actions">
+          <button class="icon-button" type="button" title="Làm mới bộ lọc" aria-label="Làm mới bộ lọc" (click)="clearFilters()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 6.3"/><path d="M20 5v6h-6"/></svg>
+          </button>
+          <app-export-menu label="Xuất danh sách đánh giá" (formatChange)="exportList($event)"></app-export-menu>
+        </div>
       </div>
-      <div class="filter custom-select-control">
-        <span>Điểm NPS</span>
-        <app-custom-select controlId="review-nps" [value]="nps()" [options]="npsOptions" (valueChange)="setNps($event)"></app-custom-select>
-      </div>
-      <div class="filter custom-select-control">
-        <span>Phản hồi</span>
-        <app-custom-select controlId="review-response" [value]="response()" [options]="responseOptions" (valueChange)="setResponse($event)"></app-custom-select>
-      </div>
-      <div class="filter custom-select-control">
-        <span>Trạng thái</span>
-        <app-custom-select controlId="review-status" [value]="status()" [options]="statusOptions" (valueChange)="setStatus($event)"></app-custom-select>
-      </div>
-      <div class="filter custom-select-control">
-        <span>Thời gian</span>
-        <app-custom-select controlId="review-time" [value]="timeRange()" [options]="timeOptions" (valueChange)="setTime($event)"></app-custom-select>
+      <div class="filters-row">
+        <div class="filter-field basis-wide">
+          <span class="floating-label">Số sao</span>
+          <app-custom-select controlId="review-rating" [value]="rating()" [options]="ratingOptions" (valueChange)="setRating($event)"></app-custom-select>
+        </div>
+        <div class="filter-field basis-wide">
+          <span class="floating-label">Điểm NPS</span>
+          <app-custom-select controlId="review-nps" [value]="nps()" [options]="npsOptions" (valueChange)="setNps($event)"></app-custom-select>
+        </div>
+        <div class="filter-field basis-wide">
+          <span class="floating-label">Phản hồi</span>
+          <app-custom-select controlId="review-response" [value]="response()" [options]="responseOptions" (valueChange)="setResponse($event)"></app-custom-select>
+        </div>
+        <div class="filter-field basis-wide">
+          <span class="floating-label">Trạng thái</span>
+          <app-custom-select controlId="review-status" [value]="status()" [options]="statusOptions" (valueChange)="setStatus($event)"></app-custom-select>
+        </div>
+        <div class="filter-field basis-wide">
+          <span class="floating-label">Thời gian</span>
+          <app-custom-select controlId="review-time" [value]="timeRange()" [options]="timeOptions" (valueChange)="setTime($event)"></app-custom-select>
+        </div>
       </div>
     </div>
 
@@ -174,9 +186,10 @@
     }
   </section>
 
-  <div class="alert warning" role="status" style="margin-top:16px">
+  <div class="alert warning" role="status">
     <span aria-hidden="true">⚠</span>
     <span>Đã cảnh báo khẩn đến bộ phận Đào tạo. Điều kiện: Số sao ≤ 2 HOẶC điểm NPS ≤ 6.</span>
+  </div>
   </div>
 </main>
 

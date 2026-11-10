@@ -1,12 +1,10 @@
 <main class="content-page">
+  <div class="page-stack">
   <header class="page-heading">
     <div>
       <nav class="breadcrumb" aria-label="Đường dẫn trang"><span>Quản lý nội dung</span><span class="breadcrumb-separator" aria-hidden="true">/</span><span class="breadcrumb-current" aria-current="page">Bình luận</span></nav>
       <h1>Kiểm duyệt bình luận</h1>
       <p class="subtitle">Kiểm duyệt thảo luận dưới bài viết và phản hồi học viên kịp thời.</p>
-    </div>
-    <div class="heading-actions">
-      <app-export-menu label="Xuất danh sách bình luận" (formatChange)="exportList($event)"></app-export-menu>
     </div>
   </header>
 
@@ -30,24 +28,33 @@
   </section>
 
   <section class="panel" aria-label="Danh sách bình luận">
-    <div class="toolbar">
-      <div class="grow">
-        <app-search-field label="Tìm bình luận" placeholder="Tìm nội dung, tên người dùng, bài học..." [value]="search()" (valueChange)="setSearch($event)"></app-search-field>
-      </div>
-      <div class="filter custom-select-control">
-        <span>Trạng thái</span>
-        <app-custom-select controlId="comment-status" [value]="status()" [options]="statusOptions" (valueChange)="setStatus($event)"></app-custom-select>
-      </div>
-      <div class="filter custom-select-control">
-        <span>Vai trò</span>
-        <app-custom-select controlId="comment-role" [value]="role()" [options]="roleOptions" (valueChange)="setRole($event)"></app-custom-select>
-      </div>
-      <div class="filter custom-select-control">
-        <span>Thời gian</span>
-        <app-custom-select controlId="comment-time" [value]="timeRange()" [options]="timeOptions" (valueChange)="setTime($event)"></app-custom-select>
-      </div>
-      <div class="toolbar-end">
-        <button class="button" type="button" (click)="clearFilters()">Làm mới</button>
+    <div class="filters">
+      <div class="filters-row">
+        <div class="filter-field filter-search">
+          <label class="floating-label" for="comment-search">Tìm kiếm</label>
+          <span class="search-field">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input id="comment-search" type="search" autocomplete="off" placeholder="Tìm nội dung, tên người dùng, bài học..." [value]="search()" (input)="setSearch($any($event.target).value)">
+          </span>
+        </div>
+        <div class="filter-field basis-status">
+          <span class="floating-label">Trạng thái</span>
+          <app-custom-select controlId="comment-status" [value]="status()" [options]="statusOptions" (valueChange)="setStatus($event)"></app-custom-select>
+        </div>
+        <div class="filter-field basis-status">
+          <span class="floating-label">Vai trò</span>
+          <app-custom-select controlId="comment-role" [value]="role()" [options]="roleOptions" (valueChange)="setRole($event)"></app-custom-select>
+        </div>
+        <div class="filter-field basis-status">
+          <span class="floating-label">Thời gian</span>
+          <app-custom-select controlId="comment-time" [value]="timeRange()" [options]="timeOptions" (valueChange)="setTime($event)"></app-custom-select>
+        </div>
+        <div class="filter-actions">
+          <button class="icon-button" type="button" title="Làm mới bộ lọc" aria-label="Làm mới bộ lọc" (click)="clearFilters()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 6.3"/><path d="M20 5v6h-6"/></svg>
+          </button>
+          <app-export-menu label="Xuất danh sách bình luận" (formatChange)="exportList($event)"></app-export-menu>
+        </div>
       </div>
     </div>
 
@@ -55,7 +62,7 @@
       <button class="tab" type="button" role="tab" [class.active]="source() === 'all'" [attr.aria-selected]="source() === 'all'" (click)="setSource('all')">Tất cả</button>
       <button class="tab" type="button" role="tab" [class.active]="source() === 'course'" [attr.aria-selected]="source() === 'course'" (click)="setSource('course')">Khóa học và Bài giảng</button>
       <button class="tab" type="button" role="tab" [class.active]="source() === 'blog'" [attr.aria-selected]="source() === 'blog'" (click)="setSource('blog')">Bài viết Blog</button>
-      <span style="margin-left:auto;color:#64748b;font-size:13.6px">Lọc kết hợp theo nguồn và điều kiện</span>
+      <span class="tabs-note">Lọc kết hợp theo nguồn và điều kiện</span>
     </div>
 
     @if (loadError()) {
@@ -159,6 +166,7 @@
     </div>
     }
   </section>
+  </div>
 </main>
 
 @if (detail(); as item) {

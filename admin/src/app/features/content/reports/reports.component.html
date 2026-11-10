@@ -1,11 +1,11 @@
 <main class="content-page">
+  <div class="page-stack">
   <header class="page-heading">
     <div>
       <nav class="breadcrumb" aria-label="Đường dẫn trang"><span>Quản lý nội dung</span><span class="breadcrumb-separator" aria-hidden="true">/</span><span class="breadcrumb-current" aria-current="page">Báo cáo vi phạm</span></nav>
       <h1>Báo cáo vi phạm</h1>
       <p class="subtitle">Tiếp nhận, phân loại và xử lý báo cáo nội dung theo cam kết SLA 4 giờ.</p>
     </div>
-    <div class="heading-actions"><button class="button" type="button" (click)="clearFilters()">Đặt lại bộ lọc</button></div>
   </header>
 
   <div class="alert info" role="status">
@@ -33,25 +33,38 @@
   </section>
 
   <section class="panel" aria-label="Danh sách báo cáo">
-    <div class="toolbar">
-      <div class="grow"><app-search-field label="Tìm báo cáo" placeholder="Tìm mã báo cáo, nội dung hoặc người báo cáo..." [value]="search()" (valueChange)="setSearch($event)"></app-search-field></div>
-      <div class="filter custom-select-control">
-        <span>Loại nội dung</span>
-        <app-custom-select controlId="report-type" [value]="type()" [options]="typeOptions" (valueChange)="setType($event)"></app-custom-select>
+    <div class="filters">
+      <div class="filters-row">
+        <div class="filter-field filter-search">
+          <label class="floating-label" for="report-search">Tìm kiếm</label>
+          <span class="search-field">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input id="report-search" type="search" autocomplete="off" placeholder="Tìm mã báo cáo, nội dung hoặc người báo cáo..." [value]="search()" (input)="setSearch($any($event.target).value)">
+          </span>
+        </div>
+        <div class="filter-field basis-wide">
+          <span class="floating-label">Loại nội dung</span>
+          <app-custom-select controlId="report-type" [value]="type()" [options]="typeOptions" (valueChange)="setType($event)"></app-custom-select>
+        </div>
+        <div class="filter-field basis-status">
+          <span class="floating-label">Mức độ</span>
+          <app-custom-select controlId="report-severity" [value]="severity()" [options]="severityOptions" (valueChange)="setSeverity($event)"></app-custom-select>
+        </div>
+        <div class="filter-field basis-status">
+          <span class="floating-label">Trạng thái</span>
+          <app-custom-select controlId="report-status" [value]="status()" [options]="statusOptions" (valueChange)="setStatus($event)"></app-custom-select>
+        </div>
+        <div class="filter-field basis-status">
+          <span class="floating-label">Sắp xếp</span>
+          <app-custom-select controlId="report-sort" [value]="sort()" [options]="sortOptions" (valueChange)="setSort($event)"></app-custom-select>
+        </div>
+        <div class="filter-actions">
+          <button class="icon-button" type="button" title="Đặt lại bộ lọc" aria-label="Đặt lại bộ lọc" (click)="clearFilters()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 6.3"/><path d="M20 5v6h-6"/></svg>
+          </button>
+          <app-export-menu label="Xuất danh sách báo cáo" (formatChange)="exportList($event)"></app-export-menu>
+        </div>
       </div>
-      <div class="filter custom-select-control">
-        <span>Mức độ</span>
-        <app-custom-select controlId="report-severity" [value]="severity()" [options]="severityOptions" (valueChange)="setSeverity($event)"></app-custom-select>
-      </div>
-      <div class="filter custom-select-control">
-        <span>Trạng thái</span>
-        <app-custom-select controlId="report-status" [value]="status()" [options]="statusOptions" (valueChange)="setStatus($event)"></app-custom-select>
-      </div>
-      <div class="filter custom-select-control">
-        <span>Sắp xếp</span>
-        <app-custom-select controlId="report-sort" [value]="sort()" [options]="sortOptions" (valueChange)="setSort($event)"></app-custom-select>
-      </div>
-      <div class="toolbar-end"><app-export-menu label="Xuất danh sách báo cáo" (formatChange)="exportList($event)"></app-export-menu></div>
     </div>
 
     <div class="tabs" role="tablist" aria-label="Lọc theo trạng thái">
@@ -140,6 +153,7 @@
     </div>
     }
   </section>
+  </div>
 </main>
 
 @if (detail(); as item) {
