@@ -98,19 +98,18 @@
         (closed)="closeModal()"
       >
         <div class="info-strip info-strip--danger modal-section">
-          <strong>Ứng viên sẽ nhận email thông báo từ chối hợp tác</strong>
-          <span>Lý do được lưu vào nhật ký kiểm toán và hiển thị cho ứng viên trong email.</span>
+          <strong>Ứng viên sẽ nhận email thông báo từ chối hợp tác.</strong>
         </div>
 
         <div class="field-block modal-section">
-          <label for="reject-reason">Lý do từ chối hồ sơ <span class="required">*</span></label>
+          <label class="field-title" for="reject-reason">Lý do từ chối hồ sơ <span class="required">*</span></label>
           <textarea
             id="reject-reason"
             required
             aria-required="true"
             aria-describedby="reject-reason-hint"
             [attr.aria-invalid]="rejectReason().trim().length < 20"
-            placeholder="Nêu rõ lý do hồ sơ chưa đáp ứng yêu cầu chuyên môn..."
+            placeholder="Nêu rõ lý do hồ sơ chưa đáp ứng yêu cầu chuyên môn…"
             [value]="rejectReason()"
             (input)="setRejectReason($event)"
           ></textarea>
@@ -123,7 +122,6 @@
         </label>
 
         <div modalFooter class="modal-footer-actions">
-          <button class="btn btn--outline" type="button" (click)="closeModal()">Hủy bỏ</button>
           <button class="btn btn--danger" type="button" [disabled]="!canReject()" (click)="submitReject()">Xác nhận từ chối</button>
         </div>
       </app-user-modal>
@@ -140,7 +138,7 @@
         (closed)="closeModal()"
       >
         <div class="modal-section">
-          <span class="field-label">Chọn giấy tờ cần bổ sung <span class="required">*</span></span>
+          <span class="section-label">Chọn giấy tờ cần bổ sung <span class="required">*</span></span>
           <fieldset class="check-list" aria-describedby="document-selection-hint">
             <legend class="sr-only">Chọn giấy tờ cần bổ sung</legend>
             @for (doc of documentOptions(); track doc.key) {
@@ -155,14 +153,14 @@
         </div>
 
         <div class="field-block modal-section">
-          <label for="document-guidance">Hướng dẫn bổ sung <span class="required">*</span></label>
+          <label class="field-title" for="document-guidance">Hướng dẫn bổ sung <span class="required">*</span></label>
           <textarea
             id="document-guidance"
             required
             aria-required="true"
             aria-describedby="document-guidance-hint"
             [attr.aria-invalid]="documentGuidance().trim().length < 20"
-            placeholder="Nêu rõ giấy tờ thiếu hoặc chưa hợp lệ và hướng khắc phục..."
+            placeholder="Nêu rõ giấy tờ thiếu hoặc chưa hợp lệ và hướng khắc phục…"
             [value]="documentGuidance()"
             (input)="setDocumentGuidance($event)"
           ></textarea>
@@ -170,7 +168,7 @@
         </div>
 
         <div class="modal-section">
-          <span class="field-label" id="document-deadline-label">Thời hạn bổ sung</span>
+          <span class="section-label" id="document-deadline-label">Thời hạn bổ sung</span>
           <div class="segmented" role="group" aria-labelledby="document-deadline-label">
             @for (days of [3, 7, 14]; track days) {
               <button type="button" [attr.aria-pressed]="documentDeadline() === days" (click)="documentDeadline.set(days)">{{ days }} ngày</button>

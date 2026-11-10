@@ -70,10 +70,20 @@ export function formatDateTime(iso: string): string {
   return `${parts['hour']}:${parts['minute']} ${parts['day']}/${parts['month']}/${parts['year']}`;
 }
 
-/** ISO 8601 → "22:30 22/05/2026 (GMT+7)" — hạn khoá hiển thị trong popup kỷ luật. */
+/** ISO 8601 → "22:30 · 22/05/2026 (GMT+7)" — hạn khoá trong popup kỷ luật / mở khoá. */
 export function formatDeadline(iso: string): string {
-  const formatted = formatDateTime(iso);
-  return formatted === '—' ? '—' : `${formatted} (GMT+7)`;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '—';
+  const parts = partsOf(dateTimeFormatter, date);
+  return `${parts['hour']}:${parts['minute']} · ${parts['day']}/${parts['month']}/${parts['year']} (GMT+7)`;
+}
+
+/** ISO 8601 → "22/05/2026 lúc 22:30 (GMT+7)" — câu hạn khoá trong popup mở khoá học viên. */
+export function formatDeadlineLong(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '—';
+  const parts = partsOf(dateTimeFormatter, date);
+  return `${parts['day']}/${parts['month']}/${parts['year']} lúc ${parts['hour']}:${parts['minute']} (GMT+7)`;
 }
 
 /** dd/mm/yyyy → yyyy-mm-dd (chỉ dùng cho input ngày do người dùng gõ). */
