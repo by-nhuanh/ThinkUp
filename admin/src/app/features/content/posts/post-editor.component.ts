@@ -7,7 +7,7 @@ import { ContentCategory, ContentPost, PostStatus } from '../models/content.mode
 import { ContentStore } from '../services/content.store';
 
 const CATEGORIES: ContentCategory[] = [
-  'Lập trình cơ bản', 'Kinh nghiệm', 'Tài nguyên', 'Web Development', 'DevOps'
+  'Lập trình cơ bản', 'Web Development', 'Backend', 'DevOps', 'Thuật toán', 'Kinh nghiệm', 'Tài nguyên'
 ];
 
 @Component({
@@ -31,6 +31,11 @@ export class ContentPostEditorComponent {
   readonly tagsInput = signal('');
   readonly status = signal<PostStatus>('draft');
   readonly thumbnail = signal('/assets/content/posts/thumb-frontend.svg');
+  readonly callout = signal('');
+  readonly seoTitle = signal('');
+  readonly seoDescription = signal('');
+  readonly allowComments = signal(true);
+  readonly loginRequired = signal(false);
   readonly featured = signal(false);
   readonly pinned = signal(false);
   readonly submitted = signal(false);
@@ -72,6 +77,11 @@ export class ContentPostEditorComponent {
     this.tagsInput.set(post.tags.join(', '));
     this.status.set(post.status);
     this.thumbnail.set(post.thumbnail);
+    this.callout.set(post.callout ?? '');
+    this.seoTitle.set(post.seoTitle ?? '');
+    this.seoDescription.set(post.seoDescription ?? '');
+    this.allowComments.set(post.allowComments ?? true);
+    this.loginRequired.set(post.loginRequired ?? false);
     this.featured.set(post.featured);
     this.pinned.set(post.pinned);
   }
@@ -116,6 +126,11 @@ export class ContentPostEditorComponent {
         tags: this.tags(),
         status,
         thumbnail: this.thumbnail(),
+        callout: this.callout().trim(),
+        seoTitle: this.seoTitle().trim(),
+        seoDescription: this.seoDescription().trim(),
+        allowComments: this.allowComments(),
+        loginRequired: this.loginRequired(),
         featured: this.featured(),
         pinned: this.pinned(),
         scheduledAt: status === 'scheduled' ? now : undefined,
@@ -137,6 +152,11 @@ export class ContentPostEditorComponent {
         excerpt: this.excerpt().trim(),
         body: this.bodyParagraphs(),
         thumbnail: this.thumbnail(),
+        callout: this.callout().trim(),
+        seoTitle: this.seoTitle().trim(),
+        seoDescription: this.seoDescription().trim(),
+        allowComments: this.allowComments(),
+        loginRequired: this.loginRequired(),
         views: 0,
         commentCount: 0,
         createdAt: now,
@@ -168,6 +188,11 @@ export class ContentPostEditorComponent {
       this.excerpt.set('');
       this.bodyText.set('');
       this.tagsInput.set('');
+      this.callout.set('');
+      this.seoTitle.set('');
+      this.seoDescription.set('');
+      this.allowComments.set(true);
+      this.loginRequired.set(false);
       this.submitted.set(false);
       return;
     }
@@ -175,6 +200,11 @@ export class ContentPostEditorComponent {
     this.excerpt.set(post.excerpt);
     this.bodyText.set(post.body.join('\n'));
     this.tagsInput.set(post.tags.join(', '));
+    this.callout.set(post.callout ?? '');
+    this.seoTitle.set(post.seoTitle ?? '');
+    this.seoDescription.set(post.seoDescription ?? '');
+    this.allowComments.set(post.allowComments ?? true);
+    this.loginRequired.set(post.loginRequired ?? false);
     this.status.set(post.status);
     this.submitted.set(false);
     this.notify('Đã khôi phục nội dung đã lưu gần nhất.', 'info');

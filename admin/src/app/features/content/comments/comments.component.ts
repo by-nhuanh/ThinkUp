@@ -4,9 +4,9 @@ import { ExportMenuComponent } from '../../../shared/components/export-menu/expo
 import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
 import { ContentToastComponent, ToastTone } from '../components/content-toast.component';
 import {
-  COMMENT_STATUS_LABELS, COMMENT_STATUS_TONE, formatDateTime, paginationRange, relativeTime
+  COMMENT_STATUS_LABELS, COMMENT_STATUS_TONE, formatDateTime, initials, number, paginationRange, relativeTime, ROLE_TONE
 } from '../content-utils';
-import { CommentStatus, ContentComment } from '../models/content.models';
+import { CommentSource, CommentStatus, ContentComment } from '../models/content.models';
 import { ContentStore } from '../services/content.store';
 
 @Component({
@@ -22,7 +22,9 @@ export class ContentCommentsComponent {
 
   readonly comments = this.store.comments;
   readonly search = signal('');
-  readonly postFilter = signal('');
+  readonly source = signal<'all' | CommentSource>('all');
+  readonly role = signal('');
+  readonly timeRange = signal<'7d' | '30d' | '90d' | 'all'>('30d');
   readonly status = signal('');
   readonly sort = signal<'newest' | 'oldest' | 'reports'>('newest');
   readonly page = signal(1);
@@ -47,20 +49,32 @@ export class ContentCommentsComponent {
       total: items.length,
       visible: items.filter(item => item.status === 'visible').length,
       pending: items.filter(item => item.status === 'pending').length,
-      flagged: items.filter(item => item.status === 'flagged').length
+      flagged: items.filter(item => item.status === 'flagged').length,
+      hidden: items.filter(item => item.status === 'hidden' || item.status === 'spam').length,
+      course: items.filter(item => item.contextType === 'course').length,
+      blog: items.filter(item => item.contextType === 'blog').length
     };
   });
-  readonly postOptions = computed<CustomSelectOption[]>(() => {
-    const seen = new Map<string, string>();
-    this.comments().forEach(item => seen.set(item.postId, item.postTitle));
-    return [{ value: '', label: 'Tất cả bài viết' }, ...[...seen].map(([value, label]) => ({ value, label }))];
-  });
+  readonly roleOptions: CustomSelectOption[] = [
+    { value: '', label: 'Tất cả vai trò' },
+    { value: 'Học viên', label: 'Học viên' },
+    { value: 'Giảng viên', label: 'Giảng viên' },
+    { value: 'Tác giả', label: 'Tác giả' },
+    { value: 'Admin', label: 'Admin' }
+  ];
+  readonly timeOptions: CustomSelectOption[] = [
+    { value: '7d', label: '7 ngày qua' },
+    { value: '30d', label: '30 ngày qua' },
+    { value: '90d', label: '90 ngày qua' },
+    { value: 'all', label: 'Tất cả thời gian' }
+  ];
   readonly statusOptions: CustomSelectOption[] = [
     { value: '', label: 'Tất cả trạng thái' },
     { value: 'visible', label: 'Đang hiển thị' },
     { value: 'pending', label: 'Chờ duyệt' },
     { value: 'flagged', label: 'Bị báo cáo' },
-    { value: 'hidden', label: 'Đã ẩn' }
+    { value: 'hidden', label: 'Đã ẩn' },
+    { value: 'spam', label: 'Spam' }
   ];
   readonly sortOptions: CustomSelectOption[] = [
     { value: 'newest', label: 'Mới nhất' },
@@ -70,15 +84,22 @@ export class ContentCommentsComponent {
 
   readonly filtered = computed(() => {
     const term = this.search().trim().toLowerCase();
-    const postId = this.postFilter();
+    const source = this.source();
+    const role = this.role();
+    const timeRange = this.timeRange();
     const status = this.status();
     const sort = this.sort();
+    const cutoff = timeRange === 'all' ? 0 : Date.now() - Number(timeRange.replace('d', '')) * 86_400_000;
     const items = this.comments().filter(item => {
       const matches = !term
         || item.author.toLowerCase().includes(term)
         || item.content.toLowerCase().includes(term)
-        || item.postTitle.toLowerCase().includes(term);
-      return matches && (!postId || item.postId === postId) && (!status || item.status === status);
+        || item.contextTitle.toLowerCase().includes(term);
+      return matches
+        && (source === 'all' || item.contextType === source)
+        && (!role || item.authorRole === role)
+        && (!status || item.status === status)
+        && (timeRange === 'all' || Date.parse(item.createdAt) >= cutoff);
     });
     return [...items].sort((a, b) => {
       if (sort === 'reports') return b.reportCount - a.reportCount;
@@ -103,17 +124,21 @@ export class ContentCommentsComponent {
     return items.length > 0 && items.every(item => chosen.has(item.id));
   });
   readonly selectedList = computed(() => [...this.selected()]);
-  readonly replyError = computed(() => this.replyTouched() && this.replyText().trim().length < 5 ? 'Phản hồi cần tối thiểu 5 ký tự.' : '');
+  readonly replyError = computed(() => this.replyTouched() && this.replyText().trim().length < 10 ? 'Phản hồi cần tối thiểu 10 ký tự.' : '');
   readonly transferError = computed(() => this.transferTouched() && this.transferReason().trim().length < 15 ? 'Lý do chuyển hồ sơ cần tối thiểu 15 ký tự.' : '');
 
   setSearch(value: string): void { this.search.set(value); this.page.set(1); }
-  setPost(value: string): void { this.postFilter.set(value); this.page.set(1); }
+  setSource(value: string): void { this.source.set(value as 'all' | CommentSource); this.page.set(1); this.selected.set(new Set()); }
+  setRole(value: string): void { this.role.set(value); this.page.set(1); }
+  setTime(value: string): void { this.timeRange.set(value as '7d' | '30d' | '90d' | 'all'); this.page.set(1); }
   setStatus(value: string): void { this.status.set(value); this.page.set(1); this.selected.set(new Set()); }
   setSort(value: string): void { this.sort.set(value as 'newest' | 'oldest' | 'reports'); }
 
   clearFilters(): void {
     this.search.set('');
-    this.postFilter.set('');
+    this.source.set('all');
+    this.role.set('');
+    this.timeRange.set('30d');
     this.status.set('');
     this.sort.set('newest');
     this.page.set(1);
@@ -180,7 +205,7 @@ export class ContentCommentsComponent {
   sendReply(): void {
     this.replyTouched.set(true);
     const target = this.replyTarget();
-    if (!target || this.replyError()) return;
+    if (!target || this.replyText().trim().length < 10) return;
     this.store.replyComment(target.id, this.replyText().trim(), 'Quản trị viên');
     this.replyId.set(null);
     this.notify(`Đã gửi phản hồi cho ${target.author}.`, 'success');
@@ -234,6 +259,20 @@ export class ContentCommentsComponent {
 
   statusLabel(status: CommentStatus): string { return COMMENT_STATUS_LABELS[status]; }
   statusTone(status: CommentStatus): string { return COMMENT_STATUS_TONE[status]; }
+  sourceLabel(type: CommentSource): string { return type === 'course' ? 'Khóa học và Bài giảng' : 'Bài viết Blog'; }
+  safetyLabel(item: ContentComment): string {
+    if (item.safety === 'blocked') return 'Đã chặn';
+    if (item.reportCount) return `Bị báo cáo (${item.reportCount})`;
+    return 'Sạch';
+  }
+  safetyTone(item: ContentComment): string {
+    if (item.safety === 'blocked') return 'danger';
+    if (item.reportCount) return 'pending';
+    return 'success';
+  }
+  roleTone(role: string): string { return ROLE_TONE[role] ?? 'neutral'; }
+  initials = initials;
+  number = number;
   dateTime = formatDateTime;
   ago = relativeTime;
   truncate(value: string): string { return value.length > 90 ? `${value.slice(0, 90)}…` : value; }
