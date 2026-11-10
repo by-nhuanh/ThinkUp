@@ -38,6 +38,7 @@ export class ContentReportsComponent {
   readonly enforcement = signal('');
   readonly dismissalReason = signal('');
   readonly actionTouched = signal(false);
+  readonly historyOpen = signal(false);
   readonly toast = signal<{ message: string; tone: ToastTone } | null>(null);
 
   readonly counts = computed(() => {
@@ -50,6 +51,8 @@ export class ContentReportsComponent {
       processing: items.filter(item => item.status === 'processing').length,
       urgent: open.filter(item => item.severity === 'critical' || item.severity === 'high').length,
       resolved: items.filter(item => item.status === 'resolved' || item.status === 'dismissed').length,
+      resolvedOnly: items.filter(item => item.status === 'resolved').length,
+      dismissed: items.filter(item => item.status === 'dismissed').length,
       overdue: open.filter(item => Date.parse(item.slaDueAt) < now).length
     };
   });
@@ -62,11 +65,11 @@ export class ContentReportsComponent {
   ];
   readonly statusOptions: CustomSelectOption[] = [
     { value: '', label: 'Tất cả trạng thái' },
-    { value: 'new', label: 'Mới tiếp nhận' },
-    { value: 'processing', label: 'Đang xử lý' },
+    { value: 'new', label: 'Chờ xử lý' },
+    { value: 'processing', label: 'Đang điều tra' },
     { value: 'escalated', label: 'Đã leo thang' },
-    { value: 'resolved', label: 'Đã xử lý' },
-    { value: 'dismissed', label: 'Đã bỏ qua' }
+    { value: 'resolved', label: 'Đã giải quyết' },
+    { value: 'dismissed', label: 'Bác bỏ' }
   ];
   readonly severityOptions: CustomSelectOption[] = [
     { value: '', label: 'Tất cả mức độ' },
@@ -160,6 +163,11 @@ export class ContentReportsComponent {
     this.enforcement.set('');
     this.dismissalReason.set('');
     this.actionTouched.set(false);
+    this.historyOpen.set(false);
+    if (item.status === 'new') {
+      this.store.updateReport(item.id, { status: 'processing', assignee: 'Quản trị viên' },
+        'Tự động ghi nhận Đang điều tra khi mở hồ sơ.');
+    }
   }
 
   closeDetail(): void {
@@ -169,6 +177,19 @@ export class ContentReportsComponent {
     this.enforcement.set('');
     this.dismissalReason.set('');
     this.actionTouched.set(false);
+    this.historyOpen.set(false);
+  }
+
+  toggleHistory(): void {
+    this.historyOpen.update(value => !value);
+  }
+
+  priorOffenseList(item: ContentReport): number[] {
+    return Array.from({ length: item.priorOffenses }, (_, index) => index + 1);
+  }
+
+  openOriginal(item: ContentReport): void {
+    this.notify(`Đang mở nội dung gốc của ${item.targetId}.`, 'info');
   }
 
   startProcessing(item: ContentReport): void {
@@ -225,6 +246,12 @@ export class ContentReportsComponent {
   severityLabel(value: ReportSeverity): string { return SEVERITY_LABELS[value]; }
   severityTone(value: ReportSeverity): string { return SEVERITY_TONE[value]; }
   isOverdue(item: ContentReport): boolean { return this.overdueIds().has(item.id); }
+  slaRemaining(item: ContentReport): string {
+    const diff = Date.parse(item.slaDueAt) - Date.now();
+    const minutes = Math.max(0, Math.round(Math.abs(diff) / 60_000));
+    const label = `${Math.floor(minutes / 60)} giờ ${minutes % 60} phút`;
+    return diff < 0 ? `Quá hạn ${label}` : `Còn ${label}`;
+  }
   dateTime = formatDateTime;
   ago = relativeTime;
   truncate(value: string): string { return value.length > 80 ? `${value.slice(0, 80)}…` : value; }

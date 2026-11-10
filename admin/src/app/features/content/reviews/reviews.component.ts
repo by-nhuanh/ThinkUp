@@ -4,7 +4,8 @@ import { ExportMenuComponent } from '../../../shared/components/export-menu/expo
 import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
 import { ContentToastComponent, ToastTone } from '../components/content-toast.component';
 import {
-  formatDateTime, paginationRange, relativeTime, REVIEW_STATUS_LABELS, REVIEW_STATUS_TONE
+  formatDateTime, initials, npsBand, number, paginationRange, relativeTime,
+  REVIEW_STATUS_LABELS, REVIEW_STATUS_TONE, ratingLabel as ratingWord
 } from '../content-utils';
 import { ContentReview, ReviewStatus } from '../models/content.models';
 import { ContentStore } from '../services/content.store';
@@ -30,14 +31,17 @@ export class ContentReviewsComponent {
 
   readonly reviews = this.store.reviews;
   readonly search = signal('');
-  readonly course = signal('');
   readonly status = signal('');
   readonly rating = signal('');
-  readonly sort = signal<'newest' | 'oldest' | 'rating' | 'reports'>('newest');
+  readonly nps = signal('');
+  readonly response = signal('');
+  readonly timeRange = signal('all');
   readonly page = signal(1);
   readonly pageSize = 10;
   readonly selected = signal<ReadonlySet<string>>(new Set());
+  readonly expanded = signal<ReadonlySet<string>>(new Set());
   readonly detailId = signal<string | null>(null);
+  readonly progressTarget = signal<ContentReview | null>(null);
   readonly deleteTarget = signal<ContentReview | null>(null);
   readonly hideTarget = signal<ContentReview | null>(null);
   readonly hideReason = signal<string>(HIDE_REASONS[0]);
@@ -50,58 +54,78 @@ export class ContentReviewsComponent {
   readonly counts = computed(() => {
     const items = this.reviews();
     const approved = items.filter(item => item.status === 'approved');
+    const promoters = items.filter(item => item.nps >= 9).length;
+    const detractors = items.filter(item => item.nps <= 6).length;
     return {
       total: items.length,
       pending: items.filter(item => item.status === 'pending').length,
       approved: approved.length,
-      average: approved.length ? approved.reduce((sum, item) => sum + item.rating, 0) / approved.length : 0
+      average: approved.length ? approved.reduce((sum, item) => sum + item.rating, 0) / approved.length : 0,
+      nps: items.length ? Math.round(((promoters - detractors) / items.length) * 100) : 0,
+      negative: items.filter(item => item.rating <= 2).length,
+      replied: items.filter(item => !!item.reply).length,
+      responseRate: items.length ? Math.round((items.filter(item => !!item.reply).length / items.length) * 100) : 0
     };
   });
-  readonly courseOptions = computed<CustomSelectOption[]>(() => {
-    const seen = new Map<string, string>();
-    this.reviews().forEach(item => seen.set(item.courseId, item.courseTitle));
-    return [{ value: '', label: 'Tất cả khóa học' }, ...[...seen].map(([value, label]) => ({ value, label }))];
-  });
+  readonly averageLabel = computed(() => `${this.counts().average.toFixed(1)} / 5.0`);
   readonly statusOptions: CustomSelectOption[] = [
     { value: '', label: 'Tất cả trạng thái' },
     { value: 'pending', label: 'Chờ duyệt' },
-    { value: 'approved', label: 'Đã duyệt' },
+    { value: 'approved', label: 'Công khai' },
     { value: 'rejected', label: 'Bị từ chối' },
-    { value: 'hidden', label: 'Đã ẩn' }
+    { value: 'hidden', label: 'Tạm ẩn' }
   ];
   readonly ratingOptions: CustomSelectOption[] = [
     { value: '', label: 'Tất cả số sao' },
+    { value: 'negative', label: '≤ 2 sao (tiêu cực)' },
     { value: '5', label: '5 sao' }, { value: '4', label: '4 sao' },
     { value: '3', label: '3 sao' }, { value: '2', label: '2 sao' }, { value: '1', label: '1 sao' }
   ];
-  readonly sortOptions: CustomSelectOption[] = [
-    { value: 'newest', label: 'Mới nhất' },
-    { value: 'oldest', label: 'Cũ nhất' },
-    { value: 'rating', label: 'Điểm cao nhất' },
-    { value: 'reports', label: 'Nhiều báo cáo' }
+  readonly npsOptions: CustomSelectOption[] = [
+    { value: '', label: 'Tất cả điểm NPS' },
+    { value: 'promoter', label: 'Người ủng hộ · 9-10' },
+    { value: 'passive', label: 'Trung lập · 7-8' },
+    { value: 'detractor', label: 'Người phản đối · 0-6' }
+  ];
+  readonly responseOptions: CustomSelectOption[] = [
+    { value: '', label: 'Tất cả phản hồi' },
+    { value: 'unreplied', label: 'Chưa phản hồi' },
+    { value: 'replied', label: 'Đã phản hồi' }
+  ];
+  readonly timeOptions: CustomSelectOption[] = [
+    { value: 'all', label: 'Tất cả thời gian' },
+    { value: '7d', label: '7 ngày qua' },
+    { value: '30d', label: '30 ngày qua' },
+    { value: '90d', label: '90 ngày qua' }
   ];
 
   readonly filtered = computed(() => {
     const term = this.search().trim().toLowerCase();
-    const course = this.course();
     const status = this.status();
     const rating = this.rating();
-    const sort = this.sort();
+    const nps = this.nps();
+    const response = this.response();
+    const timeRange = this.timeRange();
+    const cutoff = timeRange === 'all' ? 0 : Date.now() - Number(timeRange.replace('d', '')) * 86_400_000;
     const items = this.reviews().filter(item => {
       const matches = !term
         || item.learner.toLowerCase().includes(term)
+        || item.learnerEmail.toLowerCase().includes(term)
         || item.title.toLowerCase().includes(term)
         || item.content.toLowerCase().includes(term)
-        || item.courseTitle.toLowerCase().includes(term);
-      return matches && (!course || item.courseId === course) && (!status || item.status === status)
-        && (!rating || item.rating === Number(rating));
+        || item.courseTitle.toLowerCase().includes(term)
+        || item.instructor.toLowerCase().includes(term);
+      const ratingMatch = !rating
+        || (rating === 'negative' ? item.rating <= 2 : item.rating === Number(rating));
+      const npsMatch = !nps
+        || (nps === 'promoter' && item.nps >= 9)
+        || (nps === 'passive' && item.nps >= 7 && item.nps <= 8)
+        || (nps === 'detractor' && item.nps <= 6);
+      const responseMatch = !response || (response === 'replied' ? !!item.reply : !item.reply);
+      return matches && (!status || item.status === status) && ratingMatch && npsMatch && responseMatch
+        && (timeRange === 'all' || Date.parse(item.createdAt) >= cutoff);
     });
-    return [...items].sort((a, b) => {
-      if (sort === 'rating') return b.rating - a.rating;
-      if (sort === 'reports') return b.reportCount - a.reportCount;
-      const delta = Date.parse(b.createdAt) - Date.parse(a.createdAt);
-      return sort === 'oldest' ? -delta : delta;
-    });
+    return [...items].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
   });
   readonly pages = computed(() => Math.max(1, Math.ceil(this.filtered().length / this.pageSize)));
   readonly visible = computed(() => this.filtered().slice((this.page() - 1) * this.pageSize, this.page() * this.pageSize));
@@ -133,15 +157,25 @@ export class ContentReviewsComponent {
   readonly stars = [1, 2, 3, 4, 5];
 
   setSearch(value: string): void { this.search.set(value); this.page.set(1); }
-  setCourse(value: string): void { this.course.set(value); this.page.set(1); }
   setStatus(value: string): void { this.status.set(value); this.page.set(1); this.selected.set(new Set()); }
   setRating(value: string): void { this.rating.set(value); this.page.set(1); }
-  setSort(value: string): void { this.sort.set(value as 'newest' | 'oldest' | 'rating' | 'reports'); }
+  setNps(value: string): void { this.nps.set(value); this.page.set(1); }
+  setResponse(value: string): void { this.response.set(value); this.page.set(1); }
+  setTime(value: string): void { this.timeRange.set(value); this.page.set(1); }
 
   clearFilters(): void {
-    this.search.set(''); this.course.set(''); this.status.set(''); this.rating.set('');
-    this.sort.set('newest'); this.page.set(1); this.selected.set(new Set());
+    this.search.set(''); this.status.set(''); this.rating.set(''); this.nps.set('');
+    this.response.set(''); this.timeRange.set('all'); this.page.set(1); this.selected.set(new Set());
   }
+
+  toggleExpanded(item: ContentReview): void {
+    const next = new Set(this.expanded());
+    next.has(item.id) ? next.delete(item.id) : next.add(item.id);
+    this.expanded.set(next);
+  }
+
+  isExpanded(id: string): boolean { return this.expanded().has(id); }
+  openProgress(item: ContentReview): void { this.progressTarget.set(item); }
 
   clearSelection(): void {
     this.selected.set(new Set());
@@ -245,7 +279,12 @@ export class ContentReviewsComponent {
 
   statusLabel(status: ReviewStatus): string { return REVIEW_STATUS_LABELS[status]; }
   statusTone(status: ReviewStatus): string { return REVIEW_STATUS_TONE[status]; }
-  ratingLabel(value: number): string { return `${value.toFixed(1)}/5`; }
+  ratingWord = ratingWord;
+  npsBand = npsBand;
+  npsLabel(value: number): string { return value >= 50 ? 'Xuất sắc' : value >= 0 ? 'Tốt' : 'Cần cải thiện'; }
+  npsTone(value: number): string { return value >= 9 ? 'success' : value >= 7 ? 'pending' : 'danger'; }
+  initials = initials;
+  number = number;
   dateTime = formatDateTime;
   ago = relativeTime;
   truncate(value: string): string { return value.length > 80 ? `${value.slice(0, 80)}…` : value; }
