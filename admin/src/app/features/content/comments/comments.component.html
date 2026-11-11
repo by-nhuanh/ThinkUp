@@ -11,19 +11,19 @@
   <section class="kpis" aria-label="Tổng quan bình luận">
     <button class="kpi" type="button" [class.is-selected]="status() === ''" (click)="setStatus('')" aria-label="Xem tất cả bình luận">
       <span class="kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12a8 8 0 0 1-8 8H7l-4 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z"/></svg></span>
-      <span><span class="kpi-label">Tổng thảo luận</span><strong class="kpi-value">{{ number(counts().total) }}</strong><span class="kpi-foot">Trên toàn hệ thống</span></span>
+      <span class="kpi-text"><span class="kpi-label">Tổng thảo luận</span><strong class="kpi-value">{{ number(counts().total) }}</strong><span class="kpi-foot">Trên toàn hệ thống</span></span>
     </button>
     <button class="kpi" type="button" [class.is-selected]="status() === 'pending'" (click)="setStatus('pending')" aria-label="Lọc bình luận chờ duyệt">
       <span class="kpi-icon amber" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
-      <span><span class="kpi-label">Chờ duyệt / Nghi vấn</span><strong class="kpi-value">{{ number(counts().pending + counts().flagged) }}</strong><span class="kpi-foot">Từ cảnh báo báo cáo chưa xử lý</span></span>
+      <span class="kpi-text"><span class="kpi-label">Chờ duyệt / Nghi vấn</span><strong class="kpi-value">{{ number(counts().pending + counts().flagged) }}</strong><span class="kpi-foot">Từ cảnh báo báo cáo chưa xử lý</span></span>
     </button>
     <button class="kpi" type="button" [class.is-selected]="status() === 'visible'" (click)="setStatus('visible')" aria-label="Lọc bình luận đang hiển thị">
       <span class="kpi-icon green" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></span>
-      <span><span class="kpi-label">Đã hiển thị</span><strong class="kpi-value">{{ number(counts().visible) }}</strong><span class="kpi-foot">Đang hiển thị công khai</span></span>
+      <span class="kpi-text"><span class="kpi-label">Đã hiển thị</span><strong class="kpi-value">{{ number(counts().visible) }}</strong><span class="kpi-foot">Đang hiển thị công khai</span></span>
     </button>
     <button class="kpi" type="button" [class.is-selected]="status() === 'hidden'" (click)="setStatus('hidden')" aria-label="Lọc bình luận vi phạm đã ẩn">
       <span class="kpi-icon red" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span>
-      <span><span class="kpi-label">Đã ẩn vi phạm</span><strong class="kpi-value">{{ number(counts().hidden) }}</strong><span class="kpi-foot">Nội dung vi phạm đã được ẩn</span></span>
+      <span class="kpi-text"><span class="kpi-label">Đã ẩn vi phạm</span><strong class="kpi-value">{{ number(counts().hidden) }}</strong><span class="kpi-foot">Nội dung vi phạm đã được ẩn</span></span>
     </button>
   </section>
 

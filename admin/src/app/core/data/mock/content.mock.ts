@@ -287,7 +287,7 @@ export const MOCK_CONTENT_REVIEWS: ContentReview[] = REVIEW_SEEDS.map((seed, ind
   courseTitle: seed.course,
   instructor: seed.instructor || INSTRUCTORS[index % INSTRUCTORS.length],
   learner: seed.learner,
-  learnerEmail: `${seed.learner.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]+/g, '.')}@thinkup.vn`,
+  learnerEmail: `${seed.learner.trim().split(/\s+/).slice(-2).join('').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]/g, '')}@thinkup.vn`,
   completion: seed.completion,
   rating: seed.rating,
   nps: seed.nps,
