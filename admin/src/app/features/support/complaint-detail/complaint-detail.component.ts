@@ -2,8 +2,8 @@ import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { LucideBan, LucideBookOpen, LucideCheckCircle2, LucideCircleDollarSign, LucideClock3, LucideEye, LucideFileText, LucideGift, LucideGraduationCap, LucideInfo, LucideLockKeyhole, LucideMessageSquareText, LucideTriangleAlert, LucideUserRound, LucideX } from '@lucide/angular';
-import { ComplaintCase } from '../models/support.models';
+import { LucideBan, LucideBookOpen, LucideCheckCircle2, LucideCircleDollarSign, LucideClock3, LucideEye, LucideFileText, LucideGift, LucideGraduationCap, LucideLockKeyhole, LucideMessageSquareText, LucideTriangleAlert, LucideUserRound, LucideX } from '@lucide/angular';
+import { ComplaintCase, INSTRUCTOR_REFUND_PERCENT } from '../models/support.models';
 import { CustomSelectComponent, CustomSelectOption } from '../../../shared/components/custom-select/custom-select.component';
 import { SupportDemoService } from '../services/support-demo.service';
 
@@ -12,7 +12,7 @@ type CaseAction = 'explanation' | 'refund' | 'dismiss' | 'discipline' | null;
 @Component({
   selector: 'app-complaint-detail',
   standalone: true,
-  imports: [DatePipe, FormsModule, RouterLink, CustomSelectComponent, LucideBan, LucideBookOpen, LucideCheckCircle2, LucideCircleDollarSign, LucideClock3, LucideEye, LucideFileText, LucideGift, LucideGraduationCap, LucideInfo, LucideLockKeyhole, LucideMessageSquareText, LucideTriangleAlert, LucideUserRound, LucideX],
+  imports: [DatePipe, FormsModule, RouterLink, CustomSelectComponent, LucideBan, LucideBookOpen, LucideCheckCircle2, LucideCircleDollarSign, LucideClock3, LucideEye, LucideFileText, LucideGift, LucideGraduationCap, LucideLockKeyhole, LucideMessageSquareText, LucideTriangleAlert, LucideUserRound, LucideX],
   templateUrl: './complaint-detail.component.html',
   styleUrls: ['../support-page.css', './complaint-detail.component.css']
 })
@@ -49,7 +49,8 @@ export class ComplaintDetailComponent {
   ];
   readonly refundAmount = computed(() => { const item = this.caseFile(); if (!item) return 0; return this.refundMode() === 'full' ? item.amount : Math.max(0, Math.min(item.amount, Number(this.partialRefundAmount()) || 0)); });
   readonly partialRefundExceedsOriginal = computed(() => { const item = this.caseFile(); return Boolean(item && this.refundMode() === 'partial' && Number(this.partialRefundAmount()) > item.amount); });
-  readonly instructorRefundShare = computed(() => Math.round(this.refundAmount() * .7));
+  readonly instructorRefundPercent = INSTRUCTOR_REFUND_PERCENT;
+  readonly instructorRefundShare = computed(() => Math.round(this.refundAmount() * this.instructorRefundPercent / 100));
   readonly platformRefundShare = computed(() => this.refundAmount() - this.instructorRefundShare());
   readonly decisionActionLabel = computed(() => {
     if (this.decision() === 'refund') return 'Tiếp tục hoàn tiền';

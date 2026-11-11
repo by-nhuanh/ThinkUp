@@ -186,7 +186,7 @@
 
           <div class="editor-field">
             <label class="editor-field-label" for="editor-answer"><svg lucideFileText aria-hidden="true"></svg><span>Nội dung trả lời *</span></label>
-            <div class="rich-answer" [class.is-previewing]="answerPreview()">
+            <div class="rich-answer">
               <div class="answer-toolbar" aria-label="Định dạng câu trả lời">
                 <app-custom-select class="format-select" controlId="answer-format" [value]="answerFormat()" (valueChange)="setAnswerFormat($event, answerField)" [options]="answerFormatOptions" [menuWidth]="150"></app-custom-select>
                 <span class="toolbar-divider" aria-hidden="true"></span>
@@ -198,12 +198,8 @@
                 <button type="button" aria-label="Danh sách số" title="Danh sách số" (click)="insertAnswer(answerField, 'number')"><svg lucideListOrdered aria-hidden="true"></svg></button>
                 <span class="toolbar-divider" aria-hidden="true"></span>
                 <button type="button" aria-label="Chèn liên kết" title="Chèn liên kết" (click)="insertAnswer(answerField, 'link')"><svg lucideLink aria-hidden="true"></svg></button>
-                <button class="preview-button" type="button" [attr.aria-pressed]="answerPreview()" (click)="answerPreview.update(value => !value)"><svg lucideEye aria-hidden="true"></svg><span>{{ answerPreview() ? 'Soạn thảo' : 'Xem trước' }}</span></button>
               </div>
-              @if (answerPreview()) {
-                <div class="answer-preview" aria-live="polite">{{ form().answer || 'Chưa có nội dung để xem trước.' }}</div>
-              }
-              <textarea id="editor-answer" #answerField rows="6" [class.is-hidden]="answerPreview()" [ngModel]="form().answer" (ngModelChange)="patch('answer', $event)" maxlength="500" placeholder="Nhập câu trả lời ngắn gọn, có các bước hành động rõ ràng..."></textarea>
+              <textarea id="editor-answer" #answerField rows="6" [ngModel]="form().answer" (ngModelChange)="patch('answer', $event)" maxlength="500" placeholder="Nhập câu trả lời ngắn gọn, có các bước hành động rõ ràng..."></textarea>
             </div>
             <div class="editor-meta-row"><small>Hỗ trợ danh sách, định dạng và liên kết dạng [nội dung](URL).</small><small [class.is-limit]="form().answer.length >= 460">{{ form().answer.length }}/500</small></div>
             @if (attempted() && !form().answer.trim()) { <small class="editor-error">Vui lòng nhập nội dung trả lời.</small> }
