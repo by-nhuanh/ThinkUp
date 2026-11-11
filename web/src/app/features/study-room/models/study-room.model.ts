@@ -12,6 +12,7 @@ export interface StudyRoomItem {
   rating?: number;
   creator?: string;
   waitlistCount?: number;
+  waitlistEnabled?: boolean;
   password?: string;
   requiresPassword?: boolean;
   inviteMode?: 'open' | 'password' | 'approval';
@@ -22,6 +23,7 @@ export interface StudyRoomItem {
 export interface StudyRoomJoinRequest {
   userId: string;
   userName: string;
+  avatar?: string;
   status: 'pending' | 'approved' | 'rejected';
   requestedAt: string;
 }

@@ -1,0 +1,23 @@
+<dialog #dialog class="room-glass invite-dialog" [class.dark]="dark()" [attr.data-theme]="theme()"
+  aria-labelledby="room-invite-title" (cancel)="$event.preventDefault(); dismiss()"
+  (click)="$event.target === dialog && dismiss()">
+  <div class="invite-layout">
+    <header>
+      <h2 id="room-invite-title">Mời vào phòng</h2>
+      <button class="close-button" type="button" (click)="dismiss()" aria-label="Đóng lời mời">
+        <svg lucideX aria-hidden="true"></svg>
+      </button>
+    </header>
+    <div class="invite-body">
+      <p>Gửi link này cho người bạn muốn mời vào phòng học.</p>
+      <label for="room-invite-link">Link phòng học</label>
+      <div class="link-row">
+        <input #linkInput id="room-invite-link" type="url" [value]="link()" readonly (focus)="linkInput.select()">
+        <button class="copy-button" type="button" autofocus (click)="copyLink.emit()">
+          <svg lucideCopy aria-hidden="true"></svg> Sao chép
+        </button>
+      </div>
+      <p class="feedback" role="status">{{ feedback() }}</p>
+    </div>
+  </div>
+</dialog>

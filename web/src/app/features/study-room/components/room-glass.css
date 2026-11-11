@@ -1,0 +1,63 @@
+.room-glass {
+  --ink: #182847;
+  --muted: #4c5e7c;
+  --accent: #1747ac;
+  --accent-surface: #d9e6fb;
+  --accent-strong: #2458c0;
+  --glass: #edf4ffeb;
+  --surface: #f6f9fff2;
+  --line: #526b9638;
+  --rim: #ffffffc9;
+  --track: #65748e;
+  --danger: #a81942;
+  color-scheme: light;
+}
+.room-glass[data-theme="nature"] {
+  --glass: #f5f7e9eb;
+  --surface: #fafbf3f2;
+  --accent: #355232;
+  --accent-surface: #deebd9;
+  --accent-strong: #4a6943;
+}
+.room-glass[data-theme="coffee"] {
+  --glass: #f7eee2ed;
+  --surface: #fcf7eff5;
+  --accent: #704329;
+  --accent-surface: #f1e0ce;
+  --accent-strong: #875a3d;
+}
+.room-glass[data-theme="cherry-blossom-tree"] {
+  --glass: #faeef4ed;
+  --surface: #fdf6f9f5;
+  --accent: #7b335b;
+  --accent-surface: #f3dfeb;
+  --accent-strong: #984d75;
+}
+.room-glass[data-theme="library"] {
+  --glass: #f2ebfaeb;
+  --surface: #faf6fff2;
+  --accent: #593482;
+  --accent-surface: #eadcf7;
+  --accent-strong: #6e4798;
+}
+.room-glass.dark {
+  --ink: #f3f1fb;
+  --muted: #c6c5da;
+  --accent: #e1d1ff;
+  --accent-surface: #4c3e6b;
+  --accent-strong: #6c4fa3;
+  --glass: #272539ed;
+  --surface: #232237f5;
+  --line: #e4ddff35;
+  --rim: #e4ddff42;
+  --track: #716f87;
+  --danger: #ffacc3;
+  color-scheme: dark;
+}
+.room-glass.dark:is([data-theme="space"], [data-theme="pragmata-horizon"], [data-theme="pixel-skyline"]) {
+  --glass: #222d45ed;
+  --surface: #1f293ff5;
+  --accent: #c4ddff;
+  --accent-surface: #344f73;
+  --accent-strong: #3c6095;
+}

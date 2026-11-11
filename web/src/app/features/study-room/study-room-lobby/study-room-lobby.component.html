@@ -1,4 +1,5 @@
 <main class="study-lobby">
+  @if (extras.demo) { <p class="demo-label" role="status">Phòng học ảo · Dữ liệu demo</p> }
   <div class="lobby-container">
     <section class="hero">
       <video
@@ -26,11 +27,11 @@
             cộng tác trực tiếp để học cùng nhau mọi lúc, mọi nơi.
           </p>
           <div class="hero-actions">
-            <button class="primary-pill" type="button" (click)="quickJoin()">
+            <button class="primary-pill" type="button" (click)="quickJoin()" [disabled]="submitting()">
               <svg lucideSparkles></svg>Bắt đầu học cùng nhau
               <svg lucideArrowRight></svg>
             </button>
-            <button class="secondary-pill" type="button" (click)="openCreate()">
+            <button class="secondary-pill" type="button" (click)="openCreate()" [disabled]="submitting()">
               <svg lucidePlus></svg>Tạo phòng riêng
             </button>
           </div>
@@ -109,96 +110,87 @@
 
     <div class="below-grid">
       <section class="discover">
-        <div class="discover-controls">
+        <div class="discover-controls" #topicPicker>
           <div class="discover-heading">
             <h2>Khám phá không gian học</h2>
+            <p>Tìm phòng theo chủ đề và trạng thái phù hợp.</p>
+          </div>
+          <div class="filter-row">
             <label class="search-box"
               ><svg lucideSearch></svg
               ><input
                 type="search"
+                aria-label="Tìm phòng học"
                 [ngModel]="search()"
                 (ngModelChange)="onSearchChange($event)"
                 placeholder="Tìm theo tên phòng, chủ đề hoặc kỹ năng..."
             /></label>
+            <div class="filter-actions">
+              <button type="button" #topicTrigger class="topic-trigger"
+                (click)="toggleTopicMenu()" [attr.aria-expanded]="isTopicMenuOpen()"
+                [attr.aria-controls]="isTopicMenuOpen() ? 'lobby-topics' : null">
+                <svg lucideTag></svg>
+                <span>{{ topicTriggerLabel() }}</span>
+                <svg class="topic-chevron" [class.open]="isTopicMenuOpen()" lucideChevronRight></svg>
+              </button>
+              <button type="button" class="refresh" (click)="resetFilters()">
+                <svg lucideRotateCcw></svg>Đặt lại
+              </button>
+            </div>
           </div>
-          <div class="filter-row">
-            <div class="tabs">
+          @if (isTopicMenuOpen()) {
+            <div #topicMenu id="lobby-topics" class="topic-menu" role="group" aria-labelledby="topic-title">
+              <h3 id="topic-title">Lọc theo chủ đề</h3>
+              <label class="topic-search"
+                ><svg lucideSearch></svg
+                ><input
+                  type="search"
+                  [ngModel]="topicSearch()"
+                  (ngModelChange)="topicSearch.set($event)"
+                  aria-label="Tìm chủ đề"
+                  placeholder="Tìm chủ đề..."
+              /></label>
+              <div class="topic-options">
+
+                @for (topic of visibleTopics(); track topic) {
+                  <label class="topic-option"
+                    ><input
+                      type="checkbox"
+                      [checked]="pendingTopics().includes(topic)"
+                      (change)="togglePendingTopic(topic)"
+                    /><span>{{
+                      topic === "Focus Session" ? "Focus" : topic
+                    }}</span></label
+                  >
+                }
+                @if (visibleTopics().length === 0) {
+                  <p class="topic-empty">Không tìm thấy chủ đề phù hợp.</p>
+                }
+              </div>
+              <div class="topic-menu-actions">
+                <button class="clear-topics" type="button" (click)="clearPendingTopics()" [disabled]="!pendingTopics().length">Bỏ chọn</button>
+                <button type="button" (click)="closeTopicMenu()">Hủy</button
+                ><button
+                  type="button"
+                  class="apply"
+                  (click)="applyTopicFilter()"
+                >
+                  Áp dụng
+                </button>
+              </div>
+            </div>
+          }
+            <div class="tabs" role="group" aria-label="Trạng thái phòng">
               @for (tab of tabs; track tab.key) {
                 <button
                   type="button"
-                  [class.selected]="selectedTab() === tab.key"
+                  [attr.aria-pressed]="selectedTab() === tab.key"
                   (click)="selectTab(tab.key)"
                 >
-                  {{ tab.label }}
+                  {{ tab.key === "trending" ? "Thịnh hành" : tab.label }}
                 </button>
               }
             </div>
-            <span class="filter-divider" aria-hidden="true"></span>
-            <div class="topic-picker">
-              <button
-                type="button"
-                class="topic-trigger"
-                (click)="toggleTopicMenu()"
-                aria-haspopup="dialog"
-                [attr.aria-expanded]="isTopicMenuOpen()"
-              >
-                <svg lucideTag></svg><span>{{ topicTriggerLabel() }}</span
-                ><svg
-                  class="topic-chevron"
-                  [class.open]="isTopicMenuOpen()"
-                  lucideChevronRight
-                ></svg>
-              </button>
-              @if (isTopicMenuOpen()) {
-                <div class="topic-menu" role="dialog" aria-label="Chọn chủ đề">
-                  <label class="topic-search"
-                    ><svg lucideSearch></svg
-                    ><input
-                      type="search"
-                      [ngModel]="topicSearch()"
-                      (ngModelChange)="topicSearch.set($event)"
-                      placeholder="Tìm chủ đề..."
-                  /></label>
-                  <div class="topic-options">
-                    <label class="topic-option all"
-                      ><input
-                        type="checkbox"
-                        [checked]="pendingTopics().length === 0"
-                        (change)="clearPendingTopics()"
-                      /><span>Tất cả chủ đề</span></label
-                    >
-                    @for (topic of visibleTopics(); track topic) {
-                      <label class="topic-option"
-                        ><input
-                          type="checkbox"
-                          [checked]="pendingTopics().includes(topic)"
-                          (change)="togglePendingTopic(topic)"
-                        /><span>{{
-                          topic === "Focus Session" ? "Focus" : topic
-                        }}</span></label
-                      >
-                    }
-                    @if (visibleTopics().length === 0) {
-                      <p class="topic-empty">Không tìm thấy chủ đề phù hợp.</p>
-                    }
-                  </div>
-                  <div class="topic-menu-actions">
-                    <button type="button" (click)="closeTopicMenu()">Hủy</button
-                    ><button
-                      type="button"
-                      class="apply"
-                      (click)="applyTopicFilter()"
-                    >
-                      Áp dụng
-                    </button>
-                  </div>
-                </div>
-              }
-            </div>
-            <button type="button" class="refresh" (click)="resetFilters()">
-              <svg lucideRotateCcw></svg>Làm mới
-            </button>
-          </div>
         </div>
         @if (loading()) {
           <p class="empty-rooms" role="status">Đang tải phòng học...</p>
@@ -231,7 +223,7 @@
               <p>Để ThinkUp tìm cho bạn một phòng đang hoạt động và còn chỗ.</p>
             </div>
           </div>
-          <button type="button" (click)="quickJoin()">
+          <button type="button" (click)="quickJoin()" [disabled]="submitting()">
             <svg lucideSparkles></svg>TÌM PHÒNG PHÙ HỢP
           </button>
         </section>
@@ -257,8 +249,8 @@
                 name="password"
                 type="password"
                 [(ngModel)]="password"
-                placeholder="Bỏ trống nếu phòng link/code/approval" /></label
-            ><button type="submit"><svg lucideLogIn></svg>Vào phòng</button>
+                placeholder="Bỏ trống nếu phòng không có mật khẩu" /></label
+            ><button type="submit" [disabled]="submitting()"><svg lucideLogIn></svg>Vào phòng</button>
           </form>
         </section>
         <section class="side-card create-card">
@@ -272,7 +264,7 @@
               </p>
             </div>
           </div>
-          <button type="button" (click)="openCreate()">
+          <button type="button" (click)="openCreate()" [disabled]="submitting()">
             <svg lucideSparkles></svg>Tạo phòng học<svg lucideArrowRight></svg>
           </button>
         </section>
@@ -284,14 +276,19 @@
   </div>
 </main>
 
-@if (modal()) {
-  <div class="modal-backdrop" (click)="modal.set(null)">
-    <div class="modal" (click)="$event.stopPropagation()">
+<dialog #lobbyDialog class="modal" aria-labelledby="lobby-dialog-title"
+  [class.create-modal]="modal() === 'create'"
+  (cancel)="$event.preventDefault(); closeModal()"
+  (click)="$event.target === lobbyDialog && closeModal()">
+  @if (modal()) {
+    <div class="modal-content">
       <button
         class="modal-close"
         type="button"
-        (click)="modal.set(null)"
+        (click)="closeModal()"
         aria-label="Đóng"
+        [disabled]="submitting()"
+        data-dialog-focus
       >
         <svg lucideX></svg>
       </button>
@@ -299,11 +296,12 @@
         <div class="create-modal-heading">
           <span class="panel-icon pale"><svg lucideSparkles></svg></span>
           <div>
-            <h2>Tạo phòng học</h2>
+            <h2 id="lobby-dialog-title">Tạo phòng học</h2>
             <p>Chọn loại phòng và setup nhanh không gian học của bạn.</p>
           </div>
         </div>
         <form (ngSubmit)="createRoom()" class="create-room-form">
+          <div class="create-room-body">
           <fieldset class="room-type">
             <legend>Loại phòng</legend>
             <div class="room-type-options">
@@ -325,7 +323,7 @@
                   [(ngModel)]="newRoomMode"
                 /><strong>Riêng tư</strong
                 ><small
-                  >Bảo vệ bằng mật khẩu hoặc duyệt yêu cầu vào phòng.</small
+                  >Bảo vệ bằng mật khẩu.</small
                 ></label
               >
             </div>
@@ -381,7 +379,7 @@
               placeholder="Nhập các tag, cách nhau bằng dấu phẩy..."
           /></label>
           <fieldset class="room-themes">
-            <legend>Room Theme</legend>
+            <legend>Giao diện phòng</legend>
             <div class="room-theme-grid">
               @for (theme of roomThemes; track theme.id) {
                 <label [class.selected]="newRoomTheme === theme.id"
@@ -419,68 +417,74 @@
               }
             </div>
           </fieldset>
-          @if (feedback) {
-            <p class="form-error" role="alert">{{ feedback }}</p>
-          }
-          <button class="modal-submit" type="submit">＋ Tạo phòng →</button>
-          <p class="create-note">
-            Phòng sẽ sẵn sàng ngay sau khi tạo thành công.
-          </p>
+          </div>
+          <footer class="create-room-footer">
+            @if (feedback) {
+              <p class="form-error" role="alert">{{ feedback }}</p>
+            }
+            <button class="modal-submit" type="submit" [disabled]="submitting()">
+              {{ submitting() ? 'Đang tạo phòng…' : 'Tạo phòng' }}
+            </button>
+          </footer>
         </form>
       } @else if (modal() === "password") {
-        <h2>Nhập mật khẩu phòng</h2>
+        <h2 id="lobby-dialog-title">Nhập mật khẩu phòng</h2>
         <p>{{ activeRoom()?.name }}</p>
         <form (ngSubmit)="verifyPassword()">
           <label
             >Mật khẩu<input
               name="joinPassword"
               type="password"
-              [(ngModel)]="password"
+              [(ngModel)]="joinPassword"
+              data-dialog-focus
           /></label>
           @if (feedback) {
-            <p class="form-error">{{ feedback }}</p>
+            <p class="form-error" role="alert">{{ feedback }}</p>
           }
-          <button class="modal-submit" type="submit">Vào phòng</button>
+          <button class="modal-submit" type="submit" [disabled]="submitting()">
+            {{ submitting() ? 'Đang vào phòng…' : 'Vào phòng' }}
+          </button>
         </form>
-      } @else if (modal() === "waitlist") {
-        <h2>Phòng đã đầy</h2>
-        <p>
-          {{ activeRoom()?.name }} hiện đã đủ thành viên. Bạn có thể tham gia
-          danh sách chờ để được thông báo khi có chỗ.
-        </p>
-        <button
-          class="modal-submit"
-          type="button"
-          (click)="submitJoinRequest()"
-        >
-          Tham gia danh sách chờ
-        </button>
-      } @else if (modal() === "approval") {
-        <h2>Yêu cầu vào phòng</h2>
-        <p>
-          {{ activeRoom()?.name }} cần chủ phòng phê duyệt trước khi bạn tham
-          gia.
-        </p>
-        <button
-          class="modal-submit"
-          type="button"
-          (click)="submitJoinRequest()"
-        >
-          Gửi yêu cầu tham gia
-        </button>
+      } @else if (modal() === "waitlist" || modal() === "approval") {
+        <h2 id="lobby-dialog-title">{{ modal() === 'waitlist' ? 'Danh sách chờ' : 'Yêu cầu vào phòng' }}</h2>
+        <p>{{ activeRoom()?.name }}</p>
+        @switch (entryRequestState()?.status) {
+          @case ('pending') {
+            <p role="status">{{ modal() === 'waitlist' ? 'Bạn đang trong danh sách chờ.' : 'Đang chờ chủ phòng duyệt.' }}</p>
+            @if (extras.demo) {
+              <button class="modal-submit" type="button" [disabled]="submitting()" (click)="submitJoinRequest()">Kiểm tra trạng thái</button>
+            } @else {
+              <button class="modal-submit" type="button" [disabled]="submitting()" (click)="enterApprovedRoom()">Thử vào phòng</button>
+            }
+          }
+          @case ('approved') {
+            <p role="status">Yêu cầu đã được duyệt.</p>
+            <button class="modal-submit" type="button" [disabled]="submitting()" (click)="enterApprovedRoom()">Vào phòng</button>
+          }
+          @case ('rejected') { <p role="status">Yêu cầu tham gia đã bị từ chối.</p> }
+          @default {
+            <p>{{ modal() === 'waitlist' ? 'Phòng đã đủ thành viên. Bạn có thể đăng ký chờ khi có chỗ.' : 'Chủ phòng cần duyệt trước khi bạn có thể tham gia.' }}</p>
+            <button class="modal-submit" type="button" [disabled]="submitting()" (click)="submitJoinRequest()">
+              {{ submitting() ? 'Đang gửi…' : modal() === 'waitlist' ? 'Tham gia danh sách chờ' : 'Gửi yêu cầu tham gia' }}
+            </button>
+          }
+        }
+        @if (feedback) {
+          <p [class.form-error]="!entryRequestState()" role="status">{{ feedback }}</p>
+        }
       } @else if (modal() === "full") {
-        <h2>Phòng đã đầy</h2>
+        <h2 id="lobby-dialog-title">Phòng đã đầy</h2>
         <p>Phòng hiện không còn chỗ. Hãy chọn phòng khác.</p>
-        <button class="modal-submit" type="button" (click)="modal.set(null)">
+        <button class="modal-submit" type="button" (click)="closeModal()">
           Đóng
         </button>
       } @else if (modal() === "created") {
-        <h2>Tạo phòng thành công!</h2>
+        <h2 id="lobby-dialog-title">Tạo phòng thành công!</h2>
         <p>Mã phòng: {{ activeRoom()?.roomId }}</p>
         <button class="modal-submit" type="button" (click)="enterCreatedRoom()">
           Vào phòng ngay
         </button>
       }
     </div>
-  </div>
-}
+  }
+</dialog>

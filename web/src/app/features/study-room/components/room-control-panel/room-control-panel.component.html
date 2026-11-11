@@ -1,15 +1,246 @@
-<div class="shade" (click)="close.emit()" aria-hidden="true"></div>
-<aside>
-  <header><div class="heading-icon"><svg lucideSettings></svg></div><div><h2>Điều khiển phòng</h2></div><button type="button" (click)="close.emit()" aria-label="Đóng"><svg lucideX></svg></button></header>
-  <div class="body">
-    @if (loading()) { <p role="status">Đang tải quyền phòng...</p> }
-    @if (error()) { <p role="alert">{{ error() }} <button type="button" (click)="load()">Thử lại</button></p> }
-    <section class="role"><span>VAI TRÒ CỦA BẠN</span><div><strong [class.moderator]="roleKey() === 'moderator'" [class.member-role-style]="roleKey() === 'member'">@if (roleKey() === 'owner') { <svg lucideCrown></svg> } @else if (roleKey() === 'moderator') { <svg lucideShieldCheck></svg> } @else { <svg lucideUserRound></svg> } {{ role() }}</strong><small>Quyền sử dụng của bạn được đồng bộ với cài đặt phòng.</small></div></section>
-    <section><div class="section-head"><div><h3>Thành viên</h3><small>{{ memberCount() }} người trong phòng</small></div><button type="button" (click)="copyLink.emit()"><svg lucideUserPlus></svg> Mời</button></div><div class="member-list">@for (person of members(); track person.userId) { <div class="member"><span>{{ person.initials }}</span><div><strong>{{ person.name }}{{ person.isSelf ? ' (Bạn)' : '' }}</strong><small>{{ roomName() }}</small></div><b class="member-role" [class.moderator]="person.role === 'moderator'" [class.member-role-style]="person.role === 'member'">@if (person.role === 'owner') { <svg lucideCrown></svg> } @else if (person.role === 'moderator') { <svg lucideShieldCheck></svg> } @else { <svg lucideUserRound></svg> } {{ person.roleLabel }}</b>@if (!person.isSelf) { <button class="remove-member" type="button" [disabled]="roleKey() === 'member'" (click)="removeMember.emit(person)" [attr.aria-label]="'Xóa ' + person.name + ' khỏi phòng'" title="Xóa khỏi phiên hiện tại"><svg lucideCircleX></svg></button> }</div> } @empty { <div class="member"><span>{{ memberInitials() }}</span><div><strong>{{ memberName() }} (Bạn)</strong><small>{{ roomName() }}</small></div><b class="member-role" [class.moderator]="roleKey() === 'moderator'" [class.member-role-style]="roleKey() === 'member'">@if (roleKey() === 'owner') { <svg lucideCrown></svg> } @else if (roleKey() === 'moderator') { <svg lucideShieldCheck></svg> } @else { <svg lucideUserRound></svg> } {{ role() }}</b></div> }</div></section>
-    <section><h3>Room Theme</h3><small>Chọn nền phòng. Màu/gradient có grid; ảnh/GIF không hiện grid.</small><div class="themes">@for (theme of themes(); track theme.id) { <button type="button" [disabled]="!canChangeTheme()" [class.selected]="selectedTheme() === theme.id" (click)="selectTheme.emit(theme.id)"><span class="preview" [style.background]="theme.background">@if (theme.type === 'video') { <video [src]="theme.src" autoplay muted loop playsinline></video> } @else if (theme.src) { <img [src]="theme.src" alt="" [style.object-fit]="theme.fit || 'cover'" /> }</span><span><strong>{{ theme.name }}</strong><small>{{ theme.ambient || 'Không có' }}</small></span>@if (selectedTheme() === theme.id) { <b><svg lucideCheck></svg></b> }</button> }</div></section>
-    <section><h3>Quyền phòng</h3><div class="permissions"><button type="button" [disabled]="!canManage() || saving()" (click)="toggle('voiceEnabled')"><span>Cho phép bật mic</span><i [class.on]="permissions().voiceEnabled"></i></button><button type="button" [disabled]="!canManage() || saving()" (click)="toggle('cameraEnabled')"><span>Cho phép bật camera</span><i [class.on]="permissions().cameraEnabled"></i></button><button type="button" [disabled]="!canManage() || saving()" (click)="toggle('chatEnabled')"><span>Cho phép chat</span><i [class.on]="permissions().chatEnabled"></i></button><button type="button" [disabled]="!canManage() || saving()" (click)="toggle('whiteboardLocked')"><span>Khóa bảng vẽ</span><i [class.on]="permissions().whiteboardLocked"></i></button><button type="button" [disabled]="!canManage() || saving()" (click)="toggle('participantShareScreen')"><span>Chia sẻ màn hình</span><i [class.on]="permissions().participantShareScreen"></i></button><button type="button" [disabled]="!canManage() || saving()" (click)="toggle('participantUpload')"><span>Cho phép tải lên</span><i [class.on]="permissions().participantUpload"></i></button></div></section>
-    <section><div class="section-head"><div><h3>Yêu cầu vào phòng</h3><small>Dành cho private room hoặc public room bật duyệt vào.</small></div><b class="request-count">{{ joinRequests().length }}</b></div><div class="request-list">@for (request of joinRequests(); track request.userId) { <div class="join-request"><strong>{{ request.userName || 'Học viên' }}</strong><small>Đang chờ phê duyệt</small><div><button type="button" [disabled]="roleKey() !== 'owner' || !!handlingRequest()" (click)="decideRequest(request, 'approve')"><svg lucideCheck></svg> Accept</button><button type="button" [disabled]="roleKey() !== 'owner' || !!handlingRequest()" (click)="decideRequest(request, 'reject')"><svg lucideCircleX></svg> Decline</button></div></div> } @empty { <p>Chưa có yêu cầu đang chờ duyệt.</p> }</div></section>
-    <section><h3>Permission Matrix</h3><div class="matrix-wrap"><table class="matrix"><thead><tr><th>Chức năng</th><th>Chủ phòng</th><th>Moderator</th><th>Thành viên</th></tr></thead><tbody>@for (row of matrix().slice(0, 8); track row.feature) { <tr><td>{{ row.label || row.feature }}</td><td>@if (row.owner) { <span class="matrix-value yes"><svg lucideCheck></svg></span> } @else { <span class="matrix-value no"><svg lucideX></svg></span> }</td><td>@if (row.moderator) { <span class="matrix-value yes"><svg lucideCheck></svg></span> } @else { <span class="matrix-value no"><svg lucideX></svg></span> }</td><td>@if (row.member === true) { <span class="matrix-value yes"><svg lucideCheck></svg></span> } @else if (row.member === false) { <span class="matrix-value no"><svg lucideX></svg></span> } @else { <span class="matrix-value conditional"><svg lucideMinus></svg>{{ row.member }}</span> }</td></tr> } @empty { <tr><td colspan="4">Đang tải bảng quyền...</td></tr> }</tbody></table></div></section>
-    <section><h3>Permission Matrix</h3><table class="matrix"><thead><tr><th>Chức năng</th><th>Chủ phòng</th><th>Moderator</th><th>Thành viên</th></tr></thead><tbody>@for (row of matrix(); track row.feature) {<tr><td>{{ row.label }}</td><td>{{ row.owner ? '✓' : '—' }}</td><td>{{ row.moderator ? '✓' : '—' }}</td><td>{{ row.member === true ? '✓' : row.member === false ? '—' : row.member }}</td></tr>}</tbody></table></section>
+<dialog #panel class="room-glass control-panel" [class.requests-popover]="requestsOnly()"
+  [attr.popover]="requestsOnly() ? 'auto' : null" (toggle)="onPopoverToggle(panel)" [class.dark]="dark()" [attr.data-theme]="selectedTheme()"
+  aria-labelledby="room-panel-title" (cancel)="$event.preventDefault(); dismiss()"
+  (click)="$event.target === panel && dismiss()">
+  <div class="panel-layout">
+    <header class="panel-heading">
+      <div class="title-row">
+        <h2 id="room-panel-title" [attr.title]="roomName()">{{ requestsOnly() ? 'Yêu cầu tham gia' : 'Điều khiển phòng' }}</h2>
+        <button #closeButton class="close-button" type="button" autofocus (click)="dismiss()" [attr.aria-label]="requestsOnly() ? 'Đóng yêu cầu tham gia' : 'Đóng điều khiển phòng'">
+          <svg lucideX aria-hidden="true"></svg>
+        </button>
+      </div>
+    </header>
+
+    @if (!requestsOnly()) {
+    <div class="sections" role="group" aria-label="Mục điều khiển phòng">
+      <button type="button" [attr.aria-pressed]="activeSection() === 'members'" (click)="activeSection.set('members')">
+        <svg lucideUsers aria-hidden="true"></svg><span>Thành viên</span>
+      </button>
+      @if (canManage() || roleKey() === 'owner') {
+        <button type="button" [attr.aria-pressed]="activeSection() === 'permissions'" (click)="activeSection.set('permissions')">
+          <svg lucideSettings aria-hidden="true"></svg><span>Cài đặt</span>
+        </button>
+      }
+      <button type="button" [attr.aria-pressed]="activeSection() === 'appearance'" (click)="activeSection.set('appearance')">
+        <svg lucideMonitor aria-hidden="true"></svg><span>Giao diện</span>
+      </button>
+    </div>
+
+    }
+
+    <div class="body" [class.settings-body]="requestsOnly() || activeSection() === 'permissions'">
+      @if (loading()) { <p class="status" role="status">Đang tải quyền phòng…</p> }
+      @if (error()) {
+        <div class="status error" role="alert">{{ error() }} <button class="secondary" type="button" (click)="load()">Thử lại</button></div>
+      }
+      @if (feedback()) { <p class="status" role="status">{{ feedback() }}</p> }
+
+      @if (!requestsOnly()) {
+      @switch (activeSection()) {
+        @case ('members') {
+          <section aria-labelledby="room-members-title">
+            <div class="section-heading">
+              <h3 id="room-members-title">Trong phòng · {{ memberCount() }}</h3>
+              <button class="secondary invite-button" type="button" (click)="invite.emit()">
+                <svg lucideUserPlus aria-hidden="true"></svg> Mời
+              </button>
+            </div>
+            <ul class="member-list">
+              @for (person of members(); track person.userId) {
+                <li class="member">
+                  <span class="initials" aria-hidden="true">{{ person.initials }} @if (person.avatar) { <img [src]="person.avatar" alt="" (error)="$any($event.target).hidden = true"> }</span>
+                  <div class="member-details">
+                    <strong>{{ person.displayName || person.name }} @if (person.isSelf) { <span class="self">(Bạn)</span> }</strong>
+                    <small>{{ person.roleLabel }}</small>
+                  </div>
+                  <span class="microphone" role="img" [attr.aria-label]="microphones()[person.userId] ? 'Mic đang bật' : 'Mic đang tắt'">
+                    @if (microphones()[person.userId]) { <svg lucideMic aria-hidden="true"></svg> }
+                    @else { <svg lucideMicOff aria-hidden="true"></svg> }
+                  </span>
+                  @if (!person.isSelf && roleKey() !== 'member') {
+                    <button class="remove-member" type="button" (click)="removeMember.emit(person)"
+                      [attr.aria-label]="'Xóa ' + (person.displayName || person.name) + ' khỏi phòng'">
+                      <svg lucideCircleX aria-hidden="true"></svg>
+                    </button>
+                  }
+                </li>
+              } @empty {
+                <li class="member">
+                  <span class="initials" aria-hidden="true">{{ memberInitials() }}</span>
+                  <div class="member-details"><strong>{{ memberName() }} <span class="self">(Bạn)</span></strong><small>{{ role() }}</small></div>
+                </li>
+              }
+            </ul>
+          </section>
+        }
+        @case ('appearance') {
+          <section aria-labelledby="room-appearance-title">
+            <h3 id="room-appearance-title">Giao diện phòng</h3>
+            <p class="description">{{ canChangeTheme() ? 'Chọn nền cho không gian học.' : 'Giao diện do người quản lý phòng thiết lập.' }}</p>
+            @if (canChangeTheme()) {
+              <div class="background-upload">
+                <input #backgroundPicker type="file" hidden accept="image/jpeg,image/png,image/webp,image/avif"
+                  (change)="chooseBackground(backgroundPicker)">
+                <div class="background-upload-row">
+                  <small id="background-size-hint">Khuyến nghị 1920 × 1080 px (16:9)</small>
+                  <button type="button" class="secondary invite-button" aria-describedby="background-size-hint"
+                    (click)="backgroundPicker.click()">Tải ảnh nền lên</button>
+                </div>
+                <small>{{ hasCustomBackground() ? 'Đang dùng ảnh nền trên thiết bị này.' : 'Ảnh nền áp dụng trên thiết bị này.' }}</small>
+                @if (backgroundError()) { <p class="error" role="alert">{{ backgroundError() }}</p> }
+              </div>
+            }
+            <div class="themes">
+              @for (theme of themes(); track theme.id) {
+                <button type="button" [disabled]="!canChangeTheme()" [attr.aria-pressed]="!hasCustomBackground() && selectedTheme() === theme.id"
+                  (click)="selectTheme.emit(theme.id)">
+                  <span class="preview" [style.background]="theme.background">
+                    @if (theme.type === 'video') { <video [src]="theme.src" preload="metadata" muted playsinline></video> }
+                    @else if (theme.src) { <img [src]="theme.src" alt="" loading="lazy" [style.object-fit]="theme.fit || 'cover'"> }
+                    @if (!hasCustomBackground() && selectedTheme() === theme.id) { <span class="selected-mark"><svg lucideCheck aria-hidden="true"></svg></span> }
+                  </span>
+                  <strong>{{ theme.name }}</strong>
+                  @if (theme.ambient) { <small>{{ theme.ambient }}</small> }
+                </button>
+              }
+            </div>
+          </section>
+        }
+        @case ('permissions') {
+          @if (canManage() || roleKey() === 'owner') {
+            <section aria-labelledby="room-general-title">
+              <h3 id="room-general-title">Cài đặt chung</h3>
+              @if (extras.demo && roleKey() === 'owner') {
+                <form class="rename-room" (submit)="$event.preventDefault(); renameRoom(name)">
+                  <label for="settings-room-name">Tên phòng</label>
+                  <div>
+                    <input #name id="settings-room-name" [value]="roomName()" maxlength="80" required (keydown.enter)="$event.preventDefault(); renameRoom(name)">
+                    <button class="secondary save-room-name" type="button" (click)="renameRoom(name)" aria-label="Lưu tên phòng" title="Lưu tên phòng"
+                      [disabled]="renaming()"><svg lucideSave aria-hidden="true"></svg></button>
+                  </div>
+                  @if (renameFeedback()) { <p role="status">{{ renameFeedback() }}</p> }
+                  @if (renameError()) { <p class="error" role="alert">{{ renameError() }}</p> }
+                </form>
+                @if (roomInfo(); as info) {
+                  <form class="room-details" (submit)="$event.preventDefault(); saveRoomDetails(goal, tags)">
+                    <label for="settings-room-goal">Mục tiêu học tập</label>
+                    <textarea #goal id="settings-room-goal" rows="2" [value]="info.description"></textarea>
+                    <label for="settings-room-tags">Hashtag</label>
+                    <input #tags id="settings-room-tags" [value]="extraTags()" placeholder="Phân cách bằng dấu phẩy">
+                    <button class="secondary" type="submit" [disabled]="savingDetails()">Lưu thông tin</button>
+                    @if (detailsFeedback()) { <p role="status">{{ detailsFeedback() }}</p> }
+                    @if (detailsError()) { <p class="error" role="alert">{{ detailsError() }}</p> }
+                  </form>
+                  @if (info.type === 'private') {
+                    <div class="room-password">
+                      <label for="settings-room-password">{{ passwordEditing() ? 'Mật khẩu mới' : 'Mật khẩu phòng' }}</label>
+                      <div class="password-actions">
+                        <input #password id="settings-room-password" [type]="passwordVisible() ? 'text' : 'password'"
+                          [value]="displayedPassword()" [readOnly]="!passwordEditing()" autocomplete="new-password"
+                          [placeholder]="passwordEditing() ? 'Tối thiểu 4 ký tự' : info.requiresPassword ? '••••••••' : 'Chưa có mật khẩu'"
+                          (keydown.enter)="$event.preventDefault(); savePassword(password)">
+                        <button class="secondary save-room-name" type="button" (click)="togglePasswordVisibility()"
+                          [attr.aria-label]="passwordVisible() ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'"
+                          [title]="passwordVisible() ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'">
+                          @if (passwordVisible()) { <svg lucideEyeOff aria-hidden="true"></svg> }
+                          @else { <svg lucideEye aria-hidden="true"></svg> }
+                        </button>
+                        @if (passwordEditing()) {
+                          <button class="secondary save-room-name" type="button" aria-label="Lưu mật khẩu" title="Lưu mật khẩu"
+                            [disabled]="savingPassword()" (click)="savePassword(password)"><svg lucideSave aria-hidden="true"></svg></button>
+                          <button class="secondary save-room-name" type="button" aria-label="Hủy đổi mật khẩu" title="Hủy"
+                            [disabled]="savingPassword()" (click)="cancelPasswordEdit(password)"><svg lucideX aria-hidden="true"></svg></button>
+                        } @else {
+                          <button class="secondary save-room-name" type="button" aria-label="Sao chép mật khẩu" title="Sao chép mật khẩu"
+                            [disabled]="!info.requiresPassword" (click)="copyPassword()"><svg lucideCopy aria-hidden="true"></svg></button>
+                          <button class="secondary save-room-name" type="button" aria-label="Sửa mật khẩu" title="Sửa mật khẩu"
+                            (click)="editPassword(password)"><svg lucidePencil aria-hidden="true"></svg></button>
+                        }
+                      </div>
+                      @if (passwordFeedback()) { <p role="status">{{ passwordFeedback() }}</p> }
+                      @if (passwordError()) { <p class="error" role="alert">{{ passwordError() }}</p> }
+                    </div>
+                  }
+                }
+                <div class="permissions">
+                  <button type="button" role="switch" [attr.aria-checked]="roomSettings().locked" (click)="toggleRoomOption('locked')">
+                    <span>Khóa lượt tham gia mới</span><i aria-hidden="true"></i>
+                  </button>
+                  <button type="button" role="switch" [attr.aria-checked]="roomSettings().pauseChat" (click)="toggleRoomOption('pauseChat')">
+                    <span>Tạm dừng chat thành viên trong Pomodoro chung</span><i aria-hidden="true"></i>
+                  </button>
+                </div>
+              }
+              @if (roleKey() === 'owner') {
+                <div class="permissions">
+                  <button type="button" role="switch" [attr.aria-checked]="!permissions().approvalRequired"
+                    [disabled]="loading() || !canManage() || saving()" (click)="toggle('approvalRequired')">
+                    <span>Tự động duyệt lượt tham gia mới</span><i aria-hidden="true"></i>
+                  </button>
+                </div>
+              }
+            </section>
+            <details #memberPermissions class="disclosure guest-permissions" open>
+              <summary class="chevron-summary" (click)="$event.preventDefault(); memberPermissions.open = !memberPermissions.open"><span>Quyền thành viên</span><svg lucideChevronDown aria-hidden="true"></svg></summary>
+              <div class="permissions">
+                @for (control of permissionControls; track control.key) {
+                  <button type="button" role="switch" [attr.aria-checked]="permissions()[control.key]"
+                    [disabled]="loading() || !canManage() || saving()" (click)="toggle(control.key)">
+                    <span>{{ control.label }}</span><i aria-hidden="true"></i>
+                  </button>
+                }
+              </div>
+            </details>
+            @if (matrix().length) {
+              <details class="disclosure">
+                <summary>Bảng quyền theo vai trò</summary>
+                <div class="matrix-wrap" tabindex="0" role="region" aria-label="Bảng quyền theo vai trò">
+                  <table>
+                    <thead><tr><th scope="col">Chức năng</th><th scope="col">Chủ phòng</th><th scope="col">Điều phối</th><th scope="col">Thành viên</th></tr></thead>
+                    <tbody>
+                      @for (row of matrix(); track row.feature) {
+                        <tr><th scope="row">{{ row.label || row.feature }}</th><td>{{ row.owner ? 'Có' : 'Không' }}</td><td>{{ row.moderator ? 'Có' : 'Không' }}</td><td>{{ row.member === true ? 'Có' : row.member === false ? 'Không' : row.member }}</td></tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            }
+          }
+        }
+      }
+      }
+    @if (roleKey() === 'owner' && (requestsOnly() || activeSection() === 'members')) {
+      @if (requestsOnly()) {
+        <ng-container *ngTemplateOutlet="requestList; context: { $implicit: closeButton }"></ng-container>
+      } @else {
+        <details #requests class="disclosure" [open]="pendingRequests().length > 0">
+          <summary #requestsSummary class="chevron-summary" (click)="$event.preventDefault(); requests.open = !requests.open">
+            <span>Yêu cầu tham gia · {{ pendingRequests().length }}</span><svg lucideChevronDown aria-hidden="true"></svg>
+          </summary>
+          <ng-container *ngTemplateOutlet="requestList; context: { $implicit: requestsSummary }"></ng-container>
+        </details>
+      }
+      <ng-template #requestList let-focusTarget>
+        <div role="status" class="request-status">{{ requestFeedback() }}</div>
+        @if (requestError()) { <p class="error" role="alert">{{ requestError() }}</p> }
+        @for (request of pendingRequests(); track request.userId) {
+          <div class="join-request">
+            <span class="request-person">
+              <span class="request-avatar" aria-hidden="true">{{ applicantInitials(request.userName || '') }} @if (request.avatar) { <img [src]="request.avatar" alt="" (error)="$any($event.target).hidden = true"> }</span>
+              <span>{{ request.userName || 'Học viên' }}</span>
+            </span>
+            <div class="request-actions">
+              <button class="secondary" type="button" [disabled]="!!handlingRequest()" [attr.aria-label]="'Duyệt yêu cầu của ' + (request.userName || 'học viên')"
+                (click)="decideRequest(request, 'approve', focusTarget)">{{ handlingRequest()?.userId === request.userId && handlingRequest()?.action === 'approve' ? 'Đang xử lý…' : 'Duyệt' }}</button>
+              <button class="secondary" type="button" [disabled]="!!handlingRequest()" [attr.aria-label]="'Từ chối yêu cầu của ' + (request.userName || 'học viên')"
+                (click)="decideRequest(request, 'reject', focusTarget)">{{ handlingRequest()?.userId === request.userId && handlingRequest()?.action === 'reject' ? 'Đang xử lý…' : 'Từ chối' }}</button>
+            </div>
+          </div>
+        } @empty { <p class="description">Chưa có yêu cầu đang chờ duyệt.</p> }
+      </ng-template>
+    }
+    </div>
   </div>
-</aside>
+</dialog>

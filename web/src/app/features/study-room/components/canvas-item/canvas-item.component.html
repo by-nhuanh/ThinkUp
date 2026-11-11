@@ -1,14 +1,93 @@
-<article [class.sticky]="item().kind === 'note' || item().kind === 'text'" [class.media]="item().kind === 'youtube'" [class.image]="item().kind === 'image' || item().kind === 'gif'" [class.board]="item().kind === 'whiteboard'" [class.selected]="selected()" [style.left.px]="item().x" [style.top.px]="item().y" [style.width.px]="item().width" [style.height.px]="item().height" [style.z-index]="item().z || 1" [style.background]="item().kind === 'note' || item().kind === 'text' ? item().color : null" (pointerdown)="startMove($event)" (pointermove)="moveGesture($event)" (pointerup)="endGesture()" (pointercancel)="endGesture()">
+<article [class.sticky]="item().kind === 'note' || item().kind === 'text' || item().kind === 'checklist' || item().kind === 'link'" [class.media]="item().kind === 'youtube'" [class.image]="item().kind === 'image' || item().kind === 'gif'" [class.board]="item().kind === 'whiteboard'" [class.title-item]="item().kind === 'text'" [class.selected]="selected()" [style.left.px]="item().x" [style.top.px]="item().y" [style.width.px]="item().width" [style.height.px]="item().height" [style.z-index]="item().z || 1" [style.background]="item().color || null" (pointerdown)="startMove($event)" (pointermove)="moveGesture($event)" (pointerup)="endGesture()" (pointercancel)="endGesture()">
   @if (canManage()) {
     <button type="button" class="item-delete" title="Xoá phần tử" aria-label="Xoá phần tử khỏi canvas" (click)="remove.emit()">
       <svg lucideTrash2></svg>
     </button>
   }
-  @if (selected() && canManage() && (item().kind === 'note' || item().kind === 'text')) { <div class="mini-toolbar"><button type="button" title="Đổi màu" (click)="paletteOpen.set(!paletteOpen())"><svg lucidePalette></svg></button>@if (paletteOpen()) { @for (color of colors; track color) { <button type="button" class="swatch" [style.background]="color" (click)="commit({ color }); paletteOpen.set(false)"></button> } }</div> }
-  @if (item().kind === 'note' || item().kind === 'text') { @if (editing()) { <textarea [value]="item().content" (input)="onInput($event)" (blur)="finishEditing()" placeholder="Nhập ghi chú..."></textarea> } @else { <p (dblclick)="canManage() && editing.set(true)">{{ item().content || (canManage() ? 'Nháy đúp để sửa' : 'Ghi chú trống') }}</p> } }
+  @if (selected() && canManage() && (item().kind === 'note' || item().kind === 'text')) { <div class="mini-toolbar"><button type="button" aria-label="Đổi màu" (click)="paletteOpen.set(!paletteOpen())"><svg lucidePalette></svg></button>@if (paletteOpen()) { @for (color of colors; track color) { <button type="button" class="swatch" [attr.aria-label]="'Màu ' + color" [style.background]="color" (click)="commit({ color }); paletteOpen.set(false)"></button> } }</div> }
+  @let kind = item().kind;
+  @if (kind === 'note' || kind === 'text' || kind === 'checklist' || kind === 'link') {
+    @let field = textFields[kind];
+    @if (editing() && canManage()) {
+      <form class="item-editor" (submit)="$event.preventDefault(); finishTextEdit(true)"
+        (keydown.escape)="$event.stopPropagation(); finishTextEdit(false)">
+        @if (kind === 'text' || kind === 'link') {
+          <input #textEditor [type]="kind === 'link' ? 'url' : 'text'" [attr.aria-label]="field.label" [value]="draft()" [attr.maxlength]="field.limit"
+            (input)="draft.set(textEditor.value)" required>
+        } @else {
+          <textarea #textEditor [attr.aria-label]="field.label" [value]="draft()" [attr.maxlength]="field.limit"
+            (input)="draft.set(textEditor.value)" required></textarea>
+        }
+        <div class="item-editor-actions">
+          <button type="button" (click)="finishTextEdit(false)">Hủy</button>
+          <button type="submit" [disabled]="!draft().trim() || draft().trim().length > field.limit || (kind === 'link' && !webLink(draft()))">Lưu</button>
+        </div>
+      </form>
+    } @else {
+      @if (kind === 'checklist') {
+        <ul class="item-copy task-list" aria-label="Danh sách việc">
+          @for (task of tasks(); track $index) {
+            <li><label><input type="checkbox" [checked]="item().checkedRows?.includes($index) ?? false"
+              [disabled]="!canManage()" (change)="toggleTask($index)"><span>{{ task }}</span></label></li>
+          }
+        </ul>
+      } @else if (kind === 'link') {
+        @if (linkHref(); as href) {
+          <a class="item-copy canvas-link" [href]="href" target="_blank" rel="noopener noreferrer">{{ item().content }}</a>
+        }
+      } @else {
+        <p class="item-copy" [class.editable-copy]="kind === 'note' && canManage()"
+          (click)="kind === 'note' && startTextEdit()" (dblclick)="kind === 'text' && startTextEdit()">{{ item().content || field.label }}</p>
+      }
+      @if (canManage()) {
+        <button #editButton class="item-edit" type="button" [attr.aria-label]="'Sửa ' + field.label"
+          (click)="startTextEdit()"><svg lucidePencil aria-hidden="true"></svg></button>
+      }
+    }
+  }
   @else if (item().kind === 'youtube') { @if (editing()) { <div class="url-form"><input type="url" [value]="urlInput()" (input)="urlInput.set($any($event.target).value)" placeholder="Dán link YouTube..."><button type="button" (click)="saveUrl()">OK</button></div>@if(urlError()){<p role="alert" class="url-error">{{urlError()}}</p>} } @else if (embedUrl(); as embed) { <iframe [src]="embed" title="YouTube" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope" allowfullscreen></iframe> } @else { <button type="button" class="add-link" (click)="editUrl()"><svg lucideLink></svg> Thêm link video</button> } }
-  @else if (item().kind === 'image') { <svg lucideImage></svg><span>{{ item().label || 'Kéo ảnh vào đây' }}</span> }
-  @else if (item().kind === 'gif') { @if (item().url) { <img [src]="item().url" alt="GIF trên canvas"> } @else { <svg lucideImage></svg><span>GIF</span> } }
-  @else if (item().kind === 'whiteboard') { @if (canManage()) { <div class="board-tools"><button type="button" [class.active]="drawMode()" (click)="drawMode.set(!drawMode())">{{ drawMode() ? 'Đang vẽ' : 'Vẽ' }}</button><button type="button" title="Xóa nét vẽ" (click)="commit({ strokes: [] })"><svg lucideEraser></svg></button></div> }<svg class="draw-surface" viewBox="0 0 100 100" preserveAspectRatio="none" [class.drawing]="drawMode() && canManage()" (pointerdown)="startStroke($event)" (pointermove)="moveStroke($event)" (pointerup)="endStroke()" (pointercancel)="endStroke()">@for (stroke of item().strokes || []; track $index) { <polyline [attr.points]="stroke" fill="none" stroke="#494052" stroke-width="0.6" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/> }</svg> }
+  @else if (item().kind === 'image' || item().kind === 'gif') {
+    @if (item().url; as source) {
+      <img [src]="source" [alt]="item().label || 'Ảnh trên canvas'" referrerpolicy="no-referrer" draggable="false">
+    } @else {
+      <svg lucideImage></svg><span>Ảnh chưa có nguồn</span>
+    }
+  }
+  @else if (item().kind === 'whiteboard') {
+    @if (canManage()) {
+      <div class="board-tools" (keydown.escape)="$event.stopPropagation(); closePenPalette()">
+        <button #penButton type="button" aria-label="Màu bút" [attr.aria-expanded]="penPaletteOpen()"
+          [style.color]="penColor()" (click)="penPaletteOpen.set(!penPaletteOpen())">
+          <svg lucidePencil aria-hidden="true"></svg>
+        </button>
+        <button type="button" aria-label="Xóa nét vẽ" [disabled]="!item().strokes?.length || !!activeStroke()"
+          (click)="commit({ strokes: [] })"><svg lucideEraser aria-hidden="true"></svg></button>
+        <button class="board-move" type="button" aria-label="Kéo để di chuyển bảng" [disabled]="movementLocked()"
+          (pointerdown)="startGesture($event, 'move')">
+          <svg lucideGripHorizontal aria-hidden="true"></svg>
+        </button>
+        @if (penPaletteOpen()) {
+          <div class="board-palette" role="group" aria-label="Bảng màu bút">
+            @for (color of penColors; track color.value) {
+              <button type="button" [attr.aria-label]="color.label" [attr.aria-pressed]="penColor() === color.value"
+                [style.--swatch]="color.value" (click)="selectPen(color.value)"></button>
+            }
+          </div>
+        }
+      </div>
+    }
+    <svg class="draw-surface" viewBox="0 0 100 100" preserveAspectRatio="none" [class.drawing]="canManage()"
+      (pointerdown)="startStroke($event)" (pointermove)="moveStroke($event)"
+      (pointerup)="endStroke($event)" (pointercancel)="endStroke($event)" (lostpointercapture)="endStroke($event)">
+      @for (stroke of item().strokes ?? []; track $index) {
+        <polyline [attr.points]="typeof stroke === 'string' ? stroke : stroke.points" fill="none" [attr.stroke]="typeof stroke === 'string' ? '#494052' : stroke.color"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+      }
+      @if (activeStroke(); as stroke) {
+        <polyline [attr.points]="stroke.points" fill="none" [attr.stroke]="stroke.color"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+      }
+    </svg>
+  }
   @if (canManage() && canResize()) { <button type="button" class="resize-handle" title="Thay đổi kích thước" aria-label="Thay đổi kích thước" (pointerdown)="startGesture($event, 'resize')" (pointermove)="moveGesture($event)" (pointerup)="endGesture()" (pointercancel)="endGesture()"></button> }
 </article>

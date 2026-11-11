@@ -1,4 +1,0 @@
-<svg class="ink-canvas" [class.enabled]="enabled()" (pointerdown)="start($event)" (pointermove)="move($event)" (pointerup)="end()" (pointercancel)="end()">
-  <g [attr.transform]="worldTransform()">@for (stroke of strokes(); track stroke.id) { <polyline [attr.points]="points(stroke)" [attr.stroke]="stroke.color" [attr.stroke-width]="stroke.width" /> }</g>
-</svg>
-@if (enabled() && optionsOpen()) { <div class="pen-shade" (pointerdown)="$event.stopPropagation(); closeOptions.emit()"></div><div class="pen-options"><div class="colors">@for (choice of colors; track choice) { <button type="button" [class.selected]="color() === choice" [style.background]="choice" (click)="color.set(choice)" [attr.aria-label]="'Màu ' + choice"></button> }</div><i></i><label>CỠ <input type="range" min="1" max="10" [value]="width()" (input)="setWidth($event)" /><span>{{ width() }}</span></label><i></i><button type="button" class="clear" (click)="clear()">Xóa hết</button></div> }
