@@ -1,7 +1,5 @@
-!docs/handoff/user-management.md
-!docs/handoff/business-orders.md
-!docs/handoff/business-vouchers.md
-!docs/handoff/business-payouts.md
+docs/
+tmp/
 /output/
 !scripts/normalize-mock-order-transactions.js
 !scripts/seed-business-vouchers-demo.js
