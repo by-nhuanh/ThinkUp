@@ -1,19 +1,9 @@
-node_modules/
-.env
-.env.*
-!.env.example
-writing-block.md
-!auth_onboarding.md
-
-# Local API reference, manual test collection, and generated dependencies
-/api.md
-/postman/
-/src/user/email/index.js
-**/node_modules/
-
-# Optional maintenance and recheck scripts
-recheck/
-scripts/*
-!scripts/prepare_roadmap_data.js
-!scripts/seed_all_stage_questions.js
-!scripts/check_roadmaps.js
+!docs/handoff/user-management.md
+!docs/handoff/business-orders.md
+!docs/handoff/business-vouchers.md
+!docs/handoff/business-payouts.md
+/output/
+!scripts/normalize-mock-order-transactions.js
+!scripts/seed-business-vouchers-demo.js
+!scripts/prepare-instructor-payout-wallets.js
+!scripts/backfill-instructor-revenue-split.js

@@ -319,7 +319,7 @@ async function fetchCatalog(db) {
   if (cached && Date.now() - cached.at < CATALOG_CACHE_TTL_MS) return cached.items;
 
   const courses = await db.collection(COLLECTION_COURSES)
-    .find({ status: 'published' })
+    .find({ status: 'published', admin_hidden: { $ne: true } })
     .project({
       course_id: 1, price: 1, original_price: 1, rating: 1,
       total_students: 1, total_reviews: 1, level: 1,

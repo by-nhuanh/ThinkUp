@@ -548,7 +548,7 @@ export async function getBlogList(query = {}, options = {}) {
 
   // QUY TẮC: /main/blog CHỈ HIỂN THỊ CÁC BÀI ĐÃ XUẤT BẢN HOẶC ĐÃ CẬP NHẬT.
   // Tuyệt đối không để lọt bài 'draft' ra ngoài công chúng.
-  filter.status = { $in: ['published', 'updated'] };
+  filter.status = { $in: ['published', 'updated', 'edited'] };
 
   if (query.category && query.category !== 'all' && query.category !== 'Tất cả') {
     const catRegex = new RegExp(`^${query.category.trim()}$`, 'i');
@@ -1269,6 +1269,9 @@ export async function getBlogComments(idOrSlug, options = {}) {
     queryConditions.push({ _id: new ObjectId(idOrSlug.trim()) });
   }
   const post = await postColl.findOne({ $or: queryConditions });
+  if (post && !['published', 'updated', 'edited'].includes(String(post.status || 'published').toLowerCase())) {
+    return { comments: [], total: 0 };
+  }
 
   const possibleIds = [idOrSlug.trim()];
   if (post) {
@@ -1278,7 +1281,7 @@ export async function getBlogComments(idOrSlug, options = {}) {
   }
 
   const rawComments = await commentColl
-    .find({ postId: { $in: possibleIds } })
+    .find({ postId: { $in: possibleIds }, status: { $nin: ['hidden', 'deleted', 'reported'] } })
     .sort({ createdAt: -1, _id: -1 })
     .toArray();
 
@@ -1374,12 +1377,35 @@ export async function addBlogComment(idOrSlug, commentData = {}, options = {}) {
     throw err;
   }
 
+  if (!['published', 'updated', 'edited'].includes(String(post.status || 'published').toLowerCase())) {
+    const err = new Error('Bài viết hiện không nhận bình luận.');
+    err.status = 409;
+    err.code = 'BLOG_NOT_OPEN_FOR_COMMENTS';
+    throw err;
+  }
+  const userId = String(options.user?.id || options.user?._id || options.user?.user_id || commentData.userId || '');
+  if (userId) {
+    const restriction = await db.collection('user_content_restrictions').findOne({
+      user_id: userId,
+      type: 'comment',
+      status: 'active',
+      starts_at: { $lte: new Date() },
+      $or: [{ ends_at: null }, { ends_at: { $gt: new Date() } }],
+    });
+    if (restriction) {
+      const err = new Error('Tài khoản đang bị hạn chế gửi bình luận.');
+      err.status = 403;
+      err.code = 'COMMENT_RESTRICTED';
+      throw err;
+    }
+  }
+
   const postId = post.id ? String(post.id) : post._id.toString();
   const now = new Date();
   const authorName = (commentData.authorName || options.user?.full_name || 'Học viên ThinkUp').trim();
   const authorAvatar = commentData.authorAvatar || options.user?.avatar_url || '/assets/blog/default-avatar.jpg';
 
-  const currentUserId = String(options.user?.id || options.user?._id || options.user?.user_id || commentData.userId || '');
+  const currentUserId = String(options.user?.id || options.user?._id || options.user?.user_id || '');
   const insertDoc = {
     postId,
     userId: currentUserId || null,
@@ -1443,6 +1469,14 @@ export async function getBlogDetail(idOrSlug, options = {}) {
     const err = new Error('Bài viết blog không tồn tại hoặc đã bị gỡ bỏ.');
     err.status = 404;
     err.code = 'BLOG_NOT_FOUND';
+    throw err;
+  }
+
+  const postStatus = String(rawPost.status || 'published').toLowerCase();
+  if (!['published', 'updated', 'edited', 'draft'].includes(postStatus)) {
+    const err = new Error('Bài viết blog hiện không hiển thị công khai.');
+    err.status = 404;
+    err.code = 'BLOG_NOT_PUBLIC';
     throw err;
   }
 
@@ -1542,13 +1576,13 @@ export async function getBlogDetail(idOrSlug, options = {}) {
   // Lấy các bài viết liên quan và bình luận thảo luận
   const [prevDoc, nextDoc, relatedDocs, commentsRes] = await Promise.all([
     collection
-      .find({ _id: { $lt: rawPost._id }, status: { $in: ['published', 'updated'] } })
+      .find({ _id: { $lt: rawPost._id }, status: { $in: ['published', 'updated', 'edited'] } })
       .sort({ _id: -1 })
       .limit(1)
       .project({ title: 1, slug: 1 })
       .toArray(),
     collection
-      .find({ _id: { $gt: rawPost._id }, status: { $in: ['published', 'updated'] } })
+      .find({ _id: { $gt: rawPost._id }, status: { $in: ['published', 'updated', 'edited'] } })
       .sort({ _id: 1 })
       .limit(1)
       .project({ title: 1, slug: 1 })
@@ -1557,7 +1591,7 @@ export async function getBlogDetail(idOrSlug, options = {}) {
       .find({
         _id: { $ne: rawPost._id },
         category: rawPost.category,
-        status: { $in: ['published', 'updated'] },
+        status: { $in: ['published', 'updated', 'edited'] },
       })
       .sort({ views: -1, _id: -1 })
       .limit(3)
@@ -1649,7 +1683,7 @@ export async function getPopularTopics(options = {}) {
 
   const docs = await collection
     .find({
-      status: { $in: ['published', 'updated'] },
+      status: { $in: ['published', 'updated', 'edited'] },
       category: { $exists: true, $ne: '' },
     })
     .project({ category: 1 })
@@ -1697,7 +1731,7 @@ export async function getMostViewedBlogPosts(options = {}) {
   const pipeline = [
     {
       $match: {
-        status: { $in: ['published', 'updated'] },
+      status: { $in: ['published', 'updated', 'edited'] },
       },
     },
     {
@@ -2278,7 +2312,7 @@ export function createBlogRouter(expressModule, requireAuthMiddleware, requireAd
   // 16. Thêm bình luận thảo luận mới cho bài viết
   router.post('/:id/comments', async (req, res, next) => {
     try {
-      const result = await addBlogComment(req.params.id, req.body);
+      const result = await addBlogComment(req.params.id, req.body, { user: req.userId ? { id: req.userId } : null });
       res.status(201).json(result);
     } catch (err) {
       next(err);

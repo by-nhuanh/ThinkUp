@@ -10,6 +10,8 @@ import { createStripeCheckoutSession,verifyStripeEvent,handleStripeWebhookEvent 
 import { createPaymentRouter } from '../payment.router.js';
 import { updatePaymentPreferences } from '../../payment-settings/payment-settings.user.js';
 import { updateNotificationPreferences } from '../../notification/notification.user.js';
+import { createAdminVouchersRouter } from '../../../admin/business/vouchers.admin.js';
+import { VOUCHERS } from '../../voucher/voucher.service.js';
 
 function memoryDb(){
   let tables=new Map(),queue=Promise.resolve();
@@ -33,6 +35,7 @@ function memoryDb(){
     const rows=()=>tables.get(name);const check=(op,filter,update)=>{if(db.fail)db.fail(name,op,filter,update)};
     return {
       async findOne(query){check('findOne',query);return copy(rows().find(row=>match(row,query))||null)},
+      async countDocuments(query){check('countDocuments',query);return rows().filter(row=>match(row,query)).length},
       find(query){let limit=Infinity;return {limit(n){limit=n;return this},async toArray(){check('find',query);return copy(rows().filter(row=>match(row,query)).slice(0,limit))}}},
       async insertOne(value){check('insertOne',value);const row=copy(value);row._id??=new ObjectId();if(rows().some(r=>equal(r._id,row._id)))throw Object.assign(new Error('Duplicate'),{code:11000});rows().push(row);return {insertedId:row._id}},
       async updateOne(query,update,options={}){check('updateOne',query,update);let row=rows().find(row=>match(row,query));if(!row&&options.upsert){row=Object.fromEntries(Object.entries(query).filter(([k,v])=>!k.startsWith('$')&&(typeof v!=='object'||v instanceof ObjectId)));row._id??=new ObjectId();apply(row,update,true);if(rows().some(r=>equal(r._id,row._id)))throw Object.assign(new Error('Duplicate'),{code:11000});rows().push(row);return {matchedCount:0,upsertedId:row._id}}if(!row)return {matchedCount:0};apply(row,update,false);return {matchedCount:1}},
@@ -56,12 +59,92 @@ async function fixture(){
   return {db,userId,courseId,options,create,pay,get sent(){return sent}};
 }
 function txOf(f,id){return f.db.tables.get('payment_transactions').find(r=>r.transaction_id===id)}
+async function managedVoucherFixture() {
+  const f = await fixture();
+  const owner = 'INSTRUCTOR-1', other = 'INSTRUCTOR-2';
+  f.db.tables.get('courses')[0].instructor_id = owner;
+  await f.db.collection('courses').insertOne({ _id: new ObjectId(), course_id: 'COURSE_02', title: 'Other instructor', instructor_id: other, status: 'published', price: 300000, original_price: 300000 });
+  await f.db.collection('courses').insertOne({ _id: new ObjectId(), course_id: 'COURSE_03', title: 'Second owned course', instructor_id: owner, status: 'published', price: 400000, original_price: 400000 });
+  const code = 'GV-INTEGRATION-01';
+  const body = { code, sponsor: 'instructor', instructorId: owner, scope: 'courses', scopeTargetIds: ['COURSE_01', 'COURSE_03'], audience: 'all', discountType: 'percent', discountValue: 20, maxDiscount: 100000, minOrder: 100000, minCourseCount: 1, limit: 20, perAccount: 1, startsAt: new Date(Date.now() - 86400000).toISOString(), endsAt: new Date(Date.now() + 86400000).toISOString() };
+  return { ...f, code, body };
+}
 function stripeSignature(raw,timestamp=Math.floor(Date.now()/1000)){return `t=${timestamp},v1=${createHmac('sha256',process.env.STRIPE_WEBHOOK_SECRET).update(`${timestamp}.`).update(raw).digest('hex')}`}
 function signedVnp(extra={}){
   const date=new Date(Date.now()+7*3600000).toISOString().slice(0,19).replace(/[-:T]/g,'');
   const params={vnp_TmnCode:'TESTMERCHANT',vnp_TxnRef:'GD2026103000000001',vnp_ResponseCode:'00',vnp_TransactionStatus:'00',vnp_Amount:'50000000',vnp_TransactionNo:'vnp-ref',vnp_PayDate:date,...extra};
   return {...params,vnp_SecureHash:createHmac('sha512',process.env.VNP_HASH_SECRET).update(canonicalVnpay(params)).digest('hex')};
 }
+
+test('Admin voucher API enforces SA/FA and supports create, edit, lock and unlock', async () => {
+  const f = await managedVoucherFixture(), app = express(), adminId = String(new ObjectId());
+  app.use(express.json());
+  app.use('/api/admin/business/vouchers', createAdminVouchersRouter(express, (req, res, next) => {
+    const role = req.get('X-Test-Role');
+    if (!role) return res.sendStatus(401);
+    req.adminId = adminId; req.adminRole = role; next();
+  }, { db: f.db }));
+  app.use((error, req, res, next) => res.status(error.status || 500).json({ code: error.code || 'ERROR' }));
+  const server = app.listen(0); await new Promise(resolve => server.once('listening', resolve));
+  const base = `http://127.0.0.1:${server.address().port}/api/admin/business/vouchers`;
+  const call = (path, method, role, body) => fetch(`${base}${path}`, { method, headers: { 'Content-Type': 'application/json', ...(role ? { 'X-Test-Role': role } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
+  try {
+    assert.equal((await call('/', 'POST', null, f.body)).status, 401);
+    assert.equal((await call('/', 'POST', 'CA', f.body)).status, 403);
+    assert.equal((await call('/', 'POST', 'FA', f.body)).status, 200);
+    assert.equal((await call(`/${f.code}`, 'PATCH', 'SA', { version: 1, description: 'Reviewed' })).status, 200);
+    assert.equal((await call(`/${f.code}/lock`, 'POST', 'FA')).status, 200);
+    assert.equal((await call(`/${f.code}/unlock`, 'POST', 'SA')).status, 200);
+    assert.equal(f.db.tables.get(VOUCHERS)[0].version, 4);
+    assert.equal(f.db.tables.get('admin_audit_logs').length, 4);
+  } finally { await new Promise(resolve => server.close(resolve)); }
+});
+
+test('concurrent voucher reservation and Admin lock have one consistent outcome', async () => {
+  const f = await managedVoucherFixture(), adminId = String(new ObjectId());
+  await f.db.collection(VOUCHERS).insertOne({ _id: new ObjectId(), code: f.code, sponsor: 'instructor', instructor_id: 'INSTRUCTOR-1', scope: 'courses', scope_target_ids: ['COURSE_01'], audience: 'all', discount_type: 'percent', discount_value: 20, max_discount: 100000, min_order_value: 100000, min_course_count: 1, usage_limit: 20, usage_count: 0, usage_limit_per_user: 1, starts_at: new Date(Date.now() - 86400000), expires_at: new Date(Date.now() + 86400000), locked_at: null, deleted_at: null, version: 1 });
+  const { setVoucherLock } = await import('../../../admin/business/vouchers.admin.js');
+  const results = await Promise.allSettled([f.create({ voucherCode: f.code }), setVoucherLock(f.code, true, { db: f.db, adminId })]);
+  const voucher = f.db.tables.get(VOUCHERS)[0];
+  assert.equal(results[1].status, 'fulfilled');
+  assert.equal(voucher.locked_at instanceof Date, true);
+  assert.equal(voucher.usage_count, results[0].status === 'fulfilled' ? 1 : 0);
+  await assert.rejects(f.create({ voucherCode: f.code, idempotencyKey: 'after-lock-checkout-key' }), { code: 'VOUCHER_UNAVAILABLE' });
+});
+
+test('per-learner limit and failure release are enforced without double release', async () => {
+  const f = await managedVoucherFixture();
+  await f.db.collection(VOUCHERS).insertOne({ _id: new ObjectId(), code: f.code, sponsor: 'instructor', instructor_id: 'INSTRUCTOR-1', scope: 'courses', scope_target_ids: ['COURSE_01', 'COURSE_03'], audience: 'all', discount_type: 'percent', discount_value: 20, max_discount: 100000, min_order_value: 100000, min_course_count: 1, usage_limit: 20, usage_count: 0, usage_limit_per_user: 1, starts_at: new Date(Date.now() - 86400000), expires_at: new Date(Date.now() + 86400000), locked_at: null, deleted_at: null, version: 1 });
+  const first = await f.create({ voucherCode: f.code });
+  await assert.rejects(f.create({ voucherCode: f.code, courseIds: ['COURSE_03'], idempotencyKey: 'second-instructor-checkout' }), { code: 'VOUCHER_USER_LIMIT' });
+  assert.equal(f.db.tables.get(VOUCHERS)[0].usage_count, 1);
+  const { recordPaymentFailure } = await import('../payment.service.js');
+  await recordPaymentFailure(first.transactionId, 'sepay', f.options);
+  await recordPaymentFailure(first.transactionId, 'sepay', f.options);
+  assert.equal(f.db.tables.get(VOUCHERS)[0].usage_count, 0);
+  assert.equal(txOf(f, first.transactionId).voucher_released, true);
+  const second = await f.create({ voucherCode: f.code, courseIds: ['COURSE_03'], idempotencyKey: 'third-instructor-checkout' });
+  assert.equal(second.status, 'pending');
+  assert.equal(f.db.tables.get(VOUCHERS)[0].usage_count, 1);
+  txOf(f, second.transactionId).expires_at = new Date(0);
+  await checkPaymentStatus(second.transactionId, f.userId, f.options);
+  await checkPaymentStatus(second.transactionId, f.userId, f.options);
+  assert.equal(f.db.tables.get(VOUCHERS)[0].usage_count, 0);
+});
+
+test('instructor voucher checkout snapshot allocates only own courses', async () => {
+  const f = await managedVoucherFixture();
+  await f.db.collection(VOUCHERS).insertOne({ _id: new ObjectId(), code: f.code, sponsor: 'instructor', instructor_id: 'INSTRUCTOR-1', scope: 'courses', scope_target_ids: ['COURSE_01', 'COURSE_03'], audience: 'all', discount_type: 'percent', discount_value: 20, max_discount: 100000, min_order_value: 100000, min_course_count: 1, usage_limit: 20, usage_count: 0, usage_limit_per_user: 1, starts_at: new Date(Date.now() - 86400000), expires_at: new Date(Date.now() + 86400000), locked_at: null, deleted_at: null, version: 1 });
+  const session = await f.create({ voucherCode: f.code, courseIds: ['COURSE_01', 'COURSE_02'] });
+  const summary = JSON.parse(txOf(f, session.transactionId).order_summary);
+  assert.equal(summary.voucher_discount, 100000);
+  assert.equal(summary.voucher_sponsor, 'instructor');
+  assert.equal(summary.voucher_instructor_id, 'INSTRUCTOR-1');
+  assert.deepEqual(summary.voucher_eligible_course_ids, ['COURSE_01']);
+  assert.deepEqual(summary.voucher_allocations, [{ courseId: 'COURSE_01', discount: 100000 }]);
+  assert.equal(f.db.tables.get('orders')[0].voucher_discount, 100000);
+  await assert.rejects(f.create({ voucherCode: f.code, courseIds: ['COURSE_02'], idempotencyKey: 'wrong-instructor-checkout' }), { code: 'VOUCHER_INVALID' });
+});
 
 test('Payment lookup QR payload contains only the existing result URL and transaction ID',async()=>{
   for(const method of ['sepay','vnpay','stripe']) {
@@ -323,6 +406,7 @@ test('Stripe unpaid Checkout Session never triggers fulfillment even with a vali
 async function simulationFixture() {
   const f=await fixture();
   f.options.paymentMode='simulation';
+  f.options.simulationEmail=false;
   delete f.options.generateIds;
   f.options.fetch=async()=>{throw new Error('Simulation must not call an external gateway')};
   return f;

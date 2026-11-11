@@ -971,14 +971,32 @@ export function inspectStageBank(stage, careerName, records) {
 
 export async function getStageDefinition(stageId) {
   const db = await getMongoDb();
+  const versioned = await db.collection('admin_roadmap_versions').findOne({ 'stages.stage_id': String(stageId), status: { $in: ['published', 'superseded', 'hidden'] } }, { sort: { version: -1 } });
+  const versionedStage = versioned?.stages?.find(item => item.stage_id === String(stageId));
+  if (versioned && versionedStage) return { stage: versionedStage, careerName: versioned.name || versioned.career_name || '', template: versioned };
   const template = await db.collection('roadmap_templates').findOne({ 'stages.stage_id': String(stageId) });
   const stage = template?.stages?.find(item => item.stage_id === String(stageId));
   if (!stage) throw Object.assign(new Error('Không tìm thấy giai đoạn học.'), { status: 404, code: 'STAGE_NOT_FOUND' });
-  return { stage, careerName: template.career_name || '' };
+  return { stage, careerName: template.career_name || '', template };
 }
 
 async function readStageBank(stageId) {
   const { stage, careerName } = await getStageDefinition(stageId);
+  if (Array.isArray(stage.test?.questions) && stage.test.questions.length) {
+    const nodeById = new Map((stage.nodes || []).map(node => [String(node.node_id), node]));
+    return stage.test.questions.map((question, index) => {
+      const node = nodeById.get(String(question.node_id || stage.nodes?.[index % Math.max(stage.nodes.length, 1)]?.node_id || ''));
+      const options = (question.options || question.answers || []).map((option, optionIndex) => ({
+        key: String(option.key || option.letter || String.fromCharCode(65 + optionIndex)).toUpperCase(),
+        text: String(option.text || '')
+      }));
+      const correct = String(question.correct_option || question.correctOption || question.answers?.find(answer => answer.correct)?.key || question.answers?.find(answer => answer.correct)?.letter || '').toUpperCase();
+      if (!node || !question.question_text?.trim() || options.length !== 4 || !options.some(option => option.key === correct)) {
+        throw Object.assign(new Error('Cấu hình bài kiểm tra giai đoạn không hợp lệ.'), { status: 503, code: 'STAGE_TEST_UNAVAILABLE' });
+      }
+      return { question_id: String(question.question_id || question.id || `${stageId}-q${index + 1}`), stage_id: stageId, node_id: node.node_id, skill_tag: question.skill_tag || node.tags?.[0] || node.assessment_tags?.[0] || 'general', question_text: question.question_text, options, correct_option: correct, explanation: question.explanation || '' };
+    });
+  }
   const db = await getMongoDb();
   const records = await db.collection(COLLECTION_ROADMAP_QUESTIONS)
     .find({ stage_id: String(stageId) }).sort({ question_id: 1 }).toArray();
@@ -991,11 +1009,20 @@ async function readStageBank(stageId) {
   return bank.questions;
 }
 
-export async function getRoadmapTemplate(categoryId) {
+export async function getRoadmapTemplate(categoryId, options = {}) {
   const numId = Number(categoryId);
   if (!Number.isSafeInteger(numId) || numId <= 0) return null;
   const db = await getMongoDb();
-  const template = await db.collection('roadmap_templates').findOne({ category_id: numId });
+  const versions = db.collection('admin_roadmap_versions');
+  let template = null;
+  if (options.versionId) {
+    template = await versions.findOne({ category_id: numId, version_id: String(options.versionId), status: { $in: ['published', 'superseded', 'hidden'] } });
+  } else {
+    const latest = await versions.findOne({ category_id: numId }, { sort: { version: -1 } });
+    if (latest && latest.status !== 'published') return null;
+    template = latest;
+  }
+  if (!template && !options.versionId) template = await db.collection('roadmap_templates').findOne({ category_id: numId });
   if (!template) return null;
   return enrichRoadmapTemplate(template, db);
 }
@@ -1014,7 +1041,9 @@ async function enrichRoadmapTemplate(template, db) {
     .find({ stage_id: { $in: stageIds } }).toArray();
   return { ...template, stages: stages.map(stage => ({
     ...stage,
-    test_available: inspectStageBank(stage, template.career_name || '', records.filter(q => q.stage_id === stage.stage_id)).available,
+    test_available: Array.isArray(stage.test?.questions) && stage.test.questions.length > 0
+      ? true
+      : inspectStageBank(stage, template.career_name || template.name || '', records.filter(q => q.stage_id === stage.stage_id)).available,
     nodes: (stage.nodes || []).map(node => ({ ...node, outcomes: node.outcomes || node.topics || [] }))
   })) };
 }
@@ -1106,12 +1135,17 @@ export async function getCareerRoadmapsList() {
   const db = await getMongoDb();
   const categories = await db.collection('course_categories').find().sort({ category_id: 1 }).toArray();
   const templates = await db.collection('roadmap_templates').find().toArray();
+  const versionRows = await db.collection('admin_roadmap_versions').find({}).sort({ category_id: 1, version: -1 }).toArray();
+  const latestVersions = new Map();
+  for (const row of versionRows) if (!latestVersions.has(Number(row.category_id))) latestVersions.set(Number(row.category_id), row);
   const tplMap = new Map(templates.map(t => [Number(t.category_id), t]));
 
   const results = [];
   for (const cat of categories) {
     const numId = Number(cat.category_id);
-    const dbTpl = tplMap.get(numId);
+    const latestVersion = latestVersions.get(numId);
+    if (latestVersion && latestVersion.status !== 'published') continue;
+    const dbTpl = latestVersion || tplMap.get(numId);
     const customTpl = dbTpl;
     const hasCustom = Boolean(customTpl);
     if (!hasCustom) continue;
@@ -1121,7 +1155,7 @@ export async function getCareerRoadmapsList() {
 
     results.push({
       category_id: numId,
-      career_name: cat.name,
+      career_name: customTpl.name || customTpl.career_name || cat.name,
       short_code: cat.roadmap_short_code || dbTpl?.short_code || '',
       color: cat.roadmap_color || dbTpl?.color || '#0088E8',
       bg_color: cat.roadmap_bg_color || dbTpl?.bg_color || '#E6F4FF',
@@ -1199,6 +1233,7 @@ export async function selectUserRoadmap(userId, categoryId) {
       user_id: String(userId),
       category_id: numId,
       career_name: template.career_name,
+      ...(template.version_id ? { template_version_id: template.version_id } : {}),
       current_stage_id: template.stages[0]?.stage_id || null,
       nodes: initialNodes,
       progress_percentage: 0,
@@ -1337,7 +1372,7 @@ export async function getMyRoadmap(userId) {
     };
   }
 
-  const template = await getRoadmapTemplate(userRoadmap.category_id);
+  const template = await getRoadmapTemplate(userRoadmap.category_id, { versionId: userRoadmap.template_version_id });
   if (!template) throw Object.assign(new Error('Lộ trình này chưa có nội dung trong cơ sở dữ liệu.'),
     { status: 404, code: 'ROADMAP_TEMPLATE_NOT_FOUND' });
   userRoadmap = await reconcileUserRoadmap(userRoadmap, template, db);
@@ -1375,6 +1410,9 @@ export async function getMyRoadmap(userId) {
       total_nodes: stageProg.total_nodes,
       completed_nodes: stageProg.completed_nodes,
       review_nodes: reviewNodes,
+      completed: (userRoadmap.completed_stage_ids || []).includes(String(stage.stage_id)),
+      test_duration_minutes: stage.test?.duration_minutes ?? null,
+      test_pass_score: stage.test?.pass_score ?? 70,
       nodes: enrichedNodes
     };
   });
@@ -1417,6 +1455,7 @@ export async function getStageTestQuestions(stageId, userId = null) {
       { status: 404, code: 'ACTIVE_STAGE_NOT_FOUND' });
     activeNodeIds = new Set(roadmap.nodes.filter(node => node.stage_id === String(stageId)).map(node => node.node_id));
   }
+  const { stage } = await getStageDefinition(stageId);
   const questions = await readStageBank(stageId);
   if (activeNodeIds && questions.some(question => !activeNodeIds.has(question.node_id))) {
     console.error('[Roadmap enrollment requires curriculum reconciliation]', { stage_id: stageId });
@@ -1436,6 +1475,8 @@ export async function getStageTestQuestions(stageId, userId = null) {
 
   return {
     stage_id: stageId,
+    duration_minutes: stage.test?.duration_minutes ?? null,
+    pass_score: stage.test?.pass_score ?? 70,
     total_questions: safeQuestions.length,
     questions: safeQuestions
   };
@@ -1563,6 +1604,9 @@ export async function submitStageTest(userId, stageId, answers = []) {
 
   const totalGraded = detailedAnswers.length;
   const overallPercentage = totalGraded > 0 ? Math.round((totalCorrect / totalGraded) * 100) : 0;
+  const { stage: stageDefinition } = await getStageDefinition(stageId);
+  const passScore = Number(stageDefinition.test?.pass_score ?? 70);
+  const passed = overallPercentage >= passScore;
 
   // Lấy roadmap của user để cập nhật Node
   const nodeResults = {};
@@ -1624,6 +1668,13 @@ export async function submitStageTest(userId, stageId, answers = []) {
         $set: {
           nodes: updatedNodes,
           progress_percentage: progressStats.progress_percentage,
+          stage_results: [...(userRoadmap.stage_results || []).filter(result => result.stage_id !== String(stageId)), {
+            stage_id: String(stageId), score_percentage: overallPercentage, pass_score: passScore, passed,
+            completed_at: passed ? new Date() : null, updated_at: new Date(),
+          }],
+          completed_stage_ids: passed
+            ? [...new Set([...(userRoadmap.completed_stage_ids || []), String(stageId)])]
+            : userRoadmap.completed_stage_ids || [],
           updated_at: new Date()
         }
       }
@@ -1639,6 +1690,8 @@ export async function submitStageTest(userId, stageId, answers = []) {
     total_questions: totalGraded,
     correct_count: totalCorrect,
     score_percentage: overallPercentage,
+    pass_score: passScore,
+    passed,
     node_breakdown: nodeResults,
     submitted_at: new Date()
   };
@@ -1651,7 +1704,7 @@ export async function submitStageTest(userId, stageId, answers = []) {
     total_questions: totalGraded,
     correct_count: totalCorrect,
     score_percentage: overallPercentage,
-    passed: overallPercentage >= 70,
+    passed,
     node_breakdown: nodeResults,
     detailed_results: detailedAnswers.map(answer => ({
       question_id: answer.question_id,
@@ -1856,8 +1909,12 @@ export async function getNodeCourseRecommendations(userId, nodeId, options = {})
   const { limit = 4, db: providedDb = null } = options;
   const db = providedDb || (await getMongoDb());
 
-  // 1. Tìm thông tin node từ các template
-  const allTemplates = await db.collection('roadmap_templates').find().toArray();
+  // 1. Tìm node trong phiên bản lộ trình mà học viên đang theo, nếu có.
+  const userRoadmap = userId ? await db.collection(COLLECTION_USER_ROADMAPS).findOne({ user_id: String(userId), is_active: true, 'nodes.node_id': String(nodeId) }) : null;
+  const versioned = userRoadmap?.template_version_id
+    ? await db.collection('admin_roadmap_versions').findOne({ version_id: String(userRoadmap.template_version_id), status: { $in: ['published', 'superseded', 'hidden'] } })
+    : null;
+  const allTemplates = versioned ? [versioned] : await db.collection('roadmap_templates').find().toArray();
   let targetNode = null;
 
   for (const tpl of allTemplates) {

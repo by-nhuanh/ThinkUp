@@ -1,6 +1,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { getMongoDb } from '../../db.js';
+import { getMongoDb, closeMongoDb } from '../../db.js';
+import { VOUCHERS } from '../../voucher/voucher.service.js';
 import {
   formatVND,
   validateVoucherLogic,
@@ -22,7 +23,13 @@ describe('Chức Năng Giỏ Hàng User & Guest (Unit & Integration Tests)', () 
   const testCourseId2 = '89'; // Khóa học mẫu khác
 
   before(async () => {
+    if (!/^Thinkup_cart_test_[A-Za-z0-9_-]+$/.test(process.env.MONGODB_DB_NAME || '')) {
+      throw new Error('Cart integration tests require an isolated MONGODB_DB_NAME with Thinkup_cart_test_ prefix.');
+    }
     db = await getMongoDb();
+    await db.collection(COLLECTION_COURSES).updateOne({ course_id: testCourseId1 }, { $setOnInsert: { course_id: testCourseId1, title: 'ReactJS Masterclass', status: 'published', price: 500000, original_price: 600000 } }, { upsert: true });
+    await db.collection(COLLECTION_COURSES).updateOne({ course_id: testCourseId2 }, { $setOnInsert: { course_id: testCourseId2, title: 'Khóa học mẫu', status: 'published', price: 300000, original_price: 350000 } }, { upsert: true });
+    await db.collection('platform_coupons').updateOne({ code: 'THINKUP15' }, { $setOnInsert: { code: 'THINKUP15', status: 'active', discount_type: 'percent', discount_value: 15, max_discount: 200000 } }, { upsert: true });
     // Dọn dữ liệu test cũ nếu có
     await db.collection(COLLECTION_CARTS).deleteMany({ user_id: testUserId });
     await db.collection(COLLECTION_FAVORITES).deleteMany({ user_id: testUserId });
@@ -30,14 +37,25 @@ describe('Chức Năng Giỏ Hàng User & Guest (Unit & Integration Tests)', () 
   });
 
   after(async () => {
-    if (db) {
+    try { if (db) {
       await db.collection(COLLECTION_CARTS).deleteMany({ user_id: testUserId });
       await db.collection(COLLECTION_FAVORITES).deleteMany({ user_id: testUserId });
       await db.collection(COLLECTION_ENROLLMENTS).deleteMany({ user_id: testUserId });
-    }
+      await db.collection(COLLECTION_COURSES).deleteMany({ course_id: { $in: [testCourseId1, testCourseId2] } });
+      await db.collection('platform_coupons').deleteMany({ code: 'THINKUP15' });
+      await db.collection(VOUCHERS).deleteMany({ code: 'GV-CART-INTEGRATION' });
+    } } finally { await closeMongoDb(); }
   });
 
   // ─── 1. Tiện ích formatVND ─────────────────────────────────────────────────
+  it('instructor voucher in selected cart discounts only the instructor course', async () => {
+    await db.collection(COLLECTION_COURSES).updateOne({ course_id: testCourseId1 }, { $set: { instructor_id: 'CART-GV-1' } });
+    await db.collection(COLLECTION_COURSES).updateOne({ course_id: testCourseId2 }, { $set: { instructor_id: 'CART-GV-2' } });
+    await db.collection(VOUCHERS).insertOne({ code: 'GV-CART-INTEGRATION', sponsor: 'instructor', instructor_id: 'CART-GV-1', scope: 'courses', scope_target_ids: [testCourseId1], audience: 'all', discount_type: 'percent', discount_value: 20, max_discount: 100000, min_order_value: 100000, min_course_count: 1, usage_limit: 10, usage_count: 0, usage_limit_per_user: 1, starts_at: new Date(Date.now() - 86400000), expires_at: new Date(Date.now() + 86400000), locked_at: null, deleted_at: null, version: 1 });
+    const cart = await getCartDetails({ guestCourseIds: [testCourseId1, testCourseId2], selectedCourseIds: [testCourseId1, testCourseId2], voucherCode: 'GV-CART-INTEGRATION' });
+    assert.equal(cart.summary.isVoucherValid, true);
+    assert.equal(cart.summary.voucherDiscount, 100000);
+  });
   describe('1. Kiểm thử hàm tiện ích formatVND', () => {
     it('TC-FMT-01: Định dạng số nguyên thành chuỗi VND chuẩn', () => {
       assert.equal(formatVND(100000), '100.000đ');

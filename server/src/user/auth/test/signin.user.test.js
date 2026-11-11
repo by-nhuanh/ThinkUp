@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { generateKeyPairSync } from 'node:crypto';
 import { getMongoDb, closeMongoDb } from '../../db.js';
 import {
   loginWithCredentials,
@@ -13,27 +15,40 @@ import {
 test('TestSuite: Đăng Nhập Học Viên với Database Thật (MongoDB Atlas)', async (t) => {
   let db;
   const sampleEmail = 'test_signin_sample@thinkup.vn';
+  const samplePhone = `09${String(Date.now()).slice(-8)}`;
+  const cleanFixtures = async () => {
+    const users = await db.collection('users').find({ email: /^test_signin_/ }, { projection: { _id: 1 } }).toArray();
+    const userIds = users.map(user => String(user._id));
+    if (userIds.length) {
+      await Promise.all([
+        db.collection('user_sessions').deleteMany({ user_id: { $in: userIds } }),
+        db.collection('security_audit_logs').deleteMany({ user_id: { $in: userIds } }),
+        db.collection('notifications').deleteMany({ user_id: { $in: userIds } }),
+      ]);
+    }
+    await db.collection('users').deleteMany({ email: /^test_signin_/ });
+  };
 
   t.before(async () => {
     db = await getMongoDb();
-    await db.collection('users').deleteMany({ email: /^test_signin_/ });
+    await cleanFixtures();
   });
 
   t.after(async () => {
     if (db) {
-      await db.collection('users').deleteMany({ email: /^test_signin_/ });
+      await cleanFixtures();
     }
     await closeMongoDb();
   });
 
   t.beforeEach(async () => {
     // Reset học viên mẫu trong DB thật trước mỗi test
-    await db.collection('users').deleteMany({ email: /^test_signin_/ });
+    await cleanFixtures();
     const hash = await bcrypt.hash('CorrectPass123!', 12);
     await db.collection('users').insertOne({
       full_name: 'Học Viên Mẫu Live',
       email: sampleEmail,
-      phone: '0912345678',
+      phone: samplePhone,
       password_hash: hash,
       provider: 'local',
       role: 'student',
@@ -133,12 +148,33 @@ test('TestSuite: Đăng Nhập Học Viên với Database Thật (MongoDB Atlas)
     assert.ok(updatedUser.last_login_at);
   });
 
-  await t.test('AC-14: Đồng bộ định danh (Identity Linking khi đăng nhập Google)', async () => {
-    const ggRes = await loginWithGoogle(
-      { email: sampleEmail, name: 'Google User', providerId: 'gg_id_live_999' },
-      { db }
-    );
-    assert.strictEqual(ggRes.user.email, sampleEmail);
+  await t.test('AC-14: Google không tự liên kết theo email và tiếp tục đăng nhập sau khi tài khoản được nâng role', async () => {
+    const clientId = 'thinkup-test-google-client';
+    const previousClientId = process.env.GOOGLE_CLIENT_ID;
+    const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+    const keyId = 'thinkup-test-google-key';
+    const idToken = jwt.sign({ email: sampleEmail, email_verified: true, name: 'Google User', sub: 'gg_id_live_999' }, privateKey, {
+      algorithm: 'RS256', keyid: keyId, audience: clientId, issuer: 'https://accounts.google.com', expiresIn: '1h',
+    });
+    const publicJwk = { ...publicKey.export({ format: 'jwk' }), kid: keyId, alg: 'RS256', use: 'sig' };
+    process.env.GOOGLE_CLIENT_ID = clientId;
+    const googleOptions = {
+      db,
+      fetch: async () => ({ ok: true, json: async () => ({ keys: [publicJwk] }) }),
+    };
+    try {
+      await assert.rejects(() => loginWithGoogle({ idToken }, googleOptions), error => error.code === 'ACCOUNT_LINK_REQUIRED');
+      assert.equal((await db.collection('users').findOne({ email: sampleEmail })).google_id, undefined);
+      await db.collection('users').updateOne({ email: sampleEmail }, {
+        $set: { google_id: 'gg_id_live_999', role: 'instructor', instructor_id: 'instructor-test-999' },
+      });
+      const ggRes = await loginWithGoogle({ idToken }, googleOptions);
+      assert.strictEqual(ggRes.user.email, sampleEmail);
+      assert.strictEqual(ggRes.user.role, 'instructor');
+    } finally {
+      if (previousClientId === undefined) delete process.env.GOOGLE_CLIENT_ID;
+      else process.env.GOOGLE_CLIENT_ID = previousClientId;
+    }
 
     const allUsers = await db.collection('users').find({ email: sampleEmail }).toArray();
     assert.strictEqual(allUsers.length, 1);

@@ -547,12 +547,12 @@ export async function authenticateSocialUser(provider, params, options = {}) {
       throw authError('Tài khoản đã tồn tại. Vui lòng đăng nhập lại.', 409, 'ACCOUNT_EXISTS');
     }
   } else {
-    if (user.status !== 'active' || user.is_active === false || !user.email_verified || user.role !== 'student') {
+    if (user.deleted_at || user.status !== 'active' || user.is_active === false || !user.email_verified || !['student','instructor'].includes(user.role)) {
       throw authError('Tài khoản không được phép đăng nhập.', 403, 'ACCOUNT_SUSPENDED');
     }
     const avatar = user.is_custom_avatar ? user.avatar_url : identity.avatar || user.avatar_url;
     const updated = await db.collection('users').findOneAndUpdate(
-      { _id: user._id, status: 'active', is_active: { $ne: false }, role: 'student', email_verified: true },
+      { _id: user._id, status: 'active', is_active: { $ne: false }, role: { $in: ['student','instructor'] }, email_verified: true, deleted_at: { $exists: false } },
       { $set: { [field]: identity.providerId, avatar_url: avatar, last_login_at: new Date(), updated_at: new Date() } },
       { returnDocument: 'after' }
     );

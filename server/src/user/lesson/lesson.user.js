@@ -226,6 +226,9 @@ export async function getCourseStudyCurriculum(courseIdOrSlug, userId = null, op
     error.status = 404;
     throw error;
   }
+  if (courseDoc.admin_hidden === true && !await hasCourseEnrollment(courseDoc, userId, { db })) {
+    throw Object.assign(new Error('Khóa học hiện không khả dụng.'), { status: 404, code: 'COURSE_UNAVAILABLE' });
+  }
 
   const targetCourseId = String(courseDoc.course_id || courseDoc._id);
 
@@ -530,7 +533,8 @@ export async function getCourseStudyCurriculum(courseIdOrSlug, userId = null, op
   });
 
   // 10. Tập hợp đầy đủ 5 khối theo yêu cầu
-  const recordedTimes = userId ? await getRecordedCourseLearningTimes(String(userId), { db }) : new Map();
+  const recordedTimes = userId && /^[a-f\d]{24}$/i.test(String(userId))
+    ? await getRecordedCourseLearningTimes(String(userId), { db }) : new Map();
   const synchronizedLearningSeconds = Math.max(Number(totalUserSpentSeconds) || 0,
     ...studyCourseIds.map(id => recordedTimes.get(String(id)) || 0));
 
@@ -677,6 +681,9 @@ export async function updateLessonProgress(userId, courseId, lessonId, payload =
     const error = new Error('Khóa học không tồn tại.');
     error.status = 404;
     throw error;
+  }
+  if (courseDoc.admin_hidden === true && !await hasCourseEnrollment(courseDoc, uid, { db })) {
+    throw Object.assign(new Error('Khóa học hiện không khả dụng.'), { status: 404, code: 'COURSE_UNAVAILABLE' });
   }
 
   const courseIds = [...new Set([
@@ -831,7 +838,7 @@ export function formatCourseLevel(level) {
  * @param {string} courseIdOrSlug
  * @returns {Promise<Object>}
  */
-export async function getCourseOverview(courseIdOrSlug) {
+export async function getCourseOverview(courseIdOrSlug, userId = null) {
   if (!courseIdOrSlug) {
     const error = new Error('Mã định danh hoặc đường dẫn khóa học (courseIdOrSlug) là bắt buộc.');
     error.status = 400;
@@ -855,6 +862,9 @@ export async function getCourseOverview(courseIdOrSlug) {
     const error = new Error('Khóa học không tồn tại trong hệ thống.');
     error.status = 404;
     throw error;
+  }
+  if (courseDoc.admin_hidden === true && !await hasCourseEnrollment(courseDoc, userId, { db })) {
+    throw Object.assign(new Error('Khóa học hiện không khả dụng.'), { status: 404, code: 'COURSE_UNAVAILABLE' });
   }
 
   const targetCourseId = String(courseDoc.course_id || courseDoc._id);
@@ -1880,6 +1890,7 @@ export async function getCourseDocuments(courseIdOrSlug, userId = null, options 
 
   if (!courseDoc) throw Object.assign(new Error('Khóa học không tồn tại.'), { status: 404 });
   const enrolled = await hasCourseEnrollment(courseDoc, userId, { db });
+  if (courseDoc.admin_hidden === true && !enrolled) throw Object.assign(new Error('Khóa học hiện không khả dụng.'), { status: 404, code: 'COURSE_UNAVAILABLE' });
 
   const targetCourseId = courseDoc ? String(courseDoc.course_id || courseDoc._id) : cleanParam;
 
@@ -2015,8 +2026,10 @@ export async function downloadCourseDocument(documentId, userId, options = {}) {
   const course = await db.collection(COLLECTION_COURSES).findOne({ $or: [{ course_id: courseId }, { id: courseId },
     ...(ObjectId.isValid(courseId) ? [{ _id: new ObjectId(courseId) }] : [])] });
   if (!course) throw Object.assign(new Error('Khóa học không tồn tại.'), { status: 404 });
+  const enrolled = await hasCourseEnrollment(course, userId, { db });
+  if (course.admin_hidden === true && !enrolled) throw Object.assign(new Error('Khóa học hiện không khả dụng.'), { status: 404, code: 'COURSE_UNAVAILABLE' });
   if (!(doc.is_free === true || String(doc.is_free) === '1' || doc.is_preview === true) &&
-      !await hasCourseEnrollment(course, userId, { db }))
+      !enrolled)
     throw Object.assign(new Error('Bạn cần đăng ký khóa học để tải tài liệu.'), { status: 403, code: 'REQUIRE_ENROLLMENT' });
   const preferences = await getLearningPreferences(String(userId), { db });
   if (typeof doc.file_url !== 'string' || !doc.file_url.trim()) {
@@ -2097,6 +2110,9 @@ export async function resolveLessonContext(lessonId, userId = null, options = {}
   }
 
   const isFree = lesson.is_free === true || String(lesson.is_free) === '1' || lesson.is_preview === true;
+  if (course?.admin_hidden === true && (!userId || !await hasCourseEnrollment(course, userId, { db }))) {
+    throw Object.assign(new Error('Khóa học hiện không khả dụng.'), { status: 404, code: 'COURSE_UNAVAILABLE' });
+  }
   if (!isFree) {
     if (!userId) {
       const error = new Error('Bạn cần đăng ký hoặc đăng nhập để truy cập bài học này.');
@@ -2968,7 +2984,7 @@ export function createLessonRouter(express, requireAuth, optionalAuth, activityO
   router.get('/overview/:courseId', extractAuth, async (req, res, next) => {
     try {
       const { courseId } = req.params;
-      const data = await getCourseOverview(courseId);
+      const data = await getCourseOverview(courseId, req.userId || null);
       res.json({
         success: true,
         data,

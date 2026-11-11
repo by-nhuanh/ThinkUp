@@ -30,6 +30,7 @@ function fixture() {
       return Object.entries(value).every(([operator, expected]) => {
         if (operator === '$in') return expected.some(item => equal(row[key], item));
         if (operator === '$nin') return !expected.some(item => equal(row[key], item));
+        if (operator === '$ne') return !equal(row[key], expected);
         if (operator === '$lte') return row[key] <= expected;
         if (operator === '$gt') return row[key] > expected;
         throw new Error(`Unsupported operator ${operator}`);
@@ -111,6 +112,9 @@ test('Activity storage: validate all three targets, canonicalize IDs and award n
 
 test('Activity storage: deny missing identity, injection, foreign content, empty cards and unrelated stage before insert', async () => {
   const db = fixture();
+  db.tables.courses[0].admin_hidden = true;
+  const enrolledLearnerSession = await start(db);
+  assert.equal(enrolledLearnerSession.target.course_id, 'react', 'Learner already enrolled keeps access after Admin hides course from sale');
   for (const value of [null, '', 'invalid', {}]) await assert.rejects(startLearningActivity(value, 'lesson', {}, { db }), { status: 401 });
   await assert.rejects(startLearningActivity(uid, 'lesson', { course_id: { $ne: null }, lesson_id: 'lesson-1' }, { db }), { status: 400 });
   await assert.rejects(startLearningActivity(other, 'lesson', { course_id: 'react', lesson_id: 'lesson-1' }, { db }), { status: 403 });
@@ -123,7 +127,7 @@ test('Activity storage: deny missing identity, injection, foreign content, empty
   db.tables.roadmap_stage_questions = [];
   await assert.rejects(start(db, 0, 'roadmap_quiz'), { status: 409 });
   await assert.rejects(startLearningActivity(uid, 'unknown', {}, { db }), { status: 400 });
-  assert.equal(db.writes, 0);
+  assert.equal(db.writes, 1, 'Only the enrolled learner session should be inserted');
 });
 
 test('Activity storage: server elapsed time requires consecutive active heartbeats; duplicated retry counts once', async () => {

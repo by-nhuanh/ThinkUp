@@ -5,6 +5,7 @@ import { generateOrderWithTransaction } from '../order/order-id.user.js';
 import { renderPaymentReceiptEmail } from '../email/receipt-template.js';
 import { getPaymentPreferences } from '../payment-settings/payment-settings.user.js';
 import { createNotificationForEvent, getNotificationDeliveryPolicy } from '../notification/notification.user.js';
+import { findBusinessVoucher, quoteBusinessVoucher, reserveBusinessVoucher } from '../voucher/voucher.service.js';
 
 export const PAYMENT_EXPIRY_MS = 15 * 60 * 1000;
 export const COLLECTION_TRANSACTIONS = 'payment_transactions';
@@ -136,8 +137,14 @@ async function releaseVoucher(db, tx, session) {
   const result = await db.collection(tx.voucher_collection).updateOne({_id:tx.voucher_id,usage_count:{$gt:0}},{$inc:{usage_count:-1}},{session});
   if(result.matchedCount !== 1) throw paymentError('Không giải phóng được lượt voucher.',503,'VOUCHER_STORAGE_ERROR');
 }
-async function quoteVoucher(db, code, subtotal, userId, session) {
+async function quoteVoucher(db, code, subtotal, userId, session, courses = []) {
   if(!code)return {discount:0};
+  const managed = await findBusinessVoucher(db, code, { session });
+  if (managed) {
+    const isNewLearner = !await db.collection('user_enrollments').findOne({ $or: [{ user_id: String(userId) }, { userId: String(userId) }] }, { session });
+    const quote = quoteBusinessVoucher(managed, courses, { user: { isNewLearner } });
+    return reserveBusinessVoucher(db, managed, quote, userId, session);
+  }
   let coupon, collection;
   for(const name of ['platform_coupons','payment_vouchers']) {
     coupon=await db.collection(name).findOne({code},{session});
@@ -195,7 +202,7 @@ export async function createPaymentSession(params = {}, options = {}) {
       for(const id of ids){
         const query=[{course_id:id},...(ObjectId.isValid(id)?[{_id:new ObjectId(id)}]:[])];
         const course=await db.collection('courses').findOne({$or:query},{session});
-        if(!course||course.status!=='published')throw paymentError('Khóa học không tồn tại hoặc ngừng bán.',400,'COURSE_UNAVAILABLE');
+        if(!course||course.status!=='published'||course.admin_hidden===true)throw paymentError('Khóa học không tồn tại hoặc ngừng bán.',400,'COURSE_UNAVAILABLE');
         if(course.currency && String(course.currency).toUpperCase()!=='VND')throw paymentError('Khóa học không sử dụng tiền VND.',400,'COURSE_UNAVAILABLE');
         const canonical=String(course.course_id || course._id);
         if(courses.some(c=>c.id===canonical))continue;
@@ -203,16 +210,16 @@ export async function createPaymentSession(params = {}, options = {}) {
         const filter={$or:[{user_id:userId,course_id:{$in:allIds}},{userId,courseId:{$in:allIds}}]};
         for(const name of ['user_courses','user_enrollments'])if(await db.collection(name).findOne(filter,{session}))throw paymentError('Bạn đã sở hữu khóa học này.',409,'COURSE_ALREADY_OWNED');
         const price=paymentMoney(course.price ?? course.original_price);
-        courses.push({id:canonical,aliases:allIds,title:String(course.title || 'Khóa học ThinkUp'),price,
+        courses.push({id:canonical,aliases:allIds,instructor_id:course.instructor_id || null,rating:course.rating ?? course.average_rating ?? null,title:String(course.title || 'Khóa học ThinkUp'),price,
           original_price:paymentMoney(course.original_price ?? price),thumbnail:course.thumbnail_url || ''});
       }
       const saleSubtotal=paymentMoney(courses.reduce((sum,c)=>sum+c.price,0));
-      const voucher=await quoteVoucher(db,voucherCode.trim().toUpperCase(),saleSubtotal,userId,session);
+      const voucher=await quoteVoucher(db,voucherCode.trim().toUpperCase(),saleSubtotal,userId,session,courses);
       const amount=paymentMoney(saleSubtotal-voucher.discount);
       const method=simulation?'simulation':amount===0?'free':gateway;
       if(!simulation)requireGatewayConfiguration(method);
       const now=new Date(), expires=new Date(now.getTime()+PAYMENT_EXPIRY_MS);
-      const summary={courses,subtotal:courses.reduce((sum,c)=>sum+c.original_price,0),sale_subtotal:saleSubtotal,voucher_code:voucherCode.trim().toUpperCase(),voucher_discount:voucher.discount,total:amount};
+      const summary={courses,subtotal:courses.reduce((sum,c)=>sum+c.original_price,0),sale_subtotal:saleSubtotal,voucher_code:voucherCode.trim().toUpperCase(),voucher_discount:voucher.discount,voucher_sponsor:voucher.sponsor||null,voucher_instructor_id:voucher.instructorId||null,voucher_eligible_course_ids:voucher.eligibleCourseIds||[],voucher_allocations:voucher.allocations||[],total:amount};
       const transaction={_id,transaction_id:transactionId,order_id:orderId,user_id:userId,payment_method:method,amount,currency:'VND',
         status:simulation||amount===0?'paid':'pending',fulfillment_status:'pending',request_hash:requestHash,
         transfer_content:`THINKUP ${transactionId}`,created_at:now,expires_at:expires,paid_at:simulation||amount===0?now:null,

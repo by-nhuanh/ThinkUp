@@ -188,6 +188,20 @@ test('P2 validation: theme, density, boolean và revision sai đều bị từ c
     () => saveAdminPreferences(ADMIN_ID, { revision: 1.5, preferences: {} }, { db }),
     (error) => error.code === 'PREFERENCES_REVISION_INVALID',
   );
+  await assert.rejects(
+    () => saveAdminPreferences(ADMIN_ID, { preferences: {} }, { db }),
+    (error) => error.code === 'PREFERENCES_REVISION_INVALID',
+  );
+});
+
+test('P2 validation: từ chối field không nằm trong contract và giá trị null', () => {
+  assert.throws(
+    () => normalizePreferences({ locale: 'en' }),
+    (error) => error.code === 'PREFERENCES_FIELD_INVALID',
+  );
+  assert.throws(() => normalizePreferences({ theme: null }), /Chủ đề/);
+  assert.throws(() => normalizePreferences({ timezone: null }), /Múi giờ/);
+  assert.throws(() => normalizePreferences({ statusBarEnabled: null }), /boolean/);
 });
 
 test('P2 validation: IANA timezone chấp nhận DST và từ chối chuỗi rác', () => {

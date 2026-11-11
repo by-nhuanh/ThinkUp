@@ -55,6 +55,12 @@ export function normalizePreferences(input) {
     throw failure('Dữ liệu tuỳ chọn không hợp lệ.');
   }
 
+  const allowedKeys = new Set(Object.keys(DEFAULT_ADMIN_PREFERENCES));
+  const unknownKey = Object.keys(input).find((key) => !allowedKeys.has(key));
+  if (unknownKey) {
+    throw failure(`Trường tuỳ chọn không được hỗ trợ: ${unknownKey}.`, 400, 'PREFERENCES_FIELD_INVALID');
+  }
+
   const source = input;
   const result = { ...DEFAULT_ADMIN_PREFERENCES };
 
@@ -127,7 +133,7 @@ export async function saveAdminPreferences(adminId, input, options = {}) {
   if (!input || typeof input !== 'object') {
     throw failure('Dữ liệu tuỳ chọn không hợp lệ.');
   }
-  const expectedRevision = input.revision === undefined ? 0 : input.revision;
+  const expectedRevision = input.revision;
   if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0) {
     throw failure('Phiên bản tuỳ chọn không hợp lệ.', 400, 'PREFERENCES_REVISION_INVALID');
   }
@@ -185,7 +191,7 @@ export async function ensureAdminPreferencesIndexes(db) {
 }
 
 /** Router factory keeps auth middleware injected and testable. */
-export function createAdminPreferencesRouter(express, requireAdmin) {
+export function createAdminPreferencesRouter(express, requireAdmin, options = {}) {
   if (typeof requireAdmin !== 'function') {
     throw new Error('createAdminPreferencesRouter requires admin auth middleware');
   }
@@ -194,7 +200,7 @@ export function createAdminPreferencesRouter(express, requireAdmin) {
   router.get('/', requireAdmin, async (req, res, next) => {
     try {
       res.set('Cache-Control', 'no-store');
-      res.json(await getAdminPreferences(req.adminId));
+      res.json(await getAdminPreferences(req.adminId, options));
     } catch (error) {
       next(error);
     }
@@ -203,7 +209,7 @@ export function createAdminPreferencesRouter(express, requireAdmin) {
   router.put('/', requireAdmin, async (req, res, next) => {
     try {
       res.set('Cache-Control', 'no-store');
-      res.json(await saveAdminPreferences(req.adminId, req.body));
+      res.json(await saveAdminPreferences(req.adminId, req.body, options));
     } catch (error) {
       if (error?.code === 'PREFERENCES_CONFLICT' && error.current) {
         return res.status(error.status || 409).json({

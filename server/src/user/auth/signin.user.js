@@ -34,7 +34,7 @@ export async function loginWithCredentials({ email, password, rememberMe = false
   const user = await db.collection('users').findOne({ email: normalizedEmail });
 
   // BR-AUTH-08: Tài khoản bị khóa chính sách (is_active = false hoặc status = 'locked')
-  if (user && (user.status === 'locked' || (user.is_active === false && user.email_verified === true))) {
+  if (user && (user.deleted_at || user.status === 'locked' || (user.is_active === false && user.email_verified === true))) {
     const err = new Error('Tài khoản của bạn đang bị tạm khóa. Vui lòng liên hệ support@thinkup.vn để được hỗ trợ');
     err.status = 403;
     err.code = 'ACCOUNT_SUSPENDED';
@@ -161,7 +161,7 @@ export async function getCurrentUser(userId, options = {}) {
   }
 
   const user = await db.collection('users').findOne({ _id: objId });
-  if (!user) {
+  if (!user || user.deleted_at) {
     const err = new Error('Không tìm thấy tài khoản.');
     err.status = 404;
     throw err;
@@ -220,7 +220,7 @@ export async function verifyAuthSession(token, options = {}) {
   const user = await db.collection('users').findOne({ _id: objId });
 
   // Kiểm tra tài khoản không tồn tại hoặc bị khóa chính sách
-  if (!user || user.status !== 'active' || user.is_active === false || !user.email_verified || user.role !== 'student') {
+  if (!user || user.deleted_at || user.status !== 'active' || user.is_active === false || !user.email_verified || !['student', 'instructor'].includes(user.role)) {
     return { isAuthenticated: false, user: null, reason: 'ACCOUNT_SUSPENDED' };
   }
 
