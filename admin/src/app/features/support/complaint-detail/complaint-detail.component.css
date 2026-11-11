@@ -85,10 +85,6 @@
 .action-section-heading { display: flex; align-items: flex-start; gap: 10px; }
 .action-section-heading > span { display: grid; flex: 0 0 24px; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: #e7f1ff; color: #0965e4; font: var(--admin-text-control-label); }
 .action-section-heading h3 { margin: 1px 0 0; color: #182c51; font: var(--admin-text-card-title); font-size: var(--admin-font-size-body); line-height: var(--admin-line-height-body); }
-.section-help { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-left: 3px; border-radius: 50%; color: #64748b; vertical-align: -4px; cursor: help; }
-.section-help:hover { background: #e7f1ff; color: #0965e4; }
-.section-help:focus-visible { background: #e7f1ff; color: #0965e4; outline: 2px solid #4388e8; outline-offset: 1px; }
-.section-help svg { width: 14px; height: 14px; stroke-width: 2; }
 .action-quote { margin-left: 34px; padding: 12px 14px; border-left: 3px solid #8eb8e8; border-radius: 0 7px 7px 0; background: #f5f9fe; }
 .action-quote strong { color: #294d75; font: var(--admin-text-control-label); }
 .action-quote p { margin: 4px 0 0; color: #425b7d; font: var(--admin-text-body-compact); line-height: 1.5; }
