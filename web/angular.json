@@ -63,6 +63,22 @@
               ],
               "outputHashing": "all"
             },
+            "study-room-demo": {
+              "outputPath": "dist/study-room-demo",
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "fileReplacements": [
+                {
+                  "replace": "src/app/features/study-room/services/study-room.providers.ts",
+                  "with": "src/app/core/data/mock/study-room.providers.ts"
+                },
+                {
+                  "replace": "src/app/features/study-room/services/study-room-media.providers.ts",
+                  "with": "src/app/core/data/mock/study-room-media.providers.ts"
+                }
+              ]
+            },
             "development": {
               "optimization": false,
               "extractLicenses": false,
@@ -76,6 +92,9 @@
           "configurations": {
             "production": {
               "buildTarget": "web:build:production"
+            },
+            "study-room-demo": {
+              "buildTarget": "web:build:study-room-demo"
             },
             "development": {
               "buildTarget": "web:build:development"

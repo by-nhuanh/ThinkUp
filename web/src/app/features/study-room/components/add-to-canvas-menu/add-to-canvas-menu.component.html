@@ -1,9 +1,25 @@
 <div class="menu-backdrop" (click)="close.emit()"></div>
 <section class="add-menu">
+  @if (textKind(); as kind) {
+    <form class="text-form" (submit)="$event.preventDefault(); submit(kind)">
+      <label for="new-canvas-text">{{ textFields[kind].label }}</label>
+      @if (kind === 'link') {
+        <input #editor id="new-canvas-text" type="url" placeholder="https://..." [attr.maxlength]="textFields[kind].limit" (input)="draft.set(editor.value)" required>
+      } @else {
+        <textarea #editor id="new-canvas-text" rows="4" [placeholder]="kind === 'checklist' ? 'Mỗi dòng một việc' : ''" [attr.maxlength]="textFields[kind].limit" (input)="draft.set(editor.value)" required></textarea>
+      }
+      @if (kind === 'link' && draft().trim() && !webLink(draft())) { <p role="status">Nhập liên kết HTTP hoặc HTTPS hợp lệ.</p> }
+      <div class="text-form-actions">
+        <button type="button" (click)="back()">Quay lại</button>
+        <button type="submit" [disabled]="!draft().trim() || (kind === 'link' && !webLink(draft()))">Thêm vào canvas</button>
+      </div>
+    </form>
+  } @else {
   <header><h3>Thêm vào canvas</h3><p>Chọn một phần tử để thả vào phòng</p></header>
   <div class="item-grid">
     @for (item of items; track item.key) {
-      <button type="button" (click)="select(item.key)"><strong>{{ item.label }}</strong><small>{{ item.desc }}</small></button>
+      <button #option type="button" [attr.data-kind]="item.key" (click)="select(item.key, option)"><strong>{{ item.label }}</strong><small>{{ item.desc }}</small></button>
     }
   </div>
+  }
 </section>

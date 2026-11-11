@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, map, tap, of } from 'rxjs';
+import { Observable, map, tap, of, throwError } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { StudyRoomItem } from '../models/study-room.model';
 
@@ -54,6 +54,13 @@ export interface RoomConnection {
   token: string; livekitUrl: string; roomId: string; role: 'owner' | 'moderator' | 'member';
   position: { x: number; y: number };
 }
+export interface RoomDetailsUpdate {
+  goal: string;
+  tags: string[];
+}
+
+export type OwnerDeparture = { kind: 'close' } | { kind: 'transfer'; successorId: string };
+
 export interface RoomPermissions {
   voiceEnabled: boolean; cameraEnabled: boolean; chatEnabled: boolean;
   whiteboardLocked: boolean; participantShareScreen: boolean;
@@ -220,6 +227,10 @@ export class StudyRoomService {
     );
   }
 
+  leaveAsOwner(_roomId: string, _decision: OwnerDeparture): Observable<unknown> {
+    return throwError(() => new Error('Chưa hỗ trợ đóng phòng hoặc chuyển quyền trên máy chủ.'));
+  }
+
   leaveRoom(roomId: string, _userId: string): Observable<unknown> {
     return this.http.post(`${this.base}/${encodeURIComponent(roomId)}/leave`, {});
   }
@@ -265,6 +276,20 @@ export class StudyRoomService {
     return this.http.post<{ data: RoomMessage }>(`${this.base}/${encodeURIComponent(roomId)}/messages`, {
       content,
     }).pipe(map(response => ({ ...response.data, id: String(response.data.id) })));
+  }
+
+  updateRoomDetails(_roomId: string, _details: RoomDetailsUpdate): Observable<StudyRoomItem> {
+    return throwError(() => new Error('Máy chủ chưa hỗ trợ cập nhật thông tin phòng.'));
+  }
+
+  readDemoRoomPassword(_roomId: string): string | null { return null; }
+
+  updateRoomPassword(_roomId: string, _password: string): Observable<void> {
+    return throwError(() => new Error('Máy chủ chưa hỗ trợ đổi mật khẩu phòng.'));
+  }
+
+  renameRoom(_roomId: string, _name: string): Observable<StudyRoomItem> {
+    return throwError(() => new Error('Chưa có kết nối đổi tên phòng.'));
   }
 
   changeTheme(roomId: string, theme: string): Observable<unknown> {

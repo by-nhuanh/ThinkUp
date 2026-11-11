@@ -1,10 +1,10 @@
 import { AfterViewInit, Component, ElementRef, computed, viewChild, signal, output } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
-import { LucideHeart, LucidePlay, LucidePause, LucideShuffle, LucideVolume2 } from '@lucide/angular';
+import { LucidePlay, LucidePause, LucideShuffle, LucideVolume2 } from '@lucide/angular';
 
 interface Track { name: string; src: string; collection: 'lofi' | 'instrumental' | 'nature' | 'noise'; }
 
-@Component({ selector: 'app-lofi-player', standalone: true, imports: [DecimalPipe, LucideHeart, LucidePlay, LucidePause, LucideShuffle, LucideVolume2], templateUrl: './lofi-player.component.html', styleUrl: './lofi-player.component.css' })
+@Component({ selector: 'app-lofi-player', standalone: true, imports: [DecimalPipe, LucidePlay, LucidePause, LucideShuffle, LucideVolume2], templateUrl: './lofi-player.component.html', styleUrl: './lofi-player.component.css' })
 export class LofiPlayerComponent implements AfterViewInit {
   readonly close = output<void>();
   readonly playingChange = output<boolean>();
@@ -16,7 +16,6 @@ export class LofiPlayerComponent implements AfterViewInit {
   readonly selectedAmbient = signal<number | null>(10);
   readonly volume = signal(0.32);
   readonly ambientMix = signal(0.5);
-  readonly favorites = signal<ReadonlySet<number>>(new Set([0]));
   readonly audioError = signal('');
   readonly tracks: Track[] = [
     { name: 'Lofi Chillhop & Jazz Cafe', collection: 'lofi', src: '/assets/study-room/music/alex-morgan-chillhop-jazz-coffee-shop-552792.mp3' },
@@ -125,7 +124,6 @@ export class LofiPlayerComponent implements AfterViewInit {
     if (pool.length) await this.choose(pool[Math.floor(Math.random() * pool.length)].index);
   }
 
-  toggleFavorite(index: number): void { this.favorites.update(current => { const next = new Set(current); if (next.has(index)) next.delete(index); else next.add(index); return next; }); }
   setVolume(event: Event): void { this.volume.set(Number((event.target as HTMLInputElement).value)); this.applyVolumes(); }
   setAmbientMix(event: Event): void { this.ambientMix.set(Number((event.target as HTMLInputElement).value)); this.applyVolumes(); }
 

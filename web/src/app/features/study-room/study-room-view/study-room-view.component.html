@@ -1,33 +1,222 @@
-<main class="study-canvas" [class.focus-locked]="focusLocked()" [style.background]="background()" (pointerdown)="beginCanvasGesture($event, 'pan')" (pointermove)="handleCanvasPointerMove($event)" (pointerup)="endCanvasGesture($event)" (pointercancel)="endCanvasGesture($event)" (wheel)="handleWheel($event)">
-  @if (activeTheme().type === 'gradient') { <div class="canvas-grid" [style.background-image]="grid()" [style.background-size]="gridSize() + 'px ' + gridSize() + 'px'" [style.background-position]="gridPosition()"></div> }
-  @if (activeTheme().type === 'video') { <video class="room-video" [src]="activeTheme().src" autoplay muted loop playsinline></video> }
+<main #roomShell class="study-canvas" [style.background]="background()" (pointerdown)="startCanvasPan($event)" (wheel)="scrollCanvas($event)" (pointermove)="handleCanvasPointerMove($event)" (pointerup)="endCanvasGesture($event)" (pointercancel)="endCanvasGesture($event)" (lostpointercapture)="endCanvasGesture($event)">
+  @if (!customBackground() && activeTheme().type === 'gradient') { <div class="canvas-grid" [style.background-image]="grid()" [style.background-size]="gridSize() + 'px ' + gridSize() + 'px'" [style.background-position]="gridPosition()"></div> }
+  @if (!customBackground() && activeTheme().type === 'video') { <video class="room-video" [src]="activeTheme().src" autoplay muted loop playsinline></video> }
   <div class="canvas-world" [style.transform]="'translate(' + pan().x + 'px,' + pan().y + 'px) scale(' + zoom() / 100 + ')'">
   <section class="shared-screen" [hidden]="!sharingScreen()" [style.left.px]="screenPosition().x" [style.top.px]="screenPosition().y" [style.width.px]="screenSize().width" [style.height.px]="screenSize().height" (pointerdown)="beginCanvasGesture($event, 'screen')"><header>Bạn đang chia sẻ màn hình</header><video #screenVideo autoplay muted playsinline></video><button type="button" class="screen-resize" aria-label="Thay đổi kích thước chia sẻ màn hình" (pointerdown)="beginCanvasGesture($event, 'screen-resize')"></button></section>
   @for (screen of remoteScreens(); track screen.participantId; let index = $index) { @if (remoteScreenLayout(screen, index).active) { <section class="shared-screen remote-screen" [style.left.px]="remoteScreenLayout(screen, index).x" [style.top.px]="remoteScreenLayout(screen, index).y" [style.width.px]="remoteScreenLayout(screen, index).width" [style.height.px]="remoteScreenLayout(screen, index).height"><header>{{ remoteScreenOwner(screen)?.displayName || remoteScreenOwner(screen)?.name || 'Thành viên' }} đang chia sẻ</header><video [srcObject]="screen.stream" autoplay playsinline></video></section> } }
   <div #remoteMedia class="remote-media" aria-label="Âm thanh của thành viên khác"></div>
   <div class="canvas-items-layer">
     @for (item of canvasItems(); track item.id) {
-      <app-canvas-item [item]="item" [scale]="zoom() / 100" [canManage]="canManageItem(item)" [movementLocked]="focusLocked()" [selected]="selectedItemId() === item.id" (activate)="bringCanvasItemToFront(item.id)" (itemChange)="updateCanvasItem(item.id, $event)" (itemCommit)="commitCanvasItem(item.id, $event)" (remove)="removeCanvasItem(item.id)" />
+      <app-canvas-item [item]="item" [scale]="zoom() / 100" [canManage]="canManageItem(item)" [selected]="selectedItemId() === item.id" (activate)="bringCanvasItemToFront(item.id)" (itemChange)="updateCanvasItem(item.id, $event)" (itemCommit)="commitCanvasItem(item.id, $event)" (remove)="removeCanvasItem(item.id)" />
     }
   </div>
-  <div class="user-bubble" [class.speaking]="isLocalSpeaking()" [style.left.px]="memberPosition().x" [style.top.px]="memberPosition().y" [style.z-index]="memberZ()" (pointerdown)="beginCanvasGesture($event, 'member')"><div class="avatar">@if (!camOn()) { @if (member.avatar && !localAvatarFailed()) { <img [src]="member.avatar" [alt]="member.name" (error)="localAvatarFailed.set(true)" /> } @else { {{ member.initials }} } }<video #localVideo [hidden]="!camOn()" autoplay muted playsinline></video><span [class.on]="micOn()">@if (!micOn()) { <svg lucideMicOff></svg> } @else if (isLocalSpeaking()) { <svg lucideAudioLines></svg> } @else { <svg lucideMic></svg> }</span></div><div class="user-caption">{{ member.name }} (Bạn)</div><div class="user-role" [class.moderator]="currentRole() === 'moderator'" [class.member]="currentRole() === 'member'">@if (currentRole() === 'owner') { <svg lucideCrown></svg> } @else if (currentRole() === 'moderator') { <svg lucideShieldCheck></svg> } @else { <svg lucideUserRound></svg> } {{ roleLabel() }}</div></div>
-  @for (person of participants(); track person.userId) { @if (!person.isSelf) { <div class="user-bubble remote-user" [class.speaking]="isSpeaking(person.userId)" [style.--participant-color]="participantColor(person)" [style.left.px]="person.position.x" [style.top.px]="person.position.y"><div class="avatar" role="button" tabindex="0" (pointerdown)="toggleParticipantPopover($event, person.userId)" (keydown.enter)="selectedParticipantId.set(selectedParticipantId() === person.userId ? null : person.userId)">@if (!remoteCamOn(person.userId) || !remoteCameraStream(person.userId)) { @if (person.avatar && !avatarFailed(person.userId)) { <img [src]="person.avatar" [alt]="person.displayName || person.name" (error)="markAvatarFailed(person.userId)" /> } @else { {{ person.initials }} } } @else { <video [srcObject]="remoteCameraStream(person.userId)" autoplay playsinline></video> }<span [class.on]="remoteMicOn(person.userId)">@if (!remoteMicOn(person.userId)) { <svg lucideMicOff></svg> } @else if (isSpeaking(person.userId)) { <svg lucideAudioLines></svg> } @else { <svg lucideMic></svg> }</span></div><div class="user-caption">{{ person.displayName || person.name }}</div><div class="user-role" [class.moderator]="person.role === 'moderator'" [class.member]="person.role === 'member'">@if (person.role === 'owner') { <svg lucideCrown></svg> } @else if (person.role === 'moderator') { <svg lucideShieldCheck></svg> } @else { <svg lucideUserRound></svg> } {{ person.roleLabel }}</div>@if (selectedParticipantId() === person.userId) { <app-participant-popover [participant]="person" [color]="participantColor(person)" (close)="selectedParticipantId.set(null)" /> }</div> } }
-  <section class="pomodoro-widget" [style.left.px]="timerPosition().x" [style.top.px]="timerPosition().y" (pointerdown)="beginCanvasGesture($event, 'timer')"><div class="timer-progress"><span [style.width.%]="timerMode() === 'focus' ? (1500 - timeLeft()) / 15 : (300 - timeLeft()) / 3"></span></div><div class="timer-body"><div class="timer-heading"><span class="timer-icon">@if (timerMode() === 'focus') { <svg lucideBookOpen></svg> } @else { <svg lucideCoffee></svg> }</span><div><strong>{{ timerMode() === 'focus' ? 'FOCUS' : 'BREAK' }}</strong><small>{{ isRunning() ? 'Đang chạy' : 'Đang tạm dừng' }}</small></div><button type="button" (click)="$event.stopPropagation(); setTimerMode(timerMode() === 'focus' ? 'break' : 'focus')">{{ timerMode() === 'focus' ? 'Break' : 'Focus' }}</button></div><div class="timer-line"><div class="timer-value">{{ formattedTime() }}</div><div class="timer-actions"><button type="button" (click)="$event.stopPropagation(); toggleTimer()" [attr.aria-label]="isRunning() ? 'Tạm dừng' : 'Bắt đầu'">@if (isRunning()) { <svg lucidePause></svg> } @else { <svg lucidePlay></svg> }</button><button type="button" (click)="$event.stopPropagation(); resetTimer()" aria-label="Đặt lại"><svg lucideRotateCcw></svg></button><button type="button" (click)="$event.stopPropagation(); setTimerMode(timerMode() === 'focus' ? 'break' : 'focus')" aria-label="Chuyển phiên"><svg lucideSkipForward></svg></button></div></div><div class="timer-track"><span [style.width.%]="timerMode() === 'focus' ? (1500 - timeLeft()) / 15 : (300 - timeLeft()) / 3"></span></div><div class="timer-footer"><span>{{ timerMode() === 'focus' ? '25 phút tập trung' : '5 phút nghỉ' }}</span><span>{{ timerMode() === 'focus' ? (1500 - timeLeft()) / 15 : (300 - timeLeft()) / 3 | number:'1.0-0' }}%</span></div></div></section>
+  <div class="user-bubble" [class.speaking]="isLocalSpeaking()" [style.left.px]="memberPosition().x" [style.top.px]="memberPosition().y" [style.z-index]="memberZ()" (pointerdown)="beginCanvasGesture($event, 'member')"><div class="avatar" [class.owner-avatar]="currentRole() === 'owner'">@if (currentRole() === 'owner') { <i class="avatar-crown" role="img" aria-label="Chủ phòng"><svg lucideCrown aria-hidden="true"></svg></i> }@if (!camOn()) { @if (member.avatar && !localAvatarFailed()) { <img [src]="member.avatar" [alt]="member.name" (error)="localAvatarFailed.set(true)" /> } @else { {{ member.initials }} } }<video #localVideo [hidden]="!camOn()" autoplay muted playsinline></video><span [class.on]="micOn()">@if (!micOn()) { <svg lucideMicOff></svg> } @else if (isLocalSpeaking()) { <svg lucideAudioLines role="img" aria-label="Đang nói"></svg> } @else { <svg lucideMic></svg> }</span></div><div class="user-caption">{{ member.name }} (Bạn)</div></div>
+  @for (person of participants(); track person.userId) { @if (!person.isSelf) { <div class="user-bubble remote-user" [class.speaking]="remoteMicOn(person.userId) && isSpeaking(person.userId)" [style.--participant-color]="participantColor(person)" [style.left.px]="person.position.x" [style.top.px]="person.position.y"><button class="avatar" [class.owner-avatar]="person.role === 'owner'" type="button" [attr.aria-label]="'Thông tin: ' + (person.displayName || person.name) + (person.role === 'owner' ? ', chủ phòng' : '')" [attr.aria-expanded]="selectedParticipantId() === person.userId" [class.draggable-avatar]="currentRole() !== 'member'" (pointerdown)="startRemoteAvatarDrag($event, person)" (click)="toggleParticipantPopover($event, person.userId)">@if (person.role === 'owner') { <i class="avatar-crown" aria-hidden="true"><svg lucideCrown></svg></i> }@if (!remoteCamOn(person.userId) || !remoteCameraStream(person.userId)) { @if (person.avatar && !avatarFailed(person.userId)) { <img [src]="person.avatar" [alt]="person.displayName || person.name" (error)="markAvatarFailed(person.userId)" /> } @else { {{ person.initials }} } } @else { <video [srcObject]="remoteCameraStream(person.userId)" autoplay playsinline></video> }<span [class.on]="remoteMicOn(person.userId)">@if (!remoteMicOn(person.userId)) { <svg lucideMicOff></svg> } @else if (isSpeaking(person.userId)) { <svg lucideAudioLines role="img" aria-label="Đang nói"></svg> } @else { <svg lucideMic></svg> }</span></button><div class="user-caption">{{ person.displayName || person.name }}</div></div> } }
+  @if (timerOpen()) {
+  <section #pomodoroWidget id="room-pomodoro" class="pomodoro-widget room-glass" [class.dark]="isDarkTheme()" [attr.data-theme]="selectedTheme()"
+    [style.left.px]="timerPosition().x" [style.top.px]="timerPosition().y"
+    aria-label="Đồng hồ Pomodoro" (scroll)="positionTimerScopeMenu()" (pointerdown)="beginCanvasGesture($event, 'timer')">
+    <header class="pomodoro-header">
+      <button #timerScopeTrigger class="timer-scope" type="button" popovertarget="timer-scope-menu"
+        aria-haspopup="menu" [attr.aria-expanded]="timerScopeMenuOpen()"
+        (keydown.arrowdown)="$event.preventDefault(); openTimerScopeMenu()">
+        <svg lucideUserRound aria-hidden="true"></svg>
+        <span>{{ timerScope() === 'personal' ? 'Cá nhân' : 'Cả phòng' }}</span>
+        <svg lucideChevronDown aria-hidden="true"></svg>
+      </button>
+      <div #timerScopeMenu id="timer-scope-menu" class="timer-scope-menu" popover="auto" role="menu"
+        aria-label="Phạm vi đồng hồ" (toggle)="onTimerScopeMenuToggle()" (keydown)="onTimerScopeMenuKeydown($event)">
+        @for (scope of timerScopes; track scope.key) {
+          <button type="button" role="menuitemradio" [attr.aria-checked]="timerScope() === scope.key"
+            (click)="selectTimerScope(scope.key)">
+            <span>{{ scope.label }}</span>
+            @if (timerScope() === scope.key) { <svg lucideCheck aria-hidden="true"></svg> }
+          </button>
+        }
+      </div>
+      @if (!hideTimerCount()) {
+        <span class="timer-count"><svg lucideLayers aria-hidden="true"></svg>{{ activeTimer().completed }} phiên</span>
+      }
+      <div class="pomodoro-tools">
+        <button type="button" aria-label="Cài đặt đồng hồ" [attr.aria-expanded]="timerSettingsOpen()"
+          aria-controls="pomodoro-settings" (click)="toggleTimerSettings()">
+          <svg lucideSettings aria-hidden="true"></svg>
+        </button>
+        <button type="button" aria-label="Đóng đồng hồ" (click)="closeTimerWidget()">
+          <svg lucideX aria-hidden="true"></svg>
+        </button>
+      </div>
+    </header>
+    <div id="pomodoro-body" class="pomodoro-body">
+      <div class="timer-line">
+        <div class="timer-value" role="timer">{{ formattedTime() }}</div>
+        <div class="pomodoro-actions">
+          <button class="timer-primary" type="button" [disabled]="!canEditTimer()" (click)="toggleTimer()">
+            @if (isRunning()) { <svg lucidePause aria-hidden="true"></svg> }
+            @else { <svg lucidePlay aria-hidden="true"></svg> }
+            {{ isRunning() ? 'Tạm dừng' : 'Bắt đầu' }}
+          </button>
+          <button type="button" aria-label="Đặt lại đồng hồ" [disabled]="!canEditTimer()" (click)="resetTimer()">
+            <svg lucideRotateCcw aria-hidden="true"></svg>
+          </button>
+        </div>
+      </div>
+      <div class="timer-modes" role="group" aria-label="Chế độ Pomodoro">
+        @for (mode of timerModes; track mode.key) {
+          <button type="button" [attr.aria-pressed]="timerMode() === mode.key" [disabled]="!canEditTimer()"
+            (click)="setTimerMode(mode.key)">
+              @switch (mode.key) {
+                  @case ('focus') { <svg lucideTarget aria-hidden="true"></svg> }
+                  @case ('break') { <svg lucideCoffee aria-hidden="true"></svg> }
+                  @case ('long-break') { <svg lucideBedDouble aria-hidden="true"></svg> }
+                }
+              <span>{{ mode.label }}</span>
+          </button>
+        }
+      </div>
+      @if (!canEditTimer()) { <p class="timer-hint">Đồng hồ chung do người quản lý phòng điều khiển.</p> }
+      <div id="pomodoro-settings" class="pomodoro-settings" [hidden]="!timerSettingsOpen()">
+        <label class="timer-option"><input #advance type="checkbox" [checked]="activeTimer().autoAdvance"
+          [disabled]="!canEditTimer()" (change)="setTimerAutoAdvance(advance.checked)"> Tự chạy phiên tiếp theo</label>
+        <label class="timer-option"><input #hideCount type="checkbox" [checked]="hideTimerCount()"
+          (change)="hideTimerCount.set(hideCount.checked)"> Ẩn số phiên đã hoàn thành</label>
+        <div class="timer-durations">
+          @for (mode of timerModes; track mode.key) {
+            <label>
+              <span class="timer-setting-label">
+                @switch (mode.key) {
+                  @case ('focus') { <svg lucideTarget aria-hidden="true"></svg> }
+                  @case ('break') { <svg lucideCoffee aria-hidden="true"></svg> }
+                  @case ('long-break') { <svg lucideBedDouble aria-hidden="true"></svg> }
+                }
+                {{ mode.label }}
+              </span>
+              <span class="timer-minutes">
+                <input #minutes type="number" [attr.aria-label]="mode.label + ' (phút)'" min="1" max="120" step="1"
+                  [value]="activeTimer().durations[mode.key]" [disabled]="!canEditTimer()" (change)="setTimerMinutes(mode.key, minutes)">
+                <span aria-hidden="true">phút</span>
+              </span>
+            </label>
+          }
+        </div>
+        <label><span class="timer-setting-label"><svg lucideBell aria-hidden="true"></svg>Âm báo</span>
+          <select [ngModel]="timerSound()" (ngModelChange)="setTimerSound($event)">
+            <option value="chime">Chuông sáng</option><option value="soft">Chuông nhẹ</option><option value="off">Tắt</option>
+          </select>
+        </label>
+        <label>Âm lượng
+          <input #volume type="range" min="0" max="1" step="0.05" [value]="timerVolume()"
+            (input)="timerVolume.set(volume.valueAsNumber)">
+        </label>
+      </div>
+    </div>
+  </section>
+  }
   </div>
-  <app-ink-layer [enabled]="penMode() && canUseCapability('whiteboard')" [optionsOpen]="penOptionsOpen()" [scale]="zoom() / 100" [pan]="pan()" [strokes]="inkStrokes()" (strokesChange)="updateInk($event)" (strokeCommit)="commitInk($event)" (closeOptions)="penOptionsOpen.set(false)" />
   @for (entry of remoteCursors() | keyvalue; track entry.key) { <div class="remote-cursor" [style.left.px]="entry.value.x * zoom() / 100 + pan().x" [style.top.px]="entry.value.y * zoom() / 100 + pan().y" [style.color]="entry.value.color"><svg viewBox="0 0 16 20" aria-hidden="true"><path d="M0 0 16 12H6L2 20Z" fill="currentColor" stroke="white" stroke-width="1.5"/></svg><span [style.background]="entry.value.color">{{ entry.value.name }}</span></div> }
   @for (reaction of reactions(); track reaction.id) { <div class="floating-reaction" [style.left.px]="reaction.x" [style.top.px]="reaction.y">{{ reaction.emoji }}</div> }
-  <div class="top-bar" [class.dark]="isDarkTheme()"><div class="room-identity"><strong>Phòng {{ roomId() }}</strong><span class="role-badge" [class.moderator]="currentRole() === 'moderator'" [class.member]="currentRole() === 'member'">@if (currentRole() === 'owner') { <svg lucideCrown></svg> } @else if (currentRole() === 'moderator') { <svg lucideShieldCheck></svg> } @else { <svg lucideUserRound></svg> } {{ roleLabel() }}</span><button type="button" (click)="inviteByEmailOrPhone()" [disabled]="inviting()" aria-label="Mời qua email hoặc số điện thoại">{{ inviting() ? 'Đang gửi…' : 'Mời' }}</button><button type="button" (click)="copyLink()" aria-label="Sao chép link phòng"><svg lucideCopy></svg></button></div><button type="button" class="control-button" (click)="controlOpen.set(true)"><svg lucidePanelRight></svg> Điều khiển</button></div>
-  <div class="navigator"><div class="zoom-controls"><button type="button" (click)="changeZoom(10)" aria-label="Phóng to"><svg lucidePlus></svg></button><span>{{ zoom() }}%</span><button type="button" (click)="changeZoom(-10)" aria-label="Thu nhỏ"><svg lucideMinus></svg></button></div><div class="mini-map" role="button" tabindex="0" aria-label="Kéo để đổi vùng nhìn canvas" (pointerdown)="miniMapPointerDown($event)" (pointermove)="miniMapPointerMove($event)" (pointerup)="miniMapPointerUp($event)" (pointercancel)="miniMapPointerUp($event)">@for (rect of miniMapModel().rects; track $index) { <span [class]="'map-rect ' + rect.kind" [style.left.px]="rect.x" [style.top.px]="rect.y" [style.width.px]="rect.width" [style.height.px]="rect.height"></span> }</div><button class="center-view" type="button" (click)="resetViewport()" title="Reset view"><svg lucideLocateFixed></svg> Reset</button></div>
-  <div class="floating-dock"><button type="button" (click)="toggleMic()" [class.active]="!micOn()" [title]="canUseCapability('voice') ? (micOn() ? 'Tắt mic' : 'Bật mic') : 'Voice đang bị tắt cho thành viên'" [attr.aria-label]="micOn() ? 'Tắt mic' : 'Bật mic'">@if (micOn()) { <svg lucideMic></svg> } @else { <svg lucideMicOff></svg> }{{ micOn() ? 'Tắt mic' : 'Bật mic' }}</button><button type="button" (click)="toggleCamera()" [class.active]="!camOn()" [title]="canUseCapability('camera') ? (camOn() ? 'Tắt cam' : 'Bật cam') : 'Camera đang bị tắt cho thành viên'" [attr.aria-label]="camOn() ? 'Tắt cam' : 'Bật cam'">@if (camOn()) { <svg lucideVideo></svg> } @else { <svg lucideVideoOff></svg> }{{ camOn() ? 'Tắt cam' : 'Bật cam' }}</button><button type="button" (click)="toggleScreen()" [class.active]="sharingScreen()" [title]="canUseCapability('shareScreen') ? (sharingScreen() ? 'Dừng chia sẻ' : 'Chia sẻ màn hình') : 'Bạn chưa được cấp quyền chia sẻ màn hình'" [attr.aria-label]="sharingScreen() ? 'Dừng chia sẻ' : 'Chia sẻ màn hình'"><svg lucideScreenShare></svg>{{ sharingScreen() ? 'Dừng chia sẻ' : 'Chia sẻ màn hình' }}</button><i></i><button type="button" [class.active]="!penMode()" (click)="selectPointerTool()" title="Chọn" aria-label="Chọn"><svg lucideMousePointer2></svg>Chọn</button><button type="button" [class.active]="penMode()" (click)="togglePenTool()" [title]="canUseCapability('whiteboard') ? 'Vẽ' : 'Whiteboard đang bị khóa cho thành viên'" aria-label="Vẽ"><svg lucidePencil></svg>Vẽ</button><button type="button" [class.active]="addOpen()" (click)="addOpen.set(!addOpen())" title="Thêm phần tử" aria-label="Thêm phần tử"><svg lucidePlus></svg>Thêm phần tử</button><button type="button" [class.active]="emojiOpen()" (click)="emojiOpen.set(!emojiOpen())" title="Reactions" aria-label="Reactions"><svg lucideSmile></svg>Reactions</button><button type="button" [class.active]="chatOpen()" (click)="openChat()" [title]="canUseCapability('chat') ? 'Chat' : 'Chat đang khóa'" [attr.aria-label]="canUseCapability('chat') ? 'Chat' : 'Chat đang khóa'"><svg lucideMessageCircle></svg>Chat</button><button type="button" [class.active]="lofiOpen() || lofiPlaying()" (click)="lofiOpen.set(!lofiOpen())" title="Study ambience" aria-label="Study ambience"><svg lucideHeadphones></svg>Lofi</button><button type="button" (click)="controlOpen.set(true)" title="Cài đặt phòng" aria-label="Cài đặt phòng"><svg lucideSettings></svg>Cài đặt phòng</button><i></i><button type="button" class="leave" (click)="leaveOpen.set(true)" title="Rời phòng" aria-label="Rời phòng"><svg lucideLogOut></svg>Rời phòng</button></div>
-  @if (focusLocked()) { <div class="focus-overlay"><div class="focus-banner"><svg lucideBookOpen></svg><span>Chế độ tập trung — Kéo thả và chat đã bị khóa</span><button type="button" class="focus-stop" (click)="stopFocusMode()">Dừng chế độ tập trung</button></div></div> }
-  @if (notice()) { <div class="permission-notice" role="status">{{ notice() }}</div> }
-  @if (mediaError()) { <div class="media-error" role="alert">{{ mediaError() }}</div> }
-  @if (sessionError()) { <div class="media-error" role="alert">{{ sessionError() }} <button type="button" (click)="backToLobby()">Về sảnh</button></div> }
-  @if (addOpen()) { <app-add-to-canvas-menu (addItem)="addCanvasItem($event)" (close)="addOpen.set(false)" /> }
-  <app-lofi-player [hidden]="!lofiOpen()" (playingChange)="lofiPlaying.set($event)" (close)="lofiOpen.set(false)" />
-  @if (emojiOpen()) { <app-reaction-picker (select)="showReaction($event)" (close)="emojiOpen.set(false)" /> }
-  @if (chatOpen() && !focusLocked() && canUseCapability('chat')) { <app-chat-panel [messages]="messages()" [memberCount]="memberCount()" (send)="sendMessage($event)" (close)="chatOpen.set(false)" /> }
-  @if (controlOpen()) { <app-room-control-panel [roomId]="roomId()" [roomName]="room()?.name || 'Phòng học ảo'" [memberCount]="memberCount()" [members]="participants()" [joinRequests]="room()?.joinRequests || []" [memberName]="member.name" [memberInitials]="member.initials" [themes]="themes" [selectedTheme]="selectedTheme()" (permissionsLoaded)="applyLoadedPermissions($event)" (permissionsChange)="updateRoomPermissions($event)" (selectTheme)="selectTheme($event)" (copyLink)="copyLink()" (removeMember)="removeParticipant($event)" (close)="controlOpen.set(false)" /> }
-  @if (leaveOpen()) { <div class="confirm-shade" (click)="leaveOpen.set(false)"><div class="confirm-modal" (click)="$event.stopPropagation()"><h2>Rời khỏi phòng học ảo?</h2><p>Bạn có chắc chắn muốn rời khỏi phòng này? Kết nối thoại và hình ảnh của bạn với các thành viên khác sẽ bị ngắt.</p><div><button type="button" (click)="leaveOpen.set(false)">Ở lại học tiếp</button><button type="button" (click)="leaveRoom()">Rời phòng</button></div></div></div> }
+  <div #roomHeader class="top-bar" [class.dark]="isDarkTheme()"><div class="room-identity"><strong class="min-w-0 truncate" [title]="room()?.name || 'Phòng học ảo'">{{ room()?.name || 'Phòng học ảo' }}</strong><span class="role-badge" [class.moderator]="currentRole() === 'moderator'" [class.member]="currentRole() === 'member'">@if (currentRole() === 'owner') { <svg lucideCrown></svg> } @else if (currentRole() === 'moderator') { <svg lucideShieldCheck></svg> } @else { <svg lucideUserRound></svg> } {{ roleLabel() }}</span><button type="button" class="room-glass inline-flex h-9 shrink-0 items-center gap-1.5 rounded-[10px] border! border-[var(--accent)]! bg-transparent! px-2.5 font-semibold text-[var(--accent)]! hover:bg-[var(--accent-surface)]!"
+      [class.dark]="isDarkTheme()" [attr.data-theme]="selectedTheme()" (click)="openInvite()" aria-haspopup="dialog">
+      <svg lucideUserPlus aria-hidden="true"></svg>Mời
+    </button><button type="button" (click)="copyLink()" aria-label="Sao chép link phòng"><svg lucideCopy></svg></button></div><div class="flex shrink-0 items-center gap-2">
+      @if (currentRole() === 'owner') {
+        <button type="button" class="control-button relative w-[42px] justify-center px-0!" aria-haspopup="dialog"
+          [attr.aria-label]="pendingRequestCount() ? 'Yêu cầu tham gia, ' + pendingRequestCount() + ' đang chờ' : 'Yêu cầu tham gia'"
+          title="Yêu cầu tham gia" [attr.aria-expanded]="controlOpen() && requestsOnly()" (click)="openPanel(controlOpen, $event, true)">
+          <svg lucideUserPlus aria-hidden="true"></svg>
+          @if (pendingRequestCount(); as count) {
+            <span aria-hidden="true" class="absolute -top-1 -right-1 grid h-4 min-w-4 place-items-center rounded-full bg-blue-700 px-1 text-[10px] leading-none text-white">{{ count > 99 ? '99+' : count }}</span>
+          }
+        </button>
+      }
+      <button type="button" class="control-button" (click)="openPanel(controlOpen, $event)"><svg lucidePanelRight></svg> Điều khiển</button>
+    </div></div>
+  <div class="navigator"><div class="zoom-controls"><button type="button" (click)="changeZoom(10)" aria-label="Phóng to"><svg lucidePlus></svg></button><span>{{ zoom() }}%</span><button type="button" (click)="changeZoom(-10)" aria-label="Thu nhỏ"><svg lucideMinus></svg></button></div><div class="mini-map" role="group" tabindex="0" aria-label="Bản đồ canvas. Kéo hoặc dùng các phím mũi tên để di chuyển vùng nhìn." (keydown)="moveMiniMapWithKeyboard($event)" (pointerdown)="miniMapPointerDown($event)" (pointermove)="miniMapPointerMove($event)" (pointerup)="miniMapPointerUp($event)" (pointercancel)="miniMapPointerUp($event)">@for (rect of miniMapModel().rects; track $index) { <span [class]="'map-rect ' + rect.kind" [style.left.px]="rect.x" [style.top.px]="rect.y" [style.width.px]="rect.width" [style.height.px]="rect.height"></span> }</div><button class="center-view" type="button" (click)="resetViewport()" title="Đặt lại vùng nhìn"><svg lucideLocateFixed></svg> Đặt lại</button></div>
+  <div #roomDock class="floating-dock"><button type="button" (click)="toggleMic()" [class.active]="!micOn()" [title]="canUseCapability('voice') ? (micOn() ? 'Tắt mic' : 'Bật mic') : 'Voice đang bị tắt cho thành viên'" [attr.aria-label]="micOn() ? 'Tắt mic' : 'Bật mic'">@if (micOn()) { <svg lucideMic></svg> } @else { <svg lucideMicOff></svg> }{{ micOn() ? 'Tắt mic' : 'Bật mic' }}</button><button type="button" (click)="toggleCamera()" [class.active]="!camOn()" [title]="canUseCapability('camera') ? (camOn() ? 'Tắt cam' : 'Bật cam') : 'Camera đang bị tắt cho thành viên'" [attr.aria-label]="camOn() ? 'Tắt cam' : 'Bật cam'">@if (camOn()) { <svg lucideVideo></svg> } @else { <svg lucideVideoOff></svg> }{{ camOn() ? 'Tắt cam' : 'Bật cam' }}</button><button type="button" (click)="toggleScreen()" [class.active]="sharingScreen()" [title]="canUseCapability('shareScreen') ? (sharingScreen() ? 'Dừng chia sẻ' : 'Chia sẻ màn hình') : 'Bạn chưa được cấp quyền chia sẻ màn hình'" [attr.aria-label]="sharingScreen() ? 'Dừng chia sẻ' : 'Chia sẻ màn hình'"><svg lucideScreenShare></svg>{{ sharingScreen() ? 'Dừng chia sẻ' : 'Chia sẻ màn hình' }}</button><i></i><button type="button" (click)="clearCanvasSelection()" aria-label="Bỏ chọn phần tử"><svg lucideMousePointer2></svg>Chọn</button><button #timerDockButton type="button" [class.active]="timerOpen()" [attr.aria-expanded]="timerOpen()" [attr.aria-controls]="timerOpen() ? 'room-pomodoro' : null" (click)="toggleTimerWidget()" aria-label="Đồng hồ Pomodoro"><svg lucideClock aria-hidden="true"></svg>Pomodoro</button><button type="button" [class.active]="addOpen()" data-tool="add" [attr.aria-expanded]="addOpen()" (click)="toggleTool('add', $event)" title="Thêm phần tử" aria-label="Thêm phần tử"><svg lucidePlus></svg>Thêm phần tử</button><button type="button" [class.active]="emojiOpen()" data-tool="reaction" [attr.aria-expanded]="emojiOpen()" (click)="toggleTool('reaction', $event)" title="Reactions" aria-label="Reactions"><svg lucideSmile></svg>Reactions</button><button type="button" [class.active]="chatOpen()" class="relative" (click)="openChat($event)" [title]="canUseCapability('chat') ? 'Chat' : 'Chat đang khóa'" [attr.aria-label]="!canUseCapability('chat') ? 'Chat đang khóa' : unreadChatCount() ? 'Chat, ' + unreadChatCount() + ' tin mới' : 'Chat'"><svg lucideMessageCircle aria-hidden="true"></svg>
+    @if (unreadChatCount(); as count) {
+      <span aria-hidden="true" class="absolute -top-1 -right-1 grid h-4 min-w-4 place-items-center rounded-full bg-red-600 px-1 text-[10px] leading-none text-white">{{ count > 99 ? '99+' : count }}</span>
+    }Chat</button><button type="button" [class.active]="lofiOpen() || lofiPlaying()" data-tool="lofi" [attr.aria-expanded]="lofiOpen()" (click)="toggleTool('lofi', $event)" title="Study ambience" [attr.aria-label]="lofiPlaying() ? 'Study ambience, đang phát' : 'Study ambience'">
+    @if (lofiPlaying()) {
+      <span aria-hidden="true" class="flex h-5 items-center gap-0.5">
+        @for (delay of ['0ms', '160ms', '320ms', '480ms']; track delay) {
+          <i class="lofi-wave" [style.animation-delay]="delay"></i>
+        }
+      </span>
+    } @else { <svg lucideHeadphones aria-hidden="true"></svg> }Lofi</button><button type="button" (click)="openPanel(controlOpen, $event)" title="Cài đặt phòng" aria-label="Cài đặt phòng"><svg lucideSettings></svg>Cài đặt phòng</button><i></i><button type="button" class="leave" (click)="openLeave($event)" title="Rời phòng" aria-label="Rời phòng"><svg lucideLogOut></svg>Rời phòng</button></div>
+  <div #roomNotices class="room-notices">
+    @if (sessionError()) {
+      <div class="media-error" role="alert">{{ sessionError() }} <button type="button" (click)="backToLobby()">Về sảnh</button></div>
+    } @else if (mediaError()) {
+      <div class="media-error" role="alert">{{ mediaError() }}</div>
+    }
+    @if (notice()) { <div class="permission-notice" role="status">{{ notice() }}</div> }
+  </div>
+  @if (selectedParticipant(); as person) {
+    <app-participant-popover #memberPopover [participant]="person" [color]="participantColor(person)" (close)="closeParticipantPopover()" />
+  }
+  @if (addOpen()) { <app-add-to-canvas-menu (addItem)="addCanvasItem($event)" (addText)="addCanvasText($event)" (close)="closePanel(addOpen)" /> }
+  <app-lofi-player [hidden]="!lofiOpen()" (playingChange)="lofiPlaying.set($event)" (close)="closePanel(lofiOpen)" />
+  @if (emojiOpen()) { <app-reaction-picker (select)="showReaction($event)" (close)="closePanel(emojiOpen)" /> }
+  @if (chatOpen() && !groupChatPaused() && canUseCapability('chat')) { <app-chat-panel [(position)]="chatPosition" [roomName]="roomName()" [theme]="selectedTheme()" [dark]="isDarkTheme()" [(draft)]="chatDraft" [sending]="sendingMessage()" [canAddImage]="canUseCapability('upload')" (addImage)="addCanvasItem('image')" [messages]="messages()" [memberCount]="memberCount()" (send)="sendMessage($event)" (close)="closePanel(chatOpen)" /> }
+  @if (controlOpen()) { <app-room-control-panel [requestsOnly]="requestsOnly()" [roomId]="roomId()" [roomName]="roomName()" [roomInfo]="room()" [hasCustomBackground]="!!customBackground()" [backgroundError]="backgroundError()" (uploadBackground)="setCustomBackground($event)" [memberCount]="memberCount()" [members]="participants()" [joinRequests]="room()?.joinRequests || []" [memberName]="member.name" [memberInitials]="member.initials" [themes]="themes" [selectedTheme]="selectedTheme()" [dark]="isDarkTheme()" [microphones]="participantMicrophones()" [feedback]="notice()" (permissionsLoaded)="applyLoadedPermissions($event)" (permissionsChange)="updateRoomPermissions($event)" (selectTheme)="selectTheme($event)" (invite)="openInvite()" (removeMember)="removeParticipant($event)" (close)="closePanel(controlOpen)" /> }
+  @if (inviteOpen()) {
+    <app-room-invite-dialog [link]="inviteLink()" [theme]="selectedTheme()" [dark]="isDarkTheme()"
+      [feedback]="inviteFeedback()" (copyLink)="copyLink(true)" (close)="inviteOpen.set(false)" />
+  }
+  @if (imageOpen()) {
+    <app-canvas-image-dialog [theme]="selectedTheme()" [dark]="isDarkTheme()" (addImage)="addCanvasImage($event)" (close)="imageOpen.set(false)" />
+  }
+  <dialog #leaveDialog class="confirm-modal" aria-labelledby="leave-title" (cancel)="$event.preventDefault(); cancelLeave(leaveDialog)">
+    <h2 id="leave-title" class="font-semibold">Rời khỏi phòng học ảo?</h2>
+    @if (extras.demo && currentRole() === 'owner') {
+      <fieldset class="mt-3 grid gap-0 border-0 p-0 text-left text-sm" [disabled]="leaving()">
+        <legend>Chọn cách rời phòng</legend>
+        <label class="flex min-h-9 items-center gap-2"><input class="shrink-0" type="radio" name="departure" [checked]="departureChoice() === 'close'" (change)="departureChoice.set('close')"> Đóng phòng và cho tất cả thành viên rời phòng</label>
+        <label class="flex min-h-9 items-center gap-2"><input class="shrink-0" type="radio" name="departure" [checked]="departureChoice() === 'auto'" (change)="departureChoice.set('auto')"
+          [disabled]="!eligibleSuccessors().length"> Chuyển quyền cho một thành viên ngẫu nhiên</label>
+        <label class="flex min-h-9 items-center gap-2"><input class="shrink-0" type="radio" name="departure" [checked]="departureChoice() === 'manual'" (change)="departureChoice.set('manual')"
+          [disabled]="!eligibleSuccessors().length"> Chỉ định chủ phòng mới</label>
+        @if (departureChoice() === 'manual') {
+          <details #picker class="group mt-1 min-w-0"
+            (focusout)="closeSuccessorPickerOnBlur($event, picker)"
+            (keydown.escape)="$event.preventDefault(); $event.stopPropagation(); picker.open = false; trigger.focus()">
+            <summary #trigger class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 group-open:border-blue-600 [&::-webkit-details-marker]:hidden"
+              aria-label="Chọn chủ phòng mới">
+              <span class="min-w-0 break-words">{{ successorName() || 'Chọn thành viên' }}</span>
+              <svg lucideChevronDown aria-hidden="true" class="size-4 shrink-0 text-slate-500 group-open:rotate-180"></svg>
+            </summary>
+            <ul aria-label="Thành viên trong phòng"
+              class="mt-1 max-h-[min(11rem,28dvh)] list-none overflow-y-auto overscroll-contain rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+              @for (member of eligibleSuccessors(); track member.userId) {
+                <li>
+                  <button type="button" [attr.aria-pressed]="successorId() === member.userId"
+                    class="flex w-full items-center justify-between gap-2 rounded-md! bg-transparent! px-2! py-1! text-left text-slate-800 hover:bg-slate-100! focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-blue-600 aria-pressed:bg-blue-50! aria-pressed:text-blue-800"
+                    (click)="successorId.set(member.userId); picker.open = false; trigger.focus()">
+                    <span class="min-w-0 break-words">{{ member.displayName || member.name }}</span>
+                    @if (successorId() === member.userId) {
+                      <svg lucideCheck aria-hidden="true" class="size-4 shrink-0"></svg>
+                    }
+                  </button>
+                </li>
+              }
+            </ul>
+          </details>
+        }
+      </fieldset>
+      @if (departureError()) { <p class="text-red-700!" role="alert">{{ departureError() }}</p> }
+    } @else {
+      <p>Kết nối thoại và hình ảnh của bạn với các thành viên khác sẽ bị ngắt.</p>
+    }
+    <div>
+      <button type="button" class="text-[.8125rem]!" autofocus (click)="cancelLeave()" [disabled]="leaving()">Ở lại học tiếp</button>
+      @if (extras.demo && currentRole() === 'owner') {
+        <button type="button" (click)="confirmOwnerDeparture()"
+          [disabled]="leaving() || !departureChoice() || (departureChoice() === 'manual' && !successorId())">
+          {{ leaving() ? 'Đang xử lý…' : departureChoice() === 'close' ? 'Đóng phòng' : 'Xác nhận' }}
+        </button>
+      } @else {
+        <button type="button" (click)="leaveRoom()" [disabled]="leaving()">{{ leaving() ? 'Đang rời phòng…' : 'Rời phòng' }}</button>
+      }
+    </div>
+  </dialog>
 </main>

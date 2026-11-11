@@ -1,0 +1,38 @@
+<dialog #dialog class="room-glass" [class.dark]="dark()" [attr.data-theme]="theme()"
+  aria-labelledby="canvas-image-title" (cancel)="$event.preventDefault(); cancel()">
+  <form class="layout" (submit)="$event.preventDefault(); submit()">
+    <header>
+      <span class="title-icon"><svg lucideImage aria-hidden="true"></svg></span>
+      <h2 id="canvas-image-title">Thêm ảnh vào phòng</h2>
+      <button class="close" type="button" aria-label="Đóng" (click)="cancel()" [disabled]="uploading()">
+        <svg lucideX aria-hidden="true"></svg>
+      </button>
+    </header>
+    <div class="body">
+      <fieldset [disabled]="uploading()">
+        <label class="field-label" for="canvas-image-url"><svg lucideLink aria-hidden="true"></svg>URL ảnh HTTPS</label>
+        <input #link id="canvas-image-url" type="url" placeholder="https://..." [value]="linkValue()"
+          (input)="updateLink(link.value)">
+        <div class="divider"><span>Hoặc</span></div>
+        <p class="field-label"><svg lucideCloudUpload aria-hidden="true"></svg>Chọn ảnh từ máy</p>
+        <input #picker type="file" hidden (change)="setFile($event)" accept="image/jpeg,image/png,image/webp,image/avif">
+        <button class="drop-zone" type="button" (click)="picker.click()"
+          (dragover)="$event.preventDefault()" (drop)="dropFile($event)">
+          <span class="drop-icon"><svg lucideImagePlus aria-hidden="true"></svg></span>
+          <span>Kéo thả ảnh vào đây hoặc <strong>nhấp để chọn tệp</strong></span>
+          <small>{{ fileName() || 'Không có tệp nào được chọn' }}</small>
+        </button>
+      </fieldset>
+      @if (preview(); as source) {
+        <img [src]="source" alt="Xem trước ảnh" (load)="imageLoaded($event, source)" (error)="imageFailed(source)">
+      }
+      @if (loading()) { <p class="status" role="status">Đang tải ảnh xem trước…</p> }
+      @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+    </div>
+    <footer>
+      <button type="submit" class="primary" [disabled]="uploading() || (!linkValue().trim() && !dimensions())">
+        {{ uploading() ? 'Đang thêm…' : 'Thêm ảnh' }}
+      </button>
+    </footer>
+  </form>
+</dialog>
