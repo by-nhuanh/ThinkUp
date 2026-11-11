@@ -1,0 +1,42 @@
+:host { display: block; }
+
+.otp-boxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.otp-box {
+  box-sizing: border-box;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid #b8bec7;
+  border-radius: 8px;
+  background: #fff;
+  color: #071b48;
+  text-align: center;
+  font: var(--admin-text-metric-secondary);
+  font-size: 18px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.otp-box:hover:not(:disabled) { border-color: #8fa8c5; }
+
+.otp-box:focus {
+  border-color: #0965e4;
+  box-shadow: 0 0 0 3px #0965e41c;
+}
+
+.otp-box:disabled {
+  background: #f3f6fa;
+  color: #8a99ad;
+  cursor: not-allowed;
+}
+
+.is-invalid .otp-box { border-color: #d4586a; }
+
+@media (max-width: 420px) {
+  .otp-box { width: 40px; height: 40px; }
+}

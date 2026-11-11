@@ -1,6 +1,6 @@
 export type PostStatus = 'published' | 'draft' | 'pending' | 'revision' | 'rejected' | 'scheduled' | 'hidden' | 'archived';
 
-export type ContentCategory = 'Lập trình cơ bản' | 'Kinh nghiệm' | 'Tài nguyên' | 'Web Development' | 'DevOps';
+export type ContentCategory = 'Lập trình cơ bản' | 'Web Development' | 'Backend' | 'DevOps' | 'Thuật toán' | 'Kinh nghiệm' | 'Tài nguyên';
 
 export type AuthorRole = 'Admin' | 'Giảng viên' | 'Học viên' | 'Tác giả' | 'Biên tập viên' | 'Cộng tác viên';
 
@@ -25,6 +25,11 @@ export interface ContentPost {
   moderationNote?: string;
   featured: boolean;
   pinned: boolean;
+  callout?: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  allowComments?: boolean;
+  loginRequired?: boolean;
 }
 
 export type CommentStatus = 'visible' | 'pending' | 'hidden' | 'flagged' | 'spam' | 'deleted';

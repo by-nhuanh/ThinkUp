@@ -10,11 +10,11 @@ import { UserRowMenuItem, UserRowMenuComponent } from '../components/user-row-me
 import { UserDateRangeComponent } from '../components/user-date-range/user-date-range.component';
 import { UserModalComponent } from '../components/user-modal/user-modal.component';
 import { UserToastComponent } from '../components/user-toast/user-toast.component';
-import { LECTURER_COURSE_OPTIONS, LECTURER_STATUS_LABELS, LECTURER_STATUS_TONE } from '../models/user-management.labels';
-import { DisciplineLevel, DisciplineRecord, Lecturer } from '../models/user-management.models';
+import { LECTURER_STATUS_LABELS, LECTURER_STATUS_TONE } from '../models/user-management.labels';
+import { DisciplineLevel, Lecturer } from '../models/user-management.models';
 import { UserManagementService } from '../services/user-management.service';
 import { UserToastService } from '../services/user-toast.service';
-import { formatCount, formatCurrency, formatDate, formatRevenueShort } from '../user-management.utils';
+import { formatCount, formatCurrency, formatDate, formatDeadline, formatRevenueShort } from '../user-management.utils';
 
 type LecturerModal = 'profile' | 'courses' | 'discipline' | 'unlock';
 
@@ -52,7 +52,6 @@ export class LecturersComponent {
   readonly statusLabels = LECTURER_STATUS_LABELS;
   readonly statusTone = LECTURER_STATUS_TONE;
   readonly pageSize = 5;
-  readonly courseOptions = LECTURER_COURSE_OPTIONS;
   readonly formatCurrency = formatCurrency;
   readonly formatCount = formatCount;
   readonly formatDate = formatDate;
@@ -71,6 +70,7 @@ export class LecturersComponent {
 
   readonly level = signal<DisciplineLevel>(1);
   readonly disciplineCourses = signal<readonly string[]>([]);
+  readonly courseQuery = signal('');
   readonly evidence = signal<readonly string[]>([]);
   readonly ticket = signal('');
   readonly reason = signal('');
@@ -97,6 +97,15 @@ export class LecturersComponent {
   readonly selectedCourses = computed(() => {
     const lecturer = this.selected();
     return lecturer ? this.data.coursesForLecturer(lecturer) : [];
+  });
+
+  /** Danh sách khóa học của giảng viên đang chọn, lọc theo ô tìm kiếm ở Mức 2. */
+  readonly disciplineCourseRows = computed(() => {
+    const query = this.courseQuery().trim().toLocaleLowerCase('vi-VN');
+    const courses = this.selectedCourses();
+    if (!query) return courses;
+    return courses.filter((course) =>
+      `${course.name} ${course.code}`.toLocaleLowerCase('vi-VN').includes(query));
   });
 
   readonly filtered = computed(() => {
@@ -254,6 +263,7 @@ export class LecturersComponent {
     this.selected.set(lecturer);
     this.level.set(1);
     this.disciplineCourses.set([]);
+    this.courseQuery.set('');
     this.evidence.set([]);
     this.ticket.set('');
     this.reason.set('');
@@ -273,26 +283,43 @@ export class LecturersComponent {
 
   setLevel(level: DisciplineLevel): void {
     this.level.set(level);
-    if (level !== 2) this.disciplineCourses.set([]);
+    if (level !== 2) {
+      this.disciplineCourses.set([]);
+      this.courseQuery.set('');
+    }
   }
 
-  toggleCourse(name: string, checked: boolean): void {
+  toggleCourse(code: string, checked: boolean): void {
     this.disciplineCourses.update((current) => (checked
-      ? [...current, name]
-      : current.filter((item) => item !== name)));
+      ? [...current, code]
+      : current.filter((item) => item !== code)));
   }
 
-  isCourseSelected(name: string): boolean {
-    return this.disciplineCourses().includes(name);
+  isCourseSelected(code: string): boolean {
+    return this.disciplineCourses().includes(code);
   }
 
-  /** Vi phạm gần nhất của giảng viên — dùng cho dải cảnh báo khi mở khoá. */
-  latestViolation(lecturer: Lecturer): DisciplineRecord | undefined {
-    return lecturer.violations.length ? lecturer.violations[lecturer.violations.length - 1] : undefined;
+  /** Mức kỷ luật đang áp dụng — mock cũ không có trường này nên suy ra từ trạng thái. */
+  lockLevelOf(lecturer: Lecturer): DisciplineLevel {
+    if (lecturer.lockLevel) return lecturer.lockLevel;
+    if (lecturer.status === 'frozen') return 3;
+    if (lecturer.status === 'violation') return 2;
+    return 1;
   }
 
-  toggleCourseFromEvent(name: string, event: Event): void {
-    this.toggleCourse(name, (event.target as HTMLInputElement).checked);
+  /** Câu hạn mở khoá hiển thị trong dải cảnh báo. */
+  lockExpiryOf(lecturer: Lecturer): string {
+    return lecturer.lockedUntil
+      ? `Hết hạn: ${formatDeadline(lecturer.lockedUntil)}`
+      : 'Khóa vĩnh viễn, không có ngày hết hạn.';
+  }
+
+  toggleCourseFromEvent(code: string, event: Event): void {
+    this.toggleCourse(code, (event.target as HTMLInputElement).checked);
+  }
+
+  setCourseQueryFromEvent(event: Event): void {
+    this.courseQuery.set((event.target as HTMLInputElement).value);
   }
 
   setTicketFromEvent(event: Event): void {

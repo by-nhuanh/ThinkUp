@@ -1,0 +1,19 @@
+<div class="otp-boxes" [class.is-invalid]="invalid()" role="group" aria-label="Mã xác thực 6 chữ số">
+  @for (index of positions; track index) {
+    <input
+      #box
+      class="otp-box"
+      type="text"
+      inputmode="numeric"
+      autocomplete="one-time-code"
+      maxlength="1"
+      [attr.aria-label]="'Chữ số thứ ' + (index + 1)"
+      [value]="digitAt(index)"
+      [disabled]="disabled()"
+      (input)="onInput(index, $event)"
+      (keydown)="onKeydown(index, $event)"
+      (paste)="onPaste(index, $event)"
+      (focus)="selectBox($event)"
+    />
+  }
+</div>

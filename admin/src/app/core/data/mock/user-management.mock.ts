@@ -119,6 +119,13 @@ function buildLecturer(index: number): Lecturer {
   const taxVerified = index === 2 ? false : index % 5 !== 0;
   const month = String((index % 12) + 1).padStart(2, '0');
   const day = String((index % 27) + 1).padStart(2, '0');
+  const violations = violationsFor(index, status);
+  // Mức kỷ luật đang áp dụng: cảnh cáo 7 ngày, tạm khoá 30 ngày, đóng băng vô thời hạn.
+  const lockLevel = status === 'warning' ? 1 : status === 'violation' ? 2 : status === 'frozen' ? 3 : undefined;
+  // Hạn mở khoá lấy theo ngày áp dụng kỷ luật gần nhất, 22:30 giờ Việt Nam.
+  const lockedUntil = lockLevel && lockLevel !== 3 && violations[0]
+    ? `${violations[0].appliedAt}T22:30:00+07:00`
+    : undefined;
 
   return {
     id: `GV-2026-${String(seed).padStart(3, '0')}`,
@@ -155,7 +162,9 @@ function buildLecturer(index: number): Lecturer {
       address: `${12 + (index % 60)} Nguyễn Văn Bảo, Gò Vấp, TP. Hồ Chí Minh`,
       verified: taxVerified
     },
-    violations: violationsFor(index, status),
+    violations,
+    lockLevel,
+    lockedUntil,
     documents: [
       { key: 'cccd', label: 'CCCD / Hộ chiếu', state: 'missing' },
       { key: 'tax', label: 'Mã số thuế cá nhân', state: index === 2 ? 'invalid' : 'missing' },
@@ -177,7 +186,9 @@ const STUDENT_NAMES = [
 
 const STUDENT_COURSES: EnrolledCourse[] = [
   { name: 'Lập trình Web cơ bản', progress: 75 },
-  { name: 'SQL và cơ sở dữ liệu', progress: 40 }
+  { name: 'SQL và cơ sở dữ liệu', progress: 40 },
+  { name: 'React & Next.js từ Zero đến Production', progress: 62 },
+  { name: 'Thiết kế UI/UX cho sản phẩm SaaS', progress: 18 }
 ];
 
 function studentStatus(index: number): StudentStatus {
@@ -206,12 +217,18 @@ function buildStudent(index: number): Student {
     orders: Math.max(courseCount, courseCount + (index % 3)),
     registeredAt: `${year}-${month}-${day}`,
     status,
+    lockLevel: status === 'locked' ? 1 : undefined,
+    lockedUntil: status === 'locked' ? '2026-05-22T22:30:00+07:00' : undefined,
+    lockReason: status === 'locked' ? 'Spam bình luận trong khoá học' : undefined,
     violations: status === 'locked'
-      ? [{ level: 'Cảnh cáo · Mức 1', appliedAt: '2026-05-22', reason: 'Spam bình luận trong khoá học' }]
+      ? [
+        { level: 'Cảnh cáo · Mức 1', appliedAt: '2026-07-11', reason: 'Chia sẻ tài khoản cho người khác' },
+        { level: 'Cảnh cáo · Mức 1', appliedAt: '2026-06-03', reason: 'Sử dụng công cụ hỗ trợ làm bài kiểm tra' },
+        { level: 'Cảnh cáo · Mức 1', appliedAt: '2026-05-22', reason: 'Spam bình luận trong khoá học' }
+      ]
       : [],
     enrolledCourses: index < 40
-      ? [{ name: 'Lập trình Web cơ bản', progress: 75 }, { name: 'SQL và cơ sở dữ liệu', progress: 40 }]
-        .slice(0, Math.min(2, Math.max(1, courseCount)))
+      ? STUDENT_COURSES.slice(0, Math.min(STUDENT_COURSES.length, courseCount))
       : [],
     recentOrder: index < 40
       ? { id: `#ORD-2026-${String(1 + index).padStart(3, '0')}`, amount: 1250000 + index * 50000, paidAt: '2026-07-11T13:05:00+07:00', status: 'Đã thanh toán' }
@@ -240,6 +257,7 @@ export function coursesForLecturer(lecturer: Lecturer): LecturerCourseRow[] {
   return Array.from({ length: Math.max(1, Math.min(lecturer.courses, 8)) }, (_, index) => {
     const name = LECTURER_COURSE_OPTIONS[index % LECTURER_COURSE_OPTIONS.length];
     return {
+      code: `KH-2026-${String(12 + index * 7).padStart(3, '0')}`,
       name: index < LECTURER_COURSE_OPTIONS.length ? name : `${name} · Lớp ${index + 1}`,
       status: statuses[index % statuses.length],
       learners: Math.max(12, Math.round(lecturer.learners / Math.max(1, lecturer.courses)) - index * 17),

@@ -1,5 +1,60 @@
-.metric-delta { color: #13743b; }
-.audit-cell-copy { display: block; min-width: 0; }
-.audit-cell-copy small { display: block; margin-top: 2px; color: #64748b; font: var(--admin-text-caption); }
-.audit-table td .status-badge { margin-top: 6px; }
-.audit-table .link-button.mono { padding: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+/* Nhật ký Kiểm toán — chi tiết riêng của trang; nền tảng dùng chung nằm ở ../system-page.css */
+
+.metric-danger-note { color: #c0392b; }
+.metric-card.integrity-broken {
+  border-color: #e9a6ae;
+  background: #fff5f6;
+}
+
+.reset-filters { min-height: 44px; padding: 0 16px; }
+
+/* Cột "Quản trị viên" */
+.audit-actor { min-width: 0; }
+.audit-actor .role-chip { margin-top: 5px; }
+
+/* Cột "Phân hệ và Hành động" */
+.module-chip {
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  max-width: 100%;
+  padding: 4px 12px;
+  border-radius: 7px;
+  font: var(--admin-text-badge);
+  font-weight: var(--admin-font-weight-medium);
+}
+.chip-blue { background: #e8f1ff; color: #24518f; }
+.chip-cyan { background: #e3f6f8; color: #0b6c7d; }
+.chip-violet { background: #f0ecff; color: #5b3fc4; }
+.chip-green { background: #e9f8ee; color: #13743b; }
+.chip-amber { background: #fff4d6; color: #8a5a00; }
+.chip-grey { background: #eef2f7; color: #425b7d; }
+
+.audit-action { display: block; margin-top: 6px; color: #102648; font-size: 14px; }
+.audit-outcome {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  color: #13743b;
+  font: var(--admin-text-caption);
+}
+.audit-outcome i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.audit-outcome.is-failed { color: #b83e4d; }
+
+/* Cột "Đối tượng tác động" */
+.audit-target-id {
+  padding: 0;
+  color: #1657c9;
+  font-size: 14px;
+  font-weight: var(--admin-font-weight-semibold);
+  text-decoration: none;
+}
+button.audit-target-id { background: none; border: 0; cursor: pointer; font-family: inherit; }
+button.audit-target-id:hover { color: #0f47a8; text-decoration: underline; text-underline-offset: 3px; }
+.audit-table .mono.audit-target-id { font-family: inherit; font-size: 14px; }
+
+/* Trạng thái khoá khi checksum sai lệch */
+.audit-panel.is-locked .table-scroll table,
+.audit-panel.is-locked .pagination { opacity: 0.42; }
+.audit-panel.is-locked .table-scroll table { pointer-events: none; }

@@ -123,12 +123,16 @@ export interface SettingsParameters {
 }
 
 export interface SocialKeys {
+  googleEnabled: boolean;
   googleClientId: string;
   googleClientSecret: string;
+  facebookEnabled: boolean;
   facebookClientId: string;
   facebookClientSecret: string;
+  appleEnabled: boolean;
   appleClientId: string;
   appleClientSecret: string;
+  recaptchaEnabled: boolean;
   recaptchaSiteKey: string;
   recaptchaSecretKey: string;
 }

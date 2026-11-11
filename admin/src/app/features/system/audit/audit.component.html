@@ -4,14 +4,95 @@
       <h1>Nhật ký Kiểm toán Hệ thống</h1>
     </div>
     <div class="heading-actions">
-      <app-export-menu label="Xuất Excel/CSV" [showText]="true" (formatChange)="openExport($event)" />
+      <app-export-menu
+        label="Xuất Excel/CSV"
+        [showText]="true"
+        variant="secondary"
+        [disabled]="broken()"
+        (formatChange)="openExport($event)"
+      />
     </div>
   </header>
 
-  <p class="demo-note">
-    Dữ liệu demo · thêm <code>?integrity=broken</code> để xem trạng thái sai lệch checksum,
-    <code>?exportError=1</code> để mô phỏng lỗi xuất báo cáo.
-  </p>
+  <!-- TODO(pre-deploy): Nhớ xóa nhánh demo ?integrity=broken / ?exportError=1 và đấu nối API nhật ký kiểm toán thật. -->
+
+  <div class="metric-grid">
+    <article class="metric-card">
+      <small>Tổng bản ghi trong ngày</small>
+      <span class="metric-icon blue" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z" /><path d="M14 3v4h4" /><path d="M9 12h6M9 16h6" /></svg>
+      </span>
+      <strong>{{ totalLabel() }}</strong>
+      <p>{{ summary().totalDelta }} so với hôm qua</p>
+    </article>
+    <button class="metric-card actionable" type="button" (click)="filterHighRisk()">
+      <small>Tác vụ nguy cơ cao</small>
+      <span class="metric-icon red" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 21 19H3z" /><path d="M12 10v4M12 16.6v.4" /></svg>
+      </span>
+      <strong>{{ summary().highRisk }}</strong>
+      <p class="metric-danger-note">Nhấn để lọc tác vụ cần rà soát</p>
+    </button>
+    <article class="metric-card">
+      <small>Admin có thao tác</small>
+      <span class="metric-icon blue" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.4" /><path d="M2.8 20a6.2 6.2 0 0 1 12.4 0" /><path d="M16 4.6a3.4 3.4 0 0 1 0 6.8M17.6 14.2a6.2 6.2 0 0 1 3.6 5.8" /></svg>
+      </span>
+      <strong>{{ summary().activeAdmins }}</strong>
+      <p>{{ summary().onlineAdmins }} người hiện đang online</p>
+    </article>
+    <article class="metric-card" [class.integrity-broken]="broken()">
+      <small>Toàn vẹn dữ liệu</small>
+      <span class="metric-icon green" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 8.4-7 10-4-1.6-7-5.4-7-10V6z" /><path d="m9 12 2 2 4-4" /></svg>
+      </span>
+      <strong [class.text-danger]="broken()">{{ broken() ? 'SAI LỆCH' : 'Toàn vẹn' }}</strong>
+      @if (broken()) {
+        <p class="metric-danger-note">Chức năng kiểm toán đang tạm khóa</p>
+      } @else {
+        <p>Đã chứng thực chuỗi nhật ký</p>
+      }
+    </article>
+  </div>
+
+  <div class="filter-panel">
+    <div class="filter-bar audit-filters">
+      <div class="audit-filter-row row-primary">
+        <app-search-field
+          inputId="audit-search"
+          label="Tìm kiếm"
+          placeholder="Tìm mã đơn (THKUP-...), mã rút tiền (PO-...), mã GV (GV-...), vai trò Admin (SA, CA, FA, CS)"
+          [floatLabel]="true"
+          [value]="search()"
+          (valueChange)="onSearch($event)"
+        />
+        <div class="filter-field">
+          <span id="audit-time-label">Thời gian</span>
+          <app-custom-select controlId="audit-time" labelId="audit-time-label" [value]="timeFilter()" [options]="timeOptions" [menuWidth]="210" (valueChange)="setFilter('time', $event)" />
+        </div>
+        <div class="filter-actions">
+          <button class="ghost-button reset-filters" type="button" (click)="resetFilters()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v5h5" /></svg>
+            Đặt lại
+          </button>
+        </div>
+      </div>
+      <div class="audit-filter-row row-secondary">
+        <div class="filter-field">
+          <span id="audit-module-label">Phân hệ</span>
+          <app-custom-select controlId="audit-module" labelId="audit-module-label" [value]="moduleFilter()" [options]="moduleOptions" [menuWidth]="240" (valueChange)="setFilter('module', $event)" />
+        </div>
+        <div class="filter-field">
+          <span id="audit-risk-label">Mức độ rủi ro</span>
+          <app-custom-select controlId="audit-risk" labelId="audit-risk-label" [value]="riskFilter()" [options]="riskOptions" [menuWidth]="200" (valueChange)="setFilter('risk', $event)" />
+        </div>
+        <div class="filter-field">
+          <span id="audit-action-label">Loại hành động</span>
+          <app-custom-select controlId="audit-action" labelId="audit-action-label" [value]="actionFilter()" [options]="actionOptions" [menuWidth]="220" (valueChange)="setFilter('action', $event)" />
+        </div>
+      </div>
+    </div>
+  </div>
 
   @if (broken()) {
     <div class="alert-banner" role="alert">
@@ -23,166 +104,91 @@
     </div>
   }
 
-  <div class="metric-grid">
-    <article class="metric-card">
-      <span class="metric-icon blue" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 4h11l3 3v13H5z" /><path d="M9 10h6M9 14h6" /></svg>
-      </span>
-      <div>
-        <small>Tổng bản ghi trong ngày</small>
-        <strong>{{ totalLabel() }}</strong>
-        <p class="metric-delta">{{ summary().totalDelta }}</p>
-      </div>
-    </article>
-    <button class="metric-card actionable danger" type="button" (click)="filterHighRisk()">
-      <span class="metric-icon red" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 4 21 19H3z" /><path d="M12 10v4M12 16.6v.4" /></svg>
-      </span>
-      <div>
-        <small>Tác vụ nguy cơ cao</small>
-        <strong>{{ summary().highRisk }}</strong>
-        <p>Nhấn để lọc tác vụ cần rà soát</p>
-      </div>
-    </button>
-    <article class="metric-card">
-      <span class="metric-icon cyan" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="3.4" /><path d="M5 20c1.2-3.4 3.8-5 7-5s5.8 1.6 7 5" /></svg>
-      </span>
-      <div>
-        <small>Admin có thao tác</small>
-        <strong>{{ summary().activeAdmins }}</strong>
-        <p>{{ summary().onlineAdmins }} người hiện đang online</p>
-      </div>
-    </article>
-    <article class="metric-card" [class.danger]="broken()">
-      <span class="metric-icon" [class.green]="!broken()" [class.red]="broken()" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3 5 6v6c0 4.4 3 7.4 7 9 4-1.6 7-4.6 7-9V6z" /><path d="m9 12 2 2 4-4" /></svg>
-      </span>
-      <div>
-        <small>Toàn vẹn dữ liệu</small>
-        <strong [class.text-danger]="broken()">{{ broken() ? 'SAI LỆCH' : 'Toàn vẹn' }}</strong>
-        <p>{{ broken() ? 'Chức năng kiểm toán đang tạm khóa' : 'Đã chứng thực chuỗi nhật ký' }}</p>
-      </div>
-    </article>
-  </div>
-
-  <div class="workspace-panel">
-    <div class="filter-bar audit-filters">
-      <app-search-field
-        inputId="audit-search"
-        label="Tìm kiếm"
-        placeholder="Tìm mã đơn (THKUP-...), mã rút tiền (PO-...), mã GV (GV-...), vai trò Admin (SA, CA, FA, CS)"
-        [value]="search()"
-        (valueChange)="onSearch($event)"
-      />
-      <div class="field">
-        <label id="audit-time-label" for="audit-time">Thời gian</label>
-        <app-custom-select controlId="audit-time" labelId="audit-time-label" [value]="timeFilter()" [options]="timeOptions" [menuWidth]="210" (valueChange)="setFilter('time', $event)" />
-      </div>
-      <div class="field">
-        <label id="audit-module-label" for="audit-module">Phân hệ</label>
-        <app-custom-select controlId="audit-module" labelId="audit-module-label" [value]="moduleFilter()" [options]="moduleOptions" [menuWidth]="220" (valueChange)="setFilter('module', $event)" />
-      </div>
-      <div class="field">
-        <label id="audit-risk-label" for="audit-risk">Mức độ rủi ro</label>
-        <app-custom-select controlId="audit-risk" labelId="audit-risk-label" [value]="riskFilter()" [options]="riskOptions" [menuWidth]="180" (valueChange)="setFilter('risk', $event)" />
-      </div>
-      <div class="field">
-        <label id="audit-action-label" for="audit-action">Loại hành động</label>
-        <app-custom-select controlId="audit-action" labelId="audit-action-label" [value]="actionFilter()" [options]="actionOptions" [menuWidth]="200" (valueChange)="setFilter('action', $event)" />
-      </div>
-      <div class="filter-actions">
-        <button class="ghost-button" type="button" (click)="resetFilters()">↻ Đặt lại</button>
-      </div>
-    </div>
-
-    <div class="table-scroll">
-      <table class="audit-table">
-        <thead>
-          <tr>
-            <th scope="col">Mã Log và Thời gian</th>
-            <th scope="col">Quản trị viên</th>
-            <th scope="col">Phân hệ và Hành động</th>
-            <th scope="col">Đối tượng tác động</th>
-            <th scope="col">IP và Trình duyệt</th>
-            <th scope="col">Mức độ rủi ro</th>
-            <th scope="col">Thao tác</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (log of paged(); track log.id) {
+  <section class="workspace-panel audit-panel" [class.is-locked]="broken()" aria-label="Bảng nhật ký kiểm toán">
+    @if (paged().length) {
+      <div class="table-scroll" tabindex="0" aria-label="Bảng nhật ký kiểm toán, cuộn ngang khi cần">
+        <table class="audit-table">
+          <thead>
             <tr>
-              <td>
-                <strong class="mono">{{ log.id }}</strong>
-                <small>{{ log.at }}</small>
-              </td>
-              <td>
-                <div class="person-cell">
-                  <span class="avatar">{{ log.actorInitials }}</span>
-                  <span class="audit-cell-copy">
-                    <strong>{{ log.actorName }}</strong>
-                    <small>{{ log.actorEmail }}</small>
-                    <small>{{ log.actorRole }}</small>
+              <th scope="col">Mã Log và Thời gian</th>
+              <th scope="col">Quản trị viên</th>
+              <th scope="col">Phân hệ và Hành động</th>
+              <th scope="col">Đối tượng tác động</th>
+              <th scope="col">IP và Trình duyệt</th>
+              <th scope="col">Mức độ rủi ro</th>
+              <th scope="col">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (log of paged(); track log.id) {
+              <tr>
+                <td>
+                  <strong>{{ log.id }}</strong>
+                  <small>{{ log.at }}</small>
+                </td>
+                <td>
+                  <div class="person-cell">
+                    <span class="avatar" aria-hidden="true">{{ log.actorInitials }}</span>
+                    <div class="audit-actor">
+                      <strong>{{ log.actorName }}</strong>
+                      <small>{{ log.actorEmail }}</small>
+                      <span [class]="'role-chip role-' + roleCode(log.actorRole)">{{ log.actorRole }}</span>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span [class]="moduleChipClass(log.module)">{{ log.module }}</span>
+                  <span class="audit-action">{{ log.action }}</span>
+                  <span class="audit-outcome" [class.is-failed]="log.outcome === 'failed'">
+                    <i aria-hidden="true"></i>{{ log.outcome === 'success' ? 'Thành công' : 'Thất bại' }}
                   </span>
-                </div>
-              </td>
-              <td>
-                <strong>{{ log.module }}</strong>
-                <small>{{ log.action }}</small>
-                <span class="status-badge" [class.status-success]="log.outcome === 'success'" [class.status-danger]="log.outcome === 'failed'">
-                  ● {{ log.outcome === 'success' ? 'Thành công' : 'Thất bại' }}
-                </span>
-              </td>
-              <td>
-                @if (log.targetId.startsWith('PO-')) {
-                  <button class="link-button mono" type="button" (click)="openTarget(log)">{{ log.targetId }}</button>
-                } @else {
-                  <strong class="mono">{{ log.targetId }}</strong>
-                }
-                <small>{{ log.targetName }}</small>
-                <small>{{ log.targetMeta }}</small>
-              </td>
-              <td>
-                <strong class="mono">{{ log.ip }}</strong>
-                <small>{{ log.location }}</small>
-                <small>{{ log.device }}</small>
-              </td>
-              <td><span class="status-badge" [class]="riskClass(log.risk)">{{ riskLabel(log.risk) }}</span></td>
-              <td>
-                <button class="link-button" type="button" (click)="openDetail(log)">Chi tiết biến động</button>
-              </td>
-            </tr>
-          } @empty {
-            <tr>
-              <td colspan="7">
-                <div class="empty-state">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m15.5 15.5 4.5 4.5" /></svg>
-                  <strong>Không có bản ghi phù hợp</strong>
-                  <p>Thử mã đối tượng khác hoặc đặt lại các điều kiện lọc.</p>
-                  <button class="ghost-button" type="button" (click)="resetFilters()">Đặt lại bộ lọc</button>
-                </div>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-
-    <div class="pagination">
-      <span>{{ rangeLabel() }}</span>
-      <div role="navigation" aria-label="Phân trang nhật ký">
-        <button type="button" aria-label="Trang trước" [disabled]="safePage() <= 1" (click)="goToPage(safePage() - 1)">‹</button>
-        @for (item of pageItems(); track $index) {
-          @if (item === '…') {
-            <button type="button" disabled aria-hidden="true">…</button>
-          } @else {
-            <button type="button" [class.active]="item === safePage()" [attr.aria-current]="item === safePage() ? 'page' : null" (click)="goToPage(item)">{{ item }}</button>
-          }
-        }
-        <button type="button" aria-label="Trang sau" [disabled]="safePage() >= totalPages()" (click)="goToPage(safePage() + 1)">›</button>
+                </td>
+                <td>
+                  @if (log.targetId.startsWith('PO-')) {
+                    <button class="link-button mono audit-target-id" type="button" (click)="openTarget(log)">{{ log.targetId }}</button>
+                  } @else {
+                    <strong class="audit-target-id">{{ log.targetId }}</strong>
+                  }
+                  <small>{{ log.targetName }}</small>
+                  <small>{{ log.targetMeta }}</small>
+                </td>
+                <td>
+                  <strong class="mono">{{ log.ip }}</strong>
+                  <small>{{ log.location }}</small>
+                  <small>{{ log.device }}</small>
+                </td>
+                <td><span [class]="riskClass(log.risk)">{{ riskLabel(log.risk) }}</span></td>
+                <td>
+                  <button class="link-button" type="button" (click)="openDetail(log)">Chi tiết biến động</button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
       </div>
-    </div>
-  </div>
+      <div class="pagination">
+        <span>{{ rangeLabel() }}</span>
+        <div role="navigation" aria-label="Phân trang nhật ký">
+          <button type="button" aria-label="Trang trước" [disabled]="safePage() <= 1" (click)="goToPage(safePage() - 1)">‹</button>
+          @for (item of pageItems(); track $index) {
+            @if (item === '…') {
+              <button type="button" disabled aria-hidden="true">…</button>
+            } @else {
+              <button type="button" [class.active]="item === safePage()" [attr.aria-current]="item === safePage() ? 'page' : null" (click)="goToPage(item)">{{ item }}</button>
+            }
+          }
+          <button type="button" aria-label="Trang sau" [disabled]="safePage() >= totalPages()" (click)="goToPage(safePage() + 1)">›</button>
+        </div>
+      </div>
+    } @else {
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6z" /><path d="M14 3v4h4" /><path d="M9 13h6M9 17h4" /></svg>
+        <strong>Không có bản ghi phù hợp</strong>
+        <p>Thử mã đối tượng khác hoặc đặt lại các điều kiện lọc.</p>
+        <button class="ghost-button" type="button" (click)="resetFilters()">Đặt lại bộ lọc</button>
+      </div>
+    }
+  </section>
 
   @if (detailLog(); as log) {
     <app-system-audit-detail-dialog

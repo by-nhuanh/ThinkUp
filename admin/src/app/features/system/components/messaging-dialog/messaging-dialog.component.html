@@ -1,17 +1,21 @@
 <app-admin-dialog
   title="Cấu hình Dịch vụ SMS và Email OTP"
   subtitle="Thiết lập thông tin người gửi, mẫu thư và thời hạn mã xác thực."
-  size="lg"
+  icon="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"
+  size="xl"
   (closed)="closed.emit()"
 >
   <div class="system-form">
-    <div class="scope-panel">
-      <h4>Quy tắc OTP cố định · Chỉ đọc</h4>
-      <p class="otp-rules">{{ otpRules }}</p>
+    <div class="notice info has-icon">
+      <svg class="notice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.2 19 6v6c0 4.2-2.9 7.4-7 9-4.1-1.6-7-4.8-7-9V6l7-2.8Z" /><path d="m9 12 2.1 2.1L15 10" /></svg>
+      <div class="notice-body">
+        <strong>Quy tắc OTP cố định · Chỉ đọc</strong>
+        <p class="otp-rules">{{ otpRules }}</p>
+      </div>
     </div>
 
     <div class="form-grid">
-      <label class="field full">
+      <label class="field">
         <span>Tên hiển thị người gửi <span class="required-mark">*</span></span>
         <input type="text" [value]="form().senderName" (input)="update('senderName', $any($event.target).value)" />
       </label>
@@ -31,36 +35,52 @@
           <p class="field-error">{{ replyEmailError() }}</p>
         }
       </label>
-      <label class="field full">
+      <label class="field">
         <span>Mật khẩu kết nối dịch vụ <span class="required-mark">*</span></span>
         <input type="password" autocomplete="new-password" [value]="form().servicePassword" (input)="update('servicePassword', $any($event.target).value)" />
       </label>
     </div>
 
-    @for (template of [
-      { key: 'lecturerContractTemplate', label: 'Mẫu thư Ký HĐ Giảng viên', state: contractTemplateState(), which: 'contract' },
-      { key: 'adminGrantTemplate', label: 'Mẫu thư Cấp quyền Admin', state: adminTemplateState(), which: 'admin' }
-    ]; track template.key) {
-      <div class="template-block">
-        <label class="field">
-          <span>{{ template.label }} <span class="required-mark">*</span></span>
-          <div class="template-row">
-            <input type="text" [value]="$any(form())[template.key]" (input)="update($any(template.key), $any($event.target).value)" />
+    <div class="template-grid">
+      @for (template of [
+        { key: 'lecturerContractTemplate', id: 'msg-template-contract', label: 'Mẫu thư Ký HĐ Giảng viên', state: contractTemplateState(), which: 'contract' },
+        { key: 'adminGrantTemplate', id: 'msg-template-admin', label: 'Mẫu thư Cấp quyền Admin', state: adminTemplateState(), which: 'admin' }
+      ]; track template.key) {
+        <section class="template-block">
+          <h3><label [attr.for]="template.id">{{ template.label }} <span class="required-mark">*</span></label></h3>
+          <input
+            [id]="template.id"
+            type="text"
+            [value]="$any(form())[template.key]"
+            (input)="update($any(template.key), $any($event.target).value)"
+          />
+          <div class="template-actions">
             <button class="ghost-button" type="button" [disabled]="template.state === 'checking'" (click)="checkTemplate($any(template.which))">
               {{ template.state === 'checking' ? 'Đang kiểm tra…' : 'Kiểm tra Template' }}
             </button>
+            @if (template.state === 'verified') {
+              <span class="template-state ok">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.6" /><path d="m8.4 12.2 2.4 2.4 4.8-4.8" /></svg>
+                Đã tìm thấy mẫu thư
+              </span>
+            } @else if (template.state === 'failed') {
+              <span class="template-state bad" role="alert">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.6" /><path d="M12 7.8v4.6" /><path d="M12 16.2h.01" /></svg>
+                Không tìm thấy mẫu thư
+              </span>
+            }
           </div>
-        </label>
-        @if (template.state === 'verified') {
-          <p class="template-result ok"><strong>Đã tìm thấy mẫu thư</strong>Mẫu thư tồn tại trên dịch vụ đối tác.</p>
-        } @else if (template.state === 'failed') {
-          <p class="template-result bad" role="alert"><strong>Không tìm thấy mẫu thư</strong>Mã mẫu thư không tồn tại. Kiểm tra lại Template ID.</p>
-        }
-      </div>
-    }
+          @if (template.state === 'failed') {
+            <p class="template-hint">Mã mẫu thư không tồn tại. Kiểm tra lại Template ID.</p>
+          } @else {
+            <p class="template-hint">Mẫu thư tồn tại trên dịch vụ đối tác.</p>
+          }
+        </section>
+      }
+    </div>
 
-    <label class="field otp-expiry" [class.invalid]="!!otpExpiryError()">
-      <span>Thời gian hết hạn OTP <span class="required-mark">*</span></span>
+    <label class="field" [class.invalid]="!!otpExpiryError()">
+      <span>Thời gian giới hạn OTP <span class="required-mark">*</span></span>
       <div class="unit-input">
         <input type="number" min="1" step="1" [value]="otpExpiryDisplay()" (input)="onOtpExpiry($any($event.target).value)" />
         <span>phút</span>
@@ -72,6 +92,7 @@
       }
     </label>
   </div>
+
   <div dialogFooter class="dialog-actions">
     <p class="left-note">{{ footerNote() }}</p>
     <button class="ghost-button" type="button" (click)="closed.emit()">Hủy</button>

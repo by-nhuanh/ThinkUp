@@ -1,5 +1,5 @@
 import { Component, HostListener, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CustomSelectComponent } from '../../../shared/components/custom-select/custom-select.component';
 import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
@@ -24,7 +24,6 @@ const INITIALS_OVERRIDES: Record<string, string> = {
   selector: 'app-system-security',
   standalone: true,
   imports: [
-    RouterLink,
     CustomSelectComponent,
     SearchFieldComponent,
     ExportMenuComponent,
