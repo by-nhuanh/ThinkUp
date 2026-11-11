@@ -20,6 +20,7 @@ import {
   formatDate,
   formatDateTime,
   formatDeadline,
+  formatDeadlineLong,
   lockDeadlineIso
 } from '../user-management.utils';
 
@@ -30,14 +31,14 @@ const LEVELS: ReadonlyArray<{ level: DisciplineLevel; title: string; tag: string
   {
     level: 1,
     title: 'Mức 1 · Cảnh cáo vi phạm nhẹ',
-    tag: '7 ngày',
+    tag: 'Tạm khóa 7 ngày',
     description: 'Áp dụng cho spam bình luận, quấy rối thảo luận hoặc học viên gây mất trật tự phòng học ảo.',
     days: 7
   },
   {
     level: 2,
     title: 'Mức 2 · Đình chỉ có thời hạn',
-    tag: '30 ngày',
+    tag: 'Tạm khóa 30 ngày',
     description: 'Áp dụng khi chia sẻ tài khoản cho nhiều người dùng chung hoặc gian lận làm bài kiểm tra.',
     days: 30
   },
@@ -105,6 +106,12 @@ export class StudentsComponent {
   readonly reason = signal('');
   readonly evidence = signal<ReadonlyArray<string>>([]);
   readonly unlockReason = signal('');
+  readonly showAllCourses = signal(false);
+  readonly showAllViolations = signal(false);
+
+  /** Số dòng xem trước trước khi bấm "Xem tất cả" trong hồ sơ học viên. */
+  readonly coursePreview = 2;
+  readonly violationPreview = 2;
 
   readonly statusOptions: ReadonlyArray<CustomSelectOption> = [
     { value: '', label: 'Tất cả trạng thái' },
@@ -192,6 +199,20 @@ export class StudentsComponent {
 
   readonly canSubmitLock = computed(() => this.reason().trim().length >= 10 && this.evidence().length > 0);
   readonly canSubmitUnlock = computed(() => this.unlockReason().trim().length >= 10);
+
+  readonly visibleCourses = computed(() => {
+    const courses = this.selected()?.enrolledCourses ?? [];
+    return this.showAllCourses() ? courses : courses.slice(0, this.coursePreview);
+  });
+
+  readonly hasMoreCourses = computed(() => (this.selected()?.enrolledCourses.length ?? 0) > this.coursePreview);
+
+  readonly visibleViolations = computed(() => {
+    const violations = this.selected()?.violations ?? [];
+    return this.showAllViolations() ? violations : violations.slice(0, this.violationPreview);
+  });
+
+  readonly hasMoreViolations = computed(() => (this.selected()?.violations.length ?? 0) > this.violationPreview);
 
   private readonly baseMenuItems: readonly UserRowMenuItem[] = [
     { key: 'profile', label: 'Chi tiết' },
@@ -298,7 +319,17 @@ export class StudentsComponent {
 
   openProfile(student: Student): void {
     this.selected.set(student);
+    this.showAllCourses.set(false);
+    this.showAllViolations.set(false);
     this.modal.set('profile');
+  }
+
+  toggleAllCourses(): void {
+    this.showAllCourses.update((value) => !value);
+  }
+
+  toggleAllViolations(): void {
+    this.showAllViolations.update((value) => !value);
   }
 
   /** Mở trang Đơn hàng đã lọc sẵn theo email học viên. */
@@ -348,7 +379,7 @@ export class StudentsComponent {
   /** Hạn khoá đang lưu trên hồ sơ học viên. */
   lockExpiryLabel(student: Student): string {
     return student.lockedUntil
-      ? `Hết hạn: ${formatDeadline(student.lockedUntil)}`
+      ? `Hết hạn: ${formatDeadlineLong(student.lockedUntil)}`
       : 'Khóa vĩnh viễn, không có ngày hết hạn.';
   }
 

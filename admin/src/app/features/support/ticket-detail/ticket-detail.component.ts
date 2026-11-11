@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, DestroyRef, ElementRef, HostListener, ViewChild, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, HostListener, Injector, ViewChild, afterNextRender, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { LucideArrowDownUp, LucideArrowUp, LucideBold, LucideCalendarDays, LucideCheckCircle2, LucideClock3, LucideCopy, LucideDownload, LucideEllipsis, LucideFileText, LucideImage, LucideItalic, LucideLayoutGrid, LucideList, LucideListOrdered, LucideMail, LucideMessageSquareText, LucidePaperclip, LucidePencil, LucidePlus, LucideRefreshCw, LucideReply, LucideSearch, LucideSend, LucideTag, LucideUserRoundPlus, LucideX } from '@lucide/angular';
@@ -23,6 +23,8 @@ export class TicketDetailComponent {
   private readonly data = inject(SupportDemoService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly injector = inject(Injector);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly destroyRef = inject(DestroyRef);
   readonly ticketId = this.route.snapshot.paramMap.get('id') ?? '';
   readonly ticket = computed(() => this.data.tickets().find(item => item.id === this.ticketId) ?? null);
@@ -50,7 +52,8 @@ export class TicketDetailComponent {
   readonly customClassificationReason = signal('');
   readonly templateQuery = signal('');
   readonly templateCategory = signal<'all' | ReplyTemplate['category']>('all');
-  readonly selectedTemplate = signal<ReplyTemplate | null>(null);
+  readonly selectedTemplateId = signal<string | null>(null);
+  readonly confirmingTemplateDelete = signal(false);
   readonly templateEditorMode = signal<'create' | 'edit' | null>(null);
   readonly templateDraftId = signal('');
   readonly templateDraftTitle = signal('');
@@ -99,7 +102,19 @@ export class TicketDetailComponent {
     { value: 'auto', label: 'Tự động gán cho người ít việc nhất' },
     ...this.filteredStaff().map(person => ({ value: person.name, label: `${person.name} · ${this.staffWorkload(person.name)} ticket đang xử lý` }))
   ]);
-  readonly filteredTemplates = computed(() => { const query = this.templateQuery().trim().toLocaleLowerCase('vi'); const preferred = this.templateCategoryForTopic(this.ticket()?.topic ?? ''); return this.replyTemplates().filter(item => (this.templateCategory() === 'all' || item.category === this.templateCategory()) && (!query || `${item.title} ${item.description} ${item.body} ${item.keywords.join(' ')}`.toLocaleLowerCase('vi').includes(query))).sort((a, b) => Number(b.category === preferred) - Number(a.category === preferred)); });
+  readonly filteredTemplates = computed(() => {
+    const query = this.templateQuery().trim().toLocaleLowerCase('vi');
+    const category = this.templateCategory();
+    const preferred = this.templateCategoryForTopic(this.ticket()?.topic ?? '');
+    return this.replyTemplates()
+      .filter(item => (category === 'all' || item.category === category) &&
+        (!query || [item.title, item.description, item.body, ...item.keywords].join(' ').toLocaleLowerCase('vi').includes(query)))
+      .sort((a, b) => Number(b.category === preferred) - Number(a.category === preferred));
+  });
+  readonly selectedTemplate = computed<ReplyTemplate | null>(() => {
+    const templates = this.filteredTemplates();
+    return templates.find(item => item.id === this.selectedTemplateId()) ?? templates[0] ?? null;
+  });
   readonly canSaveTemplate = computed(() => this.templateDraftTitle().trim().length >= 5 && this.templateDraftDescription().trim().length >= 10 && this.wordCount(this.templateDraftBody()) >= 5);
   readonly emailFieldsValid = computed(() => this.replyChannel() === 'internal' || (this.isEmail(this.emailTo()) && this.emailSubject().trim().length >= 3 && this.validOptionalEmails(this.emailCc()) && this.validOptionalEmails(this.emailBcc())));
   readonly canSubmitReply = computed(() => this.reply().trim().length >= 3 && this.emailFieldsValid());
@@ -118,23 +133,123 @@ export class TicketDetailComponent {
   toggleCc(): void { this.showCc.update(value => !value); if (!this.showCc()) this.emailCc.set(''); }
   toggleBcc(): void { this.showBcc.update(value => !value); if (!this.showBcc()) this.emailBcc.set(''); }
   formatReply(command: 'bold' | 'italic' | 'insertUnorderedList' | 'insertOrderedList'): void { this.replyEditor?.nativeElement.focus(); document.execCommand(command); if (this.replyEditor) this.reply.set(this.replyEditor.nativeElement.innerText.slice(0, 2000)); }
-  useTemplate(template: ReplyTemplate): void {
-    const ticket = this.ticket(); if (!ticket) return;
-    const value = template.body.replaceAll('{Tên học viên}', ticket.learner).replaceAll('{Mã bài học}', ticket.lessonCode ?? '[Mã bài học]');
-    this.reply.set(value);
-    if (this.replyEditor) this.replyEditor.nativeElement.innerText = value;
-    this.closeModal();
-    this.replyEditor?.nativeElement.focus();
+  openTemplates(): void {
+    if (this.replyChannel() !== 'email') return;
+    this.emojiPickerOpen.set(false);
+    this.messageMenuId.set(null);
+    this.openModal('templates', '#template-search');
   }
-  openTemplates(): void { if (this.replyChannel() !== 'email') return; this.templateEditorMode.set(null); this.templateQuery.set(''); this.templateCategory.set('all'); this.selectedTemplate.set(this.filteredTemplates()[0] ?? null); this.openModal('templates'); }
-  templateCount(category: ReplyTemplate['category']): number { return this.replyTemplates().filter(item => item.category === category).length; }
-  openCreateTemplate(): void { this.templateDraftId.set(`TPL-CUSTOM-${Date.now()}`); this.templateDraftTitle.set(''); this.templateDraftDescription.set(''); this.templateDraftCategory.set(this.templateCategoryForTopic(this.ticket()?.topic ?? '')); this.templateDraftKeywords.set(''); this.templateDraftBody.set(''); this.templateEditorMode.set('create'); }
-  openEditTemplate(): void { const template = this.selectedTemplate(); if (!template) return; this.templateDraftId.set(template.id); this.templateDraftTitle.set(template.title); this.templateDraftDescription.set(template.description); this.templateDraftCategory.set(template.category); this.templateDraftKeywords.set(template.keywords.join(', ')); this.templateDraftBody.set(template.body); this.templateEditorMode.set('edit'); }
-  cancelTemplateEditor(): void { this.templateEditorMode.set(null); }
-  saveTemplate(): void { if (!this.canSaveTemplate()) return; const mode = this.templateEditorMode(); const template: ReplyTemplate = { id: this.templateDraftId(), title: this.templateDraftTitle().trim(), description: this.templateDraftDescription().trim(), category: this.templateDraftCategory(), keywords: this.templateDraftKeywords().split(',').map(value => value.trim()).filter(Boolean), body: this.templateDraftBody().trim() }; this.data.saveReplyTemplate(template); this.selectedTemplate.set(template); this.templateCategory.set('all'); this.templateEditorMode.set(null); this.notify(`Đã ${mode === 'create' ? 'tạo' : 'cập nhật'} câu trả lời mẫu.`); }
+
+  templateCount(category: ReplyTemplate['category']): number {
+    return this.replyTemplates().filter(item => item.category === category).length;
+  }
+
+  openCreateTemplate(): void {
+    this.templateDraftId.set(crypto.randomUUID());
+    this.templateDraftTitle.set('');
+    this.templateDraftDescription.set('');
+    this.templateDraftCategory.set(this.templateCategoryForTopic(this.ticket()?.topic ?? ''));
+    this.templateDraftKeywords.set('');
+    this.templateDraftBody.set('');
+    this.templateEditorMode.set('create');
+    this.focusAfterRender('#template-title');
+  }
+
+  openEditTemplate(): void {
+    const template = this.selectedTemplate();
+    if (!template) return;
+    this.templateDraftId.set(template.id);
+    this.templateDraftTitle.set(template.title);
+    this.templateDraftDescription.set(template.description);
+    this.templateDraftCategory.set(template.category);
+    this.templateDraftKeywords.set(template.keywords.join(', '));
+    this.templateDraftBody.set(template.body);
+    this.templateEditorMode.set('edit');
+    this.focusAfterRender('#template-title');
+  }
+
+  cancelTemplateEditor(): void {
+    if (this.confirmingTemplateDelete()) {
+      this.confirmingTemplateDelete.set(false);
+      this.focusAfterRender('#delete-template');
+      return;
+    }
+    const mode = this.templateEditorMode();
+    this.templateEditorMode.set(null);
+    this.focusAfterRender(mode === 'edit' ? '#edit-template' : '#create-template');
+  }
+
+  askToDeleteTemplate(): void {
+    this.confirmingTemplateDelete.set(true);
+    this.focusAfterRender('#cancel-template-delete');
+  }
+
+  deleteTemplate(): void {
+    if (this.templateEditorMode() !== 'edit' || !this.confirmingTemplateDelete()) return;
+    this.data.deleteReplyTemplate(this.templateDraftId());
+    this.selectedTemplateId.set(null);
+    this.confirmingTemplateDelete.set(false);
+    this.templateEditorMode.set(null);
+    this.focusAfterRender('#template-search');
+    this.notify('Đã xóa câu trả lời mẫu.');
+  }
+
+  saveTemplate(): void {
+    const mode = this.templateEditorMode();
+    if (!mode || !this.canSaveTemplate()) return;
+    const template: ReplyTemplate = {
+      id: this.templateDraftId(),
+      title: this.templateDraftTitle().trim(),
+      description: this.templateDraftDescription().trim(),
+      category: this.templateDraftCategory(),
+      keywords: this.templateDraftKeywords().split(',').map(value => value.trim()).filter(Boolean),
+      body: this.templateDraftBody().trim()
+    };
+    this.data.saveReplyTemplate(template);
+    if (!this.filteredTemplates().some(item => item.id === template.id)) {
+      this.templateQuery.set('');
+      this.templateCategory.set(template.category);
+    }
+    this.selectedTemplateId.set(template.id);
+    this.templateEditorMode.set(null);
+    this.focusAfterRender('#edit-template');
+    this.notify(mode === 'create' ? 'Đã tạo câu trả lời mẫu.' : 'Đã cập nhật câu trả lời mẫu.');
+  }
+
+  readonly selectedTemplateText = computed(() => {
+    const ticket = this.ticket();
+    const template = this.selectedTemplate();
+    return ticket && template ? template.body
+      .replaceAll('{Tên học viên}', () => ticket.learner)
+      .replaceAll('{Mã bài học}', () => ticket.lessonCode ?? '[Mã bài học]') : '';
+  });
+
+  readonly templateFitsReply = computed(() =>
+    this.reply().trimEnd().length + (this.reply().trimEnd() ? 2 : 0) + this.selectedTemplateText().length <= 2000
+  );
+
   toggleEmojiPicker(): void { this.emojiPickerOpen.update(open => !open); }
   insertEmoji(emoji: string): void { const current = this.reply(); const separator = current && !/\s$/.test(current) ? ' ' : ''; const value = `${current}${separator}${emoji}`.slice(0, 2000); this.reply.set(value); this.emojiPickerOpen.set(false); if (this.replyEditor) { this.replyEditor.nativeElement.innerText = value; this.replyEditor.nativeElement.focus(); } }
-  insertSelectedTemplate(): void { const template = this.selectedTemplate(); if (template) this.useTemplate(template); }
+  insertSelectedTemplate(): void {
+    const editor = this.replyEditor?.nativeElement;
+    const text = this.selectedTemplateText();
+    if (!editor || !text || !this.templateFitsReply()) return;
+    if (this.reply().trimEnd()) {
+      const addition = document.createElement('div');
+      addition.innerText = text;
+      editor.append(document.createElement('br'), addition);
+    } else {
+      editor.innerText = text;
+    }
+    this.reply.set(editor.innerText);
+    this.closeModal(false);
+    afterNextRender(() => {
+      editor.focus();
+      const selection = document.getSelection();
+      selection?.selectAllChildren(editor);
+      selection?.collapseToEnd();
+    }, { injector: this.injector });
+  }
 
   chooseFiles(input: HTMLInputElement): void { input.click(); }
   onFilesSelected(event: Event): void {
@@ -224,10 +339,58 @@ export class TicketDetailComponent {
   wordCount(value: string): number { return value.trim() ? value.trim().split(/\s+/).length : 0; }
   private buildEmailMetadata(): EmailReplyMetadata { return { to: this.emailTo().trim(), cc: this.splitEmails(this.emailCc()), bcc: this.splitEmails(this.emailBcc()), subject: this.emailSubject().trim() }; }
   private templateCategoryForTopic(topic: string): ReplyTemplate['category'] { if (topic.includes('Kỹ thuật') || topic.includes('Coding')) return 'technical'; if (topic.includes('Thanh toán') || topic.includes('Hoàn tiền')) return 'payment'; return 'account'; }
-  private openModal(type: Exclude<TicketModal, null>): void { this.modalOrigin = document.activeElement instanceof HTMLElement ? document.activeElement : null; this.activeModal.set(type); setTimeout(() => document.querySelector<HTMLElement>('.ticket-modal button, .ticket-modal input, .ticket-modal select, .ticket-modal textarea')?.focus()); }
-  closeModal(): void { this.activeModal.set(null); setTimeout(() => this.modalOrigin?.focus()); }
-  @HostListener('document:keydown.escape') closeOnEscape(): void { if (this.lightbox()) this.lightbox.set(null); else if (this.activeModal()) this.closeModal(); else this.emojiPickerOpen.set(false); }
+  private openModal(type: Exclude<TicketModal, null>, focus = '#ticket-modal-close'): void {
+    this.modalOrigin = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    this.activeModal.set(type);
+    this.focusAfterRender(focus);
+  }
+
+  private focusAfterRender(selector: string): void {
+    afterNextRender(() => this.host.nativeElement.querySelector<HTMLElement>(selector)?.focus(), { injector: this.injector });
+  }
+
+  closeModal(restoreFocus = true): void {
+    const origin = this.modalOrigin;
+    this.activeModal.set(null);
+    this.modalOrigin = null;
+    if (restoreFocus) afterNextRender(() => origin?.focus(), { injector: this.injector });
+  }
+
+  onModalBack(): void {
+    if (this.activeModal() === 'templates' && this.templateEditorMode()) this.cancelTemplateEditor();
+    else this.closeModal();
+  }
+
+  @HostListener('document:keydown.escape', ['$event'])
+  closeOnEscape(event: Event): void {
+    if (this.lightbox()) this.lightbox.set(null);
+    else if (this.activeModal()) {
+      const expandedSelect = this.host.nativeElement.querySelector<HTMLElement>('.ticket-modal app-custom-select [aria-expanded="true"]');
+      if (expandedSelect) {
+        expandedSelect.focus();
+        return;
+      }
+      event.preventDefault();
+      this.onModalBack();
+    } else this.emojiPickerOpen.set(false);
+  }
   @HostListener('document:click', ['$event']) closeEmojiPickerOnOutsideClick(event: Event): void { if (this.emojiPickerOpen() && !(event.target as HTMLElement).closest('.emoji-picker-wrap')) this.emojiPickerOpen.set(false); }
-  @HostListener('document:keydown.tab', ['$event']) trapModalFocus(domEvent: Event): void { if (!this.activeModal()) return; const event = domEvent as KeyboardEvent; const controls = document.querySelectorAll<HTMLElement>('.ticket-modal button:not([disabled]), .ticket-modal input:not([disabled]), .ticket-modal select:not([disabled]), .ticket-modal textarea:not([disabled])'); if (!controls.length) return; const first = controls[0], last = controls[controls.length - 1]; if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); } }
+  @HostListener('document:keydown.tab', ['$event'])
+  trapModalFocus(domEvent: Event): void {
+    const event = domEvent as KeyboardEvent;
+    if (!this.activeModal()) return;
+    const dialog = this.host.nativeElement.querySelector('.ticket-modal');
+    if (!dialog) return;
+    const controls = Array.from(dialog.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])'
+    )).filter(control => control.getClientRects().length && control.tabIndex >= 0);
+    const first = controls[0];
+    const last = controls.at(-1);
+    if (!dialog.contains(document.activeElement) ||
+        (event.shiftKey ? document.activeElement === first : document.activeElement === last)) {
+      event.preventDefault();
+      (event.shiftKey ? last : first)?.focus();
+    }
+  }
   private notify(message: string): void { this.toast.set(message); setTimeout(() => this.toast.set(''), 3200); }
 }

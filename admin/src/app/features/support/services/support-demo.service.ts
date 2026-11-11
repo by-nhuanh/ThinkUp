@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { MOCK_COMPLAINTS, MOCK_FAILED_SEARCHES, MOCK_FAQS, MOCK_REPLY_TEMPLATES, MOCK_STAFF, MOCK_TICKETS } from '../../../core/data/mock/support.mock';
-import { Attachment, ComplaintCase, EmailReplyMetadata, FaqItem, FaqStatus, PendingOperation, ReplyTemplate, ResolutionCategory, SupportTicket, ThreadMessage, TicketStatus } from '../models/support.models';
+import { INSTRUCTOR_REFUND_PERCENT, Attachment, ComplaintCase, EmailReplyMetadata, FaqItem, FaqStatus, PendingOperation, ReplyTemplate, ResolutionCategory, SupportTicket, ThreadMessage, TicketStatus } from '../models/support.models';
 
 // TODO(pre-deploy): Nhớ xóa adapter demo và thay bằng HttpClient adapter sau khi có endpoint, schema, quyền và error contract chính thức.
 @Injectable({ providedIn: 'root' })
@@ -20,6 +20,13 @@ export class SupportDemoService {
       : [template, ...items]);
     this.queue('reply_template_upsert', template.id, { template });
   }
+
+  deleteReplyTemplate(id: string): void {
+    if (!this.replyTemplates().some(item => item.id === id)) return;
+    this.replyTemplates.update(items => items.filter(item => item.id !== id));
+    this.queue('reply_template_delete', id, {});
+  }
+
 
   acceptTicket(id: string): void {
     const ticket = this.tickets().find(item => item.id === id); if (!ticket || ticket.assignee) return;
@@ -74,9 +81,9 @@ export class SupportDemoService {
     this.queue('complaint_explanation', id, { deadlineHours, freezeCommission, directive, notifyByBellAndEmail: true });
   }
   approveComplaintRefund(id: string, amount: number, revokeAccess: boolean, revokeCertificate: boolean, conclusion: string): void {
-    const instructorShare = Math.round(amount * .7);
+    const instructorShare = Math.round(amount * INSTRUCTOR_REFUND_PERCENT / 100);
     this.complaints.update(items => items.map(item => item.id === id ? { ...item, status: 'resolved', conclusion, resolution: { type: 'refund', decidedAt: new Date().toISOString(), decidedBy: 'Quản trị viên', summary: conclusion, refundMode: amount === item.amount ? 'full' : 'partial', refundAmount: amount, instructorShare, platformShare: amount - instructorShare, revokeAccess, revokeCertificate } } : item));
-    this.queue('complaint_refund', id, { amount, instructorShare: Math.round(amount * .7), platformShare: amount - Math.round(amount * .7), revokeAccess, revokeCertificate, requiresPaymentGatewayConfirmation: true });
+    this.queue('complaint_refund', id, { amount, instructorShare, platformShare: amount - instructorShare, revokeAccess, revokeCertificate, requiresPaymentGatewayConfirmation: true });
   }
   dismissComplaint(id: string, basis: string, explanation: string, giftVoucher: boolean): void {
     const basisLabels: Readonly<Record<string, string>> = {

@@ -63,6 +63,8 @@ export class MockUserManagementDataSource implements UserManagementDataSource {
       return {
         ...item,
         status: LEVEL_STATUS[command.level],
+        lockLevel: command.level,
+        lockedUntil: lockDeadlineIso(LOCK_DAYS[command.level]),
         violations: [{
           level: LEVEL_LABELS[command.level],
           appliedAt: nowIso(),
@@ -79,7 +81,9 @@ export class MockUserManagementDataSource implements UserManagementDataSource {
   }
 
   unlockLecturer(id: string): void {
-    this.lecturerState.update((items) => items.map((item) => (item.id === id ? { ...item, status: 'active' } : item)));
+    this.lecturerState.update((items) => items.map((item) => (
+      item.id === id ? { ...item, status: 'active', lockLevel: undefined, lockedUntil: undefined } : item
+    )));
   }
 
   approveLecturer(id: string): void {

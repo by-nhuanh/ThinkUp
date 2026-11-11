@@ -76,15 +76,19 @@
                 <strong>{{ money(item.amount) }}</strong>
               </td>
               <td data-column="sla">
-                <strong
-                  class="sla"
-                  [class.is-danger]="
-                    (item.dueAt | date: 'yyyyMMddHHmm')! <
-                      (item.createdAt | date: 'yyyyMMddHHmm')! ||
-                    sla(item).startsWith('Trễ')
-                  "
-                  >{{ sla(item) }}</strong
-                ><small>{{ item.dueAt | date: "dd/MM, HH:mm" }}</small>
+                @if (item.status === 'resolved' || item.status === 'dismissed') {
+                  <span aria-label="SLA đã dừng">—</span>
+                } @else {
+                  <strong
+                    class="sla"
+                    [class.is-danger]="
+                      (item.dueAt | date: 'yyyyMMddHHmm')! <
+                        (item.createdAt | date: 'yyyyMMddHHmm')! ||
+                      sla(item).startsWith('Trễ')
+                    "
+                    >{{ sla(item) }}</strong
+                  ><small>{{ item.dueAt | date: "dd/MM, HH:mm" }}</small>
+                }
               </td>
               <td data-column="action">
                 <button
@@ -132,7 +136,7 @@
   >
     <header class="case-modal-header">
       <div class="case-title-group"><h2 id="case-title">Hồ sơ thụ lý Khiếu nại &amp; Sự cố</h2><p>{{ item.id }} · {{ item.type }}</p></div>
-      <div class="case-header-actions">@if (item.risk === "high") { <span class="case-risk-badge"><svg lucideTriangleAlert aria-hidden="true"></svg>Nguy cơ cao</span> }<span class="case-sla-badge" [class.is-overdue]="sla(item).startsWith('Trễ')"><svg lucideClock3 aria-hidden="true"></svg>{{ sla(item) }}</span><button class="icon-button" type="button" aria-label="Đóng" (click)="selected.set(null)"><svg lucideX aria-hidden="true"></svg></button></div>
+      <div class="case-header-actions">@if (item.risk === "high") { <span class="case-risk-badge"><svg lucideTriangleAlert aria-hidden="true"></svg>Nguy cơ cao</span> }@if (item.status !== 'resolved' && item.status !== 'dismissed') { <span class="case-sla-badge" [class.is-overdue]="sla(item).startsWith('Trễ')"><svg lucideClock3 aria-hidden="true"></svg>{{ sla(item) }}</span> }<button class="icon-button" type="button" aria-label="Đóng" (click)="selected.set(null)"><svg lucideX aria-hidden="true"></svg></button></div>
     </header>
     <div class="case-summary" aria-label="Tóm tắt hồ sơ">
       <div><span class="summary-icon"><svg lucideUserRound aria-hidden="true"></svg></span><span><small>Học viên</small><strong>{{ item.claimant }}</strong><em>{{ item.sourceTicketId || "Hồ sơ trực tiếp" }}</em></span></div>

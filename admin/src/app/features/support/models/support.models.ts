@@ -1,3 +1,5 @@
+export const INSTRUCTOR_REFUND_PERCENT = 40;
+
 export type TicketStatus = 'unassigned' | 'processing' | 'waiting' | 'reopened' | 'closed';
 export type Priority = 'high' | 'medium' | 'low';
 export type EmailSyncStatus = 'idle' | 'syncing' | 'synced' | 'error';

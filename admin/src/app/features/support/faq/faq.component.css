@@ -203,13 +203,9 @@
 .answer-toolbar button:hover { background: #e7f0fb; }
 .answer-toolbar button:focus-visible { outline: 2px solid #0965e4; outline-offset: 1px; }
 .answer-toolbar button svg { width: 19px; height: 19px; }
-.answer-toolbar .preview-button { display: inline-flex; width: auto; margin-left: auto; gap: 7px; padding: 0 12px; border: 1px solid #c7d9ee; background: #fff; font: var(--admin-text-control-label); }
-.answer-toolbar .preview-button[aria-pressed='true'] { border-color: #80addf; background: #eaf3ff; color: #075ac9; }
 .toolbar-divider { width: 1px; height: 26px; margin: 0 2px; background: #d5e1ee; }
 .rich-answer textarea { display: block; box-sizing: border-box; width: 100%; min-height: 180px; padding: 16px 18px; resize: vertical; border: 0; border-radius: 0; background: #fff; color: #172f55; font: var(--admin-text-body-default); line-height: 1.55; outline: 0; }
-.rich-answer textarea.is-hidden { display: none; }
 .rich-answer:focus-within { border-color: #0965e4; box-shadow: 0 0 0 3px #0965e414; }
-.answer-preview { min-height: 180px; box-sizing: border-box; padding: 16px 18px; color: #172f55; font: var(--admin-text-body-default); line-height: 1.6; white-space: pre-wrap; }
 .editor-meta-row { display: flex; justify-content: space-between; gap: 16px; color: #607695; font: var(--admin-text-caption); }
 .keyword-input { display: flex; box-sizing: border-box; align-items: center; flex-wrap: wrap; gap: 7px; width: 100%; min-height: 52px; padding: 7px 12px; border: 1px solid #b8c5d5; border-radius: 8px; background: #fff; cursor: text; }
 .keyword-input:focus-within { border-color: #0965e4; box-shadow: 0 0 0 3px #0965e41c; }
@@ -233,7 +229,7 @@
   :host ::ng-deep .support-modal.editor-modal .modal-body { padding: 20px 28px 24px; }
   :host ::ng-deep .support-modal.editor-modal > footer { padding: 13px 28px; }
   .faq-editor-form { gap: 18px; }
-  .rich-answer textarea, .answer-preview { min-height: 150px; }
+  .rich-answer textarea { min-height: 150px; }
 }
 
 @media (min-width: 1101px) and (max-width: 1366px) {
