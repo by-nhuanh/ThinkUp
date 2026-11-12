@@ -1,10 +1,9 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CustomSelectComponent, CustomSelectOption } from '../../../shared/components/custom-select/custom-select.component';
 import { ExportMenuComponent } from '../../../shared/components/export-menu/export-menu.component';
-import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
 import { ContentToastComponent, ToastTone } from '../components/content-toast.component';
 import {
-  formatDateTime, initials, npsBand, number, paginationRange, relativeTime,
+  formatDate, formatDateTime, npsBand, number, paginationRange, relativeTime,
   REVIEW_STATUS_LABELS, REVIEW_STATUS_TONE, ratingLabel as ratingWord
 } from '../content-utils';
 import { ContentReview, ReviewStatus } from '../models/content.models';
@@ -21,7 +20,7 @@ const HIDE_REASONS = [
 @Component({
   selector: 'app-content-reviews',
   standalone: true,
-  imports: [CustomSelectComponent, SearchFieldComponent, ExportMenuComponent, ContentToastComponent],
+  imports: [CustomSelectComponent, ExportMenuComponent, ContentToastComponent],
   templateUrl: './reviews.component.html',
   styleUrl: '../content-page.css'
 })
@@ -38,7 +37,6 @@ export class ContentReviewsComponent {
   readonly timeRange = signal('all');
   readonly page = signal(1);
   readonly pageSize = 10;
-  readonly selected = signal<ReadonlySet<string>>(new Set());
   readonly expanded = signal<ReadonlySet<string>>(new Set());
   readonly detailId = signal<string | null>(null);
   readonly progressTarget = signal<ContentReview | null>(null);
@@ -82,7 +80,7 @@ export class ContentReviewsComponent {
     { value: '3', label: '3 sao' }, { value: '2', label: '2 sao' }, { value: '1', label: '1 sao' }
   ];
   readonly npsOptions: CustomSelectOption[] = [
-    { value: '', label: 'Tất cả điểm NPS' },
+    { value: '', label: 'Tất cả nhóm NPS' },
     { value: 'promoter', label: 'Người ủng hộ · 9-10' },
     { value: 'passive', label: 'Trung lập · 7-8' },
     { value: 'detractor', label: 'Người phản đối · 0-6' }
@@ -125,7 +123,7 @@ export class ContentReviewsComponent {
       return matches && (!status || item.status === status) && ratingMatch && npsMatch && responseMatch
         && (timeRange === 'all' || Date.parse(item.createdAt) >= cutoff);
     });
-    return [...items].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+    return items;
   });
   readonly pages = computed(() => Math.max(1, Math.ceil(this.filtered().length / this.pageSize)));
   readonly visible = computed(() => this.filtered().slice((this.page() - 1) * this.pageSize, this.page() * this.pageSize));
@@ -134,15 +132,10 @@ export class ContentReviewsComponent {
     const total = this.filtered().length;
     if (!total) return 'Không có đánh giá nào';
     const start = (this.page() - 1) * this.pageSize + 1;
-    return `Hiển thị ${start} - ${Math.min(start + this.pageSize - 1, total)} của ${total} đánh giá`;
+    const end = Math.min(start + this.pageSize - 1, total);
+    return `${this.pageSize} bản ghi / trang · Hiển thị ${start}–${end} trong ${number(total)} đánh giá`;
   });
   readonly detail = computed(() => this.reviews().find(item => item.id === this.detailId()) ?? null);
-  readonly allVisibleSelected = computed(() => {
-    const items = this.visible();
-    const chosen = this.selected();
-    return items.length > 0 && items.every(item => chosen.has(item.id));
-  });
-  readonly selectedList = computed(() => [...this.selected()]);
   readonly replyError = computed(() => this.replyTouched() && this.replyText().trim().length < 20 ? 'Phản hồi cần tối thiểu 20 ký tự.' : '');
   readonly hideReasons = HIDE_REASONS;
   readonly hideError = computed(() => {
@@ -157,7 +150,7 @@ export class ContentReviewsComponent {
   readonly stars = [1, 2, 3, 4, 5];
 
   setSearch(value: string): void { this.search.set(value); this.page.set(1); }
-  setStatus(value: string): void { this.status.set(value); this.page.set(1); this.selected.set(new Set()); }
+  setStatus(value: string): void { this.status.set(value); this.page.set(1); }
   setRating(value: string): void { this.rating.set(value); this.page.set(1); }
   setNps(value: string): void { this.nps.set(value); this.page.set(1); }
   setResponse(value: string): void { this.response.set(value); this.page.set(1); }
@@ -165,7 +158,7 @@ export class ContentReviewsComponent {
 
   clearFilters(): void {
     this.search.set(''); this.status.set(''); this.rating.set(''); this.nps.set('');
-    this.response.set(''); this.timeRange.set('all'); this.page.set(1); this.selected.set(new Set());
+    this.response.set(''); this.timeRange.set('all'); this.page.set(1);
   }
 
   toggleExpanded(item: ContentReview): void {
@@ -177,24 +170,6 @@ export class ContentReviewsComponent {
   isExpanded(id: string): boolean { return this.expanded().has(id); }
   openProgress(item: ContentReview): void { this.progressTarget.set(item); }
 
-  clearSelection(): void {
-    this.selected.set(new Set());
-  }
-
-  toggle(item: ContentReview): void {
-    const next = new Set(this.selected());
-    next.has(item.id) ? next.delete(item.id) : next.add(item.id);
-    this.selected.set(next);
-  }
-
-  toggleAll(): void {
-    const next = new Set(this.selected());
-    if (this.allVisibleSelected()) this.visible().forEach(item => next.delete(item.id));
-    else this.visible().forEach(item => next.add(item.id));
-    this.selected.set(next);
-  }
-
-  isSelected(id: string): boolean { return this.selected().has(id); }
   openDetail(item: ContentReview): void { this.detailId.set(item.id); this.replyText.set(''); this.replyTouched.set(false); }
   closeDetail(): void { this.detailId.set(null); }
 
@@ -226,22 +201,6 @@ export class ContentReviewsComponent {
       `Ẩn đánh giá: ${reason}`);
     this.hideTarget.set(null);
     this.notify(`Đã ẩn đánh giá ${item.id} và khóa phản hồi công khai.`, 'success');
-  }
-
-  bulkStatus(status: ReviewStatus): void {
-    const ids = this.selectedList();
-    if (!ids.length) return;
-    ids.forEach(id => this.store.updateReview(id, { status }, `Cập nhật hàng loạt sang ${REVIEW_STATUS_LABELS[status]}.`));
-    this.selected.set(new Set());
-    this.notify(`Đã cập nhật ${ids.length} đánh giá.`, 'success');
-  }
-
-  bulkDelete(): void {
-    const ids = this.selectedList();
-    if (!ids.length) return;
-    this.store.removeReviews(ids);
-    this.selected.set(new Set());
-    this.notify(`Đã xóa ${ids.length} đánh giá.`, 'success');
   }
 
   confirmDelete(): void {
@@ -283,8 +242,8 @@ export class ContentReviewsComponent {
   npsBand = npsBand;
   npsLabel(value: number): string { return value >= 50 ? 'Xuất sắc' : value >= 0 ? 'Tốt' : 'Cần cải thiện'; }
   npsTone(value: number): string { return value >= 9 ? 'success' : value >= 7 ? 'pending' : 'danger'; }
-  initials = initials;
   number = number;
+  dateOnly = formatDate;
   dateTime = formatDateTime;
   ago = relativeTime;
   truncate(value: string): string { return value.length > 80 ? `${value.slice(0, 80)}…` : value; }

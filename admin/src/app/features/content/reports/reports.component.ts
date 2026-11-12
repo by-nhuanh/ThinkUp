@@ -2,7 +2,6 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { CustomSelectComponent, CustomSelectOption } from '../../../shared/components/custom-select/custom-select.component';
 import { ExportMenuComponent } from '../../../shared/components/export-menu/export-menu.component';
-import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
 import { ContentToastComponent, ToastTone } from '../components/content-toast.component';
 import {
   formatDateTime, paginationRange, relativeTime, REPORT_STATUS_LABELS, REPORT_STATUS_TONE,
@@ -14,7 +13,7 @@ import { ContentStore } from '../services/content.store';
 @Component({
   selector: 'app-content-reports',
   standalone: true,
-  imports: [CustomSelectComponent, SearchFieldComponent, ExportMenuComponent, ContentToastComponent],
+  imports: [CustomSelectComponent, ExportMenuComponent, ContentToastComponent],
   templateUrl: './reports.component.html',
   styleUrl: '../content-page.css'
 })

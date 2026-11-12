@@ -1,94 +1,95 @@
 <main class="content-page">
-  <header class="page-heading">
-    <div>
-      <nav class="breadcrumb" aria-label="Đường dẫn trang"><span>Quản lý nội dung</span><span class="breadcrumb-separator" aria-hidden="true">/</span><span class="breadcrumb-current" aria-current="page">Đánh giá khóa học</span></nav>
-      <h1>Quản lý đánh giá khóa học</h1>
-      <p class="subtitle">Duyệt đánh giá, phản hồi học viên và giữ chất lượng phản hồi trên toàn hệ thống.</p>
+  <div class="page-stack">
+  <header class="page-header">
+    <h1 class="page-title">Quản lý đánh giá khóa học</h1>
+    <div class="page-actions">
+      <app-export-menu class="review-export" label="Xuất Excel/CSV" [showText]="true" variant="secondary" (formatChange)="exportList($event)"></app-export-menu>
     </div>
-    <div class="heading-actions"><app-export-menu label="Xuất danh sách đánh giá" (formatChange)="exportList($event)"></app-export-menu></div>
   </header>
 
   <section class="kpis" aria-label="Tổng quan đánh giá">
     <button class="kpi" type="button" [class.is-selected]="status() === '' && !rating() && !nps() && !response()" (click)="clearFilters()" aria-label="Xem tất cả đánh giá">
       <span class="kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></span>
-      <span><span class="kpi-label">Điểm đánh giá TB sản phẩm</span><strong class="kpi-value">{{ averageLabel() }}</strong><span class="kpi-foot">Tổng {{ number(counts().approved) }} lượt đánh giá công khai</span></span>
+      <span class="kpi-text"><span class="kpi-label">Điểm đánh giá TB sàn</span><strong class="kpi-value">{{ averageLabel() }}</strong><span class="kpi-foot">Tổng {{ number(counts().approved) }} lượt đánh giá công khai</span></span>
     </button>
     <button class="kpi" type="button" [class.is-selected]="nps() === 'detractor'" (click)="setNps('detractor')" aria-label="Lọc người phản đối theo NPS">
-      <span class="kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17.5" cy="8.5" r="2.5"/><path d="M15.5 14.5a5 5 0 0 1 6 3"/></svg></span>
-      <span><span class="kpi-label">Chỉ số NPS</span><strong class="kpi-value">{{ counts().nps >= 0 ? '+' : '' }}{{ counts().nps }}</strong><span class="kpi-foot">{{ npsLabel(counts().nps) }} · Người ủng hộ - người phản đối</span></span>
+      <span class="kpi-icon green" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17.5" cy="8.5" r="2.5"/><path d="M15.5 14.5a5 5 0 0 1 6 3"/></svg></span>
+      <span class="kpi-text"><span class="kpi-label">Chỉ số NPS</span><strong class="kpi-value">{{ counts().nps >= 0 ? '+' : '' }}{{ counts().nps }}</strong><span class="kpi-foot">{{ npsLabel(counts().nps) }} · Người ủng hộ − người phản đối</span></span>
     </button>
     <button class="kpi" type="button" [class.is-selected]="rating() === 'negative'" (click)="setRating('negative')" aria-label="Lọc đánh giá tiêu cực">
       <span class="kpi-icon red" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 8v5"/><circle cx="12" cy="16.5" r="1"/><path d="M10.3 3.6 2.6 17a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 3.6a2 2 0 0 0-3.4 0Z"/></svg></span>
-      <span><span class="kpi-label">Đánh giá tiêu cực</span><strong class="kpi-value">{{ number(counts().negative) }}</strong><span class="kpi-foot">≤ 2 sao · Cần can thiệp gấp</span></span>
+      <span class="kpi-text"><span class="kpi-label">Đánh giá tiêu cực</span><strong class="kpi-value">{{ number(counts().negative) }}</strong><span class="kpi-foot">≤ 2 sao · Cần can thiệp gấp</span></span>
     </button>
     <button class="kpi" type="button" [class.is-selected]="response() === 'unreplied'" (click)="setResponse('unreplied')" aria-label="Lọc đánh giá chưa phản hồi">
-      <span class="kpi-icon green" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span>
-      <span><span class="kpi-label">Tỷ lệ đã phản hồi</span><strong class="kpi-value">{{ counts().responseRate }}%</strong><span class="kpi-foot">Giải quyết bức xúc của học viên</span></span>
+      <span class="kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span>
+      <span class="kpi-text"><span class="kpi-label">Tỷ lệ đã phản hồi</span><strong class="kpi-value">{{ counts().responseRate }}%</strong><span class="kpi-foot">Giải quyết bức xúc của học viên</span></span>
     </button>
   </section>
 
-  <section class="panel" aria-label="Danh sách đánh giá">
-    <div class="toolbar">
-      <div class="grow"><app-search-field label="Tìm đánh giá" placeholder="Tìm theo khóa học, giảng viên, nội dung nhận xét..." [value]="search()" (valueChange)="setSearch($event)"></app-search-field></div>
-      <div class="toolbar-end"><button class="button" type="button" (click)="clearFilters()">Làm mới</button></div>
+  <section class="panel review-filters" aria-label="Tìm kiếm và bộ lọc đánh giá">
+    <div class="filters">
+      <div class="filters-row">
+        <div class="filter-field filter-search">
+          <label class="floating-label" for="review-search">Tìm kiếm</label>
+          <span class="search-field">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input id="review-search" type="search" autocomplete="off" placeholder="Tìm theo khóa học, giảng viên, nội dung nhận xét..." [value]="search()" (input)="setSearch($any($event.target).value)">
+          </span>
+        </div>
+        <button class="filter-trigger review-refresh" type="button" (click)="clearFilters()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 6.3"/><path d="M20 5v6h-6"/></svg>
+          Làm mới
+        </button>
+      </div>
+      <div class="filters-row review-filter-grid">
+        <div class="filter-field">
+          <span class="floating-label">Số sao</span>
+          <app-custom-select controlId="review-rating" [value]="rating()" [options]="ratingOptions" (valueChange)="setRating($event)"></app-custom-select>
+        </div>
+        <div class="filter-field">
+          <span class="floating-label">Điểm NPS</span>
+          <app-custom-select controlId="review-nps" [value]="nps()" [options]="npsOptions" (valueChange)="setNps($event)"></app-custom-select>
+        </div>
+        <div class="filter-field">
+          <span class="floating-label">Phản hồi</span>
+          <app-custom-select controlId="review-response" [value]="response()" [options]="responseOptions" (valueChange)="setResponse($event)"></app-custom-select>
+        </div>
+        <div class="filter-field">
+          <span class="floating-label">Trạng thái</span>
+          <app-custom-select controlId="review-status" [value]="status()" [options]="statusOptions" (valueChange)="setStatus($event)"></app-custom-select>
+        </div>
+        <div class="filter-field">
+          <span class="floating-label">Thời gian</span>
+          <app-custom-select controlId="review-time" [value]="timeRange()" [options]="timeOptions" (valueChange)="setTime($event)"></app-custom-select>
+        </div>
+      </div>
     </div>
+  </section>
 
-    <div class="toolbar" style="padding-top:0">
-      <div class="filter custom-select-control">
-        <span>Số sao</span>
-        <app-custom-select controlId="review-rating" [value]="rating()" [options]="ratingOptions" (valueChange)="setRating($event)"></app-custom-select>
-      </div>
-      <div class="filter custom-select-control">
-        <span>Điểm NPS</span>
-        <app-custom-select controlId="review-nps" [value]="nps()" [options]="npsOptions" (valueChange)="setNps($event)"></app-custom-select>
-      </div>
-      <div class="filter custom-select-control">
-        <span>Phản hồi</span>
-        <app-custom-select controlId="review-response" [value]="response()" [options]="responseOptions" (valueChange)="setResponse($event)"></app-custom-select>
-      </div>
-      <div class="filter custom-select-control">
-        <span>Trạng thái</span>
-        <app-custom-select controlId="review-status" [value]="status()" [options]="statusOptions" (valueChange)="setStatus($event)"></app-custom-select>
-      </div>
-      <div class="filter custom-select-control">
-        <span>Thời gian</span>
-        <app-custom-select controlId="review-time" [value]="timeRange()" [options]="timeOptions" (valueChange)="setTime($event)"></app-custom-select>
-      </div>
+  @if (loadError()) {
+    <div class="empty" role="alert">
+      <strong>Không thể tải dữ liệu</strong>
+      <p>Đã xảy ra lỗi khi tải danh sách đánh giá. Vui lòng kiểm tra kết nối và thử lại.</p>
+      <button class="button" type="button" (click)="retryLoad()">Thử lại</button>
     </div>
-
-    <div class="tabs" role="tablist" aria-label="Lọc theo trạng thái">
-      <button class="tab" type="button" role="tab" [class.active]="status() === ''" [attr.aria-selected]="status() === ''" (click)="setStatus('')">Tất cả <span class="chip-count">{{ counts().total }}</span></button>
-      <button class="tab" type="button" role="tab" [class.active]="status() === 'pending'" [attr.aria-selected]="status() === 'pending'" (click)="setStatus('pending')">Chờ duyệt <span class="chip-count">{{ counts().pending }}</span></button>
-      <button class="tab" type="button" role="tab" [class.active]="status() === 'approved'" [attr.aria-selected]="status() === 'approved'" (click)="setStatus('approved')">Công khai <span class="chip-count">{{ counts().approved }}</span></button>
-      <button class="tab" type="button" role="tab" [class.active]="status() === 'rejected'" [attr.aria-selected]="status() === 'rejected'" (click)="setStatus('rejected')">Bị từ chối</button>
-      <button class="tab" type="button" role="tab" [class.active]="status() === 'hidden'" [attr.aria-selected]="status() === 'hidden'" (click)="setStatus('hidden')">Tạm ẩn</button>
-    </div>
-
-    @if (loadError()) {
-      <div class="empty" role="alert">
-        <strong>Không thể tải dữ liệu</strong>
-        <p>Đã xảy ra lỗi khi tải danh sách đánh giá. Vui lòng kiểm tra kết nối và thử lại.</p>
-        <button class="button" type="button" (click)="retryLoad()">Thử lại</button>
-      </div>
-    } @else {
-    @if (selectedList().length) {
-      <div class="bulk-bar" role="status">
-        <strong>Đã chọn {{ selectedList().length }} đánh giá</strong>
-        <div class="spacer"></div>
-        <button class="button small" type="button" (click)="bulkStatus('approved')">Duyệt</button>
-        <button class="button small" type="button" (click)="bulkStatus('hidden')">Ẩn</button>
-        <button class="button small danger" type="button" (click)="bulkDelete()">Xóa</button>
-        <button class="button small link" type="button" (click)="clearSelection()">Bỏ chọn</button>
-      </div>
-    }
-
-    <div class="table-scroll">
-      <table>
+  } @else {
+  <section class="table-card" aria-label="Danh sách đánh giá">
+    <div class="table-scroll review-viewport">
+      <table class="table-reviews">
+        <colgroup>
+          <col style="width:220px">
+          <col style="width:240px">
+          <col style="width:140px">
+          <col style="width:105px">
+          <col style="width:195px">
+          <col style="width:300px">
+          <col style="width:251px">
+          <col>
+        </colgroup>
         <thead>
           <tr>
-            <th scope="col" style="width:44px"><input class="checkbox" type="checkbox" [checked]="allVisibleSelected()" aria-label="Chọn tất cả đánh giá trên trang" (change)="toggleAll()"></th>
             <th scope="col">Học viên</th>
-            <th scope="col">Khóa học và Giảng viên</th>
+            <th scope="col">Khóa học và<br>Giảng viên</th>
             <th scope="col">Xếp hạng sao</th>
             <th scope="col">Điểm NPS</th>
             <th scope="col">Thẻ phản hồi</th>
@@ -99,68 +100,75 @@
         </thead>
         <tbody>
           @for (item of visible(); track item.id) {
-            <tr class="row-reviews" [class.is-selected]="isSelected(item.id)">
-              <td><input class="checkbox" type="checkbox" [checked]="isSelected(item.id)" [attr.aria-label]="'Chọn đánh giá của ' + item.learner" (change)="toggle(item)"></td>
+            <tr class="row-reviews">
               <td>
-                <div class="actor">
-                  <span class="avatar" aria-hidden="true">{{ initials(item.learner) }}</span>
-                  <span class="identity">
-                    <strong>{{ item.learner }}</strong>
-                    <span class="cell-sub">{{ item.learnerEmail }}</span>
-                    <span class="badge info" style="width:max-content">Hoàn thành {{ item.completion }}%</span>
-                    <span class="cell-sub">{{ dateTime(item.createdAt) }}</span>
-                  </span>
+                <div class="review-learner">
+                  <strong>{{ item.learner }}</strong>
+                  <span class="cell-sub">{{ item.learnerEmail }}</span>
+                  <span class="badge info review-progress-pill">Hoàn thành {{ item.completion }}%</span>
+                  <span class="review-date">{{ dateOnly(item.createdAt) }}</span>
                 </div>
               </td>
               <td>
-                <button type="button" style="border:0;background:none;padding:0;text-align:left" (click)="openDetail(item)"><span class="cell-title" style="max-width:220px">{{ item.courseTitle }}</span></button>
-                <span class="cell-sub">GV: {{ item.instructor }}</span>
+                <div class="review-course">
+                  <button class="review-course-title" type="button" (click)="openDetail(item)">{{ item.courseTitle }}</button>
+                  <span>GV: {{ item.instructor }}</span>
+                </div>
               </td>
-              <td class="nowrap">
-                <span class="stars" [attr.aria-label]="item.rating + ' trên 5 sao'">@for (star of stars; track star) {<span [class.off]="star > item.rating">★</span>}</span>
-                <span class="cell-sub">{{ item.rating }}.0 · {{ ratingWord(item.rating) }}</span>
-              </td>
-              <td><span [class]="'badge ' + npsTone(item.nps)">{{ item.nps }}/10</span><span class="cell-sub">{{ npsBand(item.nps) }}</span></td>
               <td>
-                <div class="badge-stack">
+                <div class="review-rating">
+                  <span class="stars" [attr.aria-label]="item.rating + ' trên 5 sao'">@for (star of stars; track star) {<span>{{ star <= item.rating ? '★' : '☆' }}</span>}</span>
+                  <small>{{ item.rating }}.0 · {{ ratingWord(item.rating) }}</small>
+                </div>
+              </td>
+              <td>
+                <div class="review-nps">
+                  <span [class]="'badge ' + npsTone(item.nps)">{{ item.nps }}/10</span>
+                  <span>{{ npsBand(item.nps) }}</span>
+                </div>
+              </td>
+              <td>
+                <div class="review-tags">
                   @for (tag of item.feedbackTags; track tag) { <span class="badge info">{{ tag }}</span> }
                 </div>
               </td>
               <td>
-                <span class="cell-sub" style="margin-top:0;max-width:280px">{{ isExpanded(item.id) ? item.content : truncate(item.content) }}</span>
-                @if (item.content.length > 80) {
-                  <button class="link" type="button" style="border:0;background:none;padding:0;margin-top:6px;font-size:13.6px" (click)="toggleExpanded(item)">{{ isExpanded(item.id) ? 'Thu gọn' : 'Xem đầy đủ' }}</button>
-                }
-                @if (item.reply) { <span class="cell-sub">Đã trả lời: {{ truncate(item.reply.content) }}</span> }
-              </td>
-              <td>
-                <span [class]="'badge ' + statusTone(item.status)"><span class="dot" aria-hidden="true"></span>{{ statusLabel(item.status) }}</span>
-                <span class="cell-sub" [style.color]="item.reply ? '#2f7d5c' : '#a43a49'">{{ item.reply ? 'Đã phản hồi' : 'Chưa phản hồi' }}</span>
-              </td>
-              <td>
-                <div class="row-actions">
-                  <button class="button small" type="button" (click)="openDetail(item)">Phản hồi</button>
-                  @if (item.status !== 'hidden') {
-                    <button class="button small" type="button" (click)="changeStatus(item, 'hidden')">Ẩn đánh giá</button>
+                <div class="review-body">
+                  <p>{{ isExpanded(item.id) ? item.content : truncate(item.content) }}</p>
+                  @if (item.content.length > 80) {
+                    <button class="review-more" type="button" (click)="toggleExpanded(item)">{{ isExpanded(item.id) ? 'Thu gọn' : 'Xem đầy đủ' }}</button>
                   } @else {
-                    <button class="button small" type="button" (click)="changeStatus(item, 'approved')">Hiện lại</button>
+                    <span class="review-origin">Nhận xét gốc</span>
                   }
-                  <button class="button small" type="button" (click)="openProgress(item)">Xem tiến độ</button>
-                  <button class="icon-button" type="button" title="Xóa đánh giá" [attr.aria-label]="'Xóa đánh giá ' + item.id" (click)="deleteTarget.set(item)">
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
-                  </button>
+                </div>
+              </td>
+              <td>
+                <div class="review-state">
+                  <span [class]="'badge ' + statusTone(item.status)">{{ statusLabel(item.status) }}</span>
+                  <span [class]="'reply-flag ' + (item.reply ? 'done' : 'pending')">{{ item.reply ? 'Đã phản hồi' : 'Chưa phản hồi' }}</span>
+                </div>
+              </td>
+              <td>
+                <div class="review-actions">
+                  <button class="inline-action" type="button" (click)="openDetail(item)">Phản hồi</button>
+                  @if (item.status !== 'hidden') {
+                    <button class="inline-action danger" type="button" (click)="changeStatus(item, 'hidden')">Ẩn đánh giá</button>
+                  } @else {
+                    <button class="inline-action" type="button" (click)="changeStatus(item, 'approved')">Hiện lại</button>
+                  }
+                  <button class="inline-action" type="button" (click)="openProgress(item)">Xem tiến độ</button>
                 </div>
               </td>
             </tr>
           }
           @if (!visible().length) {
-            <tr><td colspan="9"><div class="empty"><strong>Không có đánh giá phù hợp</strong><p>Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.</p><button class="button" type="button" (click)="clearFilters()">Đặt lại bộ lọc</button></div></td></tr>
+            <tr><td colspan="8"><div class="empty"><strong>Không có đánh giá phù hợp</strong><p>Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.</p><button class="button" type="button" (click)="clearFilters()">Đặt lại bộ lọc</button></div></td></tr>
           }
         </tbody>
       </table>
     </div>
 
-    <div class="table-footer">
+    <div class="table-footer review-pagination">
       <span>{{ rangeLabel() }}</span>
       <div class="pagination" aria-label="Phân trang đánh giá">
         <button type="button" [disabled]="page() === 1" aria-label="Trang trước" (click)="page.update(value => value - 1)">‹</button>
@@ -171,12 +179,8 @@
         <button type="button" [disabled]="page() >= pages()" aria-label="Trang sau" (click)="page.update(value => value + 1)">›</button>
       </div>
     </div>
-    }
   </section>
-
-  <div class="alert warning" role="status" style="margin-top:16px">
-    <span aria-hidden="true">⚠</span>
-    <span>Đã cảnh báo khẩn đến bộ phận Đào tạo. Điều kiện: Số sao ≤ 2 HOẶC điểm NPS ≤ 6.</span>
+  }
   </div>
 </main>
 

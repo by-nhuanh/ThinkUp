@@ -226,16 +226,19 @@ button.metric-card { appearance: none; cursor: pointer; }
   gap: 6px;
   min-width: 0;
 }
+/* Nhãn field nổi trên viền ô (đồng bộ module Nội dung) thay vì nằm trong ô. */
 .filter-field > span,
 .filter-bar > label > span:first-child {
   position: absolute;
   z-index: 2;
-  top: 4px;
+  top: -8px;
   left: 12px;
   max-width: calc(100% - 24px);
   overflow: hidden;
+  padding: 0 4px;
+  background: var(--system-surface);
   color: #64748b;
-  font: var(--admin-font-weight-regular) 10.5px/13px var(--admin-font-family);
+  font: var(--admin-font-weight-regular) 13.6px/1.32 var(--admin-font-family);
   text-overflow: ellipsis;
   white-space: nowrap;
   pointer-events: none;
@@ -246,7 +249,7 @@ button.metric-card { appearance: none; cursor: pointer; }
   width: 100%;
   --custom-select-width: 100%;
   --custom-select-trigger-height: 44px;
-  --custom-select-trigger-padding: 13px 12px 0;
+  --custom-select-trigger-padding: 0 12px;
 }
 .field > span { color: #425b7d; font: var(--admin-text-control-label); }
 .filter-bar input,
