@@ -8,3 +8,69 @@
 .item-delete svg{width:14px;height:14px}
 .item-delete:hover{background:#fef2f2;border-color:#fca5a5}
 .item-delete:focus-visible{outline:2px solid #714cb6;outline-offset:2px}
+
+.sticky { display: grid; grid-template-rows: minmax(0, 1fr); padding-right: 44px; }
+.sticky.title-item { transform: none; }
+.sticky.title-item .item-copy { font-size: 1rem; font-weight: 700; }
+.sticky .item-copy { overflow: auto; }
+.item-edit { position: absolute; right: 4px; bottom: 4px; min-height: 40px; min-width: 40px; color: #292827; }
+.sticky:has(.item-editor) { padding: 8px 44px 8px 8px; }
+.item-editor { display: grid; min-height: 0; gap: 4px; grid-template-rows: minmax(24px, 1fr) auto; }
+.item-editor :is(input, textarea) {
+  min-width: 0;
+  width: 100%;
+  padding: 4px;
+  border: 1px solid #615779;
+  border-radius: 4px;
+  background: #fff;
+  color: #292827;
+}
+.item-editor-actions { display: flex; justify-content: end; gap: 4px; }
+.item-editor-actions button { min-width: 40px; min-height: 32px; border-radius: 4px; background: #ffffffb8; color: #292827; }
+.item-editor-actions button:disabled { opacity: .55; }
+.item-editor :is(input, textarea, button):focus-visible, .item-edit:focus-visible { outline: 2px solid #593c94; outline-offset: 1px; }
+
+.board .draw-surface { display: block; }
+.board-tools button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 8px;
+}
+.board-tools button:disabled { opacity: .45; cursor: default; }
+.board-tools button:focus-visible { outline: 2px solid #593c94; outline-offset: 1px; }
+.board-tools svg { width: 18px; height: 18px; }
+.board-tools .board-move:not(:disabled) { cursor: grab; touch-action: none; }
+.board-palette {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid #d7d4dd;
+  border-radius: 8px;
+  background: #fff;
+}
+.board-palette button { background: transparent; }
+.board-palette button::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--swatch);
+}
+.board-palette button[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--swatch); }
+.board .resize-handle { width: 32px; height: 32px; }
+
+.item-edit { display: grid; place-items: center; border-radius: 8px; }
+.item-edit:hover { background: #ffffff80; }
+.item-edit svg { width: 17px; height: 17px; }
+.editable-copy { cursor: text; }
+.task-list { min-width: 0; margin: 0; padding: 0; list-style: none; font-size: .875rem; }
+.task-list label { display: flex; align-items: start; gap: 6px; padding: 4px 0; overflow-wrap: anywhere; }
+.task-list input { margin-top: 4px; }
+.task-list input:checked + span { text-decoration: line-through; }
+.canvas-link { overflow-wrap: anywhere; color: #1747ac; text-decoration: underline; }

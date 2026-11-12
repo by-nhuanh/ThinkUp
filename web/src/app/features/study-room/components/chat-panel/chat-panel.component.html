@@ -1,5 +1,64 @@
-<aside class="chat-panel">
-  <header><span class="heading-icon"><svg lucideMessageCircle></svg></span><div><h2>Trao đổi nhóm</h2><p><span><svg lucideUsers></svg>{{ memberCount() }} thành viên</span><i></i><span><svg lucideClock3></svg>{{ lastTime() }}</span></p></div><button type="button" (click)="close.emit()" aria-label="Đóng chat"><svg lucideX></svg></button></header>
-  <div #messagesHost class="messages">@if (!messages().length) { <div class="empty"><span><svg lucideMessageCircle></svg></span><strong>Chưa có tin nhắn</strong><p>Dùng chat để hỏi nhanh, chốt việc cần làm hoặc nhắc nhau khi vào focus session.</p></div> } @else { @for (message of messages(); track message.id) { <div class="message-row" [class.mine]="message.isMe">@if (!message.isMe) { <span class="message-avatar" [style.background]="message.color">{{ message.initials }}</span> }<div class="message" [class.mine]="message.isMe"><div><strong>{{ message.isMe ? 'Bạn' : message.sender }}</strong><time>{{ message.time }}</time></div><p>{{ message.text }}</p></div></div> } }</div>
-  <footer><div class="compose"><textarea #draftInput rows="1" [value]="draft()" (input)="onInput($event)" (keydown)="onKeyDown($event)" placeholder="Nhập tin nhắn..."></textarea><button type="button" (click)="submit()" [disabled]="!draft().trim()" aria-label="Gửi tin nhắn"><svg lucideSend></svg></button></div><p>Enter để gửi, Shift+Enter để xuống dòng.</p></footer>
+<aside #chatPanel [class.moved]="position() !== null" [style.--chat-x.px]="position()?.x"
+  [style.--chat-y.px]="position()?.y" class="room-glass chat-panel" [class.dark]="dark()" [attr.data-theme]="theme()" aria-labelledby="room-chat-title">
+  <header tabindex="0" aria-label="Di chuyển khung chat bằng phím mũi tên"
+    (pointerdown)="startDrag($event)" (pointermove)="moveDrag($event)" (pointerup)="endDrag($event)"
+    (pointercancel)="endDrag($event)" (lostpointercapture)="endDrag($event)" (keydown)="moveWithKeyboard($event)">
+    <span class="heading-icon"><svg lucideMessageCircle aria-hidden="true"></svg></span>
+    <div class="heading">
+      <h2 id="room-chat-title">{{ roomName() }}</h2>
+      <p>{{ memberCount() }} thành viên</p>
+    </div>
+    <button type="button" class="close" (click)="close.emit()" aria-label="Đóng chat"><svg lucideX aria-hidden="true"></svg></button>
+  </header>
+
+  <div #messagesHost class="messages" role="log" aria-label="Tin nhắn trong phòng" tabindex="0">
+    @for (message of messages(); track message.id; let index = $index) {
+      @let grouped = index > 0 && messages()[index - 1].senderId === message.senderId && messages()[index - 1].time === message.time;
+      <div class="message-row" [class.mine]="message.isMe" [class.grouped]="grouped">
+        @if (!message.isMe) {
+          <span class="message-avatar" [class.avatar-hidden]="grouped" aria-hidden="true">{{ message.initials }}</span>
+        }
+        <div class="message">
+          @if (!grouped) {
+            <div class="message-meta">
+              <strong>{{ message.isMe ? 'Bạn' : message.sender }}</strong>
+              <time>{{ message.time }}</time>
+            </div>
+          }
+          <p>{{ message.text }}</p>
+        </div>
+      </div>
+    } @empty {
+      <div class="empty">
+        <span class="heading-icon"><svg lucideMessageCircle aria-hidden="true"></svg></span>
+        <strong>Chưa có tin nhắn</strong>
+        <p>Gửi tin nhắn đầu tiên cho phòng.</p>
+      </div>
+    }
+  </div>
+
+  <footer>
+    <form class="compose" (submit)="$event.preventDefault(); submit()">
+      <button class="compose-add" type="button" aria-label="Thêm ảnh vào phòng" title="Thêm ảnh vào phòng"
+        [disabled]="!canAddImage()" (click)="addImage.emit()"><svg lucidePlus aria-hidden="true"></svg></button>
+      <div class="compose-field">
+        <textarea #draftInput rows="1" [value]="draft()" (input)="onInput($event)" (keydown)="onKeyDown($event)"
+          aria-label="Nhập tin nhắn" placeholder="Nhập tin nhắn…" title="Enter để gửi · Shift + Enter để xuống dòng"></textarea>
+        <details #emojiPicker class="emoji-picker" (focusout)="closeEmojiOnBlur($event, emojiPicker)"
+          (keydown.escape)="$event.preventDefault(); $event.stopPropagation(); emojiPicker.open = false; emojiTrigger.focus()">
+          <summary #emojiTrigger aria-label="Chọn emoji" title="Chọn emoji">
+            <svg lucideSmile aria-hidden="true"></svg>
+          </summary>
+          <div class="emoji-options" role="group" aria-label="Emoji">
+            @for (emoji of emojis; track emoji) {
+              <button type="button" (click)="insertEmoji(emoji, emojiPicker)">{{ emoji }}</button>
+            }
+          </div>
+        </details>
+      </div>
+      <button class="compose-send" type="submit" [disabled]="sending() || !draft().trim()" aria-label="Gửi tin nhắn">
+        <svg lucideSendHorizontal aria-hidden="true"></svg>
+      </button>
+    </form>
+  </footer>
 </aside>

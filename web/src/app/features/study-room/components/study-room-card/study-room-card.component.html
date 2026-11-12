@@ -65,8 +65,10 @@
       <button type="button" (click)="join.emit(room)">
         {{
           room.currentUsers >= room.maxUsers
-            ? "Phòng đã đầy"
-            : room.type === "private"
+            ? room.waitlistEnabled ? "Danh sách chờ" : "Phòng đã đầy"
+            : room.inviteMode === "approval" || room.approvalRequired
+              ? "Yêu cầu vào phòng"
+              : room.type === "private"
               ? "Nhập mật khẩu"
               : "Vào phòng"
         }}<svg lucideArrowRight></svg></button

@@ -1,20 +1,24 @@
-import { Component, DestroyRef, ElementRef, HostListener, ViewChild, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
+import { createRoomTimer, finishTimer, readRoomTimer, RoomTimer, TimerMode, TimerScope, timerRemaining } from '../services/study-room-timer';
+import { RoomInviteDialogComponent } from '../components/room-invite-dialog/room-invite-dialog.component';
+import { CanvasImageDialogComponent, CanvasImageSource } from '../components/canvas-image-dialog/canvas-image-dialog.component';
+import { studyRoomMediaProviders } from '../services/study-room-media.providers';
+import { afterNextRender, afterRenderEffect, WritableSignal, Component, DestroyRef, ElementRef, HostListener, ViewChild, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { RoomMessage, RoomParticipant, RoomPermissions, StudyRoomService } from '../services/study-room.service';
+import { OwnerDeparture, RoomMessage, RoomParticipant, RoomPermissions, StudyRoomService } from '../services/study-room.service';
 import { StudyRoomItem } from '../models/study-room.model';
-import { LucideCopy, LucidePanelRight, LucidePlus, LucideMinus, LucideLocateFixed, LucideMic, LucideMicOff, LucideVideo, LucideVideoOff, LucideScreenShare, LucideMousePointer2, LucidePencil, LucideSmile, LucideMessageCircle, LucideSettings, LucideLogOut, LucideHeadphones, LucidePlay, LucidePause, LucideRotateCcw, LucideCrown, LucideBookOpen, LucideCoffee, LucideSkipForward, LucideShieldCheck, LucideUserRound, LucideAudioLines } from '@lucide/angular';
-import { AddToCanvasMenuComponent, CanvasItemKind } from '../components/add-to-canvas-menu/add-to-canvas-menu.component';
+import { LucideCheck, LucideChevronDown, LucideClock, LucideX, LucideBedDouble, LucideBell, LucideCoffee, LucideLayers, LucidePause, LucidePlay, LucideTarget, LucideCopy, LucidePanelRight, LucidePlus, LucideMinus, LucideLocateFixed, LucideMic, LucideMicOff, LucideVideo, LucideVideoOff, LucideScreenShare, LucideMousePointer2, LucideSmile, LucideMessageCircle, LucideSettings, LucideLogOut, LucideHeadphones, LucideRotateCcw, LucideCrown, LucideShieldCheck, LucideUserRound, LucideUserPlus, LucideAudioLines } from '@lucide/angular';
+import { AddToCanvasMenuComponent, CanvasItemKind, NewCanvasItemKind } from '../components/add-to-canvas-menu/add-to-canvas-menu.component';
 import { CanvasItem, CanvasItemComponent } from '../components/canvas-item/canvas-item.component';
 import { LofiPlayerComponent } from '../components/lofi-player/lofi-player.component';
 import { RoomControlPanelComponent } from '../components/room-control-panel/room-control-panel.component';
 import { PIXEL_DREAMLAND_MEDIA } from '../data/study-room-media';
 import { ReactionPickerComponent } from '../components/reaction-picker/reaction-picker.component';
-import { InkLayerComponent, InkStroke } from '../components/ink-layer/ink-layer.component';
 import { RemoteScreenStream, RoomRealtimeEnvelope, StudyRoomMediaService } from '../services/study-room-media.service';
-import { AuthService } from '../../../core/services/auth.service';
+import { StudyRoomExtras, StudyRoomIdentity } from "../services/study-room-extras";
 import { ChatPanelComponent, RoomChatMessage } from '../components/chat-panel/chat-panel.component';
 import { ParticipantPopoverComponent } from '../components/participant-popover/participant-popover.component';
 
@@ -26,16 +30,17 @@ interface ScreenLayout { active: boolean; x: number; y: number; width: number; h
 @Component({
   selector: 'app-study-room-view',
   standalone: true,
-  providers: [StudyRoomMediaService],
-  imports: [CommonModule, FormsModule, AddToCanvasMenuComponent, CanvasItemComponent, LofiPlayerComponent, RoomControlPanelComponent, ReactionPickerComponent, InkLayerComponent, ChatPanelComponent, ParticipantPopoverComponent, LucideCopy, LucidePanelRight, LucidePlus, LucideMinus, LucideLocateFixed, LucideMic, LucideMicOff, LucideVideo, LucideVideoOff, LucideScreenShare, LucideMousePointer2, LucidePencil, LucideSmile, LucideMessageCircle, LucideSettings, LucideLogOut, LucideHeadphones, LucidePlay, LucidePause, LucideRotateCcw, LucideCrown, LucideBookOpen, LucideCoffee, LucideSkipForward, LucideShieldCheck, LucideUserRound, LucideAudioLines],
+  providers: studyRoomMediaProviders,
+  imports: [CommonModule, FormsModule, CanvasImageDialogComponent, RoomInviteDialogComponent, AddToCanvasMenuComponent, CanvasItemComponent, LofiPlayerComponent, RoomControlPanelComponent, ReactionPickerComponent, ChatPanelComponent, ParticipantPopoverComponent, LucideCheck, LucideChevronDown, LucideClock, LucideX, LucideBedDouble, LucideBell, LucideCoffee, LucideLayers, LucidePause, LucidePlay, LucideTarget, LucideCopy, LucidePanelRight, LucidePlus, LucideMinus, LucideLocateFixed, LucideMic, LucideMicOff, LucideVideo, LucideVideoOff, LucideScreenShare, LucideMousePointer2, LucideSmile, LucideMessageCircle, LucideSettings, LucideLogOut, LucideHeadphones, LucideRotateCcw, LucideCrown, LucideShieldCheck, LucideUserRound, LucideUserPlus, LucideAudioLines],
   templateUrl: './study-room-view.component.html',
-  styleUrl: './study-room-view.component.css'
+  styleUrls: ['../components/room-glass.css', './study-room-view.component.css']
 })
 export class StudyRoomViewComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly studyRoomService = inject(StudyRoomService);
-  private readonly auth = inject(AuthService);
+  private readonly auth = inject(StudyRoomIdentity);
+  readonly extras = inject(StudyRoomExtras);
   private readonly media = inject(StudyRoomMediaService);
   private readonly destroyRef = inject(DestroyRef);
   @ViewChild('localVideo') localVideo?: ElementRef<HTMLVideoElement>;
@@ -60,20 +65,57 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
   readonly currentRole = signal<'owner' | 'moderator' | 'member'>('member');
   readonly sessionError = signal('');
   readonly notice = signal('');
-  readonly inviting = signal(false);
+  readonly inviteOpen = signal(false);
+  readonly inviteFeedback = signal('');
+  readonly inviteLink = computed(() => {
+    const route = this.router.createUrlTree(['/learning/study-room', this.roomId()]);
+    return new URL(this.router.serializeUrl(route), location.origin).href;
+  });
   readonly participants = signal<RoomParticipant[]>([]);
-  readonly timerMode = signal<'focus' | 'break'>('focus');
-  readonly timeLeft = signal<number>(25 * 60);
-  readonly isRunning = signal<boolean>(false);
+  readonly timerModes: readonly { key: TimerMode; label: string }[] = [
+    { key: 'focus', label: 'Tập trung' }, { key: 'break', label: 'Nghỉ ngắn' }, { key: 'long-break', label: 'Nghỉ dài' },
+  ];
+  readonly timerScopes: readonly { key: TimerScope; label: string }[] = [
+    { key: 'personal', label: 'Cá nhân' }, { key: 'group', label: 'Cả phòng' },
+  ];
+  readonly timerScopeMenuOpen = signal(false);
+  @ViewChild('timerDockButton') private timerDockButton?: ElementRef<HTMLButtonElement>;
+  @ViewChild('timerScopeTrigger') private timerScopeTrigger?: ElementRef<HTMLButtonElement>;
+  @ViewChild('timerScopeMenu') private timerScopeMenu?: ElementRef<HTMLElement>;
+  readonly timerScope = signal<TimerScope>('personal');
+  readonly timers = signal<Record<TimerScope, RoomTimer>>({ personal: createRoomTimer(), group: createRoomTimer() });
+  readonly activeTimer = computed(() => this.timers()[this.timerScope()]);
+  readonly timerMode = computed(() => this.activeTimer().mode);
+  readonly timeLeft = computed(() => timerRemaining(this.activeTimer(), this.timerNow()));
+  readonly isRunning = computed(() => this.activeTimer().endsAt !== null);
+  readonly groupChatPaused = computed(() => {
+    const timer = this.timers().group;
+    return this.currentRole() === 'member' && this.extras.roomSettings(this.roomId()).pauseChat &&
+      timer.mode === 'focus' && timer.endsAt !== null;
+  });
+  readonly canEditTimer = computed(() => this.timerScope() === 'personal' || this.currentRole() !== 'member');
+  readonly timerOpen = signal(false);
+  readonly timerSettingsOpen = signal(false);
+  readonly hideTimerCount = signal(false);
+  readonly timerSound = signal<'off' | 'chime' | 'soft'>('chime');
+  readonly timerVolume = signal(.5);
+  private readonly timerNow = signal(Date.now());
+  private timerAudio?: AudioContext;
   readonly memberCount = computed(() => this.participants().length);
   readonly controlOpen = signal(false);
   readonly chatOpen = signal(false);
+  readonly chatPosition = signal<{ x: number; y: number } | null>(null);
+  readonly unreadChatCount = signal(0);
+  readonly customBackground = signal('');
+  readonly backgroundError = signal('');
+  private backgroundRequest = 0;
+  readonly chatDraft = signal('');
+  readonly sendingMessage = signal(false);
   readonly leaveOpen = signal(false);
   readonly micOn = this.media.micOn;
   readonly camOn = this.media.camOn;
-  readonly penMode = signal(false);
-  readonly penOptionsOpen = signal(false);
   readonly addOpen = signal(false);
+  readonly imageOpen = signal(false);
   readonly emojiOpen = signal(false);
   readonly reactions = signal<FloatingReaction[]>([]);
   readonly lofiOpen = signal(false);
@@ -86,7 +128,6 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
   readonly selectedParticipantId = signal<string | null>(null);
   readonly localAvatarFailed = signal(false);
   readonly failedAvatarIds = signal<ReadonlySet<string>>(new Set());
-  readonly inkStrokes = signal<InkStroke[]>([]);
   readonly remoteCursors = signal<Record<string, { x: number; y: number; name: string; color: string }>>({});
   readonly remoteMediaStates = signal<Record<string, { micOn: boolean; camOn: boolean }>>({});
   readonly remoteScreenLayouts = signal<Record<string, ScreenLayout>>({});
@@ -97,7 +138,6 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
     whiteboardLocked: true, participantShareScreen: false,
     participantUpload: false, approvalRequired: false,
   });
-  readonly focusLocked = computed(() => this.currentRole() === 'member' && this.timerMode() === 'focus' && this.isRunning());
   readonly selectedTheme = signal('white');
   readonly themes = [
     { id: 'white', name: 'Trắng mặc định', src: '', background: '#ffffff', grid: 'rgba(148,163,184,.34)', type: 'gradient' },
@@ -121,9 +161,12 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
     { id: 'anime-room', name: 'Anime Room', src: 'https://i.pinimg.com/originals/14/ae/7e/14ae7ede205573466d68eb3a562fe349.gif', background: '#071866', ambient: 'Night room' },
     { id: 'cozy-rainy-window', name: 'Cửa sổ mưa lofi', src: 'https://i.pinimg.com/originals/cc/95/db/cc95db51995bf889d8f2217955c2ec1e.gif', background: '#110d24', ambient: 'Soft rain lofi' },
   ];
+  readonly participantMicrophones = computed(() => Object.fromEntries(
+    this.participants().map(person => [person.userId, person.isSelf ? this.micOn() : this.remoteMicOn(person.userId)]),
+  ));
   readonly activeTheme = computed(() => this.themes.find(item => item.id === this.selectedTheme()) || this.themes[0]);
   readonly isDarkTheme = computed(() => ['night', 'space', 'lofi-night', 'cozy-window', 'pragmata-horizon', 'genshin-impact', 'pixel-dreamland', 'pixel-skyline', 'pixel-quiet-night', 'anime-room', 'cozy-rainy-window'].includes(this.selectedTheme()));
-  readonly background = computed(() => this.activeTheme().src && this.activeTheme().type !== 'video' ? `url('${this.activeTheme().src}') center / ${this.activeTheme().fit || 'cover'} no-repeat ${this.activeTheme().background || ''}` : this.activeTheme().background);
+  readonly background = computed(() => this.customBackground() ? `url('${this.customBackground()}') center / cover no-repeat #182134` : this.activeTheme().src && this.activeTheme().type !== 'video' ? `url('${this.activeTheme().src}') center / ${this.activeTheme().fit || 'cover'} no-repeat ${this.activeTheme().background || ''}` : this.activeTheme().background);
   readonly grid = computed(() => this.activeTheme().type === 'gradient' ? `radial-gradient(${this.activeTheme().grid} 1.5px, transparent 1.5px)` : 'none');
   readonly gridSize = computed(() => 24 * this.zoom() / 100);
   readonly gridPosition = computed(() => {
@@ -135,7 +178,18 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
   private timerInterval: ReturnType<typeof setInterval> | null = null;
   private roomPollInterval: ReturnType<typeof setInterval> | null = null;
   private hasJoined = false;
-  private leaving = false;
+  readonly leaving = signal(false);
+  readonly departureChoice = signal<'close' | 'auto' | 'manual' | ''>('');
+  readonly successorId = signal('');
+  readonly successorName = computed(() => {
+    const member = this.eligibleSuccessors().find(candidate => candidate.userId === this.successorId());
+    return member?.displayName || member?.name || '';
+  });
+  readonly departureError = signal('');
+  readonly eligibleSuccessors = computed(() => this.participants().filter(member => !member.isSelf && member.userId !== this.auth.currentUser()?.id));
+  private remoteAvatarGesture?: { userId: string; pointerId: number; startX: number; startY: number; origin: { x: number; y: number }; moved: boolean };
+  private suppressAvatarClick?: string;
+  private readonly liveParticipantPositions = new Map<string, { x: number; y: number }>();
   private canvasGesture: {
     kind: 'pan' | 'member' | 'timer' | 'screen' | 'screen-resize'; pointerId: number;
     startX: number; startY: number; originX: number; originY: number;
@@ -146,8 +200,14 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
   private noticeTimer: ReturnType<typeof setTimeout> | null = null;
   private miniMapDragging = false;
   private roomTransition = 0;
+  private positionSave = Promise.resolve();
   private readonly disconnectedParticipantIds = new Set<string>();
 
+  readonly requestsOnly = signal(false);
+  readonly pendingRequestCount = computed(() =>
+    this.room()?.joinRequests?.filter(request => request.status === 'pending').length ?? 0);
+
+  readonly roomName = computed(() => this.room()?.name.trim() || 'Phòng học ảo');
   readonly room = computed(() => {
     const id = this.roomId();
     return id ? this.studyRoomService.getJoinedRoom(id) : null;
@@ -190,7 +250,8 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
       this.broadcastMediaState();
       if (this.sharingScreen()) this.broadcastScreenState(true);
     });
-    this.timerPosition.set({ x: 50, y: Math.min(600, Math.max(280, this.viewportSize().height - 280)) });
+    this.timerInterval = setInterval(() => this.tickTimers(), 250);
+    this.timerPosition.set({ x: 50, y: Math.min(600, Math.max(144, this.viewportSize().height - 280)) });
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const id = params.get('roomId') || '';
       void this.transitionToRoom(id);
@@ -210,38 +271,43 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
       if (userId) this.studyRoomService.leaveRoom(previousId, userId).subscribe({ error: () => { /* Continue switching rooms even if cleanup fails. */ } });
       await this.media.dispose();
       if (transition !== this.roomTransition) return;
-      this.resetRoomState();
     }
-    this.leaving = false;
+    if (previousId && previousId !== id) this.resetRoomState();
+    this.leaving.set(false);
     this.roomId.set(id);
     this.selectedTheme.set('white');
+    this.clearCustomBackground();
+    this.backgroundError.set('');
     this.openRoom(id, transition);
   }
 
   private resetRoomState(): void {
-    this.stopTimer();
+    this.timers.update(timers => ({ ...timers, group: createRoomTimer() }));
+    this.timerOpen.set(false);
+    this.timerSettingsOpen.set(false);
     this.sessionError.set('');
     this.notice.set('');
-    this.timerMode.set('focus');
-    this.timeLeft.set(25 * 60);
     this.pan.set({ x: 0, y: 0 });
     this.zoom.set(100);
     this.participants.set([]);
     this.messages.set([]);
+    this.chatPosition.set(null);
+    this.unreadChatCount.set(0);
     this.canvasItems.set([]);
-    this.inkStrokes.set([]);
     this.remoteCursors.set({});
     this.remoteMediaStates.set({});
     this.remoteScreenLayouts.set({});
     this.selectedItemId.set(null);
-    this.selectedParticipantId.set(null);
-    this.chatOpen.set(false);
-    this.controlOpen.set(false);
-    this.addOpen.set(false);
-    this.emojiOpen.set(false);
+    this.closeRoomPanels();
+    this.chatDraft.set('');
+    this.sendingMessage.set(false);
+    this.imageOpen.set(false);
+    this.inviteOpen.set(false);
     this.leaveOpen.set(false);
-    this.selectPointerTool();
     this.disconnectedParticipantIds.clear();
+    this.liveParticipantPositions.clear();
+    this.remoteAvatarGesture = undefined;
+    this.suppressAvatarClick = undefined;
   }
 
   @HostListener('window:resize')
@@ -285,7 +351,6 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
         try {
           await this.media.connect(connection);
           if (!this.isCurrentRoomTransition(id, transition)) {
-            await this.media.dispose();
             this.cleanupStaleConnection(id, user.id);
             return;
           }
@@ -300,7 +365,7 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
         } catch {
           if (!this.isCurrentRoomTransition(id, transition)) return;
           this.studyRoomService.leaveRoom(id, user.id).subscribe({ error: () => { /* The connection error remains the actionable message. */ } });
-          this.sessionError.set(this.media.error());
+          this.sessionError.set(this.media.error() || 'Không thể kết nối phòng học trực tuyến. Vui lòng thử lại.');
         }
       },
       error: () => {
@@ -327,7 +392,10 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
       next: members => {
         if (id !== this.roomId()) return;
         const connectedMembers = members.filter(member => !this.disconnectedParticipantIds.has(member.userId));
-        this.participants.set(connectedMembers);
+        this.participants.set(connectedMembers.map(member => {
+          const position = this.liveParticipantPositions.get(member.userId);
+          return position ? { ...member, position } : member;
+        }));
         const activeIds = new Set(connectedMembers.map(member => member.userId));
         this.remoteCursors.update(cursors => Object.fromEntries(Object.entries(cursors).filter(([memberId]) => activeIds.has(memberId))));
         this.remoteMediaStates.update(states => Object.fromEntries(Object.entries(states).filter(([memberId]) => activeIds.has(memberId))));
@@ -372,7 +440,9 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.stopTimer();
+    this.clearCustomBackground();
+    if (this.timerInterval) clearInterval(this.timerInterval);
+    void this.timerAudio?.close();
     if (this.roomPollInterval) clearInterval(this.roomPollInterval);
     if (this.noticeTimer) clearTimeout(this.noticeTimer);
     void this.media.dispose();
@@ -383,64 +453,194 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
   }
 
   toggleTimer(): void {
-    if (this.isRunning()) {
-      this.stopTimer();
-    } else {
-      this.startTimer();
-    }
-    this.broadcastTimer();
+    if (!this.canEditTimer()) return;
+    this.unlockTimerAudio();
+    const now = Date.now();
+    this.timerNow.set(now);
+    const timer = this.activeTimer();
+    const timeLeft = timerRemaining(timer, now) || timer.durations[timer.mode] * 60;
+    this.updateTimer({ ...timer, timeLeft, endsAt: timer.endsAt === null ? now + timeLeft * 1000 : null });
   }
 
-  startTimer(): void {
-    if (this.timerInterval) clearInterval(this.timerInterval);
-    this.isRunning.set(true);
-    this.timerInterval = setInterval(() => {
-      const remaining = this.timeLeft() - 1;
-      if (remaining <= 0) {
-        const nextMode = this.timerMode() === 'focus' ? 'break' : 'focus';
-        this.stopTimer();
-        this.timerMode.set(nextMode);
-        this.timeLeft.set(nextMode === 'focus' ? 25 * 60 : 5 * 60);
-        this.broadcastTimer();
-        this.showNotice(nextMode === 'break' ? 'Đã hoàn thành phiên tập trung. Đến giờ nghỉ!' : 'Giờ nghỉ đã kết thúc. Sẵn sàng tập trung!');
-      } else {
-        this.timeLeft.set(remaining);
+  resetTimer(): void { this.setTimerMode(this.timerMode()); }
+
+  setTimerMode(mode: TimerMode): void {
+    if (!this.canEditTimer()) return;
+    const timer = this.activeTimer();
+    this.updateTimer({ ...timer, mode, timeLeft: timer.durations[mode] * 60, endsAt: null });
+  }
+
+  setTimerMinutes(mode: TimerMode, input: HTMLInputElement): void {
+    if (!this.canEditTimer()) return;
+    const timer = this.activeTimer();
+    const minutes = input.valueAsNumber;
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 120) {
+      input.value = String(timer.durations[mode]);
+      return;
+    }
+    const durations = { ...timer.durations, [mode]: minutes };
+    const timeLeft = timer.mode === mode && timer.endsAt === null ? minutes * 60 : timer.timeLeft;
+    this.updateTimer({ ...timer, durations, timeLeft });
+  }
+
+  setTimerAutoAdvance(value: boolean): void {
+    if (this.canEditTimer()) this.updateTimer({ ...this.activeTimer(), autoAdvance: value });
+  }
+
+  openTimerScopeMenu(): void {
+    this.timerScopeMenu?.nativeElement.showPopover();
+  }
+
+  onTimerScopeMenuToggle(): void {
+    const menu = this.timerScopeMenu?.nativeElement;
+    const open = !!menu?.matches(':popover-open');
+    this.timerScopeMenuOpen.set(open);
+    if (!open) return;
+    this.positionTimerScopeMenu();
+    menu?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus({ preventScroll: true });
+  }
+
+  selectTimerScope(scope: TimerScope): void {
+    this.timerScope.set(scope);
+    this.closeTimerScopeMenu();
+  }
+
+  onTimerScopeMenuKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      this.closeTimerScopeMenu();
+      return;
+    }
+    if (event.key === 'Tab') {
+      this.closeTimerScopeMenu();
+      return;
+    }
+    if (!['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return;
+    const items = Array.from(this.timerScopeMenu?.nativeElement.querySelectorAll('button') ?? []);
+    if (!items.length) return;
+    event.preventDefault();
+    const current = items.indexOf(document.activeElement as HTMLButtonElement);
+    const step = event.key === 'ArrowUp' ? -1 : 1;
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1
+      : (current + step + items.length) % items.length;
+    items[next].focus();
+  }
+
+  positionTimerScopeMenu(): void {
+    const menu = this.timerScopeMenu?.nativeElement;
+    const trigger = this.timerScopeTrigger?.nativeElement;
+    if (!menu?.matches(':popover-open') || !trigger) return;
+    const anchor = trigger.getBoundingClientRect();
+    const { width, height } = this.viewportSize();
+    const margin = 12;
+    const gap = 6;
+    const below = height - anchor.bottom - gap - margin;
+    const above = anchor.top - gap - margin;
+    const openAbove = below < menu.scrollHeight && above > below;
+    menu.style.maxHeight = `${Math.max(0, openAbove ? above : below)}px`;
+    const size = menu.getBoundingClientRect();
+    menu.style.left = `${Math.max(margin, Math.min(anchor.left, width - size.width - margin))}px`;
+    menu.style.top = `${Math.max(margin, openAbove ? anchor.top - gap - size.height : anchor.bottom + gap)}px`;
+  }
+
+  private closeTimerScopeMenu(): void {
+    this.timerScopeMenu?.nativeElement.hidePopover();
+    this.timerScopeTrigger?.nativeElement.focus({ preventScroll: true });
+  }
+
+  toggleTimerWidget(): void {
+    this.timerOpen.update(open => !open);
+    if (!this.timerOpen()) { this.timerScopeMenuOpen.set(false); return; }
+    requestAnimationFrame(() => {
+      if (!this.timerOpen()) return;
+      this.positionOverlays();
+      this.fitTimerInViewport();
+      this.pomodoroWidget?.nativeElement.querySelector<HTMLButtonElement>('.timer-scope')?.focus({ preventScroll: true });
+    });
+  }
+
+  closeTimerWidget(): void {
+    this.timerOpen.set(false);
+    this.timerScopeMenuOpen.set(false);
+    this.timerDockButton?.nativeElement.focus({ preventScroll: true });
+  }
+
+  toggleTimerSettings(): void {
+    this.timerSettingsOpen.update(open => !open);
+    if (this.timerSettingsOpen()) requestAnimationFrame(() => this.fitTimerInViewport());
+  }
+
+  private fitTimerInViewport(): void {
+    const widget = this.pomodoroWidget?.nativeElement;
+    if (!widget || !this.timerOpen()) return;
+    const scale = this.zoom() / 100;
+    const pan = this.pan();
+    const viewport = this.viewportSize();
+    const dockTop = this.roomDock?.nativeElement.getBoundingClientRect().top ?? viewport.height - 96;
+    const rect = widget.getBoundingClientRect();
+    const left = Math.max(12, Math.min(rect.left, viewport.width - rect.width - 12));
+    const top = Math.max(12, Math.min(rect.top, dockTop - rect.height - 8));
+    this.timerPosition.set({ x: (left - pan.x) / scale, y: (top - pan.y) / scale });
+  }
+
+  setTimerSound(sound: 'off' | 'chime' | 'soft'): void {
+    this.timerSound.set(sound);
+    this.unlockTimerAudio();
+  }
+
+  private updateTimer(timer: RoomTimer): void {
+    const scope = this.timerScope();
+    this.timers.update(timers => ({ ...timers, [scope]: timer }));
+    if (scope === 'group') this.broadcastTimer();
+  }
+
+  private tickTimers(): void {
+    const now = Date.now();
+    const timers = this.timers();
+    if (timers.personal.endsAt === null && timers.group.endsAt === null) return;
+    this.timerNow.set(now);
+    for (const scope of ['personal', 'group'] as const) {
+      const timer = timers[scope];
+      if (timer.endsAt === null || timer.endsAt > now) continue;
+      this.timers.update(current => ({ ...current, [scope]: finishTimer(timer, now) }));
+      if (scope === 'group' && this.currentRole() === 'owner') this.broadcastTimer();
+      if (scope === this.timerScope()) {
+        this.playTimerSound();
+        this.showNotice(timer.mode === 'focus' ? 'Đã hoàn thành phiên tập trung.' : 'Đã hết giờ nghỉ.');
       }
-    }, 1000);
-  }
-
-  stopTimer(): void {
-    this.isRunning.set(false);
-    if (this.timerInterval) {
-      clearInterval(this.timerInterval);
-      this.timerInterval = null;
     }
   }
 
-  resetTimer(): void {
-    this.stopTimer();
-    this.timeLeft.set(this.timerMode() === 'focus' ? 25 * 60 : 5 * 60);
-    this.broadcastTimer();
+  private unlockTimerAudio(): void {
+    if (this.timerSound() === 'off') return;
+    try {
+      this.timerAudio ??= new AudioContext();
+      void this.timerAudio.resume().catch(() => undefined);
+    } catch { /* The timer remains available without sound. */ }
   }
 
-  setTimerMode(mode: 'focus' | 'break'): void {
-    this.stopTimer();
-    this.timerMode.set(mode);
-    this.timeLeft.set(mode === 'focus' ? 25 * 60 : 5 * 60);
-    this.broadcastTimer();
-  }
-
-  stopFocusMode(): void {
-    this.stopTimer();
-    this.broadcastTimer();
-    this.showNotice('Đã dừng chế độ tập trung.');
+  private playTimerSound(): void {
+    const audio = this.timerAudio;
+    if (!audio || audio.state !== 'running' || this.timerSound() === 'off' || !this.timerVolume()) return;
+    const tone = audio.createOscillator();
+    const volume = audio.createGain();
+    const now = audio.currentTime;
+    tone.frequency.value = this.timerSound() === 'soft' ? 440 : 784;
+    volume.gain.setValueAtTime(this.timerVolume() * .18, now);
+    volume.gain.exponentialRampToValueAtTime(.001, now + .45);
+    tone.connect(volume).connect(audio.destination);
+    tone.start(now);
+    tone.stop(now + .45);
   }
 
   sendMessage(text: string): void {
-    if (!text.trim() || this.focusLocked() || !this.canUseCapability('chat')) return;
+    if (!text.trim() || this.sendingMessage() || this.groupChatPaused() || !this.canUseCapability('chat')) return;
     const user = this.auth.currentUser();
     if (!user) return;
     const roomId = this.roomId();
+    const transition = this.roomTransition;
+    const submittedDraft = this.chatDraft();
     const pendingId = `pending-${crypto.randomUUID()}`;
     const now = new Date();
     const pending: RoomChatMessage = {
@@ -453,16 +653,22 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
       color: '#714cb6',
       isMe: true,
     };
+    this.sendingMessage.set(true);
     this.messages.update(messages => [...messages, pending]);
-    this.studyRoomService.sendMessage(roomId, user.id, user.full_name, text.trim()).subscribe({
+    this.studyRoomService.sendMessage(roomId, user.id, user.full_name, text.trim()).pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
       next: message => {
-        if (roomId !== this.roomId()) return;
+        if (!this.isCurrentRoomTransition(roomId, transition)) return;
+        this.sendingMessage.set(false);
+        if (this.chatDraft() === submittedDraft) this.chatDraft.set('');
         const mapped = this.mapMessage(message, user.id);
         this.messages.update(messages => [...messages.filter(item => item.id !== pendingId && item.id !== mapped.id), mapped]);
         void this.media.sendRealtime({ type: 'chat', payload: mapped });
       },
       error: () => {
-        if (roomId !== this.roomId()) return;
+        if (!this.isCurrentRoomTransition(roomId, transition)) return;
+        this.sendingMessage.set(false);
         this.messages.update(messages => messages.filter(item => item.id !== pendingId));
         this.showNotice('Không thể gửi tin nhắn. Vui lòng thử lại.');
       },
@@ -497,7 +703,7 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
   remoteMicOn(userId: string): boolean { return this.remoteMediaStates()[userId]?.micOn ?? false; }
   remoteCamOn(userId: string): boolean { return this.remoteMediaStates()[userId]?.camOn ?? !!this.remoteCameraStream(userId); }
   isSpeaking(userId: string): boolean { return this.media.activeSpeakerIds().has(userId); }
-  isLocalSpeaking(): boolean { const userId = this.auth.currentUser()?.id; return !!userId && this.isSpeaking(userId); }
+  isLocalSpeaking(): boolean { const userId = this.auth.currentUser()?.id; return this.micOn() && !!userId && this.isSpeaking(userId); }
   remoteScreenOwner(screen: RemoteScreenStream): RoomParticipant | undefined { return this.participants().find(person => person.userId === screen.participantId); }
   participantColor(participant: RoomParticipant): string {
     const palette = ['#714cb6', '#3559b8', '#2daa6e', '#e05297', '#b45309', '#2f7f9d', '#8b5cf6'];
@@ -509,18 +715,253 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
   markAvatarFailed(userId: string): void {
     this.failedAvatarIds.update(ids => new Set(ids).add(userId));
   }
-  toggleParticipantPopover(event: PointerEvent, userId: string): void {
-    event.stopPropagation();
-    this.selectedParticipantId.update(selected => selected === userId ? null : userId);
+  readonly selectedParticipant = computed(() =>
+    this.participants().find(person => person.userId === this.selectedParticipantId()),
+  );
+  private participantAnchor?: HTMLElement;
+  private panelTrigger?: HTMLElement;
+  @ViewChild('roomShell') private roomShell?: ElementRef<HTMLElement>;
+  @ViewChild('roomHeader') private roomHeader?: ElementRef<HTMLElement>;
+  @ViewChild('pomodoroWidget') private pomodoroWidget?: ElementRef<HTMLElement>;
+  @ViewChild('roomDock') private roomDock?: ElementRef<HTMLElement>;
+  @ViewChild('roomNotices') private roomNotices?: ElementRef<HTMLElement>;
+  @ViewChild('memberPopover', { read: ElementRef }) private memberPopover?: ElementRef<HTMLElement>;
+  @ViewChild('leaveDialog') private leaveDialog?: ElementRef<HTMLDialogElement>;
+
+  constructor() {
+    afterNextRender(() => {
+      const observer = new ResizeObserver(() => this.positionOverlays());
+      for (const element of [this.roomShell, this.roomHeader, this.roomDock, this.roomNotices]) {
+        if (element) observer.observe(element.nativeElement);
+      }
+      this.destroyRef.onDestroy(() => observer.disconnect());
+      this.positionOverlays();
+    });
+    afterRenderEffect(() => {
+      const open = this.leaveOpen();
+      const dialog = this.leaveDialog?.nativeElement;
+      if (open && dialog && !dialog.open) dialog.showModal();
+      if (!open && dialog?.open) dialog.close();
+    });
+    afterRenderEffect(() => {
+      const panel = this.addOpen() ? 'app-add-to-canvas-menu'
+        : this.emojiOpen() ? 'app-reaction-picker'
+        : this.lofiOpen() ? 'app-lofi-player'
+        : this.controlOpen() ? 'app-room-control-panel'
+        : '';
+      if (panel) this.roomShell?.nativeElement.querySelector<HTMLElement>(`${panel} button`)?.focus({ preventScroll: true });
+    });
+    afterRenderEffect(() => {
+      this.pan();
+      this.zoom();
+      this.viewportSize();
+      this.selectedParticipant();
+      this.positionOverlays();
+    });
   }
+
+  startRemoteAvatarDrag(event: PointerEvent, person: RoomParticipant): void {
+    this.suppressAvatarClick = undefined;
+    if (event.button !== 0 || this.currentRole() === 'member' || this.remoteAvatarGesture || this.canvasGesture) return;
+    this.remoteAvatarGesture = {
+      userId: person.userId, pointerId: event.pointerId,
+      startX: event.clientX, startY: event.clientY, origin: person.position, moved: false,
+    };
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+  }
+
+  private moveRemoteAvatar(event: PointerEvent): boolean {
+    const gesture = this.remoteAvatarGesture;
+    if (!gesture || gesture.pointerId !== event.pointerId) return false;
+    const dx = event.clientX - gesture.startX;
+    const dy = event.clientY - gesture.startY;
+    if (!gesture.moved && Math.hypot(dx, dy) < 5) return true;
+    gesture.moved = true;
+    const scale = this.zoom() / 100;
+    this.applyParticipantPosition(gesture.userId, { x: gesture.origin.x + dx / scale, y: gesture.origin.y + dy / scale });
+    return true;
+  }
+
+  private applyParticipantPosition(userId: string, position: { x: number; y: number }): void {
+    this.liveParticipantPositions.set(userId, position);
+    if (this.auth.currentUser()?.id === userId) this.memberPosition.set(position);
+    this.participants.update(people => people.map(person => person.userId === userId ? { ...person, position } : person));
+  }
+
+  toggleParticipantPopover(event: MouseEvent, userId: string): void {
+    if (event.detail !== 0 && this.suppressAvatarClick === userId) {
+      this.suppressAvatarClick = undefined;
+      return;
+    }
+    if (this.selectedParticipantId() === userId) {
+      this.closeParticipantPopover();
+      return;
+    }
+    this.closeRoomPanels();
+    this.participantAnchor = event.currentTarget as HTMLElement;
+    this.selectedParticipantId.set(userId);
+    requestAnimationFrame(() => {
+      if (this.selectedParticipantId() !== userId) return;
+      this.positionOverlays();
+      this.memberPopover?.nativeElement.querySelector('button')?.focus();
+    });
+  }
+
+  @HostListener('document:pointerdown', ['$event'])
+  closeMemberOnOutsidePointer(event: PointerEvent): void {
+    if (!this.selectedParticipantId()) return;
+    const target = event.target as Node;
+    if (!this.participantAnchor?.contains(target) && !this.memberPopover?.nativeElement.contains(target)) {
+      this.closeParticipantPopover(false);
+    }
+  }
+
+  closeParticipantPopover(restoreFocus = true): void {
+    if (restoreFocus) this.participantAnchor?.focus();
+    this.selectedParticipantId.set(null);
+    this.participantAnchor = undefined;
+  }
+
+  private positionOverlays(): void {
+    const shell = this.roomShell?.nativeElement;
+    const header = this.roomHeader?.nativeElement;
+    const dock = this.roomDock?.nativeElement;
+    if (!shell || !header || !dock) return;
+    const headerEdge = header.getBoundingClientRect().bottom;
+    const dockTop = dock.getBoundingClientRect().top;
+    const noticesEdge = this.roomNotices?.nativeElement.getBoundingClientRect().bottom ?? 0;
+    this.positionTimerScopeMenu();
+    shell.style.setProperty('--room-header-edge', `${headerEdge + 8}px`);
+    shell.style.setProperty('--room-notices-edge', `${Math.max(headerEdge, noticesEdge) + 8}px`);
+    shell.style.setProperty('--room-dock-edge', `${shell.clientHeight - dockTop + 8}px`);
+    this.pomodoroWidget?.nativeElement.style.setProperty(
+      '--pomodoro-max-height',
+      `${Math.max(1, (dockTop - 20) / (this.zoom() / 100))}px`,
+    );
+    for (const button of dock.querySelectorAll<HTMLElement>('[data-tool]')) {
+      const rect = button.getBoundingClientRect();
+      shell.style.setProperty(`--${button.dataset['tool']}-anchor`, `${rect.left + rect.width / 2}px`);
+    }
+    const popover = this.memberPopover?.nativeElement;
+    const anchor = this.participantAnchor?.getBoundingClientRect();
+    if (!popover || !anchor) return;
+    const gap = 8;
+    const margin = 12;
+    const topEdge = Math.max(headerEdge, noticesEdge) + gap;
+    const above = Math.max(0, Math.min(dockTop, anchor.top) - gap - topEdge);
+    const below = Math.max(0, dockTop - Math.max(topEdge, anchor.bottom) - gap);
+    const openAbove = below < popover.scrollHeight && above > below;
+    const height = openAbove ? above : below;
+    const left = Math.max(margin, Math.min(anchor.left + anchor.width / 2 - popover.offsetWidth / 2, shell.clientWidth - popover.offsetWidth - margin));
+    const top = openAbove ? Math.min(dockTop, anchor.top) - gap - Math.min(popover.scrollHeight, height) : Math.max(topEdge, anchor.bottom + gap);
+    popover.style.visibility = height >= 48 ? 'visible' : 'hidden';
+    popover.style.left = `${left}px`;
+    popover.style.top = `${top}px`;
+    popover.style.maxHeight = `${height}px`;
+  }
+
+  private closeRoomPanels(): void {
+    this.panelTrigger = undefined;
+    for (const panel of [this.addOpen, this.emojiOpen, this.lofiOpen, this.chatOpen, this.controlOpen]) panel.set(false);
+    this.closeParticipantPopover(false);
+  }
+
+  closePanel(panel: WritableSignal<boolean>): void {
+    if (!panel()) return;
+    panel.set(false);
+    this.panelTrigger?.focus();
+    this.panelTrigger = undefined;
+  }
+
+  openPanel(panel: WritableSignal<boolean>, event: MouseEvent, requestsOnly = false): void {
+    if (panel()) {
+      this.closePanel(panel);
+      return;
+    }
+    this.closeRoomPanels();
+    this.panelTrigger = event.currentTarget as HTMLElement;
+    if (panel === this.controlOpen) this.requestsOnly.set(requestsOnly);
+    panel.set(true);
+  }
+
+  toggleTool(tool: 'add' | 'reaction' | 'lofi', event: MouseEvent): void {
+    this.openPanel({ add: this.addOpen, reaction: this.emojiOpen, lofi: this.lofiOpen }[tool], event);
+  }
+
+  @HostListener('document:keydown.escape')
+  closeOverlayOnEscape(): void {
+    if (this.leaveOpen() || this.imageOpen() || this.controlOpen() || this.inviteOpen()) return;
+    if (this.selectedParticipantId()) {
+      this.closeParticipantPopover();
+      return;
+    }
+    const panel = [this.addOpen, this.emojiOpen, this.lofiOpen, this.chatOpen, this.controlOpen].find(open => open());
+    if (panel) this.closePanel(panel);
+  }
+
+  openLeave(event: MouseEvent): void {
+    this.closeRoomPanels();
+    (event.currentTarget as HTMLElement).focus({ preventScroll: true });
+    this.departureChoice.set('');
+    this.successorId.set('');
+    this.departureError.set('');
+    this.leaveOpen.set(true);
+  }
+
+  closeSuccessorPickerOnBlur(event: FocusEvent, picker: HTMLDetailsElement): void {
+    if (!(event.relatedTarget instanceof Node) || !picker.contains(event.relatedTarget)) picker.open = false;
+  }
+
+  cancelLeave(dialog?: HTMLDialogElement): void {
+    const picker = dialog?.querySelector<HTMLDetailsElement>('details[open]');
+    if (picker) {
+      picker.open = false;
+      picker.querySelector('summary')?.focus();
+      return;
+    }
+    if (!this.leaving()) this.leaveOpen.set(false);
+  }
+
   remoteScreenLayout(screen: RemoteScreenStream, index: number): ScreenLayout {
     return this.remoteScreenLayouts()[screen.participantId] || { active: true, x: 400 + index * 36, y: 205 + index * 36, width: 640, height: 360 };
   }
+  async setCustomBackground(file: File): Promise<void> {
+    const request = ++this.backgroundRequest;
+    this.backgroundError.set('');
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/avif'].includes(file.type) || file.size > 10 * 1024 * 1024) {
+      this.backgroundError.set('Chọn ảnh JPEG, PNG, WebP hoặc AVIF tối đa 10 MB.');
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    try {
+      const image = new Image();
+      image.src = url;
+      await image.decode();
+      if (request !== this.backgroundRequest) return;
+      const previous = this.customBackground();
+      this.customBackground.set(url);
+      if (previous) URL.revokeObjectURL(previous);
+    } catch {
+      if (request === this.backgroundRequest) this.backgroundError.set('Không đọc được ảnh nền.');
+    } finally {
+      if (this.customBackground() !== url) URL.revokeObjectURL(url);
+    }
+  }
+
+  private clearCustomBackground(): void {
+    this.backgroundRequest++;
+    const url = this.customBackground();
+    this.customBackground.set('');
+    if (url) URL.revokeObjectURL(url);
+  }
+
   selectTheme(themeId: string): void {
     const roomId = this.roomId();
     this.studyRoomService.changeTheme(roomId, themeId).subscribe({
       next: () => {
         if (roomId !== this.roomId()) return;
+        this.clearCustomBackground();
+        this.backgroundError.set('');
         this.selectedTheme.set(themeId);
         sessionStorage.setItem('study_room_theme', themeId);
         void this.media.sendRealtime({ type: 'theme', payload: { themeId } });
@@ -528,15 +969,69 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
       error: () => { if (roomId === this.roomId()) this.showNotice('Bạn không có quyền đổi giao diện phòng.'); },
     });
   }
-  addCanvasItem(kind: CanvasItemKind): void {
-    if ((kind === 'whiteboard' || kind === 'note' || kind === 'text') && !this.canUseCapability('whiteboard')) { this.showNotice('Bảng vẽ và ghi chú đang bị khóa.'); return; }
-    if ((kind === 'image' || kind === 'gif' || kind === 'youtube') && !this.canUseCapability('upload')) { this.showNotice('Bạn chưa được cấp quyền thêm nội dung đa phương tiện.'); return; }
-    const sizes: Record<CanvasItemKind, [number, number]> = { text: [240, 80], note: [200, 180], image: [280, 180], gif: [280, 180], youtube: [480, 300], whiteboard: [360, 240] };
-    const [width, height] = sizes[kind];
+  addCanvasItem(kind: NewCanvasItemKind): void {
+    const media = kind === 'image' || kind === 'youtube';
+    if (!this.canUseCapability(media ? 'upload' : 'whiteboard')) {
+      this.showNotice(media ? 'Bạn chưa được cấp quyền thêm nội dung đa phương tiện.' : 'Bảng vẽ và ghi chú đang bị khóa.');
+      return;
+    }
+    if (kind === 'image') {
+      if (!this.media.connected()) {
+        this.showNotice('Cần kết nối phòng để thêm ảnh.');
+        return;
+      }
+      this.closePanel(this.addOpen);
+      this.imageOpen.set(true);
+      return;
+    }
+    this.insertCanvasItem(kind);
+  }
+
+  addCanvasText(request: { kind: 'text' | 'note' | 'checklist' | 'link'; content: string }): void {
+    if (!this.canUseCapability('whiteboard')) {
+      this.showNotice('Bạn chưa được cấp quyền thêm nội dung trên canvas.');
+      return;
+    }
+    this.insertCanvasItem(request.kind, undefined, request.content);
+  }
+
+  addCanvasImage(image: CanvasImageSource): void {
+    if (!this.canUseCapability('upload')) {
+      this.showNotice('Bạn chưa được cấp quyền thêm nội dung đa phương tiện.');
+    } else if (!this.media.connected()) {
+      this.showNotice('Đã mất kết nối phòng. Vui lòng kết nối lại trước khi thêm ảnh.');
+    } else {
+      this.insertCanvasItem('image', image);
+    }
+    this.imageOpen.set(false);
+  }
+
+  private insertCanvasItem(kind: NewCanvasItemKind | 'text', image?: CanvasImageSource, content = ''): void {
+    const sizes: Record<Exclude<CanvasItemKind, 'gif'>, [number, number]> = {
+      text: [240, 80], note: [200, 180], image: [280, 180], youtube: [480, 300], whiteboard: [360, 240],
+      checklist: [240, 180], link: [240, 100],
+    };
+    const imageScale = image ? Math.min(400 / image.width, 300 / image.height, 1) : 1;
+    const [width, height] = image
+      ? [Math.max(100, Math.round(image.width * imageScale)), Math.max(80, Math.round(image.height * imageScale))]
+      : sizes[kind];
     const colors = ['#fff4a8', '#ffd6e8', '#d2f5df', '#d8eaff', '#e8dcff'];
     const scale = this.zoom() / 100;
     const viewport = this.viewportSize();
-    const item: CanvasItem = { id: crypto.randomUUID(), kind, content: kind === 'text' ? 'Headline' : '', x: Math.round((viewport.width / 2 - this.pan().x) / scale - width / 2), y: Math.round((viewport.height / 2 - this.pan().y) / scale - height / 2), width, height, z: this.nextCanvasZ(), ownerId: this.auth.currentUser()?.id, color: colors[Math.floor(Math.random() * colors.length)], url: kind === 'gif' ? 'https://media.giphy.com/media/3o7TKsQ8gqVrxZZkly/giphy.gif' : undefined, label: kind === 'image' ? 'Hình ảnh mới' : undefined, strokes: kind === 'whiteboard' ? [] : undefined };
+    const item: CanvasItem = {
+      id: crypto.randomUUID(),
+      kind,
+      content,
+      x: Math.round((viewport.width / 2 - this.pan().x) / scale - width / 2),
+      y: Math.round((viewport.height / 2 - this.pan().y) / scale - height / 2),
+      width, height,
+      z: this.nextCanvasZ(),
+      ownerId: this.auth.currentUser()?.id,
+      color: kind === 'text' ? '#f8fafc' : kind === 'note' ? colors[0] : kind === 'checklist' || kind === 'link' ? '#f8fafc' : undefined,
+      url: image?.url,
+      label: image ? 'Ảnh trên canvas' : undefined,
+      strokes: kind === 'whiteboard' ? [] : undefined,
+    };
     this.canvasItems.update(items => [...items, item]);
     this.selectedItemId.set(item.id);
     void this.media.sendRealtime({ type: 'canvas-upsert', payload: item });
@@ -556,20 +1051,10 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
     if (this.selectedItemId() === id) this.selectedItemId.set(null);
     void this.media.sendRealtime({ type: 'canvas-remove', payload: { id } });
   }
-  updateInk(strokes: InkStroke[]): void {
-    if (!this.canUseCapability('whiteboard')) return;
-    this.inkStrokes.set(strokes);
-    void this.media.sendRealtime({ type: 'ink', payload: strokes }, false);
-  }
-  commitInk(strokes: InkStroke[]): void {
-    if (!this.canUseCapability('whiteboard')) return;
-    this.inkStrokes.set(strokes);
-    void this.media.sendRealtime({ type: 'ink', payload: strokes });
-  }
   canManageItem(item: CanvasItem): boolean {
     const ownsItem = this.currentRole() !== 'member' || !item.ownerId || item.ownerId === this.auth.currentUser()?.id;
     if (!ownsItem) return false;
-    if (item.kind === 'whiteboard' || item.kind === 'note' || item.kind === 'text') return this.canUseCapability('whiteboard');
+    if (item.kind === 'whiteboard' || item.kind === 'note' || item.kind === 'text' || item.kind === 'checklist' || item.kind === 'link') return this.canUseCapability('whiteboard');
     return true;
   }
   canUseCapability(capability: 'chat' | 'voice' | 'camera' | 'shareScreen' | 'upload' | 'whiteboard'): boolean {
@@ -583,7 +1068,6 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
     return !permissions.whiteboardLocked;
   }
   bringCanvasItemToFront(id: string): void {
-    if (this.focusLocked()) return;
     const item = this.canvasItems().find(current => current.id === id);
     if (!item) return;
     this.selectedItemId.set(id);
@@ -591,45 +1075,52 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
     this.commitCanvasItem(id, { z: this.nextCanvasZ() });
   }
   private nextCanvasZ(): number { return Math.max(10, this.memberZ(), ...this.canvasItems().map(item => item.z || 1)) + 1; }
-  openChat(): void {
-    if (this.focusLocked()) { this.showNotice('Chat bị khóa trong phiên tập trung.'); return; }
+  openChat(event: MouseEvent): void {
+    if (this.groupChatPaused()) { this.showNotice('Chat đang tạm dừng theo cài đặt Pomodoro chung của chủ phòng.'); return; }
     if (!this.canUseCapability('chat')) { this.showNotice('Chat đang bị khóa cho thành viên.'); return; }
-    this.chatOpen.update(open => !open);
+    this.openPanel(this.chatOpen, event);
+    if (this.chatOpen()) this.unreadChatCount.set(0);
   }
-  selectPointerTool(): void {
-    this.penMode.set(false);
-    this.penOptionsOpen.set(false);
+  clearCanvasSelection(): void {
+    this.selectedItemId.set(null);
+    this.closeParticipantPopover(false);
   }
-  togglePenTool(): void {
-    if (!this.canUseCapability('whiteboard')) {
-      this.showNotice('Whiteboard đang bị khóa cho thành viên.');
-      return;
-    }
-    if (this.penMode()) {
-      this.penOptionsOpen.update(open => !open);
-      return;
-    }
-    this.penMode.set(true);
-    this.penOptionsOpen.set(true);
-  }
+
   updateRoomPermissions(permissions: RoomPermissions): void {
     this.roomPermissions.set(permissions);
     if (!this.canUseCapability('chat')) this.chatOpen.set(false);
-    if (!this.canUseCapability('whiteboard')) this.selectPointerTool();
     void this.media.sendRealtime({ type: 'permissions', payload: permissions });
   }
   applyLoadedPermissions(permissions: RoomPermissions): void {
     this.roomPermissions.set(permissions);
     if (!this.canUseCapability('chat')) this.chatOpen.set(false);
-    if (!this.canUseCapability('whiteboard')) this.selectPointerTool();
   }
+  startCanvasPan(event: PointerEvent): void {
+    if (!this.isCanvasBackground(event) || !event.isPrimary) return;
+    this.beginCanvasGesture(event, 'pan');
+  }
+
+  scrollCanvas(event: WheelEvent): void {
+    if (event.ctrlKey || event.metaKey || !this.isCanvasBackground(event)) return;
+    event.preventDefault();
+    const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? this.viewportSize().height : 1;
+    const horizontal = event.shiftKey && !event.deltaX;
+    this.pan.update(({ x, y }) => ({
+      x: x - (horizontal ? event.deltaY : event.deltaX) * unit,
+      y: y - (horizontal ? 0 : event.deltaY) * unit,
+    }));
+  }
+
+  private isCanvasBackground(event: Event): boolean {
+    const target = event.target;
+    return target === event.currentTarget
+      || (target instanceof Element && target.matches('.canvas-grid, .room-video'));
+  }
+
   beginCanvasGesture(event: PointerEvent, kind: 'pan' | 'member' | 'timer' | 'screen' | 'screen-resize'): void {
-    if ((this.focusLocked() && (kind === 'member' || kind === 'screen' || kind === 'screen-resize')) || (this.penMode() && (kind === 'pan' || kind === 'member' || kind === 'screen')) || event.button !== 0) return;
+    if (event.button !== 0 || !event.isPrimary || this.canvasGesture || this.remoteAvatarGesture) return;
     const target = event.target as HTMLElement;
-    if (target.closest('button, input, textarea, select, a, app-canvas-item') && kind !== 'screen-resize') return;
-    if (kind === 'pan' && target.closest('.top-bar,.navigator,.floating-dock,.focus-overlay,.permission-notice,.media-error,app-add-to-canvas-menu,app-lofi-player,app-reaction-picker,app-chat-panel,app-room-control-panel,app-ink-layer,.confirm-shade,app-participant-popover')) return;
-    if (kind === 'pan' && target.closest('.user-bubble, .pomodoro-widget, .shared-screen')) return;
-    if (kind === 'pan') this.selectedItemId.set(null);
+    if (target.closest('button, input, textarea, select, label, a, app-canvas-item') && kind !== 'screen-resize') return;
     event.preventDefault();
     if (kind === 'screen-resize') event.stopPropagation();
     if (kind === 'member') this.memberZ.set(this.nextCanvasZ());
@@ -642,9 +1133,14 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
     if (!gesture || gesture.pointerId !== event.pointerId) return;
     const scale = gesture.kind === 'pan' ? 1 : this.zoom() / 100;
     const next = { x: gesture.originX + (event.clientX - gesture.startX) / scale, y: gesture.originY + (event.clientY - gesture.startY) / scale };
-    if (gesture.kind === 'pan') this.pan.set(next);
-    else if (gesture.kind === 'member') {
-      this.memberPosition.set(next);
+    if (gesture.kind === 'pan') {
+      this.pan.set(next);
+      return;
+    }
+    if (gesture.kind === 'member') {
+      const userId = this.auth.currentUser()?.id;
+      if (userId) this.applyParticipantPosition(userId, next);
+      else this.memberPosition.set(next);
       const now = performance.now();
       if (now - this.lastPositionSentAt >= 50) {
         this.lastPositionSentAt = now;
@@ -663,8 +1159,9 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
     }
   }
   handleCanvasPointerMove(event: PointerEvent): void {
+    if (this.moveRemoteAvatar(event)) return;
     this.moveCanvasGesture(event);
-    if (this.canvasGesture || this.penMode()) return;
+    if (this.canvasGesture) return;
     const now = performance.now();
     if (now - this.lastCursorSentAt < 60) return;
     this.lastCursorSentAt = now;
@@ -683,32 +1180,66 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
     }, false);
   }
   endCanvasGesture(event: PointerEvent): void {
+    const remote = this.remoteAvatarGesture;
+    if (remote?.pointerId === event.pointerId) {
+      this.remoteAvatarGesture = undefined;
+      const position = this.liveParticipantPositions.get(remote.userId);
+      if (remote.moved && position) {
+        this.suppressAvatarClick = remote.userId;
+        void this.media.sendRealtime({ type: 'participant-position', payload: { userId: remote.userId, position } });
+      }
+      return;
+    }
     const gesture = this.canvasGesture;
     if (gesture?.pointerId !== event.pointerId) return;
     this.canvasGesture = null;
     if (gesture.kind === 'screen' || gesture.kind === 'screen-resize') { this.broadcastScreenState(true); return; }
     if (gesture.kind !== 'member') return;
-    this.broadcastParticipantPosition(this.memberPosition());
     const userId = this.auth.currentUser()?.id;
     if (!userId) return;
+    const { x, y } = this.memberPosition();
+    const position = { x: Math.round(x), y: Math.round(y) };
+    this.applyParticipantPosition(userId, position);
+    this.broadcastParticipantPosition(position);
+    this.persistOwnPosition(userId, position);
+  }
+
+  private persistOwnPosition(userId: string, position: { x: number; y: number }): void {
     const roomId = this.roomId();
-    this.studyRoomService.updatePosition(roomId, userId, this.memberPosition()).subscribe({
-      next: position => { if (roomId === this.roomId()) this.memberPosition.set(position); },
-      error: () => { if (roomId === this.roomId()) this.showNotice('Không thể lưu vị trí trên canvas.'); },
+    const transition = this.roomTransition;
+    this.positionSave = this.positionSave.then(async () => {
+      if (this.destroyRef.destroyed || !this.isCurrentRoomTransition(roomId, transition)) return;
+      try {
+        await firstValueFrom(this.studyRoomService.updatePosition(roomId, userId, position));
+      } catch {
+        if (!this.destroyRef.destroyed && this.isCurrentRoomTransition(roomId, transition)) {
+          this.showNotice('Không thể lưu vị trí trên canvas.');
+        }
+      }
     });
   }
-  handleWheel(event: WheelEvent): void {
-    const target = event.target as HTMLElement;
-    if (target.closest('.top-bar,.navigator,.floating-dock,.focus-overlay,.permission-notice,.media-error,app-add-to-canvas-menu,app-lofi-player,app-reaction-picker,app-chat-panel,app-room-control-panel,app-ink-layer,.confirm-shade,app-participant-popover')) return;
+
+  moveMiniMapWithKeyboard(event: KeyboardEvent): void {
+    const step = 40;
+    const directions: Record<string, { x: number; y: number } | undefined> = {
+      ArrowLeft: { x: step, y: 0 },
+      ArrowRight: { x: -step, y: 0 },
+      ArrowUp: { x: 0, y: step },
+      ArrowDown: { x: 0, y: -step },
+    };
+    const direction = directions[event.key];
+    if (!direction) return;
     event.preventDefault();
-    const factor = event.deltaY > 0 ? 0.95 : 1.05;
-    this.zoom.set(Math.max(30, Math.min(300, Math.round(this.zoom() * factor))));
+    this.pan.update(({ x, y }) => ({ x: x + direction.x, y: y + direction.y }));
   }
   miniMapPointerDown(event: PointerEvent): void {
+    if (event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
     this.miniMapDragging = true;
-    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    const map = event.currentTarget as HTMLElement;
+    map.focus();
+    map.setPointerCapture(event.pointerId);
     this.panFromMiniMap(event);
   }
   miniMapPointerMove(event: PointerEvent): void {
@@ -746,17 +1277,21 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
     window.setTimeout(() => this.reactions.update(reactions => reactions.filter(reaction => reaction.id !== id)), 2200);
   }
   private broadcastTimer(): void {
-    void this.media.sendRealtime({ type: 'timer', payload: { mode: this.timerMode(), timeLeft: this.timeLeft(), isRunning: this.isRunning() } });
+    void this.media.sendRealtime({ type: 'timer', payload: this.groupTimerPayload() });
   }
   private broadcastMediaState(): void {
     const userId = this.auth.currentUser()?.id;
     if (!userId) return;
     void this.media.sendRealtime({ type: 'media-state', payload: { userId, micOn: this.micOn(), camOn: this.camOn() } }, false);
   }
+  private groupTimerPayload() {
+    const timer = this.timers().group;
+    return { ...timer, timeLeft: timerRemaining(timer, Date.now()), isRunning: timer.endsAt !== null };
+  }
   private broadcastParticipantPosition(position: { x: number; y: number }): void {
     const userId = this.auth.currentUser()?.id;
     if (!userId) return;
-    void this.media.sendRealtime({ type: 'participant-position', payload: { userId, position } }, false);
+    void this.media.sendRealtime({ type: 'participant-position', payload: { userId, position } });
   }
   private broadcastScreenState(active: boolean): void {
     const userId = this.auth.currentUser()?.id;
@@ -771,11 +1306,12 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
       return;
     }
     if (event.type === 'sync-request') {
+      this.broadcastParticipantPosition(this.memberPosition());
       this.broadcastMediaState();
       if (this.sharingScreen()) this.broadcastScreenState(true);
       const ownerPresent = this.participants().some(person => person.role === 'owner' && !person.isSelf);
       if (this.currentRole() === 'member' || (this.currentRole() === 'moderator' && ownerPresent)) return;
-      void this.media.sendRealtime({ type: 'canvas-snapshot', payload: { items: this.canvasItems(), ink: this.inkStrokes(), timer: { mode: this.timerMode(), timeLeft: this.timeLeft(), isRunning: this.isRunning() } } });
+      void this.media.sendRealtime({ type: 'canvas-snapshot', payload: { items: this.canvasItems(), timer: this.groupTimerPayload() } });
       return;
     }
     if (event.type === 'canvas-upsert') {
@@ -791,10 +1327,7 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
       if (item && this.canPeerManageCanvasItem(senderId, item)) this.canvasItems.update(items => items.filter(current => current.id !== payload.id));
       return;
     }
-    if (event.type === 'ink') {
-      if (this.isInkSnapshot(event.payload) && this.canPeerUseWhiteboard(senderId)) this.inkStrokes.set(event.payload);
-      return;
-    }
+
     if (event.type === 'reaction') {
       const payload = event.payload as { emoji?: string; userId?: string; x?: number; y?: number };
       if (payload.emoji && payload.userId === senderId) {
@@ -826,7 +1359,11 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
       const message = event.payload as RoomChatMessage;
       if (message?.id && message.text && message.senderId === senderId) {
         const received = { ...message, isMe: message.senderId === this.auth.currentUser()?.id };
+        const isNew = !this.messages().some(item => item.id === message.id);
         this.messages.update(messages => [...messages.filter(item => item.id !== message.id), received]);
+        if (isNew && !received.isMe && !(this.chatOpen() && !this.groupChatPaused() && this.canUseCapability('chat'))) {
+          this.unreadChatCount.update(count => count + 1);
+        }
       }
       return;
     }
@@ -844,9 +1381,15 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
       return;
     }
     if (event.type === 'participant-position') {
-      const payload = event.payload as { userId?: string; position?: { x?: number; y?: number } };
-      if (!payload.userId || payload.userId !== senderId || typeof payload.position?.x !== 'number' || typeof payload.position.y !== 'number') return;
-      this.participants.update(participants => participants.map(person => person.userId === payload.userId ? { ...person, position: { x: payload.position!.x as number, y: payload.position!.y as number } } : person));
+      const payload = event.payload as { userId?: string; position?: { x: number; y: number } } | null;
+      if (!payload?.userId || !payload.position || !Number.isFinite(payload.position.x) || !Number.isFinite(payload.position.y)) return;
+      const senderRole = this.peerRole(senderId);
+      if (payload.userId !== senderId && senderRole !== 'owner' && senderRole !== 'moderator') return;
+      const localId = this.auth.currentUser()?.id;
+      if (payload.userId !== senderId && payload.userId !== localId &&
+        !this.participants().some(person => person.userId === payload.userId)) return;
+      this.applyParticipantPosition(payload.userId, payload.position);
+      if (payload.userId === localId && senderId !== localId) this.persistOwnPosition(localId, payload.position);
       return;
     }
     if (event.type === 'screen-state') {
@@ -855,12 +1398,15 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
       this.remoteScreenLayouts.update(layouts => ({ ...layouts, [layout.userId as string]: { active: layout.active as boolean, x: layout.x as number, y: layout.y as number, width: Math.max(320, layout.width as number), height: Math.max(180, layout.height as number) } }));
       return;
     }
-    if (event.type === 'timer') { this.applyRemoteTimer(event.payload); return; }
+    if (event.type === 'timer') {
+      const role = this.peerRole(senderId);
+      if (role === 'owner' || role === 'moderator') this.applyRemoteTimer(event.payload);
+      return;
+    }
     if (event.type === 'canvas-snapshot') {
-      const payload = event.payload as { items?: CanvasItem[]; ink?: InkStroke[]; timer?: unknown; mediaState?: unknown };
+      const payload = event.payload as { items?: CanvasItem[]; timer?: unknown; mediaState?: unknown };
       if (!this.isAuthoritativeSnapshotSender(senderId)) return;
       if (Array.isArray(payload.items)) this.canvasItems.set(payload.items.filter(item => this.isCanvasItem(item)));
-      if (this.isInkSnapshot(payload.ink)) this.inkStrokes.set(payload.ink);
       if (payload.timer) this.applyRemoteTimer(payload.timer);
       if (payload.mediaState) this.applyRemoteMediaState(payload.mediaState);
     }
@@ -871,28 +1417,13 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
   private isCanvasItem(value: unknown): value is CanvasItem {
     if (!value || typeof value !== 'object') return false;
     const item = value as Partial<CanvasItem>;
-    const kinds: CanvasItemKind[] = ['text', 'note', 'image', 'gif', 'youtube', 'whiteboard'];
+    const kinds: CanvasItemKind[] = ['text', 'note', 'image', 'gif', 'youtube', 'whiteboard', 'checklist', 'link'];
     return typeof item.id === 'string' && item.id.length > 0
       && !!item.kind && kinds.includes(item.kind)
       && typeof item.x === 'number' && Number.isFinite(item.x)
       && typeof item.y === 'number' && Number.isFinite(item.y)
       && typeof item.width === 'number' && Number.isFinite(item.width) && item.width > 0
       && typeof item.height === 'number' && Number.isFinite(item.height) && item.height > 0;
-  }
-  private isInkSnapshot(value: unknown): value is InkStroke[] {
-    return Array.isArray(value) && value.every(stroke => {
-      if (!stroke || typeof stroke !== 'object') return false;
-      const candidate = stroke as Partial<InkStroke>;
-      return typeof candidate.id === 'string' && typeof candidate.color === 'string'
-        && typeof candidate.width === 'number' && Number.isFinite(candidate.width) && candidate.width > 0
-        && Array.isArray(candidate.points) && candidate.points.every(point =>
-          !!point && typeof point.x === 'number' && Number.isFinite(point.x)
-          && typeof point.y === 'number' && Number.isFinite(point.y));
-    });
-  }
-  private canPeerUseWhiteboard(senderId: string): boolean {
-    const role = this.peerRole(senderId);
-    return role === 'owner' || role === 'moderator' || (role === 'member' && !this.roomPermissions().whiteboardLocked);
   }
   private canPeerManageCanvasItem(senderId: string, item: CanvasItem): boolean {
     const role = this.peerRole(senderId);
@@ -916,19 +1447,43 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
     this.remoteMediaStates.update(states => ({ ...states, [state.userId as string]: { micOn: state.micOn as boolean, camOn: state.camOn as boolean } }));
   }
   private applyRemoteTimer(value: unknown): void {
-    if (!value || typeof value !== 'object') return;
-    const timer = value as { mode?: 'focus' | 'break'; timeLeft?: number; isRunning?: boolean };
-    if (timer.mode !== 'focus' && timer.mode !== 'break') return;
-    if (typeof timer.timeLeft !== 'number' || typeof timer.isRunning !== 'boolean') return;
-    this.stopTimer();
-    this.timerMode.set(timer.mode);
-    this.timeLeft.set(Math.max(0, timer.timeLeft));
-    if (timer.isRunning) this.startTimer();
+    const now = Date.now();
+    const timer = readRoomTimer(value, now);
+    if (!timer) return;
+    this.timerNow.set(now);
+    this.timers.update(timers => ({ ...timers, group: timer }));
   }
+  confirmOwnerDeparture(): void {
+    if (!this.extras.demo || this.currentRole() !== 'owner' || this.leaving()) return;
+    const choice = this.departureChoice();
+    if (!choice) return;
+    let decision: OwnerDeparture = { kind: 'close' };
+    if (choice !== 'close') {
+      const candidates = this.eligibleSuccessors();
+      const successor = choice === 'auto'
+        ? candidates[Math.floor(Math.random() * candidates.length)]
+        : candidates.find(member => member.userId === this.successorId());
+      if (!successor) {
+        this.departureError.set('Chọn một thành viên hiện đang trong phòng.');
+        return;
+      }
+      decision = { kind: 'transfer', successorId: successor.userId };
+    }
+    this.departureError.set('');
+    this.leaving.set(true);
+    this.studyRoomService.leaveAsOwner(this.roomId(), decision).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => { void this.completeLeave(); },
+      error: () => {
+        this.leaving.set(false);
+        this.departureError.set('Không thực hiện được thao tác. Vui lòng thử lại.');
+      },
+    });
+  }
+
   leaveRoom(): void {
     const userId = this.auth.currentUser()?.id;
-    if (!userId || this.leaving) return;
-    this.leaving = true;
+    if (!userId || this.leaving()) return;
+    this.leaving.set(true);
     this.studyRoomService.leaveRoom(this.roomId(), userId).subscribe({
       next: () => { void this.completeLeave(); },
       error: () => { void this.completeLeave(); },
@@ -941,31 +1496,24 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
     await this.router.navigate(['/learning/study-room']);
   }
   backToLobby(): void { void this.router.navigate(['/learning/study-room']); }
-  async copyLink(): Promise<void> {
-    try { await navigator.clipboard.writeText(location.href); this.showNotice('Đã sao chép link mời vào phòng.'); }
-    catch { this.showNotice('Không thể sao chép link phòng trên trình duyệt này.'); }
+  openInvite(): void {
+    this.inviteFeedback.set('');
+    this.inviteOpen.set(true);
   }
 
-  inviteByEmailOrPhone(): void {
-    if (this.inviting()) return;
-    const emailOrPhone = window.prompt('Nhập email hoặc số điện thoại người bạn muốn mời:')?.trim();
-    if (!emailOrPhone) return;
-
-    this.inviting.set(true);
-    this.studyRoomService.invite(this.roomId(), emailOrPhone)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: response => {
-          this.inviting.set(false);
-          this.showNotice(response.message || 'Đã gửi lời mời tham gia phòng học.');
-        },
-        error: error => {
-          this.inviting.set(false);
-          const message = (error?.error as { message?: string } | null)?.message;
-          this.showNotice(message || 'Không thể gửi lời mời. Vui lòng thử lại.');
-        },
-      });
+  async copyLink(inDialog = false): Promise<void> {
+    let message: string;
+    try {
+      await navigator.clipboard.writeText(this.inviteLink());
+      message = 'Đã sao chép link phòng.';
+    } catch {
+      message = inDialog ? 'Không thể sao chép tự động. Bạn có thể chọn và sao chép link trong ô trên.'
+        : 'Không thể sao chép link phòng trên trình duyệt này.';
+    }
+    if (inDialog) this.inviteFeedback.set(message);
+    else this.showNotice(message);
   }
+
   private showNotice(message: string): void {
     if (this.noticeTimer) clearTimeout(this.noticeTimer);
     this.notice.set(message);
@@ -981,15 +1529,16 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
     return [...incoming, ...current.filter(message => !incomingIds.has(message.id))];
   }
   private removeParticipantState(participantId: string): void {
+    this.liveParticipantPositions.delete(participantId);
     this.participants.update(participants => participants.filter(person => person.userId !== participantId));
     this.remoteCursors.update(cursors => this.withoutRecordKey(cursors, participantId));
     this.remoteMediaStates.update(states => this.withoutRecordKey(states, participantId));
     this.remoteScreenLayouts.update(layouts => this.withoutRecordKey(layouts, participantId));
-    if (this.selectedParticipantId() === participantId) this.selectedParticipantId.set(null);
+    if (this.selectedParticipantId() === participantId) this.closeParticipantPopover(false);
   }
   private buildMiniMapModel(): MiniMapModel {
-    const miniWidth = 132;
-    const miniHeight = 86;
+    const miniWidth = 130;
+    const miniHeight = 84;
     const zoom = this.zoom() / 100;
     const viewportSize = this.viewportSize();
     const viewport = { left: -this.pan().x / zoom, top: -this.pan().y / zoom, right: (-this.pan().x + viewportSize.width) / zoom, bottom: (-this.pan().y + viewportSize.height) / zoom };
@@ -997,7 +1546,7 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
       ...this.canvasItems().map(item => ({ left: item.x, top: item.y, right: item.x + item.width, bottom: item.y + item.height, kind: 'item' as const })),
       ...this.participants().filter(person => !person.isSelf).map(person => ({ left: person.position.x, top: person.position.y, right: person.position.x + 96, bottom: person.position.y + 118, kind: 'member' as const })),
       { left: this.memberPosition().x, top: this.memberPosition().y, right: this.memberPosition().x + 96, bottom: this.memberPosition().y + 118, kind: 'member' },
-      { left: this.timerPosition().x, top: this.timerPosition().y, right: this.timerPosition().x + 300, bottom: this.timerPosition().y + 170, kind: 'timer' },
+      ...(this.timerOpen() ? [{ left: this.timerPosition().x, top: this.timerPosition().y, right: this.timerPosition().x + 300, bottom: this.timerPosition().y + 170, kind: 'timer' as const }] : []),
       { ...viewport, kind: 'viewport' },
     ];
     const padding = 180;
@@ -1012,8 +1561,8 @@ export class StudyRoomViewComponent implements OnInit, OnDestroy {
     const element = event.currentTarget as HTMLElement;
     const rect = element.getBoundingClientRect();
     const model = this.miniMapModel();
-    const miniX = Math.min(Math.max(event.clientX - rect.left, 0), rect.width);
-    const miniY = Math.min(Math.max(event.clientY - rect.top, 0), rect.height);
+    const miniX = Math.min(Math.max(event.clientX - rect.left - element.clientLeft, 0), element.clientWidth);
+    const miniY = Math.min(Math.max(event.clientY - rect.top - element.clientTop, 0), element.clientHeight);
     const worldX = (miniX - model.offsetX) / model.scale + model.bounds.left;
     const worldY = (miniY - model.offsetY) / model.scale + model.bounds.top;
     const zoom = this.zoom() / 100;
