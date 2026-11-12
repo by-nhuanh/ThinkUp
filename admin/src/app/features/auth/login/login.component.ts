@@ -4,6 +4,8 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AdminAuthError } from '../../../core/models/admin-user.model';
 import { AdminAuthService } from '../../../core/services/admin-auth.service';
+import { environment } from '../../../../environments/environment';
+import { MOCK_ADMIN_ACCOUNT } from '../../../core/data/mock/admin-auth.mock';
 import { AuthBrandBarComponent } from '../components/auth-brand-bar/auth-brand-bar.component';
 import { AuthModalComponent } from '../components/auth-modal/auth-modal.component';
 
@@ -42,6 +44,7 @@ export class LoginComponent {
   readonly showPassword = signal(false);
   readonly helpOpen = signal(false);
 
+  readonly demoMode = environment.adminDemoLogin;
   readonly lockSeconds = signal(0);
   readonly lockActive = signal(false);
 
@@ -65,6 +68,13 @@ export class LoginComponent {
 
   get email() {
     return this.form.controls.email;
+  }
+
+  fillDemoAccount(): void {
+    this.form.patchValue({
+      email: MOCK_ADMIN_ACCOUNT.email,
+      password: MOCK_ADMIN_ACCOUNT.password
+    });
   }
 
   get password() {

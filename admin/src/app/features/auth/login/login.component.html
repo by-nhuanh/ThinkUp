@@ -102,6 +102,9 @@
 
           <div class="form-foot">
             <button class="link-button" type="button" (click)="openHelp()">Quên mật khẩu?</button>
+            @if (demoMode) {
+              <button class="link-button" type="button" (click)="fillDemoAccount()" title="Tự động điền tài khoản mẫu">Điền tài khoản mẫu</button>
+            }
           </div>
         </form>
 
