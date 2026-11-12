@@ -34,8 +34,8 @@ function sessionId(value) {
   return value;
 }
 function activeUser(user) {
-  if (!user || user.status !== 'active' || user.is_active === false ||
-      !user.email_verified || user.role !== 'student') {
+  if (!user || user.deleted_at || user.status !== 'active' || user.is_active === false ||
+      !user.email_verified || !['student', 'instructor'].includes(user.role)) {
     throw failure('SECURITY_AUTH_REQUIRED', 'Tài khoản không được phép thực hiện thao tác.', 401);
   }
 }

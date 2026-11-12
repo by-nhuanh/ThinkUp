@@ -6,7 +6,7 @@
     </div>
   </header>
 
-  <!-- TODO(pre-deploy): Nhớ thay số liệu và quyền demo bằng API rút tiền cùng RBAC thật; backend xử lý duyệt, từ chối, hoàn ví, email và giải ngân. -->
+  @if (error() && !dialog()) { <p class="error" role="alert">{{ error() }}</p> }
   <section class="kpi-grid" aria-label="Tổng quan rút tiền">
     <button class="kpi" type="button" [class.selected]="status() === 'pending'" (click)="filterFromKpi('pending')">
       <span class="kpi-icon pending" aria-hidden="true">
@@ -50,7 +50,7 @@
   </section>
 
   <section class="filters-toolbar" aria-label="Tìm kiếm và lọc yêu cầu rút tiền">
-    <app-search-field label="Tìm theo mã yêu cầu, tên giảng viên hoặc email" placeholder="Tìm theo mã yêu cầu, tên giảng viên, email..." [value]="search()" (valueChange)="search.set($event)"></app-search-field>
+    <app-search-field label="Tìm theo mã yêu cầu, tên giảng viên, email hoặc số tài khoản" placeholder="Mã yêu cầu, giảng viên, email, số tài khoản..." [value]="search()" (valueChange)="search.set($event)"></app-search-field>
     <div class="filter-select business-dropdown-field">
       <span id="payout-status-label">Trạng thái</span>
       <app-custom-select controlId="payout-status" labelId="payout-status-label" [value]="status()" [options]="statusOptions" (valueChange)="setStatus($any($event))"></app-custom-select>
@@ -232,10 +232,11 @@
             <dl><div><dt>Ngân hàng</dt><dd>{{ item.bank }}</dd></div><div><dt>Số tài khoản</dt><dd>{{ item.accountNumber }}</dd></div><div><dt>Chủ tài khoản</dt><dd>{{ item.accountName }}</dd></div></dl>
           </section>
         </div>
-        @if (item.bankReference || item.rejectionReason) {
+        @if (item.bankReference || item.rejectionReason || item.evidenceId) {
           <div class="payout-history">
             @if (item.bankReference) { <p><strong>Mã đối soát ngân hàng:</strong> {{ item.bankReference }}</p> }
             @if (item.rejectionReason) { <p><strong>Lý do từ chối:</strong> {{ item.rejectionReason }}</p> }
+            @if (item.evidenceId) { <button class="button" type="button" (click)="downloadEvidence(item.evidenceId)">Tải minh chứng</button> }
           </div>
         }
         @if (dialog() === 'review') {

@@ -48,7 +48,7 @@ export async function sendForgotPasswordOtp({ email } = {}, options = {}) {
   }
   // A decoy challenge gives unknown and existing emails the same cooldown and quotas.
   const user = await db.collection('users').findOne({ email: normalizedEmail });
-  if (user) {
+  if (user && !user.deleted_at) {
     await deliverAuthEmail({
       to: normalizedEmail, subject: '[ThinkUp] Mã xác thực đặt lại mật khẩu',
       html: renderForgotPasswordOtpEmail({ otpCode, expireMinutes: 5 }),
@@ -85,7 +85,7 @@ export async function verifyForgotPasswordOtp({ email, otp } = {}, options = {})
     throw authError('Mã xác thực không chính xác.', 400, 'OTP_INVALID');
   }
   const user = await db.collection('users').findOne({ email: normalizedEmail });
-  if (!user || user.status !== 'active' || user.is_active === false || !user.email_verified || user.role !== 'student') {
+  if (!user || user.deleted_at || user.status !== 'active' || user.is_active === false || !user.email_verified || !['student', 'instructor'].includes(user.role)) {
     throw authError('Không thể đặt lại mật khẩu cho tài khoản này.', 403, 'ACCOUNT_UNAVAILABLE');
   }
   const jti = randomUUID();
@@ -120,7 +120,7 @@ export async function resetPasswordWithToken({ resetToken, newPassword, confirmP
   await limitAuthRequests(db, 'reset-email', email, 10);
   if (options.ip) await limitAuthRequests(db, 'reset-ip', options.ip, 30);
   const user = await db.collection('users').findOne({ email });
-  if (!user || String(user._id) !== payload.sub || user.status !== 'active' || user.is_active === false || !user.email_verified || user.role !== 'student') {
+  if (!user || user.deleted_at || String(user._id) !== payload.sub || user.status !== 'active' || user.is_active === false || !user.email_verified || !['student', 'instructor'].includes(user.role)) {
     throw authError('Tài khoản không được phép đặt lại mật khẩu.', 403, 'ACCOUNT_UNAVAILABLE');
   }
   if (payload.credentialVersion !== credentialVersion(user)) {

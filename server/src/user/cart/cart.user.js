@@ -1,5 +1,6 @@
 import { ObjectId } from 'mongodb';
 import { getMongoDb } from '../db.js';
+import { findBusinessVoucher, quoteBusinessVoucher } from '../voucher/voucher.service.js';
 
 // ─── 0. Tên Collection CSDL MongoDB ──────────────────────────────────────────
 export const COLLECTION_CARTS = 'user_cart_items';
@@ -58,10 +59,20 @@ export async function checkCourseOwnership(db, userId, courseId) {
  * @param {string} [userId]
  * @returns {Promise<{ isValid: boolean, code: string, discount: number, message: string }>}
  */
-export async function validateVoucherLogic(db, rawCode, eligibleSubtotal, userId = null) {
+export async function validateVoucherLogic(db, rawCode, eligibleSubtotal, userId = null, courses = []) {
   const code = String(rawCode || '').trim().toUpperCase();
   if (!code) {
     return { isValid: false, code: '', discount: 0, message: 'Chưa nhập mã voucher' };
+  }
+  const managed = await findBusinessVoucher(db, code);
+  if (managed) {
+    try {
+      const isNewLearner = userId ? !await db.collection('user_enrollments').findOne({ $or: [{ user_id: String(userId) }, { userId: String(userId) }] }) : false;
+      const quote = quoteBusinessVoucher(managed, courses, { user: { isNewLearner } });
+      return { isValid: true, code, discount: quote.discount, message: 'Áp dụng mã giảm giá thành công!' };
+    } catch (error) {
+      return { isValid: false, code, discount: 0, message: error.message };
+    }
   }
 
   // 1. Tìm voucher trong platform_coupons, payment_vouchers hoặc course_coupons
@@ -303,7 +314,7 @@ export async function getCartDetails({
 
     const isInWishlist = wishlistSet.has(cId) || wishlistSet.has(String(doc._id)) || wishlistSet.has(rawId);
     const isAlreadyEnrolled = enrolledSet.has(cId) || enrolledSet.has(String(doc._id)) || enrolledSet.has(rawId);
-    const isAvailable = doc.status === 'published';
+    const isAvailable = doc.status === 'published' && doc.admin_hidden !== true;
     const isSelected = selectedSet ? (selectedSet.has(rawId) || selectedSet.has(cId) || selectedSet.has(String(doc._id))) : true;
 
     // Chỉ tính tổng tiền cho các khóa được chọn, chưa sở hữu và đang mở bán
@@ -359,7 +370,7 @@ export async function getCartDetails({
   // 5. Kiểm tra và áp dụng Voucher
   let voucherResult = { isValid: false, code: '', discount: 0, message: '' };
   if (voucherCode) {
-    voucherResult = await validateVoucherLogic(db, voucherCode, calculatedSaleSubtotal, userId);
+    voucherResult = await validateVoucherLogic(db, voucherCode, calculatedSaleSubtotal, userId, enrichedCourses.filter(c => c.is_selected && c.is_available && !c.is_already_enrolled).map(c => ({ id: c.course_id, aliases: [c.id], instructor_id: c.instructor.id, rating: c.rating, price: c.price.sale })));
   }
 
   const courseDiscount = Math.max(0, calculatedOriginalSubtotal - calculatedSaleSubtotal);
@@ -470,7 +481,7 @@ export async function addToCartLogic(userId, courseId) {
   const course = await db.collection(COLLECTION_COURSES).findOne({ $or: [
     { course_id: cId }, { id: cId }, ...(ObjectId.isValid(cId) ? [{ _id: new ObjectId(cId) }] : []),
   ] });
-  if (!course || course.status !== 'published') throw Object.assign(new Error('Khóa học không còn được bán.'), { status: 404 });
+  if (!course || course.status !== 'published' || course.admin_hidden === true) throw Object.assign(new Error('Khóa học không còn được bán.'), { status: 404 });
   const aliases = [cId, course.course_id, course._id, course.id].filter(Boolean).map(String);
   const userIds = [String(userId), ...(ObjectId.isValid(String(userId)) ? [new ObjectId(String(userId))] : [])];
   const filter = { $and: [{ $or: [{ user_id: { $in: userIds } }, { userId: { $in: userIds } }] },
@@ -565,9 +576,17 @@ export function createCartRouter(express, requireAuth, optionalAuth = null) {
   // 4.2. Kiểm tra mã Voucher độc lập (Validate voucher)
   router.post('/voucher/validate', extractAuthOptional, async (req, res, next) => {
     try {
-      const { code, eligibleSubtotal } = req.body;
+      const { code, eligibleSubtotal, courseIds } = req.body;
       const db = await getMongoDb();
-      const result = await validateVoucherLogic(db, code, Number(eligibleSubtotal) || 0, req.userId || null);
+      let result;
+      if (await findBusinessVoucher(db, code)) {
+        if (!Array.isArray(courseIds) || !courseIds.length || courseIds.length > 50 || courseIds.some(id => typeof id !== 'string' || id.length > 100)) {
+          result = { isValid: false, code, discount: 0, message: 'Cần chọn khóa học để kiểm tra voucher.' };
+        } else {
+          const cart = await getCartDetails({ userId: req.userId || null, guestCourseIds: req.userId ? [] : courseIds, selectedCourseIds: courseIds, voucherCode: code });
+          result = { isValid: cart.summary.isVoucherValid, code: cart.summary.voucherCode, discount: cart.summary.voucherDiscount, message: cart.summary.voucherMessage };
+        }
+      } else result = await validateVoucherLogic(db, code, Number(eligibleSubtotal) || 0, req.userId || null);
       res.json({
         success: result.isValid,
         data: result,

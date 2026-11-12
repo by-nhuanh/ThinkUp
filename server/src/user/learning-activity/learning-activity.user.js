@@ -237,7 +237,9 @@ export function createLearningActivityRouter(express, requireAuth, options = {})
 
 /** Read-only course totals from server-credited intervals; merge concurrent tabs. */
 export async function getRecordedCourseLearningTimes(userId, options = {}) {
-  owner(userId);
+  if (typeof userId !== 'string' || !userId.trim()) {
+    throw failure('Yêu cầu đăng nhập bằng tài khoản hợp lệ.', 401, 'ACTIVITY_AUTH_REQUIRED');
+  }
   const db = options.db || await getMongoDb();
   const sessions = await db.collection(COLLECTION_LEARNING_ACTIVITY).find(ownerQuery(userId)).toArray();
   const grouped = new Map();

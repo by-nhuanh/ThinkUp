@@ -134,6 +134,7 @@ export async function getCourseCards({
   // 1. Xây dựng điều kiện lọc cơ bản trên collection courses
   const courseFilter = {
     status: 'published', // Chuẩn bảo mật: Chỉ hiển thị các khóa học đã được duyệt mở bán
+    admin_hidden: { $ne: true },
   };
 
   // Lọc theo danh mục
@@ -543,6 +544,7 @@ export async function getSingleCourseCard(courseIdentifier, userId = null, dbIns
   const courseDoc = await db.collection(COLLECTION_COURSES).findOne({
     $or: conds,
     status: 'published',
+    admin_hidden: { $ne: true },
   });
 
   if (!courseDoc) {
@@ -610,6 +612,7 @@ export async function getCourseDetailLanding(courseIdentifier, userId = null, db
   const courseDoc = await db.collection(COLLECTION_COURSES).findOne({
     $or: conds,
     status: 'published',
+    admin_hidden: { $ne: true },
   });
 
   if (!courseDoc) {
@@ -718,9 +721,10 @@ export async function getCourseDetailLanding(courseIdentifier, userId = null, db
   }
 
   // 3. Tính toán thống kê đánh giá (Rating Breakdown 1-5 sao)
-  const reviewsCount = await db.collection(COLLECTION_REVIEWS).countDocuments({ course_id: courseIdStr });
+  const publicReviewsQuery = { course_id: courseIdStr, status: { $ne: 'hidden' } };
+  const reviewsCount = await db.collection(COLLECTION_REVIEWS).countDocuments(publicReviewsQuery);
   const ratingAgg = await db.collection(COLLECTION_REVIEWS).aggregate([
-    { $match: { course_id: courseIdStr } },
+    { $match: publicReviewsQuery },
     { $group: { _id: '$rating', count: { $sum: 1 } } },
   ]).toArray();
 
@@ -858,7 +862,7 @@ export async function getCourseDetailLanding(courseIdentifier, userId = null, db
 
     // Chỉ số tổng quan
     rating: parseFloat(courseDoc.rating) || 4.8,
-    total_reviews: reviewsCount || parseInt(courseDoc.total_reviews, 10) || 0,
+    total_reviews: reviewsCount,
     total_students: parseInt(courseDoc.total_students, 10) || 0,
     total_duration_minutes: parseInt(courseDoc.duration_minutes, 10) || totalVideoDuration,
     total_duration_formatted: formatDuration(parseInt(courseDoc.duration_minutes, 10) || totalVideoDuration),
@@ -898,7 +902,7 @@ export async function getCourseDetailLanding(courseIdentifier, userId = null, db
     // Thống kê đánh giá
     reviews_summary: {
       average_rating: parseFloat(courseDoc.rating) || 4.8,
-      total_reviews: reviewsCount || parseInt(courseDoc.total_reviews, 10) || 0,
+      total_reviews: reviewsCount,
       breakdown: ratingBreakdown,
     },
 
@@ -960,6 +964,7 @@ export async function getCoursePreviewData(courseIdentifier, userId = null, dbIn
   const courseDoc = await db.collection(COLLECTION_COURSES).findOne({
     $or: conds,
     status: 'published',
+    admin_hidden: { $ne: true },
   });
 
   if (!courseDoc) {
@@ -1136,7 +1141,7 @@ export async function getCourseReviews(courseId, { rating, sort = 'newest', page
 
   const db = dbInstance || (await getMongoDb());
   const courseIdStr = String(courseId).trim();
-  const baseQuery = { course_id: courseIdStr };
+  const baseQuery = { course_id: courseIdStr, status: { $ne: 'hidden' } };
 
   // 1. Lấy thống kê tổng số lượng của từng mức sao (1-5 sao) phục vụ Menu Dropdown lọc
   const ratingAgg = await db.collection(COLLECTION_REVIEWS).aggregate([
@@ -1175,18 +1180,10 @@ export async function getCourseReviews(courseId, { rating, sort = 'newest', page
   }
 
   // 3. Xây dựng tiêu chí sắp xếp: Mới nhất, Đánh giá cao nhất, Đánh giá thấp nhất
-  let sortCriteria = { created_at: -1 };
   const cleanSort = String(sort || 'newest').trim().toLowerCase();
-  if (cleanSort === 'highest' || cleanSort === 'high' || cleanSort === 'highest_rating') {
-    sortCriteria = { rating: -1, created_at: -1 };
-  } else if (cleanSort === 'lowest' || cleanSort === 'low' || cleanSort === 'lowest_rating') {
-    sortCriteria = { rating: 1, created_at: -1 };
-  } else if (cleanSort === 'oldest') {
-    sortCriteria = { created_at: 1 };
-  } else {
-    // Mặc định: 'newest' (Mới nhất)
-    sortCriteria = { created_at: -1 };
-  }
+  const ratingDirection = ['highest', 'high', 'highest_rating'].includes(cleanSort) ? -1
+    : ['lowest', 'low', 'lowest_rating'].includes(cleanSort) ? 1 : null;
+  const createdAtDirection = cleanSort === 'oldest' ? 1 : -1;
 
   // Danh mục các lựa chọn sắp xếp cho Frontend dropdown
   const sortOptions = [
@@ -1201,12 +1198,21 @@ export async function getCourseReviews(courseId, { rating, sort = 'newest', page
 
   const [totalFilteredCount, docs] = await Promise.all([
     db.collection(COLLECTION_REVIEWS).countDocuments(query),
-    db.collection(COLLECTION_REVIEWS)
-      .find(query)
-      .sort(sortCriteria)
-      .skip(skip)
-      .limit(pageSize)
-      .toArray(),
+    db.collection(COLLECTION_REVIEWS).aggregate([
+      { $match: query },
+      { $addFields: {
+        _review_rating_sort: { $convert: { input: '$rating', to: 'double', onError: 0, onNull: 0 } },
+        _review_created_at_sort: { $convert: { input: '$created_at', to: 'date', onError: null, onNull: null } },
+      } },
+      { $sort: {
+        ...(ratingDirection === null ? {} : { _review_rating_sort: ratingDirection }),
+        _review_created_at_sort: createdAtDirection,
+        _id: 1,
+      } },
+      { $skip: skip },
+      { $limit: pageSize },
+      { $project: { _review_rating_sort: 0, _review_created_at_sort: 0 } },
+    ]).toArray(),
   ]);
 
   const currentUserIdStr = userId ? String(userId) : null;
@@ -1216,6 +1222,7 @@ export async function getCourseReviews(courseId, { rating, sort = 'newest', page
     myReviewDoc = await db.collection(COLLECTION_REVIEWS).findOne({
       course_id: courseIdStr,
       user_id: currentUserIdStr,
+      status: { $ne: 'hidden' },
     });
   }
 
@@ -1246,6 +1253,7 @@ export async function getCourseReviews(courseId, { rating, sort = 'newest', page
       reviewer_avatar_url: currentReviewer?.avatar_url || currentReviewer?.avatar || d.reviewer_avatar_url || '',
       rating: parseFloat(d.rating) || 5,
       content: d.content || '',
+      admin_reply: d.admin_reply || null,
       created_at: d.created_at,
       created_at_relative: formatTimeAgo(d.created_at), // "2 tuần trước", "1 tháng trước" theo hình
       is_verified_purchase: true, // Tiêu chuẩn quốc tế: Xác nhận người mua
@@ -1280,6 +1288,7 @@ export async function getCourseReviews(courseId, { rating, sort = 'newest', page
       reviewer_name: 'Bạn',
       rating: parseFloat(myReviewDoc.rating) || 5,
       content: myReviewDoc.content || '',
+      admin_reply: myReviewDoc.admin_reply || null,
       created_at: myReviewDoc.created_at,
       created_at_relative: formatTimeAgo(myReviewDoc.created_at),
     } : null,
@@ -1373,7 +1382,7 @@ export async function submitCourseReview(courseId, userId, payload, options = {}
   }
 
   // Cập nhật lại rating và total_reviews trong collection courses
-  const allReviews = await db.collection(COLLECTION_REVIEWS).find({ course_id: targetCourseId }).toArray();
+  const allReviews = await db.collection(COLLECTION_REVIEWS).find({ course_id: targetCourseId, status: { $ne: 'hidden' } }).toArray();
   const totalReviewsCount = allReviews.length;
   const avgRating = totalReviewsCount > 0
     ? Math.round((allReviews.reduce((sum, r) => sum + (parseFloat(r.rating) || 0), 0) / totalReviewsCount) * 10) / 10
@@ -1559,6 +1568,8 @@ export async function getInstructorProfileDetail(instructorIdOrSlug, currentUser
 
   // 1. Tìm thông tin trong instructor_profiles
   let instDoc = await db.collection(COLLECTION_INSTRUCTORS).findOne({
+    deleted_at: { $exists: false },
+    is_public: { $ne: false },
     $or: [
       { instructor_id: cleanId },
       { user_id: cleanId },
@@ -1571,6 +1582,8 @@ export async function getInstructorProfileDetail(instructorIdOrSlug, currentUser
   // Nếu không có trong instructor_profiles, thử tìm trong users có vai trò instructor
   if (!instDoc) {
     const userDoc = await db.collection(COLLECTION_USERS).findOne({
+      deleted_at: { $exists: false },
+      role: 'instructor', status: 'active', is_active: { $ne: false }, email_verified: true,
       $or: [
         { _id: ObjectId.isValid(cleanId) ? new ObjectId(cleanId) : null },
         { user_id: cleanId },
@@ -1654,6 +1667,8 @@ export async function getInstructorProfileDetail(instructorIdOrSlug, currentUser
       github: instDoc.github || '',
       linkedin: instDoc.linkedin || '',
       website: instDoc.website || '',
+      portfolio: instDoc.portfolio || instDoc.website || '',
+      gsahub: instDoc.gsahub || '',
       specializations: instDoc.specializations || [],
       experiences: instDoc.experiences || [],
     },

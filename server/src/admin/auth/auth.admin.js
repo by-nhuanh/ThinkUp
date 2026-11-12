@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { ObjectId } from 'mongodb';
 import { getMongoDb, signJwt, verifyJwt, sendEmail } from '../../user/db.js';
 import { createAdminNotification } from '../notifications/notifications.admin.js';
+import { normalizeAdminRole } from './admin-rbac.js';
 
 // ==========================================
 // CẤU HÌNH HỆ THỐNG THEO SPEC & WRITING-BLOCK
@@ -282,7 +283,7 @@ export async function setupAdminPassword({ inviteToken, newPassword, confirmPass
     {
       adminId: admin._id.toString(),
       email: admin.email,
-      role: admin.role || 'ADMIN',
+      role: normalizeAdminRole(admin.role),
       step: '2FA_SETUP',
     },
     '15m'
@@ -387,7 +388,7 @@ export async function confirmAdmin2FASetup({ onboardingToken, otp }, options = {
     {
       adminId: admin._id.toString(),
       email: admin.email,
-      role: admin.role || 'ADMIN',
+      role: normalizeAdminRole(admin.role),
       step: 'BACKUP_CODES',
     },
     '15m'
@@ -468,7 +469,7 @@ export async function completeAdminOnboarding({ onboardingToken, confirmedSaved 
     {
       adminId: admin._id.toString(),
       email: admin.email,
-      role: admin.role || 'ADMIN',
+      role: normalizeAdminRole(admin.role),
       full_name: admin.full_name || 'Administrator',
     },
     '1d'
@@ -482,7 +483,7 @@ export async function completeAdminOnboarding({ onboardingToken, confirmedSaved 
       id: admin._id.toString(),
       email: admin.email,
       full_name: admin.full_name || 'Administrator',
-      role: admin.role || 'ADMIN',
+      role: normalizeAdminRole(admin.role),
     },
   };
 }
@@ -619,7 +620,7 @@ export async function loginAdminCredentials({ email, password }, options = {}) {
     {
       adminId: admin._id.toString(),
       email: admin.email,
-      role: admin.role || 'ADMIN',
+      role: normalizeAdminRole(admin.role),
       authStep: '2FA_PENDING',
     },
     TWO_FACTOR_TEMP_EXPIRY
@@ -809,7 +810,7 @@ export async function verifyAdmin2FA({ twoFactorToken, otp, backupCode }, option
     {
       adminId: admin._id.toString(),
       email: admin.email,
-      role: admin.role || 'ADMIN',
+      role: normalizeAdminRole(admin.role),
       full_name: admin.full_name || 'Administrator',
       passwordStatus,
     },
@@ -824,7 +825,7 @@ export async function verifyAdmin2FA({ twoFactorToken, otp, backupCode }, option
       id: admin._id.toString(),
       email: admin.email,
       full_name: admin.full_name || 'Administrator',
-      role: admin.role || 'ADMIN',
+      role: normalizeAdminRole(admin.role),
     },
     passwordStatus,
   };
@@ -991,7 +992,7 @@ export async function rotateAdminPassword(
     {
       adminId: admin._id.toString(),
       email: admin.email,
-      role: admin.role || 'ADMIN',
+      role: normalizeAdminRole(admin.role),
       full_name: admin.full_name || 'Administrator',
       passwordStatus: { isExpired: false, isWarning: false, daysLeft: PASSWORD_ROTATION_DAYS },
     },
@@ -1096,7 +1097,7 @@ export async function getAdminProfile(adminId, options = {}) {
       id: admin._id.toString(),
       email: admin.email,
       full_name: admin.full_name || 'Administrator',
-      role: admin.role || 'ADMIN',
+      role: normalizeAdminRole(admin.role),
       status: admin.status,
       is_2fa_enabled: Boolean(admin.is_2fa_enabled),
       created_at: isoTimestamp(admin.created_at),
@@ -1156,12 +1157,16 @@ export function createAdminAuthMiddleware() {
         _id: new ObjectId(payload.adminId),
         status: 'ACTIVE',
         is_active: { $ne: false },
-      }, { projection: { _id: 1 } });
+      }, { projection: { _id: 1, role: 1 } });
       if (!admin) {
         return res.status(403).json({ message: 'Tài khoản quản trị đã bị vô hiệu hóa.', code: 'ADMIN_ACCOUNT_INACTIVE' });
       }
       req.adminId = payload.adminId;
       req.adminPayload = payload;
+      req.adminRole = normalizeAdminRole(admin.role);
+      if (!req.adminRole) {
+        return res.status(403).json({ message: 'Vai trò quản trị chưa được cấu hình hợp lệ.', code: 'ADMIN_ROLE_INVALID' });
+      }
       next();
     } catch (err) {
       if (err?.name === 'JsonWebTokenError' || err?.name === 'TokenExpiredError') {

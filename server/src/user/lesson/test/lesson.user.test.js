@@ -49,12 +49,22 @@ test('Lesson Module Backend Service Test Suite', async (t) => {
 
   // ID fixture dành riêng cho database kiểm thử cô lập.
   const testCourseId = 'test_python_basic_9999';
-  const testUserId = 'test_student_user_8888';
-  const testUserId2 = 'test_student_user_7777';
+  const testUserId = 'aaaaaaaaaaaaaaaaaaaaaaaa';
+  const testUserId2 = 'bbbbbbbbbbbbbbbbbbbbbbbb';
   const testSectionId1 = 'test_sec_01';
   const testSectionId2 = 'test_sec_02';
 
   const cleanAll = async () => {
+    const discussions = await db.collection(COLLECTION_DISCUSSIONS).find(
+      { course_id: testCourseId }, { projection: { _id: 1 } },
+    ).toArray();
+    const discussionIds = discussions.map(discussion => String(discussion._id));
+    if (discussionIds.length) {
+      await Promise.all([
+        db.collection(COLLECTION_DISCUSSION_LIKES).deleteMany({ discussion_id: { $in: discussionIds } }),
+        db.collection(COLLECTION_DISCUSSION_REPORTS).deleteMany({ discussion_id: { $in: discussionIds } }),
+      ]);
+    }
     await db.collection(COLLECTION_COURSES).deleteMany({ course_id: testCourseId });
     await db.collection(COLLECTION_INSTRUCTORS).deleteMany({
       $or: [
@@ -69,8 +79,6 @@ test('Lesson Module Backend Service Test Suite', async (t) => {
     await db.collection(COLLECTION_ENROLLMENTS).deleteMany({ course_id: testCourseId });
     await db.collection(COLLECTION_REVIEWS).deleteMany({ course_id: testCourseId });
     await db.collection(COLLECTION_DISCUSSIONS).deleteMany({ course_id: testCourseId });
-    await db.collection(COLLECTION_DISCUSSION_LIKES).deleteMany({});
-    await db.collection(COLLECTION_DISCUSSION_REPORTS).deleteMany({});
     await db.collection(COLLECTION_QNA).deleteMany({ course_id: testCourseId });
     await db.collection(COLLECTION_DOCUMENTS).deleteMany({ course_id: testCourseId });
   };
@@ -395,6 +403,24 @@ test('Lesson Module Backend Service Test Suite', async (t) => {
     } finally {
       await db.collection(COLLECTION_COURSES).deleteMany({ course_id: unrelatedCourseId });
       await db.collection(COLLECTION_LESSONS).deleteMany({ lesson_id: unrelatedLessonId });
+    }
+  });
+
+  await t.test('5.1a Khóa bị ẩn khỏi bán vẫn cho học viên đã ghi danh tiếp tục học', async () => {
+    await db.collection(COLLECTION_COURSES).updateOne({ course_id: testCourseId }, { $set: { admin_hidden: true } });
+    try {
+      const curriculum = await getCourseStudyCurriculum(testCourseId, testUserId);
+      assert.equal(curriculum.course.course_id, testCourseId);
+      assert.ok(await getCourseOverview(testCourseId, testUserId));
+      await updateLessonProgress(testUserId, testCourseId, 'les_02', { status: 'in_progress' });
+      await assert.rejects(() => getCourseOverview(testCourseId, testUserId2),
+        error => error.status === 404 && error.code === 'COURSE_UNAVAILABLE');
+      await assert.rejects(() => getCourseStudyCurriculum(testCourseId, testUserId2),
+        error => error.status === 404 && error.code === 'COURSE_UNAVAILABLE');
+      await assert.rejects(() => updateLessonProgress(testUserId2, testCourseId, 'les_02', { status: 'in_progress' }),
+        error => error.status === 404 && error.code === 'COURSE_UNAVAILABLE');
+    } finally {
+      await db.collection(COLLECTION_COURSES).updateOne({ course_id: testCourseId }, { $unset: { admin_hidden: '' } });
     }
   });
 
@@ -810,8 +836,12 @@ test('Learning integration: curriculum carries saved playback options without ch
       throw new Error('Unexpected collection ' + name);
     },
     find() { return { sort() { return this; }, async toArray() { return []; } }; },
+    async countDocuments() { return 0; },
+    async updateOne() { return { matchedCount: 0, modifiedCount: 0 }; },
+    async insertOne() { return { insertedId: 'session-fixture' }; },
+    async deleteMany() { return { deletedCount: 0 }; },
   }; } };
-  const result = await getCourseStudyCurriculum('course', 'learner', { db });
+  const result = await getCourseStudyCurriculum('course', 'aaaaaaaaaaaaaaaaaaaaaaaa', { db });
   assert.equal(result.learning_preferences.playbackSpeed, '1.75');assert.equal(result.learning_preferences.autoNext, false);
   assert.equal(result.learning_progress.completed_lessons, 0);assert.equal(result.learning_progress.progress_percentage, 0);
 });
@@ -839,7 +869,7 @@ test('Curriculum restores legacy completion without course scope', async () => {
       return [];
     } }; },
   }; } };
-  const result = await getCourseStudyCurriculum('course', 'learner', { db });
+  const result = await getCourseStudyCurriculum('course', 'aaaaaaaaaaaaaaaaaaaaaaaa', { db });
   assert.equal(result.learning_progress.completed_lessons, 1);
   assert.equal(result.learning_progress.progress_percentage, 100);
 });

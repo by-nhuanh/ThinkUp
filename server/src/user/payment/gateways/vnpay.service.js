@@ -45,8 +45,8 @@ export async function verifyVnpayCallback(params,options={}){
   }
   if(!/^\d+$/.test(params.vnp_Amount || '')||Number(params.vnp_Amount)%100!==0)throw paymentError('Số tiền VNPay không hợp lệ.');
   if(!/^\d{14}$/.test(params.vnp_PayDate || '')||!params.vnp_TransactionNo)throw paymentError('Thiếu thời gian hoặc mã giao dịch VNPay.');
-  // In production with public IPN, IPN settles. However, in local dev / callback verification where IPN cannot reach localhost, or when explicitly permitted, settle if verified.
-  const shouldSettle = options.settle !== false;
+  // The router explicitly opts in to settlement for verified return/IPN callbacks.
+  const shouldSettle = options.settle === true;
   if (!shouldSettle && !options.settleOnCallback) return {isSuccess:true,code:'00',message:'Đang chờ xác nhận IPN.',transactionId:params.vnp_TxnRef};
   const v=params.vnp_PayDate;
   const paidAt=new Date(`${v.slice(0,4)}-${v.slice(4,6)}-${v.slice(6,8)}T${v.slice(8,10)}:${v.slice(10,12)}:${v.slice(12,14)}+07:00`);

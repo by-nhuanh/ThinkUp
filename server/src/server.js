@@ -44,14 +44,23 @@ import { createLessonRouter } from './user/lesson/lesson.user.js';
 import { createCertificateRouter } from './user/certificate/certificate.user.js';
 import { createProfileRouter, cleanUpOldActivityLogs } from './user/profile/profile.user.js';
 import { createAdminAuthMiddleware, createAdminAuthRouter } from './admin/auth/auth.admin.js';
-import {
-  createAdminPreferencesRouter,
-  ensureAdminPreferencesIndexes,
-} from './admin/preferences/preferences.admin.js';
-import {
-  createAdminNotificationsRouter,
-  ensureAdminNotificationIndexes,
-} from './admin/notifications/notifications.admin.js';
+import { createAdminRoleMiddleware } from './admin/auth/admin-rbac.js';
+import { normalizeAdminRole } from './admin/auth/admin-rbac.js';
+import { createAdminDashboardRouter } from './admin/dashboard/dashboard.admin.js';
+import { createAdminUsersRouter, expireStudentLocks, retryAdminUserEmails } from './admin/users/users.admin.js';
+import { createAdminCoursesRouter } from './admin/courses/courses.admin.js';
+import { createAdminRoadmapsRouter } from './admin/roadmaps/roadmaps.admin.js';
+import { createAdminOrdersRouter } from './admin/business/orders.admin.js';
+import { createAdminVouchersRouter } from './admin/business/vouchers.admin.js';
+import { createAdminPayoutsRouter, ensureAdminPayoutIndexes } from './admin/business/payouts.admin.js';
+import { createAdminTicketsRouter, ensureSupportAdminIndexes, seedDefaultCannedResponses } from './admin/support/tickets.admin.js';
+import { createAdminComplaintsRouter, ensureComplaintIndexes } from './admin/support/complaints.admin.js';
+import { createAdminFaqsRouter, ensureFaqIndexes } from './admin/support/faqs.admin.js';
+import { ensureBusinessVoucherIndexes } from './user/voucher/voucher.service.js';
+import { createAdminPreferencesRouter, ensureAdminPreferencesIndexes } from './admin/preferences/preferences.admin.js';
+import { createAdminNotificationsRouter, ensureAdminNotificationIndexes } from './admin/notifications/notifications.admin.js';
+import { createAdminSystemRouter } from './admin/system/system.routes.js';
+import { createAdminContentRouter } from './admin/content/content.admin.js';
 import { createNotificationRouter } from './user/notification/notification.user.js';
 import { createSupportRouter } from './user/support/support.user.js';
 import { createAccountSecurityRouter, logoutSecuritySession, recoverSecurityEvents } from './user/account-security/account-security.user.js';
@@ -94,14 +103,16 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'X-CSRF-Token', 'Idempotency-Key'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'X-CSRF-Token', 'Idempotency-Key', 'X-File-Name'],
 }));
 
-app.use(express.json({ limit: '10mb', verify: (req, res, buffer) => {
-  if (/^\/api\/(?:user\/|v1\/)?payment\/webhook\/stripe\/?$/.test(req.path)) {
-    req.rawBody = Buffer.from(buffer);
+app.use(express.json({
+  limit: '10mb', verify: (req, res, buffer) => {
+    if (/^\/api\/(?:user\/|v1\/)?payment\/webhook\/stripe\/?$/.test(req.path)) {
+      req.rawBody = Buffer.from(buffer);
+    }
   }
-} }));
+}));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use((req, res, next) => {
   const origin = req.headers.origin;
@@ -130,13 +141,17 @@ async function requireAuth(req, res, next) {
   try {
     const userId = await extractBearerUserId(req);
     if (!userId) {
-      return res.status(401).json({ message: 'Yêu cầu đăng nhập để thực hiện chức năng này.',
-        code: req.authFailureReason || 'AUTH_REQUIRED' });
+      return res.status(401).json({
+        message: 'Yêu cầu đăng nhập để thực hiện chức năng này.',
+        code: req.authFailureReason || 'AUTH_REQUIRED'
+      });
     }
     req.userId = userId;
     next();
-  } catch { next(Object.assign(new Error('Không thể xác thực phiên lúc này. Vui lòng thử lại.'),
-    { status: 503, code: 'AUTH_UNAVAILABLE' })); }
+  } catch {
+    next(Object.assign(new Error('Không thể xác thực phiên lúc này. Vui lòng thử lại.'),
+      { status: 503, code: 'AUTH_UNAVAILABLE' }));
+  }
 }
 
 // ─── 3. Health Check Endpoints ───────────────────────────────────────────────
@@ -404,8 +419,10 @@ authRouter.post('/logout', async (req, res, next) => {
     if (payload && (await verifyAuthSession(token)).isAuthenticated) await logoutSecuritySession(payload);
     clearAuthCookie(res);
     res.json({ message: 'Đăng xuất thành công' });
-  } catch { next(Object.assign(new Error('Chưa đăng xuất được phiên. Vui lòng thử lại.'),
-    { status: 503, code: 'SECURITY_UNAVAILABLE' })); }
+  } catch {
+    next(Object.assign(new Error('Chưa đăng xuất được phiên. Vui lòng thử lại.'),
+      { status: 503, code: 'SECURITY_UNAVAILABLE' }));
+  }
 });
 
 authRouter.get('/csrf', requireAuth, (req, res) => {
@@ -472,19 +489,24 @@ setInterval(() => {
 
 // ─── 5c. Router Blog & Bản Tin (Newsletter): /api/blog & /api/newsletter ──────
 const blogAdminAuth = createAdminAuthMiddleware();
+const requireBlogContentRole = createAdminRoleMiddleware(['SA', 'CA']);
+const requireBlogManagerAuth = (req, res, next) => blogAdminAuth(req, res, (error) => {
+  if (error) return next(error);
+  return requireBlogContentRole(req, res, next);
+});
 const requireBlogDeleteAuth = (req, res, next) => {
   const token = readAuthToken(req, 'admin');
   if (token) {
     try {
       verifyAccessToken(token, 'admin');
-      return blogAdminAuth(req, res, next);
+      return requireBlogManagerAuth(req, res, next);
     } catch {
       // A Bearer token can belong to User; let the existing User middleware decide.
     }
   }
   return requireAuth(req, res, next);
 };
-const blogRouter = createBlogRouter(express, requireAuth, blogAdminAuth, requireBlogDeleteAuth, optionalAuth);
+const blogRouter = createBlogRouter(express, requireAuth, requireBlogManagerAuth, requireBlogDeleteAuth, optionalAuth);
 app.use('/api/blog', blogRouter);
 app.use('/api/v1/blog', blogRouter); // Hỗ trợ tiền tố v1 nếu FE gọi
 app.use('/api/v1/posts', blogRouter); // Hỗ trợ endpoint chuẩn theo đặc tả: /api/v1/posts & /api/v1/posts/draft
@@ -600,6 +622,47 @@ const adminNotificationsRouter = createAdminNotificationsRouter(express, adminAp
 app.use('/api/admin/notifications', adminNotificationsRouter);
 app.use('/api/v1/admin/notifications', adminNotificationsRouter); // Hỗ trợ tiền tố v1
 
+// Admin dashboard và audit log chỉ Super Admin được truy cập.
+const adminDashboardRouter = createAdminDashboardRouter(express, adminApiAuth, normalizeAdminRole);
+app.use('/api/admin/dashboard', adminDashboardRouter);
+app.use('/api/v1/admin/dashboard', adminDashboardRouter);
+
+const adminUsersRouter = createAdminUsersRouter(express, adminApiAuth);
+app.use('/api/admin/users', adminUsersRouter);
+const adminCoursesRouter = createAdminCoursesRouter(express, adminApiAuth);
+app.use('/api/admin/courses', adminCoursesRouter);
+const adminContentRouter = createAdminContentRouter(express, adminApiAuth);
+app.use('/api/admin/content', adminContentRouter);
+app.use('/api/v1/admin/content', adminContentRouter);
+const adminRoadmapsRouter = createAdminRoadmapsRouter(express, adminApiAuth);
+app.use('/api/admin/roadmaps', adminRoadmapsRouter);
+const adminOrdersRouter = createAdminOrdersRouter(express, adminApiAuth);
+app.use('/api/admin/business/orders', adminOrdersRouter);
+app.use('/api/v1/admin/business/orders', adminOrdersRouter);
+const adminVouchersRouter = createAdminVouchersRouter(express, adminApiAuth);
+app.use('/api/admin/business/vouchers', adminVouchersRouter);
+app.use('/api/v1/admin/business/vouchers', adminVouchersRouter);
+const adminPayoutsRouter = createAdminPayoutsRouter(express, adminApiAuth);
+app.use('/api/admin/business/payouts', adminPayoutsRouter);
+app.use('/api/v1/admin/business/payouts', adminPayoutsRouter);
+
+const adminTicketsRouter = createAdminTicketsRouter(express, adminApiAuth);
+app.use('/api/admin/support/tickets', adminTicketsRouter);
+app.use('/api/v1/admin/support/tickets', adminTicketsRouter);
+
+const adminComplaintsRouter = createAdminComplaintsRouter(express, adminApiAuth);
+app.use('/api/admin/support/complaints', adminComplaintsRouter);
+app.use('/api/v1/admin/support/complaints', adminComplaintsRouter);
+
+const adminFaqsRouter = createAdminFaqsRouter(express, adminApiAuth);
+app.use('/api/admin/support/faqs', adminFaqsRouter);
+app.use('/api/v1/admin/support/faqs', adminFaqsRouter);
+
+// ─── 5l.3 Phân hệ Quản trị Hệ thống: /api/admin/system & /api/v1/admin/system ──
+const adminSystemRouter = createAdminSystemRouter(express, adminApiAuth);
+app.use('/api/admin/system', adminSystemRouter);
+app.use('/api/v1/admin/system', adminSystemRouter);
+
 // ─── 5m. Router Bài Học & Học Tập: /api/user/lessons ─────────────────────────
 const lessonRouter = createLessonRouter(express, requireAuth, optionalAuth);
 app.use('/api/user/lessons', lessonRouter);
@@ -638,6 +701,14 @@ import url from 'node:url';
 
 const isDirectRun = process.argv[1] && import.meta.url === url.pathToFileURL(process.argv[1]).href;
 if (isDirectRun || process.env.NODE_ENV === 'production') {
+  getMongoDb().then(ensureBusinessVoucherIndexes).catch((err) => console.error('[Business vouchers] Không tạo được index:', err.message));
+  getMongoDb().then(ensureAdminPayoutIndexes).catch((err) => console.error('[Business payouts] Không tạo được index:', err.message));
+  getMongoDb().then(async (db) => {
+    await ensureSupportAdminIndexes(db);
+    await seedDefaultCannedResponses(db);
+    await ensureComplaintIndexes(db);
+    await ensureFaqIndexes(db);
+  }).catch((err) => console.error('[Support Management] Không tạo được index hoặc canned responses:', err.message));
   // P2/P3 — index plan idempotent; lỗi kết nối không được chặn khởi động API.
   ensureAdminPreferencesIndexes().catch((err) => {
     console.error('[Admin preferences] Không tạo được index:', err.message);
@@ -660,6 +731,24 @@ if (isDirectRun || process.env.NODE_ENV === 'production') {
     finally { recoveringSecurity = false; }
   }, 30000);
   securityRecoveryTimer.unref();
+  let expiringStudentLocks = false;
+  const studentLockExpiryTimer = setInterval(async () => {
+    if (expiringStudentLocks) return;
+    expiringStudentLocks = true;
+    try { await expireStudentLocks(); }
+    catch (error) { console.error('[Admin user management] Không tự mở được tài khoản đến hạn:', error.message); }
+    finally { expiringStudentLocks = false; }
+  }, 60000);
+  studentLockExpiryTimer.unref();
+  let retryingUserMail = false;
+  const adminUserMailTimer = setInterval(async () => {
+    if (retryingUserMail) return;
+    retryingUserMail = true;
+    try { await retryAdminUserEmails(); }
+    catch (error) { console.error('[Admin user management] Không gửi lại được email thông báo:', error.message); }
+    finally { retryingUserMail = false; }
+  }, 60000);
+  adminUserMailTimer.unref();
   let recoveringPayments = false;
   const recoveryTimer = setInterval(async () => {
     if (recoveringPayments) return;
