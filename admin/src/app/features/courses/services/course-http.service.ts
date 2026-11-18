@@ -2,7 +2,9 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { ApprovalItem, ApprovalWorkspace, Course, CourseLevel, CourseStatus, Roadmap, RoadmapNode, RoadmapStudio, RoadmapTest } from '../models/course.models';
+import { MOCK_APPROVALS, MOCK_COURSES, MOCK_WORKSPACES } from '../../../core/data/mock/course.mock';
+import { MOCK_ROADMAPS, MOCK_STUDIOS } from '../../../core/data/mock/roadmap.mock';
+import { ApprovalItem, ApprovalWorkspace, Course, CourseStatus, Roadmap, RoadmapNode, RoadmapStudio, RoadmapTest } from '../models/course.models';
 import { CourseDemoService } from './course-demo.service';
 
 interface Page { items?: Array<Record<string, unknown>>; pagination?: { pages?: number; totalPages?: number }; }
@@ -12,31 +14,23 @@ interface Page { items?: Array<Record<string, unknown>>; pagination?: { pages?: 
 export class CourseHttpService extends CourseDemoService {
   private readonly http = inject(HttpClient);
   private readonly base = environment.apiUrl;
-  // Không giữ mock trong danh sách: API lỗi/rỗng thì UI phải rỗng + banner lỗi, không hiển thị dữ liệu giả.
-  override readonly courses = signal<Course[]>([]);
-  override readonly approvals = signal<ApprovalItem[]>([]);
-  override readonly roadmaps = signal<Roadmap[]>([]);
-  // TODO(admin-api): backend chưa có endpoint workspace duyệt hồ sơ và studio lộ trình; giữ rỗng để UI hiện trạng thái trống.
-  override readonly workspaces = signal<ApprovalWorkspace[]>([]);
-  override readonly studios = signal<RoadmapStudio[]>([]);
-  private readonly loadErrorState = signal(false);
-  override readonly loadError = this.loadErrorState.asReadonly();
+  override readonly courses = signal<Course[]>(structuredClone(MOCK_COURSES));
+  override readonly approvals = signal<ApprovalItem[]>(structuredClone(MOCK_APPROVALS));
+  override readonly roadmaps = signal<Roadmap[]>(structuredClone(MOCK_ROADMAPS));
+  override readonly workspaces = signal<ApprovalWorkspace[]>(structuredClone(MOCK_WORKSPACES));
+  override readonly studios = signal<RoadmapStudio[]>(structuredClone(MOCK_STUDIOS));
 
   constructor() { super(); void this.load(); }
   override retry(): void { void this.load(); }
   async load(): Promise<void> {
-    this.loadErrorState.set(false);
     try {
       const [courses, approvals, roadmaps] = await Promise.all([
         this.all('/admin/courses'), this.all('/admin/courses/approvals'), this.all('/admin/roadmaps')
       ]);
-      this.courses.set(courses.map(toCourse));
-      this.approvals.set(approvals.map(toApproval));
-      this.roadmaps.set(roadmaps.map(toRoadmap));
-    } catch {
-      // 403 được xử lý khi người dùng mở trang (Q2); ở đây chỉ báo lỗi tải, không rơi về mock.
-      this.loadErrorState.set(true);
-    }
+      this.courses.set(courses.map((row, i) => toCourse(row, this.courses()[i])));
+      this.approvals.set(approvals.map((row, i) => toApproval(row, this.approvals()[i])));
+      this.roadmaps.set(roadmaps.map((row, i) => toRoadmap(row, this.roadmaps()[i])));
+    } catch { /* 403 is intentionally handled on page entry, not by hiding navigation. */ }
   }
   private async all(path: string): Promise<Array<Record<string, unknown>>> {
     const rows: Array<Record<string, unknown>> = []; let page = 1; let pages = 1;
@@ -60,85 +54,8 @@ export class CourseHttpService extends CourseDemoService {
   private patch(path: string, body: unknown): Promise<unknown> { return firstValueFrom(this.http.patch(`${this.base}${path}`, body)).then(result => { void this.load(); return result; }); }
 }
 
-const text = (row: Record<string, unknown>, ...keys: string[]): string => {
-  for (const key of keys) {
-    const value = row[key];
-    if (value != null && typeof value !== 'object') { return String(value); }
-  }
-  return '';
-};
-const num = (row: Record<string, unknown>, ...keys: string[]): number => Number(keys.map(key => row[key]).find(value => value != null && typeof value !== 'object') ?? 0);
-const COURSE_STATUSES: readonly string[] = ['published', 'pending', 'hidden', 'archived'];
-const COURSE_LEVELS: readonly string[] = ['Cơ bản', 'Trung cấp', 'Nâng cao'];
-const toLevel = (value: string): CourseLevel => COURSE_LEVELS.includes(value) ? value as CourseLevel : 'Cơ bản';
-
-/** Không dùng bản ghi mock theo index: mỗi dòng API phải tự đủ field, thiếu thì để giá trị rỗng an toàn. */
-function toCourse(row: Record<string, unknown>): Course {
-  const status = text(row, 'status');
-  return {
-    id: text(row, 'courseId', 'id'),
-    title: text(row, 'title'),
-    category: text(row, 'category'),
-    level: toLevel(text(row, 'level')),
-    instructor: text(row, 'instructorName', 'instructor'),
-    instructorId: text(row, 'instructorId'),
-    students: row['learnerCount'] == null ? null : num(row, 'learnerCount'),
-    price: num(row, 'price'),
-    rating: row['rating'] == null ? null : num(row, 'rating'),
-    // API trả `ratingCount`; model UI đặt tên là `reviewCount`.
-    reviewCount: num(row, 'ratingCount', 'reviewCount'),
-    status: (COURSE_STATUSES.includes(status) ? status : 'hidden') as CourseStatus,
-    createdAt: text(row, 'createdAt'),
-    updatedAt: text(row, 'updatedAt'),
-    durationHours: num(row, 'durationHours'),
-    description: text(row, 'description'),
-    tags: Array.isArray(row['tags']) ? row['tags'].map(String) : [],
-    curriculumSummary: text(row, 'curriculumSummary'),
-    chapters: [],
-    learners: [],
-    finance: { listPrice: '', instructorShare: '', platformShare: '', revenue: '', voucher: '', voucherActive: false }
-  };
-}
-function toApproval(row: Record<string, unknown>): ApprovalItem {
-  const status = text(row, 'status');
-  return {
-    id: text(row, 'courseId', 'id'),
-    courseId: text(row, 'courseId', 'id'),
-    courseTitle: text(row, 'title'),
-    category: text(row, 'category'),
-    level: toLevel(text(row, 'level')),
-    instructor: text(row, 'instructorName', 'instructor'),
-    instructorRole: text(row, 'instructorRole'),
-    components: text(row, 'components'),
-    resources: text(row, 'resources'),
-    suggestedPrice: num(row, 'suggestedPrice', 'price'),
-    discount: num(row, 'discount'),
-    submittedAt: text(row, 'submittedAt', 'createdAt'),
-    slaHours: num(row, 'slaHours'),
-    slaStatus: (text(row, 'slaStatus') || (status === 'published' ? 'approved' : 'remaining')) as ApprovalItem['slaStatus'],
-    slaLabel: text(row, 'slaLabel'),
-    slaHint: text(row, 'slaHint'),
-    action: 'inspect'
-  };
-}
-function toRoadmap(row: Record<string, unknown>): Roadmap {
-  const coverage = num(row, 'coverage');
-  return {
-    // Bảng lộ trình dùng `versionId` làm khóa, không phải `id`.
-    id: text(row, 'versionId', 'roadmapId', 'id'),
-    code: text(row, 'code'),
-    name: text(row, 'name', 'title'),
-    industry: text(row, 'industry'),
-    stages: num(row, 'stages'),
-    nodes: num(row, 'nodes'),
-    // API dùng `learnerCount`, model UI dùng `learners`.
-    learners: num(row, 'learnerCount', 'learners'),
-    completion: num(row, 'completion'),
-    coverage,
-    coverageAvg: num(row, 'coverageAvg') || coverage,
-    testPassed: num(row, 'testPassed'),
-    testTotal: num(row, 'testTotal'),
-    missingTests: num(row, 'missingTests'),
-    hidden: row['hidden'] === true
-  };
-}
+const text = (row: Record<string, unknown>, ...keys: string[]): string => String(keys.map(key => row[key]).find(value => value != null) ?? '');
+const num = (row: Record<string, unknown>, ...keys: string[]): number => Number(keys.map(key => row[key]).find(value => value != null) ?? 0);
+function toCourse(row: Record<string, unknown>, fallback: Course): Course { return { ...fallback, id: text(row, 'courseId', 'id') || fallback.id, title: text(row, 'title') || fallback.title, category: text(row, 'category') || fallback.category, instructor: text(row, 'instructorName', 'instructor') || fallback.instructor, instructorId: text(row, 'instructorId') || fallback.instructorId, students: row['learnerCount'] == null ? fallback.students : num(row, 'learnerCount'), price: num(row, 'price') || fallback.price, rating: row['rating'] == null ? fallback.rating : num(row, 'rating'), reviewCount: num(row, 'reviewCount') || fallback.reviewCount, status: text(row, 'status') as CourseStatus || fallback.status, createdAt: text(row, 'createdAt') || fallback.createdAt, updatedAt: text(row, 'updatedAt') || fallback.updatedAt }; }
+function toApproval(row: Record<string, unknown>, fallback: ApprovalItem): ApprovalItem { return { ...fallback, id: text(row, 'courseId', 'id') || fallback.id, courseId: text(row, 'courseId') || fallback.courseId, courseTitle: text(row, 'title') || fallback.courseTitle, category: text(row, 'category') || fallback.category, instructor: text(row, 'instructorName', 'instructor') || fallback.instructor, suggestedPrice: num(row, 'price', 'suggestedPrice') || fallback.suggestedPrice, submittedAt: text(row, 'submittedAt', 'createdAt') || fallback.submittedAt }; }
+function toRoadmap(row: Record<string, unknown>, fallback: Roadmap): Roadmap { return { ...fallback, id: text(row, 'id', 'roadmapId') || fallback.id, code: text(row, 'code') || fallback.code, name: text(row, 'name', 'title') || fallback.name, industry: text(row, 'industry') || fallback.industry, stages: num(row, 'stages') || fallback.stages, nodes: num(row, 'nodes') || fallback.nodes, learners: num(row, 'learners') || fallback.learners, completion: num(row, 'completion') || fallback.completion, hidden: Boolean(row['hidden'] ?? fallback.hidden) }; }

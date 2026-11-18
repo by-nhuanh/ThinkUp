@@ -1,5 +1,5 @@
 import { Signal } from '@angular/core';
-import { ContentComment, ContentPost, ContentReport, ContentReview, ModerationLog } from '../models/content.models';
+import { ContentComment, ContentPost, ContentReport, ContentReview, ModerationLog, ReportSeverity } from '../models/content.models';
 
 /** Replaceable contract so the demo data source can be swapped for the real content API. */
 export abstract class ContentStore {
@@ -15,11 +15,12 @@ export abstract class ContentStore {
   abstract createPost(post: ContentPost): void;
   abstract removePosts(ids: string[]): void;
   abstract updateComment(id: string, patch: Partial<ContentComment>, note: string): void;
-  abstract removeComments(ids: string[]): void;
+  abstract removeComments(ids: string[], reason: string): void;
   abstract replyComment(id: string, content: string, actor: string): void;
   abstract updateReview(id: string, patch: Partial<ContentReview>, note: string): void;
   abstract replyReview(id: string, content: string, actor: string): void;
   abstract removeReviews(ids: string[]): void;
   abstract updateReport(id: string, patch: Partial<ContentReport>, note: string): void;
+  abstract transferComment(id: string, severity: ReportSeverity, note: string): ContentReport | null;
   abstract reset(): void;
 }

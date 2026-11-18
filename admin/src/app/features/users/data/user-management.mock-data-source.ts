@@ -59,8 +59,6 @@ export class MockUserManagementDataSource implements UserManagementDataSource {
   readonly studentDetails = this.studentDetailState.asReadonly();
   readonly coursesByLecturer = this.coursesState.asReadonly();
   readonly loading = signal(false).asReadonly();
-  readonly loadingLecturers = signal(false).asReadonly();
-  readonly loadingStudents = signal(false).asReadonly();
   readonly error = signal<string | null>(null).asReadonly();
 
   async reload(): Promise<void> {

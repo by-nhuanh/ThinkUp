@@ -1,507 +1,66 @@
-<section class="system-page">
+<section class="system-page configuration-page">
   <header class="page-heading">
     <div class="heading-copy">
-      <h1>Cấu hình Hệ thống</h1>
+      <h1>Cấu hình hệ thống</h1>
     </div>
   </header>
 
-  <!-- TODO(pre-deploy): Nhớ xóa nhánh demo ?saveError=1, OTP demo và đấu nối API cấu hình hệ thống thật. -->
-
-  <div class="settings-layout">
-    <nav class="settings-rail" aria-label="Nhóm cấu hình">
-      <p class="rail-title">CẤU HÌNH HỆ THỐNG</p>
-      @for (tab of tabs; track tab.id) {
-        <button
-          class="settings-tab"
-          type="button"
-          [class.is-active]="activeTab() === tab.id"
-          [attr.aria-current]="activeTab() === tab.id ? 'page' : null"
-          (click)="selectTab(tab.id)"
-        >{{ tab.label }}</button>
-      }
-      <div class="rail-help">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="3.2" /><path d="M12 3v2.2M12 18.8V21M4.9 7.5l1.9 1.1M17.2 15.4l1.9 1.1M4.9 16.5l1.9-1.1M17.2 8.6l1.9-1.1" />
-        </svg>
-        <p>Quản lý thông số vận hành và các kết nối dịch vụ của ThinkUp.</p>
-      </div>
-    </nav>
-
-    <div class="settings-main">
-      <div class="settings-body">
-        @switch (activeTab()) {
-          @case ('general') {
-            <section class="settings-card">
-              <h2>Thông tin nhận diện cốt lõi</h2>
-              <p class="card-desc">Tên và hình ảnh thương hiệu xuất hiện trên trình duyệt và website.</p>
-              <label class="field site-name" [class.invalid]="!!siteNameError()">
-                <span>Tên Website</span>
-                <input type="text" maxlength="80" [value]="draft().general.siteName" (input)="updateSection('general', 'siteName', $any($event.target).value)" />
-                @if (siteNameError()) {
-                  <p class="field-error">{{ siteNameError() }}</p>
-                } @else {
-                  <small class="char-counter">{{ draft().general.siteName.length }}/70 ký tự</small>
-                }
-              </label>
-
-              <div class="upload-row">
-                <div class="upload-box" [class.invalid]="!!uploadError()">
-                  <span class="upload-preview logo" aria-hidden="true">
-                    <span class="brand-stack"><i></i><i></i></span>
-                    <span class="brand-word">THINKUP</span>
-                  </span>
-                  <div class="upload-label">
-                    <strong>Logo · Dạng chữ nhật</strong>
-                    <span class="upload-name">{{ logoName() }}</span>
-                  </div>
-                  <div class="upload-actions">
-                    <button class="ghost-button" type="button" (click)="logoInput.click()">Thay Logo</button>
-                    <small>.png, .jpg, .ico · Dưới 2MB</small>
-                  </div>
-                  <input #logoInput type="file" accept="image/png,image/jpeg,image/x-icon" hidden (change)="onUpload($event, 'logo')" />
-                </div>
-                <div class="upload-box" [class.invalid]="!!uploadError()">
-                  <span class="upload-preview favicon" aria-hidden="true">
-                    <span class="brand-stack"><i></i><i></i></span>
-                  </span>
-                  <div class="upload-label">
-                    <strong>Favicon · Tỷ lệ 1:1</strong>
-                    <span class="upload-name">{{ faviconName() }}</span>
-                  </div>
-                  <div class="upload-actions">
-                    <button class="ghost-button" type="button" (click)="faviconInput.click()">Thay Favicon</button>
-                    <small>.png, .jpg, .ico · Dưới 2MB</small>
-                  </div>
-                  <input #faviconInput type="file" accept="image/png,image/x-icon" hidden (change)="onUpload($event, 'favicon')" />
-                </div>
-              </div>
-              @if (uploadError()) {
-                <p class="field-error upload-error" role="alert">{{ uploadError() }}</p>
-              }
-            </section>
-
-            <section class="settings-card">
-              <h2>Bản địa hóa và Thông tin liên hệ</h2>
-              <p class="card-desc">Thời gian và đầu mối hỗ trợ được áp dụng trên toàn nền tảng.</p>
-              <div class="form-grid">
-                <div class="field">
-                  <span id="settings-timezone-label">Múi giờ mặc định</span>
-                  <app-custom-select labelId="settings-timezone-label" controlId="settings-timezone" [value]="draft().general.timezone" [options]="timezoneOptions" (valueChange)="updateSection('general', 'timezone', $event)" />
-                </div>
-                <div class="field">
-                  <span id="settings-language-label">Ngôn ngữ mặc định</span>
-                  <app-custom-select labelId="settings-language-label" controlId="settings-language" [value]="draft().general.language" [options]="languageOptions" (valueChange)="updateSection('general', 'language', $event)" />
-                </div>
-                <label class="field" [class.invalid]="!!hotlineError()">
-                  <span>Hotline CSKH</span>
-                  <input type="tel" [value]="draft().general.hotline" (input)="updateSection('general', 'hotline', $any($event.target).value)" />
-                  @if (hotlineError()) {
-                    <p class="field-error">{{ hotlineError() }}</p>
-                  } @else {
-                    <small>Từ 9–11 chữ số</small>
-                  }
-                </label>
-                <label class="field">
-                  <span>Địa chỉ văn phòng</span>
-                  <input type="text" [value]="draft().general.address" (input)="updateSection('general', 'address', $any($event.target).value)" />
-                </label>
-              </div>
-            </section>
-          }
-
-          @case ('parameters') {
-            @for (group of paramGroups; track group.title) {
-              <section class="settings-card">
-                <h2>{{ group.title }}</h2>
-                <div class="param-grid" [class.cols-3]="group.columns === 3">
-                  @for (field of group.fields; track field.key) {
-                    <label class="field" [class.invalid]="!!paramErrors()[field.key]">
-                      <span>{{ field.label }}@if ($any(field).info) { <span class="info-dot" [title]="$any(field).info">ⓘ</span> }</span>
-                      <div class="unit-input">
-                        <input type="number" step="1" [value]="numberDisplay(draft().parameters[field.key])" (input)="onNumber('parameters', field.key, $any($event.target).value)" />
-                        <span>{{ field.unit }}</span>
-                      </div>
-                      @if (paramErrors()[field.key]) {
-                        <p class="field-error">{{ paramErrors()[field.key] }}</p>
+  <!-- TODO(pre-deploy): Nhớ thay nguồn lưu cấu hình demo và xác thực OTP demo bằng API quản trị đã xác minh. -->
+  <form id="platform-settings-form" class="configuration-form" novalidate (submit)="openSave($event)">
+    @for (group of groups; track group.id; let index = $index) {
+      <section class="configuration-group" [attr.aria-labelledby]="'settings-group-' + group.id">
+        <header class="configuration-group-heading">
+          <span class="configuration-icon" [class]="'configuration-icon ' + group.id" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="group.icon"/></svg></span>
+          <div><h2 [id]="'settings-group-' + group.id">{{ index + 1 }}. {{ group.title }}</h2><p>{{ group.description }}</p></div>
+        </header>
+        <div class="configuration-blocks" [class.configuration-blocks--stacked]="group.id === 'operations'" [class.configuration-blocks--education]="group.id === 'education'">
+          @for (column of group.columns; track $index) {
+            <div class="configuration-stack">
+            @for (entry of column; track entry.block.title) {
+              @let block = entry.block;
+              @let blockIndex = entry.index;
+            <section class="parameter-block" [attr.aria-labelledby]="'settings-block-' + group.id + '-' + blockIndex">
+              <h3 [id]="'settings-block-' + group.id + '-' + blockIndex">{{ block.title }}</h3>
+              <p class="parameter-description">{{ block.description }}</p>
+              <div class="parameter-fields" [class.single-field]="block.fields.length === 1">
+                @for (field of block.fields; track field.key) {
+                  <div class="parameter-field" [class.invalid]="touched().has(field.key) && !!errors()[field.key]">
+                    <label [for]="'setting-' + field.key">{{ field.label }} <span class="required-mark" aria-hidden="true">*</span></label>
+                    <div class="parameter-input">
+                      <input [id]="'setting-' + field.key" type="number" required [attr.inputmode]="field.step === 1 ? 'numeric' : 'decimal'" [attr.min]="field.min" [attr.max]="field.max ?? null" [attr.step]="field.step" [value]="numberDisplay(draft()[field.key])" [attr.aria-invalid]="touched().has(field.key) && errors()[field.key] ? true : null" [attr.aria-describedby]="'setting-help-' + field.key" (input)="onInput(field.key, $event)" (blur)="touch(field.key)" />
+                      <span class="parameter-unit" aria-hidden="true">{{ field.unit }}</span>
+                    </div>
+                    <div class="parameter-help" [id]="'setting-help-' + field.key">
+                      @if (touched().has(field.key) && errors()[field.key]) {
+                        <span class="parameter-error" role="alert">{{ errors()[field.key] }}</span>
                       }
-                    </label>
-                  }
-                </div>
-                <p class="param-note">{{ group.note }}</p>
-                <div class="card-actions">
-                  <button class="ghost-button" type="button" (click)="resetParameters(group.keys)">Đặt lại cấu hình mặc định</button>
-                </div>
-              </section>
+                    </div>
+                  </div>
+                }
+              </div>
+            </section>
             }
-          }
-
-          @case ('social') {
-            <div class="tab-intro">
-              <h2>Xác thực và Mạng xã hội</h2>
-              <p>Cấu hình các phương thức đăng nhập nhanh và kiểm soát đăng ký tự động.</p>
-            </div>
-            <div class="provider-grid">
-              @for (card of socialCards; track card.id) {
-                <section class="settings-card provider-card">
-                  <header class="provider-head">
-                    <h3>{{ card.name }}</h3>
-                    <button
-                      class="toggle"
-                      type="button"
-                      role="switch"
-                      [class.on]="isProviderEnabled(card)"
-                      [attr.aria-checked]="isProviderEnabled(card)"
-                      [attr.aria-label]="'Bật ' + card.name"
-                      (click)="toggleSocial(card)"
-                    ></button>
-                  </header>
-
-                  @if (editingProvider() === card.id) {
-                    <div class="field">
-                      <span>{{ card.idLabel }} mới</span>
-                      <input type="text" [placeholder]="'Nhập ' + card.idLabel + ' mới'" [value]="newKeyId()" (input)="newKeyId.set($any($event.target).value); onNewKeyInput(card)" />
-                    </div>
-                    <div class="field">
-                      <span>{{ card.secretLabel }} mới</span>
-                      <input type="password" autocomplete="new-password" [placeholder]="'Nhập ' + card.secretLabel + ' mới'" [value]="newKeySecret()" (input)="newKeySecret.set($any($event.target).value); onNewKeyInput(card)" />
-                    </div>
-                    <p class="param-note">Khóa cũ đã được xóa khỏi biểu mẫu. Nhập đủ thông tin mới trước khi lưu.</p>
-                    <div class="card-actions">
-                      <button class="ghost-button" type="button" (click)="cancelEditKeys()">Hủy thay đổi</button>
-                    </div>
-                  } @else {
-                    <div class="field">
-                      <span>{{ card.idLabel }}</span>
-                      <input class="masked-input" type="text" value="••••••••••••••" readonly [attr.aria-label]="card.name + ' ' + card.idLabel + ' đã che'" />
-                    </div>
-                    <div class="field">
-                      <span>{{ card.secretLabel }}</span>
-                      <input class="masked-input" type="text" value="••••••••••••••" readonly [attr.aria-label]="card.name + ' ' + card.secretLabel + ' đã che'" />
-                    </div>
-                    <div class="card-actions">
-                      <button class="ghost-button" type="button" (click)="startEditKeys(card.id)">Thay đổi khóa</button>
-                    </div>
-                  }
-                </section>
-              }
-            </div>
-            <p class="tab-footnote">Khóa đã lưu được che bảo mật. Chọn Thay đổi khóa để nhập khóa mới.</p>
-          }
-
-          @case ('seo') {
-            <section class="settings-card">
-              <h2>SEO và Tracking</h2>
-              <p class="card-desc">Quản lý mã đo lường trên giao diện học viên.</p>
-              <div class="form-grid">
-                <label class="field" [class.invalid]="!!ga4Error()">
-                  <span>Google Analytics (GA4) ID</span>
-                  <input type="text" [value]="draft().tracking.ga4Id" (input)="updateSection('tracking', 'ga4Id', $any($event.target).value)" />
-                  @if (ga4Error()) {
-                    <p class="field-error">{{ ga4Error() }}</p>
-                  }
-                </label>
-                <label class="field" [class.invalid]="!!pixelError()">
-                  <span>Facebook Pixel ID</span>
-                  <input type="text" [value]="draft().tracking.pixelId" (input)="updateSection('tracking', 'pixelId', $any($event.target).value)" />
-                  @if (pixelError()) {
-                    <p class="field-error">{{ pixelError() }}</p>
-                  }
-                </label>
-                <label class="field full" [class.invalid]="!!gtmError()">
-                  <span>Google Tag Manager Script</span>
-                  <textarea rows="7" class="mono-textarea" [value]="draft().tracking.gtmScript" (input)="updateSection('tracking', 'gtmScript', $any($event.target).value)"></textarea>
-                  @if (gtmError()) {
-                    <p class="field-error">{{ gtmError() }}</p>
-                  }
-                </label>
-              </div>
-              <div class="notice info has-icon">
-                <svg class="notice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.2 19 6v6c0 4.2-2.9 7.4-7 9-4.1-1.6-7-4.8-7-9V6l7-2.8Z" /><path d="m9 12 2.1 2.1L15 10" /></svg>
-                <div class="notice-body">
-                  <strong>Kiểm tra trước khi lưu</strong>
-                  <p>Chỉ sử dụng mã theo dõi hợp lệ từ nhà cung cấp. Mã không an toàn sẽ được từ chối.</p>
-                </div>
-              </div>
-            </section>
-          }
-
-          @case ('payment') {
-            <div class="tab-intro">
-              <h2>Cổng thanh toán</h2>
-              <p>Kết nối dịch vụ thanh toán để nạp tiền và mua khóa học trực tuyến.</p>
-            </div>
-            @for (gateway of store.gateways(); track gateway.id) {
-              <article class="connection-card" [class.is-down]="gateway.status === 'down'">
-                <span class="brand-tile" [class.momo]="gateway.id === 'momo'" [class.bank]="gateway.id === 'vcb'" aria-hidden="true">{{ gateway.id === 'momo' ? 'momo' : 'VCB' }}</span>
-                <div class="connection-info">
-                  <h3>{{ gateway.name }}</h3>
-                  <p>{{ gateway.description }}</p>
-                  <span class="connection-state" [class.is-down]="gateway.status === 'down'">
-                    <i aria-hidden="true"></i>{{ gateway.statusLabel }}
-                  </span>
-                </div>
-                <div class="connection-side">
-                  <span class="env-pill">{{ gateway.environment === 'production' ? 'Môi trường thật' : 'Môi trường thử nghiệm' }}</span>
-                  <div class="connection-actions">
-                    <button class="ghost-button" type="button" (click)="checkGateway(gateway)">Kiểm tra</button>
-                    <button class="primary-button" type="button" (click)="gateway.id === 'momo' ? momoOpen.set(true) : toastVcb()">Cấu hình</button>
-                  </div>
-                </div>
-              </article>
-            }
-            <div class="notice info has-icon">
-              <svg class="notice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.2 19 6v6c0 4.2-2.9 7.4-7 9-4.1-1.6-7-4.8-7-9V6l7-2.8Z" /><path d="m9 12 2.1 2.1L15 10" /></svg>
-              <div class="notice-body">
-                <strong>Kiểm tra kết nối trước khi lưu</strong>
-                <p>Sau khi thay đổi thông số cổng, cần kiểm thử kết nối thành công để lưu cấu hình mới.</p>
-              </div>
             </div>
           }
-
-          @case ('messaging') {
-            <div class="tab-intro">
-              <h2>SMS và Email</h2>
-              <p>Quản lý kênh gửi mã OTP và thông báo tự động.</p>
-            </div>
-            <article class="connection-card">
-              <span class="brand-tile sms" aria-hidden="true">SMS</span>
-              <div class="connection-info">
-                <h3>SMS Brandname Gateway</h3>
-                <p>Thông báo giao dịch và mã xác thực</p>
-                <span class="connection-state"><i aria-hidden="true"></i>Hoạt động · Kết nối ổn định</span>
-              </div>
-              <div class="connection-side">
-                <span class="env-pill">Môi trường thật</span>
-                <div class="connection-actions">
-                  <button class="ghost-button" type="button" (click)="toastChannel('SMS Brandname Gateway')">Kiểm tra</button>
-                  <button class="primary-button" type="button" (click)="messagingOpen.set(true)">Cấu hình</button>
-                </div>
-              </div>
-            </article>
-            <article class="connection-card">
-              <span class="brand-tile sms" aria-hidden="true">SMTP</span>
-              <div class="connection-info">
-                <h3>SMTP Server / Email OTP</h3>
-                <p>Email hệ thống và thư xác thực</p>
-                <span class="connection-state"><i aria-hidden="true"></i>Hoạt động · Kết nối ổn định</span>
-              </div>
-              <div class="connection-side">
-                <span class="env-pill">Môi trường thật</span>
-                <div class="connection-actions">
-                  <button class="ghost-button" type="button" (click)="toastChannel('SMTP Server')">Kiểm tra</button>
-                  <button class="primary-button" type="button" (click)="messagingOpen.set(true)">Cấu hình</button>
-                </div>
-              </div>
-            </article>
-            <div class="notice info has-icon">
-              <svg class="notice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.2 19 6v6c0 4.2-2.9 7.4-7 9-4.1-1.6-7-4.8-7-9V6l7-2.8Z" /><path d="m9 12 2.1 2.1L15 10" /></svg>
-              <div class="notice-body">
-                <strong>Chuẩn xác thực OTP cố định</strong>
-                <p>Mã OTP gồm 6 chữ số · Giới hạn gửi 3 lần trong 10 phút.</p>
-              </div>
-            </div>
-          }
-
-          @case ('storage') {
-            <section class="settings-card">
-              <h2>Máy chủ tài nguyên và CDN Video</h2>
-              <p class="card-desc">Kết nối nơi lưu trữ ảnh, tài liệu và video bài giảng.</p>
-              <div class="form-grid">
-                <label class="field">
-                  <span>Bucket Name</span>
-                  <input type="text" [value]="draft().storage.bucket" (input)="updateSection('storage', 'bucket', $any($event.target).value)" />
-                </label>
-                <div class="field">
-                  <span id="settings-region-label">Region</span>
-                  <app-custom-select labelId="settings-region-label" controlId="settings-region" [value]="draft().storage.region" [options]="regionOptions" (valueChange)="updateSection('storage', 'region', $event)" />
-                </div>
-                <label class="field">
-                  <span>Access Key ID</span>
-                  <input class="masked-input" type="password" autocomplete="off" [value]="draft().storage.accessKeyId" (input)="updateSection('storage', 'accessKeyId', $any($event.target).value)" />
-                </label>
-                <label class="field">
-                  <span>Secret Access Key</span>
-                  <input class="masked-input" type="password" autocomplete="new-password" [value]="draft().storage.secretAccessKey" (input)="updateSection('storage', 'secretAccessKey', $any($event.target).value)" />
-                </label>
-              </div>
-              <div class="notice info has-icon">
-                <svg class="notice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.2 19 6v6c0 4.2-2.9 7.4-7 9-4.1-1.6-7-4.8-7-9V6l7-2.8Z" /><path d="m9 12 2.1 2.1L15 10" /></svg>
-                <div class="notice-body">
-                  <strong>Thông tin kết nối được bảo vệ</strong>
-                  <p>Secret Access Key được che và không hiển thị dạng văn bản nguyên bản.</p>
-                </div>
-              </div>
-            </section>
-          }
-
-          @case ('signing') {
-            <div class="tab-intro">
-              <h2>Ký số</h2>
-              <p>Quản lý kết nối ký hợp đồng điện tử và chứng thư doanh nghiệp.</p>
-            </div>
-            <article class="connection-card">
-              <span class="brand-tile sms" aria-hidden="true">SIGN</span>
-              <div class="connection-info">
-                <h3>Cổng Ký số Hợp đồng (E-Sign)</h3>
-                <p>Dịch vụ ký số hợp đồng từ xa</p>
-                <span class="connection-state"><i aria-hidden="true"></i>Hoạt động · Kết nối ổn định</span>
-              </div>
-              <div class="connection-side">
-                <span class="env-pill">Môi trường thật</span>
-                <div class="connection-actions">
-                  <button class="ghost-button" type="button" (click)="toastChannel('Cổng Ký số E-Sign')">Kiểm tra</button>
-                  <button class="primary-button" type="button" (click)="signingOpen.set(true)">Cấu hình</button>
-                </div>
-              </div>
-            </article>
-
-            <section class="cert-card">
-              <h3>Chứng thư số doanh nghiệp</h3>
-              <p>Nhà cung cấp: {{ draft().signing.provider }} · Serial: {{ draft().signing.serial.slice(0, 12) }}...</p>
-              <p class="cert-valid"><i aria-hidden="true"></i>Còn hiệu lực đến {{ draft().signing.expiresAt }}</p>
-            </section>
-
-            <div class="notice info has-icon">
-              <svg class="notice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.2 19 6v6c0 4.2-2.9 7.4-7 9-4.1-1.6-7-4.8-7-9V6l7-2.8Z" /><path d="m9 12 2.1 2.1L15 10" /></svg>
-              <div class="notice-body">
-                <strong>Điều khoản hợp đồng cố định</strong>
-                <p>60% Sàn / 40% Giảng viên · Xác thực OTP · Tệp hợp đồng khóa cứng kèm mộc thời gian.</p>
-              </div>
-            </div>
-          }
-
-          @case ('maintenance') {
-            <section class="settings-card">
-              <h2>Chế độ bảo trì</h2>
-              <p class="card-desc">Đóng tạm thời giao diện học viên để nâng cấp hệ thống.</p>
-              <div class="toggle-line">
-                <strong>Bật chế độ bảo trì</strong>
-                <button class="toggle" type="button" role="switch" [attr.aria-checked]="draft().maintenance.enabled" [class.on]="draft().maintenance.enabled" aria-label="Bật chế độ bảo trì" (click)="requestMaintenanceChange()"></button>
-              </div>
-              @if (draft().maintenance.enabled) {
-                <div class="notice danger has-icon">
-                  <svg class="notice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5 21 20H3L12 3.5Z" /><path d="M12 10v4" /><path d="M12 17.2h.01" /></svg>
-                  <div class="notice-body">
-                    <strong>Chế độ bảo trì đang bật</strong>
-                    <p>Giao diện học viên đang tạm đóng. Chỉ Super Admin có thể truy cập trang quản trị.</p>
-                  </div>
-                </div>
-              } @else {
-                <div class="notice danger has-icon">
-                  <svg class="notice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.6" /><path d="M12 7.8v4.6" /><path d="M12 16.2h.01" /></svg>
-                  <div class="notice-body">
-                    <strong>Ảnh hưởng đến người dùng</strong>
-                    <p>Khi bật, học viên không thể truy cập học tập hoặc mua đơn hàng.</p>
-                  </div>
-                </div>
-              }
-            </section>
-
-            <section class="settings-card">
-              <h2>Mạng lưới cảnh báo khẩn cấp</h2>
-              <p class="card-desc">Nhập email hoặc số điện thoại, phân tách bằng dấu phẩy.</p>
-              <div class="field">
-                <span>Email nhận cảnh báo</span>
-                <div class="chip-box">
-                  @for (email of draft().maintenance.alertEmails; track email) {
-                    <span class="chip-item">{{ email }}
-                      <button type="button" [attr.aria-label]="'Xóa email ' + email" (click)="removeChip('email', email)">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
-                      </button>
-                    </span>
-                  }
-                  <input type="email" placeholder="Thêm email…" [value]="emailInput()" (input)="emailInput.set($any($event.target).value); chipError.set('')" (keydown.enter)="addChip('email')" aria-label="Thêm email nhận cảnh báo, nhấn Enter để thêm" />
-                </div>
-              </div>
-              <div class="field">
-                <span>SĐT nhận tin nhắn SMS</span>
-                <div class="chip-box">
-                  @for (phone of draft().maintenance.alertPhones; track phone) {
-                    <span class="chip-item">{{ phone }}
-                      <button type="button" [attr.aria-label]="'Xóa số ' + phone" (click)="removeChip('phone', phone)">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
-                      </button>
-                    </span>
-                  }
-                  <input type="tel" placeholder="Thêm số điện thoại…" [value]="phoneInput()" (input)="phoneInput.set($any($event.target).value); chipError.set('')" (keydown.enter)="addChip('phone')" aria-label="Thêm số điện thoại nhận cảnh báo, nhấn Enter để thêm" />
-                </div>
-              </div>
-              @if (chipError()) {
-                <p class="field-error" role="alert">{{ chipError() }}</p>
-              }
-              <p class="param-note">Cảnh báo khi cổng thanh toán/DB gặp sự cố hoặc dịch vụ OTP gián đoạn liên tục quá 3 phút.</p>
-            </section>
-          }
-        }
-      </div>
-
-      <footer class="settings-footer">
-        <span class="draft-status" [class.dirty]="draftStatusClass() === 'dirty'" [class.saved]="draftStatusClass() === 'saved'">{{ draftStatusLabel() }}</span>
-        <div class="heading-actions">
-          <button class="ghost-button" type="button" (click)="cacheOpen.set(true)">Đồng bộ Cache</button>
-          <button class="primary-button" type="button" [disabled]="!canSave()" [title]="canSave() ? '' : 'Cần có thay đổi hợp lệ để lưu cấu hình'" (click)="openSave()">Lưu cấu hình</button>
         </div>
-      </footer>
+      </section>
+    }
+  </form>
+
+  <footer class="configuration-actions">
+    <div class="configuration-actions-inner">
+      <span class="configuration-status" [class.dirty]="dirty()" [class.saved]="savedOnce() && !dirty()" role="status">{{ statusLabel() }}</span>
+      <div class="configuration-action-buttons">
+        <button class="ghost-button" type="button" (click)="resetToDefaults()">Đặt lại cấu hình mặc định</button>
+        <button class="primary-button" type="submit" form="platform-settings-form" [disabled]="!canSave()" [title]="!valid() ? 'Kiểm tra các giá trị chưa hợp lệ trước khi lưu' : !dirty() ? 'Chưa có thay đổi để lưu' : ''">Lưu cấu hình sàn</button>
+      </div>
     </div>
-  </div>
+  </footer>
 </section>
-
 <app-system-toast />
-
-@if (momoOpen()) {
-  <app-system-momo-dialog (closed)="momoOpen.set(false)" (saved)="onMomoSaved($event)" />
-}
-@if (messagingOpen()) {
-  <app-system-messaging-dialog [config]="draft().messaging" (closed)="messagingOpen.set(false)" (saved)="onMessagingSaved($event)" />
-}
-@if (signingOpen()) {
-  <app-system-signing-dialog [config]="draft().signing" (closed)="signingOpen.set(false)" (saved)="onSigningSaved($event)" />
-}
-@if (cacheOpen()) {
-  <app-system-cache-dialog (closed)="cacheOpen.set(false)" />
-}
 @if (otpOpen()) {
-  <app-system-settings-otp-dialog [serverError]="otpError()" (closed)="otpOpen.set(false)" (submitted)="onOtpSubmitted($event)" />
-}
-@if (maintenanceConfirm(); as mode) {
-  @if (mode === 'enable') {
-    <app-system-confirm-dialog
-      title="Bật chế độ bảo trì"
-      subtitle="Xác nhận trước khi tạm dừng giao diện học viên."
-      heading="Bạn có chắc chắn muốn đóng trang web?"
-      [lines]="['Người dùng sẽ không thể truy cập học tập hoặc mua đơn hàng.']"
-      note="Trong thời gian bảo trì, chỉ tài khoản Super Admin được truy cập trang quản trị."
-      confirmLabel="Bật chế độ bảo trì"
-      tone="danger"
-      [danger]="true"
-      (closed)="maintenanceConfirm.set(null)"
-      (confirmed)="confirmMaintenanceChange()"
-    />
-  } @else {
-    <app-system-confirm-dialog
-      title="Tắt chế độ bảo trì"
-      subtitle="Xác nhận khôi phục quyền truy cập cho người dùng."
-      heading="Mở lại website cho người dùng?"
-      [lines]="['Người dùng sẽ có thể tiếp tục học tập và mua đơn hàng bình thường.']"
-      note="Màn hình bảo trì sẽ được gỡ bỏ sau khi bạn xác nhận."
-      confirmLabel="Tắt chế độ bảo trì"
-      tone="success"
-      (closed)="maintenanceConfirm.set(null)"
-      (confirmed)="confirmMaintenanceChange()"
-    />
-  }
+  <app-system-settings-otp-dialog [serverError]="otpError()" (closed)="closeOtp()" (submitted)="onOtpSubmitted($event)" />
 }
 @if (leaveOpen()) {
-  <app-system-confirm-dialog
-    title="Bạn có thay đổi chưa lưu"
-    subtitle="Các nội dung vừa chỉnh sửa chưa được áp dụng vào hệ thống."
-    heading="Bỏ các thay đổi đang chỉnh sửa?"
-    [lines]="['Chọn Tiếp tục chỉnh sửa để giữ bản nháp, hoặc Bỏ thay đổi để đóng cửa sổ.']"
-    cancelLabel="Tiếp tục chỉnh sửa"
-    confirmLabel="Bỏ thay đổi"
-    tone="warning"
-    [danger]="true"
-    (closed)="resolveLeave(true)"
-    (confirmed)="resolveLeave(false)"
-  />
+  <app-system-confirm-dialog title="Bạn có thay đổi chưa lưu" subtitle="Các tham số vừa chỉnh sửa chưa được áp dụng." heading="Bỏ các thay đổi đang chỉnh sửa?" [lines]="['Chọn Tiếp tục chỉnh sửa để giữ bản nháp hoặc Bỏ thay đổi để rời trang.']" cancelLabel="Tiếp tục chỉnh sửa" confirmLabel="Bỏ thay đổi" tone="warning" [danger]="true" (closed)="resolveLeave(true)" (confirmed)="resolveLeave(false)" />
 }

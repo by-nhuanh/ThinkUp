@@ -77,33 +77,49 @@
       </div>
     </section>
 
+    @if (selectedIds().length) {
+      <div class="selection-slot">
+        <app-selection-bar
+          [count]="selectedIds().length"
+          noun="bài viết"
+          [actions]="selectionActions()"
+          (action)="runSelectionAction($event)"
+          (inspect)="selectionListOpen.set(true)"
+          (clear)="clearSelection()"
+        />
+      </div>
+    }
+
     @if (visible().length) {
       <section class="table-card" aria-label="Danh sách bài viết">
-        <div class="table-scroll">
+        <div class="table-scroll" (scroll)="closeMenu()">
           <table class="table-posts">
             <colgroup>
+              <col class="column-select">
               <col>
-              <col style="width:190px">
-              <col style="width:220px">
-              <col style="width:155px">
-              <col style="width:110px">
-              <col style="width:165px">
-              <col style="width:235px">
+              <col class="column-category">
+              <col class="column-author">
+              <col class="column-updated">
+              <col class="column-pin">
+              <col class="column-status">
+              <col class="column-actions">
             </colgroup>
             <thead>
               <tr>
+                <th scope="col" class="select-cell"><input class="checkbox" type="checkbox" [checked]="allVisibleSelected()" [indeterminate]="someVisibleSelected()" aria-label="Chọn tất cả bài viết trên trang" (change)="toggleSelectAll()"></th>
                 <th scope="col">Tiêu đề bài viết</th>
-                <th scope="col">Chuyên mục</th>
-                <th scope="col">Tác giả</th>
-                <th scope="col">Cập nhật lần cuối</th>
-                <th scope="col">Ghim Home</th>
-                <th scope="col">Trạng thái</th>
+                <th scope="col"><app-column-filter label="Chuyên mục" [values]="categoryValues()" [selected]="filterFor('category')" (changed)="updateColumnFilter('category', $event)" [sorts]="textSorts" [sort]="sortFor('category')" (sortChange)="updateColumnSort('category', $event)" /></th>
+                <th scope="col"><app-column-filter label="Tác giả" [values]="authorValues()" [selected]="filterFor('author')" (changed)="updateColumnFilter('author', $event)" [sorts]="textSorts" [sort]="sortFor('author')" (sortChange)="updateColumnSort('author', $event)" /></th>
+                <th scope="col"><app-column-filter label="Cập nhật lần cuối" [values]="updatedValues()" [selected]="filterFor('updated')" (changed)="updateColumnFilter('updated', $event)" [sorts]="dateSorts" [sort]="sortFor('updated')" (sortChange)="updateColumnSort('updated', $event)" /></th>
+                <th scope="col"><app-column-filter label="Ghim home" [values]="pinValues" [selected]="filterFor('pin')" (changed)="updateColumnFilter('pin', $event)" [sorts]="textSorts" [sort]="sortFor('pin')" (sortChange)="updateColumnSort('pin', $event)" /></th>
+                <th scope="col"><app-column-filter label="Trạng thái" [values]="statusValues" [selected]="filterFor('status')" (changed)="updateColumnFilter('status', $event)" [sorts]="textSorts" [sort]="sortFor('status')" (sortChange)="updateColumnSort('status', $event)" /></th>
                 <th scope="col">Thao tác</th>
               </tr>
             </thead>
             <tbody>
               @for (post of visible(); track post.id) {
-                <tr class="row-posts">
+                <tr class="row-posts" [class.row-selected]="isSelected(post.id)">
+                  <td class="select-cell"><input class="checkbox" type="checkbox" [checked]="isSelected(post.id)" [attr.aria-label]="'Chọn bài viết ' + post.title" (change)="toggleSelect(post.id, $any($event.target).checked)"></td>
                   <td>
                     <span class="post-title" [title]="post.title">{{ post.title }}</span>
                     <span class="post-url">/blog/{{ post.slug }}</span>
@@ -122,21 +138,10 @@
                   <td>
                     <button class="pin-switch" type="button" role="switch" [class.on]="post.pinned" [attr.aria-checked]="post.pinned" [attr.aria-label]="(post.pinned ? 'Bỏ ghim ' : 'Ghim ') + post.title" (click)="togglePin(post)"></button>
                   </td>
-                  <td><span class="badge" [class.success]="statusTone(post.status) === 'success'" [class.pending]="statusTone(post.status) === 'pending'" [class.danger]="statusTone(post.status) === 'danger'" [class.info]="statusTone(post.status) === 'info'" [class.neutral]="statusTone(post.status) === 'neutral'">{{ statusLabel(post.status) }}</span></td>
+                  <td class="status-cell"><span class="badge status-badge" [class.success]="statusTone(post.status) === 'success'" [class.pending]="statusTone(post.status) === 'pending'" [class.danger]="statusTone(post.status) === 'danger'" [class.info]="statusTone(post.status) === 'info'" [class.neutral]="statusTone(post.status) === 'neutral'">{{ statusLabel(post.status) }}</span></td>
                   <td>
                     <div class="cell-actions">
-                      <button class="row-icon" type="button" title="Xem bài viết" [attr.aria-label]="'Xem bài viết ' + post.title" (click)="openView(post)">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
-                      </button>
-                      <button class="row-icon" type="button" title="Chỉnh sửa" [attr.aria-label]="'Chỉnh sửa ' + post.title" (click)="edit(post)">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
-                      </button>
-                      @if (post.status === 'hidden' || post.status === 'archived') {
-                        <button class="row-icon" type="button" title="Khôi phục xuất bản" [attr.aria-label]="'Khôi phục xuất bản ' + post.title" (click)="askRestore(post)">
-                          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5"/></svg>
-                        </button>
-                      }
-                      <button class="row-icon more" type="button" title="Thao tác khác" aria-haspopup="menu" [attr.aria-expanded]="isMenuOpen(post.id)" [attr.aria-label]="'Thao tác khác cho ' + post.title" (click)="openMenu($event, post)">···</button>
+                      <button class="row-icon more" type="button" title="Thao tác khác" aria-haspopup="menu" aria-controls="post-actions-menu" (keydown.arrowdown)="openMenuFromKeyboard($event, post)" [attr.aria-expanded]="isMenuOpen(post.id)" [attr.aria-label]="'Thao tác khác cho ' + post.title" (click)="openMenu($event, post)">···</button>
                     </div>
                   </td>
                 </tr>
@@ -174,7 +179,9 @@
 
 @if (menu(); as m) {
   <div class="menu-layer" (click)="closeMenu()"></div>
-  <div class="row-menu" role="menu" [style.top.px]="m.top" [style.left.px]="m.left" [attr.aria-label]="'Thao tác cho ' + m.post.title" (click)="$event.stopPropagation()">
+  <div id="post-actions-menu" class="row-menu post-row-menu" role="menu" (keydown)="onMenuKeydown($event)" [style.top.px]="m.top" [style.left.px]="m.left" [attr.aria-label]="'Thao tác cho ' + m.post.title" (click)="$event.stopPropagation()">
+    <button type="button" role="menuitem" (click)="openView(m.post)">Xem bài viết</button>
+    <button type="button" role="menuitem" (click)="edit(m.post)">Chỉnh sửa</button>
     @if (m.post.status === 'published') {
       <button type="button" role="menuitem" (click)="askHide(m.post)">Tạm ẩn bài viết</button>
     } @else if (m.post.status === 'hidden' || m.post.status === 'archived') {
@@ -432,6 +439,35 @@
       </footer>
     </section>
   </div>
+}
+
+@if (selectionListOpen()) {
+  <app-bulk-selection-dialog
+    noun="bài viết"
+    [items]="selectionItems()"
+    [candidates]="selectionCandidates()"
+    [actions]="selectionActions()"
+    note="Xóa bài viết là vĩnh viễn; bình luận cũ chỉ được lưu vết nội bộ phục vụ kiểm toán."
+    (closed)="selectionListOpen.set(false)"
+    (selectionChange)="setSelectionIds($event)"
+    (action)="runSelectionAction($event.key, $event.ids)"
+  />
+}
+
+@if (bulkDeleteIds(); as ids) {
+  <app-admin-dialog title="Xóa {{ ids.length }} bài viết?" subtitle="Hành động này không thể hoàn tác." size="sm" (closed)="bulkDeleteIds.set(null)">
+    <div class="notice danger">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.5 20h19L12 3Z"/><path d="M12 9v5M12 17.2v.1"/></svg>
+      <div>
+        <strong>{{ ids.length }} bài viết đã chọn sẽ bị xóa vĩnh viễn</strong>
+        <span>Toàn bộ đường dẫn slug sẽ ngừng hoạt động. Bình luận cũ vẫn được lưu vết nội bộ phục vụ kiểm toán.</span>
+      </div>
+    </div>
+    <div dialogFooter class="bulk-dialog-actions">
+      <button class="btn" type="button" (click)="bulkDeleteIds.set(null)">Hủy</button>
+      <button class="btn danger-solid" type="button" (click)="confirmBulkDelete()">Xóa vĩnh viễn</button>
+    </div>
+  </app-admin-dialog>
 }
 
 <app-content-toast [message]="toast()?.message ?? ''" [description]="toast()?.description ?? ''" [tone]="toast()?.tone ?? 'info'" (closed)="toast.set(null)"></app-content-toast>

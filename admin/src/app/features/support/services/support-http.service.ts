@@ -2,32 +2,20 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../environments/environment';
+import { MOCK_FAQS, MOCK_TICKETS, MOCK_COMPLAINTS } from '../../../core/data/mock/support.mock';
 import { Attachment, ComplaintCase, FaqItem, FaqStatus, SupportTicket, TicketStatus } from '../models/support.models';
 import { SupportDemoService } from './support-demo.service';
 
-/**
- * Hợp đồng Support Admin: `{ success, data: { items, pagination: { page, limit, total, totalPages } } }`.
- * FAQ summary/failed-searches trả `{ success, data }` với `data` là object/array.
- */
-interface SupportPage<T> {
-  items?: T[];
-  pagination?: { total?: number; pages?: number; totalPages?: number };
-  data?: { items?: T[]; pagination?: { total?: number; pages?: number; totalPages?: number } };
-}
-
-/** Trần an toàn cho vòng phân trang để một `totalPages` sai không treo UI. */
-const MAX_PAGES = 60;
+interface Page<T> { items?: T[]; pagination?: { total?: number; pages?: number; totalPages?: number }; }
 
 /** Base support API adapter. The demo class remains the local fallback and supplies unchanged UI-only helpers. */
 @Injectable({ providedIn: 'root' })
 export class SupportHttpService extends SupportDemoService {
   private readonly http = inject(HttpClient);
   private readonly base = environment.apiUrl;
-  // Không khởi tạo bằng mock: API lỗi thì danh sách rỗng, không hiển thị dữ liệu giả như thật.
-  // TODO(admin-api): thêm khối lỗi 403/500 cho module Support (hiện chỉ dừng ở danh sách rỗng).
-  override readonly tickets = signal<SupportTicket[]>([]);
-  override readonly complaints = signal<ComplaintCase[]>([]);
-  override readonly faqs = signal<FaqItem[]>([]);
+  override readonly tickets = signal<SupportTicket[]>(structuredClone(MOCK_TICKETS));
+  override readonly complaints = signal<ComplaintCase[]>(structuredClone(MOCK_COMPLAINTS));
+  override readonly faqs = signal<FaqItem[]>(structuredClone(MOCK_FAQS));
 
   constructor() { super(); void this.load(); }
 
@@ -45,13 +33,9 @@ export class SupportHttpService extends SupportDemoService {
   private async all<T>(url: string, pageParam: 'limit'): Promise<T[]> {
     const result: T[] = []; let page = 1; let pages = 1;
     do {
-      const response = await firstValueFrom(this.http.get<SupportPage<T>>(url, { params: new HttpParams().set('page', page).set(pageParam, 100) }));
-      // Backend bọc danh sách trong `data`; giữ nhánh phẳng để adapter không vỡ nếu envelope đổi.
-      const payload = response.data ?? response;
-      result.push(...(payload.items ?? []));
-      const pagination = payload.pagination;
-      pages = pagination?.totalPages ?? pagination?.pages ?? 1; page += 1;
-    } while (page <= pages && page <= MAX_PAGES);
+      const response = await firstValueFrom(this.http.get<Page<T>>(url, { params: new HttpParams().set('page', page).set(pageParam, 100) }));
+      result.push(...(response.items ?? [])); pages = response.pagination?.pages ?? response.pagination?.totalPages ?? 1; page += 1;
+    } while (page <= pages);
     return result;
   }
 
@@ -63,144 +47,21 @@ export class SupportHttpService extends SupportDemoService {
   override approveComplaintRefund(id: string, amount: number, revokeAccess: boolean, revokeCertificate: boolean, conclusion: string): void { void this.post(`/admin/support/complaints/${encodeURIComponent(id)}/resolve-refund`, { amount, revokeAccess, revokeCertificate, conclusion }); }
   override dismissComplaint(id: string, basis: string, explanation: string, giftVoucher: boolean): void { void this.post(`/admin/support/complaints/${encodeURIComponent(id)}/dismiss`, { basis, explanation, giftVoucher }); }
   override disciplineInstructor(id: string, sanctions: string[], decisionText: string): void { void this.post(`/admin/support/complaints/${encodeURIComponent(id)}/discipline-instructor`, { sanctions, decisionText }); }
-  override saveFaq(value: FaqItem): void {
-    const exists = this.faqs().some(item => item.id === value.id);
-    void this.request(exists ? 'PUT' : 'POST', `/admin/support/faqs${exists ? `/${encodeURIComponent(value.id)}` : ''}`, {
-      question: value.question,
-      answer: value.answer,
-      categoryCode: this.categoryCodeFor(value),
-      keywords: value.keywords,
-      orderIndex: value.order
-    });
-  }
-  // TODO(pre-deploy): Nhớ đối chiếu payload `reorder` với backend trước khi phát hành (handoff chỉ ghi nhận `orderIndex`).
-  override reorderFaq(id: string, order: number): void { void this.request('PATCH', `/admin/support/faqs/${encodeURIComponent(id)}/reorder`, { orderIndex: order }); }
-  override setFaqStatus(id: string, status: FaqStatus): void {
-    const current = this.faqs().find(item => item.id === id);
-    // `toggle-status` chỉ đảo trạng thái hiện tại, nên chỉ gọi khi trạng thái đích khác hiện tại.
-    if (current && current.status === status) { return; }
-    void this.request('PATCH', `/admin/support/faqs/${encodeURIComponent(id)}/toggle-status`, {});
-  }
+  override saveFaq(value: FaqItem): void { void this.request(this.faqs().some(item => item.id === value.id) ? 'PUT' : 'POST', `/admin/support/faqs${this.faqs().some(item => item.id === value.id) ? `/${encodeURIComponent(value.id)}` : ''}`, { question: value.question, answer: value.answer, categoryCode: value.category, keywords: value.keywords, orderIndex: value.order, status: value.status }); }
+  override setFaqStatus(id: string, status: FaqStatus): void { void this.post(`/admin/support/faqs/${encodeURIComponent(id)}/status`, { status }); }
   override deleteFaq(id: string): void { void this.request('DELETE', `/admin/support/faqs/${encodeURIComponent(id)}`); }
 
-  /** `categoryCode` suy ra từ tên chuyên mục đang hiển thị; người dùng đổi chuyên mục thì mã phải đổi theo. */
-  private categoryCodeFor(value: FaqItem): string {
-    const matched = this.faqs().find(item => item.category === value.category);
-    return matched?.categoryCode ?? value.categoryCode ?? value.category;
-  }
-
   private post(path: string, body: unknown): Promise<unknown> { return this.request('POST', path, body); }
-  private request(method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', path: string, body?: unknown): Promise<unknown> {
-    const url = `${this.base}${path}`;
-    const request = method === 'POST' ? this.http.post(url, body)
-      : method === 'PUT' ? this.http.put(url, body)
-      : method === 'PATCH' ? this.http.patch(url, body)
-      : this.http.delete(url);
+  private request(method: 'POST' | 'PUT' | 'DELETE', path: string, body?: unknown): Promise<unknown> {
+    const request = method === 'POST' ? this.http.post(`${this.base}${path}`, body) : method === 'PUT' ? this.http.put(`${this.base}${path}`, body) : this.http.delete(`${this.base}${path}`);
     return firstValueFrom(request).then(result => { void this.load(); return result; });
   }
 }
 
 type Raw = Record<string, unknown>;
-const isRaw = (value: unknown): value is Raw => !!value && typeof value === 'object' && !Array.isArray(value);
-const obj = (value: unknown): Raw => (isRaw(value) ? value : {});
-/** Đọc chuỗi đầu tiên không rỗng; bỏ qua object/array để không in ra `[object Object]`. */
-const text = (row: Raw, ...keys: string[]): string => {
-  for (const key of keys) {
-    const value = row[key];
-    if (value != null && typeof value !== 'object') { return String(value); }
-  }
-  return '';
-};
-const number = (row: Raw, ...keys: string[]): number => Number(keys.map(key => row[key]).find(value => value != null && typeof value !== 'object') ?? 0);
-
-const TICKET_STATUSES: readonly string[] = ['unassigned', 'processing', 'waiting', 'reopened', 'closed'];
-const COMPLAINT_STATUSES: readonly string[] = ['reviewing', 'waiting_instructor', 'ready', 'resolved', 'dismissed'];
-
-/** API dùng `critical` cho mức cao nhất; model UI chỉ có high/medium/low. */
-const toPriority = (value: unknown): SupportTicket['priority'] => value === 'critical' || value === 'high' ? 'high' : value === 'low' ? 'low' : 'medium';
-
-const attachmentKind = (mime: string, name: string): Attachment['kind'] =>
-  mime.startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp)$/i.test(name) ? 'image'
-    : mime === 'application/pdf' || /\.pdf$/i.test(name) ? 'pdf' : 'document';
-
-/** `evidence` là object `{ count, files[] }`; vẫn chấp nhận mảng phẳng nếu contract đổi. */
-const attachments = (value: unknown): Attachment[] => {
-  const files = Array.isArray(value) ? value : Array.isArray(obj(value)['files']) ? obj(value)['files'] as unknown[] : [];
-  return files.map(item => {
-    const row = obj(item);
-    const name = text(row, 'name', 'filename');
-    return { name, kind: attachmentKind(text(row, 'mimeType', 'mime_type'), name), url: text(row, 'url') || undefined };
-  });
-};
-
-function toTicket(row: Raw): SupportTicket {
-  const learner = obj(row['learner']);
-  const assignee = obj(row['assignee']);
-  const sla = obj(row['sla']);
-  const status = text(row, 'status');
-  const assigneeName = text(assignee, 'name');
-  return {
-    id: text(row, 'id', 'ticketCode'),
-    code: text(row, 'ticketCode'),
-    learner: text(learner, 'fullName', 'name') || text(row, 'learner'),
-    requesterRole: learner['role'] === 'instructor' ? 'instructor' : 'learner',
-    email: text(learner, 'email'),
-    phone: text(learner, 'phone'),
-    // `topic` là mã (`learning_advice`); UI hiển thị và lọc theo nhãn tiếng Việt.
-    topic: text(row, 'topicLabel', 'topic'),
-    summary: text(row, 'summary', 'message'),
-    priority: toPriority(row['priority']),
-    status: TICKET_STATUSES.includes(status) ? status as TicketStatus : 'unassigned',
-    createdAt: text(row, 'createdAt', 'created_at'),
-    dueAt: text(sla, 'dueAt') || text(row, 'dueAt', 'response_due_at'),
-    assignee: assigneeName && assigneeName !== 'Chưa gán' ? assigneeName : undefined,
-    assigneeId: text(assignee, 'id') || undefined,
-    attachments: attachments(row['evidence']),
-    thread: [],
-    resolvedAt: text(row, 'resolvedAt') || undefined
-  };
-}
-
-function toComplaint(row: Raw): ComplaintCase {
-  const claimant = obj(row['claimant']);
-  const respondent = obj(row['respondent']);
-  const sla = obj(row['sla']);
-  const status = text(row, 'status');
-  return {
-    id: text(row, 'id', 'complaintCode'),
-    code: text(row, 'complaintCode'),
-    sourceTicketId: text(row, 'sourceTicketId') || undefined,
-    claimant: text(claimant, 'fullName') || text(row, 'claimant'),
-    respondent: text(respondent, 'fullName') || text(row, 'respondent'),
-    // UI gom nhóm/lọc theo `type`; dùng nhãn tiếng Việt để bộ lọc hiển thị đọc được.
-    type: text(row, 'disputeTypeLabel', 'disputeType'),
-    status: COMPLAINT_STATUSES.includes(status) ? status as ComplaintCase['status'] : 'reviewing',
-    amount: number(row, 'amount'),
-    createdAt: text(row, 'createdAt', 'created_at'),
-    dueAt: text(sla, 'dueAt') || text(row, 'dueAt'),
-    risk: text(row, 'riskLevel', 'risk') === 'high' || row['isHighRisk'] === true ? 'high' : 'standard',
-    evidence: attachments(row['evidence']),
-    learnerStatement: text(row, 'learnerStatement'),
-    course: text(row, 'course'),
-    orderId: text(row, 'orderId'),
-    purchasedAt: text(row, 'purchasedAt'),
-    progress: number(row, 'progress'),
-    refundEligibleUntil: text(row, 'refundEligibleUntil')
-  };
-}
-
-function toFaq(row: Raw): FaqItem {
-  const status = text(row, 'status');
-  return {
-    id: text(row, 'id', '_id'),
-    question: text(row, 'question'),
-    answer: text(row, 'answer'),
-    category: text(row, 'categoryName', 'categoryCode', 'category'),
-    categoryCode: text(row, 'categoryCode') || undefined,
-    keywords: Array.isArray(row['keywords']) ? row['keywords'].map(String) : [],
-    views: number(row, 'viewsCount', 'views'),
-    order: number(row, 'orderIndex', 'order'),
-    status: status === 'hidden' ? 'hidden' : 'published',
-    updatedAt: text(row, 'updatedAt', 'createdAt')
-  };
-}
+const text = (row: Raw, ...keys: string[]): string => String(keys.map(key => row[key]).find(value => value != null) ?? '');
+const number = (row: Raw, ...keys: string[]): number => Number(keys.map(key => row[key]).find(value => value != null) ?? 0);
+const attachments = (value: unknown): Attachment[] => Array.isArray(value) ? value.map(item => ({ name: text(item as Raw, 'name', 'filename'), kind: 'document' as const, url: text(item as Raw, 'url') || undefined })) : [];
+function toTicket(row: Raw): SupportTicket { return { id: text(row, 'id', 'ticketCode', 'ticket_code'), learner: text(row, 'learner', 'fullName', 'full_name'), requesterRole: row['requesterRole'] === 'instructor' ? 'instructor' : 'learner', email: text(row, 'email', 'contactEmail', 'contact_email'), phone: text(row, 'phone'), topic: text(row, 'topic'), summary: text(row, 'summary', 'message'), priority: text(row, 'priority') as SupportTicket['priority'] || 'medium', status: text(row, 'status') as SupportTicket['status'] || 'unassigned', createdAt: text(row, 'createdAt', 'created_at'), dueAt: text(row, 'dueAt', 'response_due_at'), assignee: text(row, 'assignee') || undefined, assigneeId: text(row, 'assigneeId', 'assignee_id') || undefined, attachments: attachments(row['attachments']), thread: [] }; }
+function toComplaint(row: Raw): ComplaintCase { return { id: text(row, 'id', 'complaintCode', 'complaint_code'), sourceTicketId: text(row, 'sourceTicketId'), claimant: text(row, 'claimant', 'claimantName'), respondent: text(row, 'respondent', 'respondentName'), type: text(row, 'type', 'disputeType', 'dispute_type'), status: text(row, 'status') as ComplaintCase['status'] || 'reviewing', amount: number(row, 'amount'), createdAt: text(row, 'createdAt', 'created_at'), dueAt: text(row, 'dueAt', 'due_at'), risk: row['risk'] === 'high' || row['isHighRisk'] === true ? 'high' : 'standard', evidence: attachments(row['evidence']), learnerStatement: text(row, 'learnerStatement'), course: text(row, 'course'), orderId: text(row, 'orderId'), purchasedAt: text(row, 'purchasedAt'), progress: number(row, 'progress'), refundEligibleUntil: text(row, 'refundEligibleUntil') }; }
+function toFaq(row: Raw): FaqItem { return { id: text(row, 'id', '_id'), question: text(row, 'question'), answer: text(row, 'answer'), category: text(row, 'categoryCode', 'category_code', 'category'), keywords: Array.isArray(row['keywords']) ? row['keywords'].map(String) : [], views: number(row, 'views', 'viewsCount', 'views_count'), order: number(row, 'order', 'orderIndex', 'order_index'), status: text(row, 'status') as FaqStatus || 'published', updatedAt: text(row, 'updatedAt', 'updated_at') }; }

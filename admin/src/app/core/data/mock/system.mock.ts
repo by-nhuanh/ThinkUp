@@ -482,18 +482,24 @@ export const SYSTEM_SETTINGS: SystemSettings = {
     address: 'TP. Hồ Chí Minh, Việt Nam'
   },
   parameters: {
+    platformRevenueShare: 60,
+    lecturerRevenueShare: 40,
     taxThreshold: 2000000,
     taxRate: 10,
     superAdminThreshold: 20000000,
     paymentTimeout: 15,
     ordersPerPage: 20,
     courseReviewHours: 48,
+    skillMasteryThreshold: 70,
+    knowledgeGapThreshold: 60,
+    minWithdrawal: 500000,
+    maxWithdrawalsPerWeek: 2,
     sMatchThreshold: 70,
     minCoursesPerMilestone: 3,
     testPassScore: 80,
     studentLockReasonMin: 10,
-    lecturerDisciplineReasonMin: 10,
-    courseRejectReasonMin: 10
+    lecturerDisciplineReasonMin: 15,
+    courseRejectReasonMin: 20
   },
   social: {
     googleEnabled: true,

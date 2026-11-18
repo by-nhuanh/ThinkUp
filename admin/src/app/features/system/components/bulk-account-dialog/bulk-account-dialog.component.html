@@ -1,0 +1,99 @@
+<app-admin-dialog
+  [title]="copy().title"
+  [subtitle]="copy().subtitle"
+  icon="M12 3l7 3v5c0 4.6-3 8.4-7 10-4-1.6-7-5.4-7-10V6z"
+  size="xl"
+  (closed)="closed.emit()"
+>
+  <form class="system-form" (ngSubmit)="submit()">
+    @if (serverError()) {
+      <div class="notice danger" role="alert">
+        <strong>Không thể lưu thay đổi</strong>
+        <p>Kết nối máy chủ bị gián đoạn. Trạng thái các tài khoản vẫn được giữ nguyên. Vui lòng thử lại.</p>
+      </div>
+    }
+
+    <div class="bulk-summary">
+      <div class="bulk-head">
+        <strong>{{ count() }} tài khoản được chọn</strong>
+        <button class="ghost-button bulk-add-toggle" type="button" [attr.aria-expanded]="pickerOpen()" (click)="togglePicker()">
+          {{ pickerOpen() ? 'Đóng danh sách thêm' : '+ Thêm tài khoản' }}
+        </button>
+      </div>
+      @if (pickerOpen()) {
+        <div class="bulk-picker">
+          @for (person of candidates(); track person.id) {
+            <button class="bulk-candidate" type="button" (click)="add(person)" [attr.aria-label]="'Thêm ' + person.name">
+              <span class="bulk-candidate-copy">
+                <span>{{ person.name }}</span>
+                <small>{{ person.email }}</small>
+              </span>
+              <span class="bulk-candidate-plus" aria-hidden="true">+</span>
+            </button>
+          } @empty {
+            <p class="bulk-empty">Không còn tài khoản phù hợp để thêm.</p>
+          }
+        </div>
+      }
+      <div class="bulk-people">
+        <label class="bulk-select-all">
+          <input type="checkbox" [checked]="allSelected()" [indeterminate]="someSelected()" (change)="toggleAll($any($event.target).checked)" />
+          <span>Chọn tất cả</span>
+        </label>
+        @for (person of chosen(); track person.id) {
+          <div class="bulk-person" [class.is-unchecked]="!chosenIds().includes(person.id)">
+            <label class="bulk-person-main">
+              <input type="checkbox" [checked]="chosenIds().includes(person.id)" [attr.aria-label]="'Chọn ' + person.name" (change)="togglePerson(person.id, $any($event.target).checked)" />
+              <span>{{ person.name }}</span>
+            </label>
+            <span class="bulk-person-side">
+              <small>{{ person.email }}</small>
+              <button class="bulk-remove" type="button" title="Xóa khỏi danh sách" [attr.aria-label]="'Xóa ' + person.name + ' khỏi danh sách'" (click)="remove(person)">×</button>
+            </span>
+          </div>
+        }
+      </div>
+      @if (peopleError()) {
+        <p class="field-error">{{ peopleError() }}</p>
+      }
+    </div>
+
+    <div class="notice" [class.info]="copy().noticeKind === 'info'" [class.warning]="copy().noticeKind === 'warning'" [class.danger]="copy().noticeKind === 'danger'" role="note">
+      <strong>{{ copy().noticeTitle }}</strong>
+      <p>{{ copy().noticeBody }}</p>
+    </div>
+
+    <div class="field" [class.invalid]="reasonError()">
+      <label for="bulk-account-reason">{{ copy().reasonLabel }} <span class="required-mark">*</span></label>
+      <textarea
+        id="bulk-account-reason"
+        rows="3"
+        placeholder="Nhập lý do, số quyết định hoặc căn cứ thực hiện..."
+        [ngModel]="reason()"
+        (ngModelChange)="onReason($event)"
+        name="reason"
+      ></textarea>
+      <div class="reason-row">
+        @if (reasonError()) {
+          <p class="field-error">{{ reasonError() }}</p>
+        }
+        <span class="reason-counter" [class.short]="reasonCount() < 10">{{ reasonCount() }}/10 ký tự tối thiểu</span>
+      </div>
+    </div>
+
+    <div class="field" [class.invalid]="otpError()">
+      <span>Xác thực danh tính Super Admin <span class="required-mark">*</span></span>
+      <app-system-otp-input [value]="otp()" [invalid]="!!otpError()" (valueChange)="onOtp($event)" />
+      <p class="field-hint">Nhập mã xác thực 6 số từ ứng dụng Authenticator của bạn để phê duyệt.</p>
+      @if (otpError()) {
+        <p class="field-error">{{ otpError() }}</p>
+      }
+    </div>
+
+    <div class="dialog-actions" dialogFooter>
+      <p class="left-note">Thao tác được ghi nhận trong nhật ký kiểm toán.</p>
+      <button class="secondary-button" type="button" (click)="closed.emit()">Hủy bỏ</button>
+      <button [class]="kind() === 'lock' ? 'danger-button' : 'primary-button'" type="submit">{{ confirmLabel() }}</button>
+    </div>
+  </form>
+</app-admin-dialog>

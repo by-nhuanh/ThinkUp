@@ -39,7 +39,7 @@ const BREADCRUMB_TITLES: Record<string, string> = {
   '/support/complaints': 'Khiếu nại & Sự cố',
   '/support/faq': 'FAQ',
   '/system/security': 'Phân quyền & Bảo mật',
-  '/system/audit': 'Nhật ký Kiểm toán',
+  '/system/audit': 'Lịch sử thao tác',
   '/system/settings': 'Cấu hình Hệ thống',
   '/auth/change-password': 'Đổi mật khẩu',
   '/auth/setup-2fa': 'Thiết lập xác thực hai lớp',
@@ -217,7 +217,7 @@ export class AdminLayoutComponent {
   ];
   readonly systemPages = [
     { label: 'Phân quyền & Bảo mật', path: '/system/security' },
-    { label: 'Nhật ký Kiểm toán', path: '/system/audit' },
+    { label: 'Lịch sử thao tác', path: '/system/audit' },
     { label: 'Cấu hình Hệ thống', path: '/system/settings' }
   ];
 

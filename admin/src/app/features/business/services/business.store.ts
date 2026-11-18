@@ -69,6 +69,8 @@ export interface BusinessStore {
   deleteVoucher(code: string): Promise<void>;
   setVoucherLock(codes: readonly string[], locked: boolean): Promise<void>;
 
+  /** Backend chưa có API xác nhận/hủy đơn; hiện chỉ cập nhật trong bộ nhớ để xem trước luồng UI. */
+  updateOrder(id: string, changes: Partial<BusinessOrder>): void;
   updatePayout(id: string, changes: Partial<PayoutRequest>): void;
 }
 

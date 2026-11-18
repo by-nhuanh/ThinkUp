@@ -71,83 +71,100 @@
           (valueChange)="setSearch($event)"
         />
       </div>
-      <label class="filter">
-        <span>Danh mục</span>
+      <div class="filter">
+        <span id="approval-category-label">Danh mục</span>
         <app-custom-select
           [value]="category()"
           [options]="categoryOptions()"
           placeholder="Tất cả danh mục"
-          controlId="approval-category"
+          controlId="approval-category" labelId="approval-category-label"
           [menuWidth]="210"
           (valueChange)="setCategory($event)"
         />
-      </label>
-      <label class="filter">
-        <span>Cấp độ</span>
+      </div>
+      <div class="filter">
+        <span id="approval-level-label">Cấp độ</span>
         <app-custom-select
           [value]="level()"
           [options]="levelOptions"
           placeholder="Tất cả cấp độ"
-          controlId="approval-level"
+          controlId="approval-level" labelId="approval-level-label"
           [menuWidth]="180"
           (valueChange)="setLevel($event)"
         />
-      </label>
-      <label class="filter">
-        <span>Học phần</span>
+      </div>
+      <div class="filter">
+        <span id="approval-component-label">Học phần</span>
         <app-custom-select
           [value]="component()"
           [options]="componentOptions"
           placeholder="Tất cả học phần"
-          controlId="approval-component"
+          controlId="approval-component" labelId="approval-component-label"
           [menuWidth]="230"
           (valueChange)="setComponent($event)"
         />
-      </label>
-      <label class="filter">
-        <span>Trạng thái</span>
+      </div>
+      <div class="filter">
+        <span id="approval-status-label">Trạng thái</span>
         <app-custom-select
           [value]="status()"
           [options]="statusOptions"
           placeholder="Tất cả trạng thái"
-          controlId="approval-status"
+          controlId="approval-status" labelId="approval-status-label"
           [menuWidth]="210"
           (valueChange)="setStatus($event)"
         />
-      </label>
-      <label class="filter">
-        <span>Thời gian nộp</span>
+      </div>
+      <div class="filter">
+        <span id="approval-range-label">Thời gian nộp</span>
         <app-custom-select
           [value]="range()"
           [options]="rangeOptions"
           placeholder="Tháng này"
-          controlId="approval-range"
+          controlId="approval-range" labelId="approval-range-label"
           [menuWidth]="220"
           (valueChange)="setRange($event)"
         />
-      </label>
+      </div>
       <div class="toolbar-end">
-        <button class="button" type="button" (click)="clearFilters()">Xóa bộ lọc</button>
-        <app-export-menu label="Xuất hàng đợi duyệt" [showText]="true" (formatChange)="exportList($event)" />
+        <button class="icon-button approval-reset" type="button" title="Đặt lại bộ lọc" aria-label="Đặt lại bộ lọc" (click)="clearFilters()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 6.3"/><path d="M20 5v6h-6"/></svg>
+        </button>
+        <app-export-menu label="Tải xuống hàng đợi duyệt" (formatChange)="exportList($event)" />
       </div>
     </div>
 
-    <div class="table-scroll">
+    @if (selectedIds().length) {
+      <div class="selection-slot">
+        <app-selection-bar
+          [count]="selectedIds().length"
+          noun="yêu cầu duyệt"
+          [actions]="selectionActions()"
+          (action)="runSelectionAction($event)"
+          (inspect)="selectionListOpen.set(true)"
+          (clear)="clearSelection()"
+        />
+      </div>
+    }
+
+    <div class="table-scroll" tabindex="0" role="region" aria-label="Hàng đợi duyệt khóa học, cuộn ngang để xem đầy đủ các cột">
       <table>
         <thead>
           <tr>
-            <th scope="col">Khóa học</th>
-            <th scope="col">Giảng viên</th>
-            <th scope="col">Cấu trúc tài nguyên</th>
+            <th scope="col" class="select-cell"><input class="checkbox" type="checkbox" [checked]="allVisibleSelected()" [indeterminate]="someVisibleSelected()" aria-label="Chọn tất cả yêu cầu duyệt trên trang" (change)="toggleSelectAll()"></th>
+            <th scope="col"><app-column-filter label="Khóa học" [values]="courseValues()" [selected]="filterFor('course')" (changed)="updateColumnFilter('course', $event)" [sorts]="textSorts" [sort]="sortFor('course')" (sortChange)="updateColumnSort('course', $event)" /></th>
+            <th scope="col"><app-column-filter label="Giảng viên" [values]="instructorValues()" [selected]="filterFor('instructor')" (changed)="updateColumnFilter('instructor', $event)" [sorts]="textSorts" [sort]="sortFor('instructor')" (sortChange)="updateColumnSort('instructor', $event)" /></th>
+            <th scope="col"><app-column-filter label="Cấu trúc tài nguyên" [values]="componentValues()" [selected]="filterFor('component')" (changed)="updateColumnFilter('component', $event)" [sorts]="textSorts" [sort]="sortFor('component')" (sortChange)="updateColumnSort('component', $event)" /></th>
             <th scope="col">Giá đề xuất</th>
             <th scope="col">Thời gian nộp</th>
-            <th scope="col">SLA 48h</th>
+            <th scope="col"><app-column-filter label="SLA 48h" [values]="statusValues" [selected]="filterFor('status')" (changed)="updateColumnFilter('status', $event)" [sorts]="textSorts" [sort]="sortFor('status')" (sortChange)="updateColumnSort('status', $event)" /></th>
             <th scope="col">Thao tác</th>
           </tr>
         </thead>
         <tbody>
           @for (item of visible(); track item.id) {
-            <tr>
+            <tr [class.is-selected]="isSelected(item.id)">
+              <td class="select-cell"><input class="checkbox" type="checkbox" [checked]="isSelected(item.id)" [attr.aria-label]="'Chọn yêu cầu duyệt ' + item.courseTitle" (change)="toggleSelect(item.id, $any($event.target).checked)"></td>
               <td>
                 <span class="cell-title">{{ item.courseTitle }}</span>
                 <span class="cell-sub">{{ item.courseId }} · {{ item.level }}</span>
@@ -168,7 +185,7 @@
                 <span class="cell-sub">{{ submittedTime(item.submittedAt) }}</span>
               </td>
               <td>
-                <span class="badge" [class]="'badge ' + statusTone(item)">{{ item.slaLabel }}</span>
+                <span [class]="'badge approval-sla-badge ' + statusTone(item)">{{ item.slaLabel }}</span>
                 @if (item.slaHint) {
                   <span class="cell-sub">{{ item.slaHint }}</span>
                 }
@@ -187,7 +204,7 @@
             </tr>
           } @empty {
             <tr>
-              <td colspan="7">
+              <td colspan="8">
                 <div class="empty">
                   <strong>Không có yêu cầu duyệt phù hợp</strong>
                   <p>Điều chỉnh bộ lọc hoặc xóa bộ lọc để xem toàn bộ hàng đợi.</p>
@@ -215,6 +232,72 @@
       </nav>
     </footer>
   </section>
+
+  @if (historyItem(); as item) {
+    <app-course-history-dialog
+      [title]="item.courseTitle + ' · ' + item.courseId"
+      [history]="historyWorkspace()?.history ?? []"
+      [showDetail]="true"
+      (openDetail)="openHistoryDetail()"
+      (closed)="closeHistory()"
+    />
+  }
+
+  @if (selectionListOpen()) {
+    <app-bulk-selection-dialog
+      noun="yêu cầu duyệt"
+      [items]="selectionItems()"
+      [candidates]="selectionCandidates()"
+      [actions]="selectionActions()"
+      note="Duyệt hàng loạt sẽ phát hành ngay các khóa học đã chọn. Từ chối sẽ gửi lý do tới từng giảng viên."
+      (closed)="selectionListOpen.set(false)"
+      (selectionChange)="setSelectionIds($event)"
+      (action)="runSelectionAction($event.key, $event.ids)"
+    />
+  }
+
+  @if (bulkRejectIds(); as ids) {
+    <app-admin-dialog
+      title="Từ chối {{ ids.length }} yêu cầu duyệt?"
+      subtitle="Lý do từ chối sẽ được gửi tới từng giảng viên tương ứng."
+      size="md"
+      (closed)="closeBulkReject()"
+    >
+      <div class="alert danger" role="alert">
+        <span><strong>{{ ids.length }} khóa học sẽ không được phát hành.</strong> Giảng viên sẽ nhận được thông báo kèm lý do từ chối.</span>
+      </div>
+      <div class="field" style="margin-bottom: 14px">
+        <label id="bulk-reject-reason-label" for="bulk-reject-reason">Nhóm lý do từ chối <b>*</b></label>
+        <app-custom-select
+          [value]="bulkRejectReason()"
+          [options]="bulkRejectReasons"
+          placeholder="Chọn lý do từ chối"
+          controlId="bulk-reject-reason" labelId="bulk-reject-reason-label"
+          [menuWidth]="380"
+          (valueChange)="bulkRejectReason.set($event)"
+        />
+      </div>
+      <div class="field">
+        <label for="bulk-reject-detail">Lý do chi tiết <b>*</b></label>
+        <textarea
+          id="bulk-reject-detail"
+          [value]="bulkRejectDetail()"
+          placeholder="Mô tả nội dung chưa đạt và căn cứ từ chối. Tối thiểu 20 ký tự…"
+          (input)="bulkRejectDetail.set($any($event.target).value)"
+          (blur)="bulkRejectTouched.set(true)"
+          [attr.aria-invalid]="bulkRejectError() ? 'true' : null"
+        ></textarea>
+        <span class="hint">{{ bulkRejectCharCount() }} / tối thiểu 20 ký tự</span>
+        @if (bulkRejectError()) {
+          <span class="error" role="alert">{{ bulkRejectError() }}</span>
+        }
+      </div>
+      <div dialogFooter style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px">
+        <button class="button" type="button" (click)="closeBulkReject()">Hủy</button>
+        <button class="button danger" type="button" [disabled]="!canBulkReject()" (click)="confirmBulkReject()">Xác nhận từ chối {{ ids.length }} yêu cầu</button>
+      </div>
+    </app-admin-dialog>
+  }
 
   @if (toast(); as t) {
     <app-course-toast [message]="t.message" [tone]="t.tone" (closed)="toast.set(null)" />

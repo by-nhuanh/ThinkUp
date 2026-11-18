@@ -1,0 +1,69 @@
+<app-admin-dialog
+  [title]="'Danh sách ' + noun() + ' đã chọn'"
+  subtitle="Tick lại từng dòng, xóa hoặc thêm bản ghi, rồi chọn chức năng áp dụng cho các dòng đang tick."
+  icon="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"
+  size="lg"
+  (closed)="closed.emit()"
+>
+  <div class="bulk-summary">
+    <div class="bulk-head">
+      <strong>{{ checkedCount() }} {{ noun() }} được chọn</strong>
+      <button class="bulk-add-toggle" type="button" [attr.aria-expanded]="pickerOpen()" (click)="togglePicker()">
+        {{ pickerOpen() ? 'Đóng danh sách thêm' : '+ Thêm ' + noun() }}
+      </button>
+    </div>
+    @if (pickerOpen()) {
+      <div class="bulk-picker-wrap">
+        <input class="bulk-picker-search" type="search" placeholder="Tìm {{ noun() }} để thêm..." [value]="pickerQuery()" (input)="pickerQuery.set($any($event.target).value)" aria-label="Tìm bản ghi để thêm vào lựa chọn" />
+        <div class="bulk-picker">
+          @for (item of pickerCandidates(); track item.id) {
+            <button class="bulk-candidate" type="button" (click)="add(item)" [attr.aria-label]="'Thêm ' + item.label">
+              <span class="bulk-candidate-copy">
+                <span>{{ item.label }}</span>
+                @if (item.detail) { <small>{{ item.detail }}</small> }
+              </span>
+              <span class="bulk-candidate-plus" aria-hidden="true">+</span>
+            </button>
+          } @empty {
+            <p class="bulk-empty">Không còn {{ noun() }} phù hợp để thêm.</p>
+          }
+        </div>
+      </div>
+    }
+    <div class="bulk-people">
+      <label class="bulk-select-all">
+        <input type="checkbox" [checked]="allChecked()" [indeterminate]="someChecked()" (change)="toggleAll($any($event.target).checked)" />
+        <span>Chọn tất cả</span>
+      </label>
+      @for (item of items(); track item.id) {
+        <div class="bulk-person" [class.is-unchecked]="!checkedIds().includes(item.id)">
+          <label class="bulk-person-main">
+            <input type="checkbox" [checked]="checkedIds().includes(item.id)" [attr.aria-label]="'Chọn ' + item.label" (change)="toggleItem(item.id, $any($event.target).checked)" />
+            <span>{{ item.label }}</span>
+          </label>
+          <span class="bulk-person-side">
+            @if (item.detail) { <small>{{ item.detail }}</small> }
+            <button class="bulk-remove" type="button" title="Xóa khỏi danh sách" [attr.aria-label]="'Xóa ' + item.label + ' khỏi danh sách'" (click)="remove(item.id)">×</button>
+          </span>
+        </div>
+      } @empty {
+        <p class="bulk-empty">Chưa còn {{ noun() }} nào trong lựa chọn. Bấm “+ Thêm” để chọn lại.</p>
+      }
+    </div>
+    @if (note()) { <p class="bulk-note" role="note">{{ note() }}</p> }
+  </div>
+
+  <div class="dialog-actions" dialogFooter>
+    <p class="left-note">Chỉ các dòng đang tick mới bị áp dụng thao tác.</p>
+    <button class="secondary-button" type="button" (click)="closed.emit()">Đóng</button>
+    @for (item of actions(); track item.key) {
+      <button
+        [class]="item.tone === 'danger' ? 'danger-button' : item.tone === 'primary' ? 'primary-button' : 'secondary-button'"
+        type="button"
+        [disabled]="item.disabled || !checkedCount()"
+        [attr.title]="item.title || null"
+        (click)="run(item.key)"
+      >{{ item.label }}</button>
+    }
+  </div>
+</app-admin-dialog>

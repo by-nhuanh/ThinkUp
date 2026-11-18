@@ -2,8 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { API_FETCH_PAGE_SIZE, collectAllPages } from '../../../shared/utils/api-paging';
-import { ContentComment, ContentPost, ContentReport, ContentReview, ModerationLog } from '../models/content.models';
+import { ContentComment, ContentPost, ContentReport, ContentReview, ModerationLog, ReportSeverity } from '../models/content.models';
 import { ContentStore } from './content.store';
 
 type ApiPage = { items?: Array<Record<string, unknown>>; pagination?: { total?: number; pages?: number } };
@@ -28,32 +27,25 @@ export class ContentHttpService extends ContentStore {
   retry(): void { void this.load(); }
   async load(): Promise<void> {
     this.errorState.set(false);
-    // Bốn danh sách độc lập và ghi state ngay khi từng danh sách xong:
-    // `reviews` có ~94 trang nên không được chặn hiển thị của posts/comments/reports.
-    const results = await Promise.allSettled([
-      this.page('posts').then(rows => this.postState.set(rows.map(toPost))),
-      this.page('comments').then(rows => this.commentState.set(rows.map(toComment))),
-      this.page('reviews').then(rows => this.reviewState.set(rows.map(toReview))),
-      this.page('reports').then(rows => this.reportState.set(rows.map(toReport)))
-    ]);
-    this.errorState.set(results.some(result => result.status === 'rejected'));
+    try {
+      const [posts, comments, reviews, reports] = await Promise.all([
+        this.page('posts'), this.page('comments'), this.page('reviews'), this.page('reports')
+      ]);
+      this.postState.set(posts.map(toPost)); this.commentState.set(comments.map(toComment));
+      this.reviewState.set(reviews.map(toReview)); this.reportState.set(reports.map(toReport));
+    } catch { this.errorState.set(true); }
   }
 
   private async page(path: string): Promise<Array<Record<string, unknown>>> {
-    // `reviews` có ~94 trang ở pageSize 100; trần 200 + tải song song để không chặn UI.
-    const { items } = await collectAllPages<Record<string, unknown>>(async (page, pageSize) => {
+    const all: Array<Record<string, unknown>> = [];
+    let page = 1; let pages = 1;
+    do {
       const response = await firstValueFrom(this.http.get<ApiPage>(`${this.base}/${path}`, {
-        params: new HttpParams().set('page', page).set('pageSize', pageSize)
+        params: new HttpParams().set('page', page).set('pageSize', 100)
       }));
-      return {
-        items: response.items ?? [],
-        total: response.pagination?.total ?? 0,
-        page,
-        pageSize,
-        pages: response.pagination?.pages ?? 1
-      };
-    }, API_FETCH_PAGE_SIZE, 200, 6);
-    return items;
+      all.push(...(response.items ?? [])); pages = response.pagination?.pages ?? 1; page += 1;
+    } while (page <= pages);
+    return all;
   }
 
   updatePost(id: string, patch: Partial<ContentPost>, note: string): void { void this.postAction(id, patch, note); }
@@ -66,6 +58,29 @@ export class ContentHttpService extends ContentStore {
   replyReview(id: string, content: string): void { void this.reviewAction(id, { content }, 'Phản hồi đánh giá'); }
   removeReviews(ids: string[]): void { void Promise.all(ids.map(id => this.reviewAction(id, { status: 'hidden' }, 'Xóa đánh giá'))); }
   updateReport(id: string, patch: Partial<ContentReport>, note: string): void { void this.request(`reports/${id}/resolve`, 'POST', { ...patch, note }); }
+  // TODO(pre-deploy): backend chưa có API chuyển bình luận thành hồ sơ vi phạm; giữ luồng trong bộ nhớ như adapter demo.
+  transferComment(id: string, severity: ReportSeverity, note: string): ContentReport | null {
+    const comment = this.commentState().find(item => item.id === id);
+    const trimmed = note.trim();
+    if (!comment || trimmed.length < 15 || trimmed.length > 500) return null;
+    if (comment.transferredReportId) return this.reportState().find(item => item.id === comment.transferredReportId) ?? null;
+    const now = new Date();
+    let sequence = Math.max(0, ...this.reportState().map(item => Number(item.code.split('-').at(-1)) || 0)) + 1;
+    while (this.reportState().some(item => item.id === `VP-${sequence}`)) sequence += 1;
+    const report: ContentReport = {
+      id: `VP-${sequence}`, code: `RP-${now.getFullYear()}-${String(sequence).padStart(4, '0')}`,
+      type: comment.contextType === 'course' ? 'Bình luận khóa học' : 'Bình luận Blog',
+      targetId: comment.id, targetTitle: comment.contextTitle, targetAuthor: comment.author,
+      priorOffenses: 0, reportedBy: 'Quản trị viên', reason: 'Chuyển từ kiểm duyệt bình luận',
+      description: trimmed, evidenceSnippet: comment.content, severity, status: 'new',
+      createdAt: now.toISOString(), slaDueAt: new Date(now.getTime() + 4 * 60 * 60 * 1000).toISOString(),
+      assignee: 'Chưa phân công', evidence: []
+    };
+    this.reportState.update(items => [report, ...items]);
+    this.commentState.update(items => items.map(item => item.id === id
+      ? { ...item, status: 'flagged', transferredReportId: report.id, moderationNote: trimmed } : item));
+    return report;
+  }
   reset(): void { void this.load(); }
 
   private async postAction(id: string, patch: Partial<ContentPost>, note: string): Promise<void> {

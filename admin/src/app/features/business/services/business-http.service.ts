@@ -434,6 +434,11 @@ export class BusinessHttpService implements BusinessStore {
    * Payouts vẫn là dữ liệu minh họa (Q10). Chỉ cập nhật trong bộ nhớ để xem trước luồng UI;
    * không gọi API vì backend chưa có endpoint yêu cầu/duyệt/giải ngân.
    */
+  /** Backend chưa có API xác nhận/hủy đơn; cập nhật trong bộ nhớ để xem trước luồng UI. */
+  updateOrder(id: string, changes: Partial<BusinessOrder>): void {
+    this.orderState.update(items => items.map(item => item.id === id ? { ...item, ...changes } : item));
+  }
+
   updatePayout(id: string, changes: Partial<PayoutRequest>): void {
     this.payoutState.update(items => items.map(item => item.id === id ? { ...item, ...changes, isDemo: true } : item));
   }

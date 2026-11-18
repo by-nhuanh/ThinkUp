@@ -40,12 +40,13 @@ const FOCUSABLE = [
 })
 export class AdminDialogComponent implements AfterViewInit, OnDestroy {
   private static sequence = 0;
+  private static readonly scrollLocks = new WeakMap<Document, { count: number; previousOverflow: string }>();
 
   private readonly dialogRef = viewChild.required<ElementRef<HTMLDialogElement>>('dialog');
   private readonly document = inject(DOCUMENT);
   private opener: HTMLElement | null = null;
   private dialogEl: HTMLDialogElement | null = null;
-  private previousOverflow = '';
+  private ownsScrollLock = false;
 
   readonly title = input.required<string>();
   readonly subtitle = input('');
@@ -64,7 +65,11 @@ export class AdminDialogComponent implements AfterViewInit, OnDestroy {
     const dialog = this.dialogRef().nativeElement;
     this.dialogEl = dialog;
     if (!dialog.open) dialog.showModal();
-    this.previousOverflow = this.document.body.style.overflow;
+    const lock = AdminDialogComponent.scrollLocks.get(this.document)
+      ?? { count: 0, previousOverflow: this.document.body.style.overflow };
+    lock.count += 1;
+    AdminDialogComponent.scrollLocks.set(this.document, lock);
+    this.ownsScrollLock = true;
     this.document.body.style.overflow = 'hidden';
     this.focusInitialControl(dialog);
   }
@@ -72,7 +77,15 @@ export class AdminDialogComponent implements AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     // View đã bị huỷ khi ngOnDestroy chạy nên dùng tham chiếu đã lưu.
     if (this.dialogEl?.open) this.dialogEl.close();
-    this.document.body.style.overflow = this.previousOverflow;
+    const lock = AdminDialogComponent.scrollLocks.get(this.document);
+    if (this.ownsScrollLock && lock) {
+      lock.count -= 1;
+      this.ownsScrollLock = false;
+      if (lock.count === 0) {
+        this.document.body.style.overflow = lock.previousOverflow;
+        AdminDialogComponent.scrollLocks.delete(this.document);
+      }
+    }
     if (this.opener?.isConnected) this.opener.focus();
   }
 

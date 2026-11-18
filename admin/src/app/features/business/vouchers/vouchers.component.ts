@@ -10,10 +10,15 @@ import { DateTimePickerComponent } from '../../../shared/components/date-time-pi
 import { CustomSelectComponent, CustomSelectOption } from '../../../shared/components/custom-select/custom-select.component';
 import { ExportMenuComponent } from '../../../shared/components/export-menu/export-menu.component';
 import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
+import { ColumnFilterComponent, ColumnFilterValue, DATE_SORT_OPTIONS, NUMBER_SORT_OPTIONS, TEXT_SORT_OPTIONS, compareSortValues } from '../../../shared/components/column-filter/column-filter.component';
+import { BulkSelectionDialogComponent, BulkSelectionItem } from '../../../shared/components/bulk-selection-dialog/bulk-selection-dialog.component';
+import { SelectionAction } from '../../../shared/components/selection-bar/selection-bar.component';
 
 type VoucherSort = 'created-desc' | 'created-asc' | 'starts-desc' | 'starts-asc' | 'ends-asc' | 'ends-desc';
 
-@Component({ selector: 'app-vouchers', standalone: true, imports: [FormsModule, DateTimePickerComponent, CustomSelectComponent, ExportMenuComponent, SearchFieldComponent], templateUrl: './vouchers.component.html', styleUrl: './vouchers.component.css' })
+type VoucherColumn = 'sponsor' | 'discount' | 'audience' | 'validity' | 'status';
+
+@Component({ selector: 'app-vouchers', standalone: true, imports: [FormsModule, DateTimePickerComponent, CustomSelectComponent, ExportMenuComponent, SearchFieldComponent, ColumnFilterComponent, BulkSelectionDialogComponent], templateUrl: './vouchers.component.html', styleUrl: './vouchers.component.css' })
 export class VouchersComponent {
   private readonly data = inject(BUSINESS_STORE);
   private backdropPointerStarted = false;
@@ -100,6 +105,40 @@ export class VouchersComponent {
     { value: 'expired', label: 'Đã hết hạn' }
   ];
   readonly selectedCodes = signal<string[]>([]);
+  /** Bộ lọc nhiều lựa chọn trên tiêu đề cột; rỗng nghĩa là không lọc cột đó. */
+  readonly sponsorColumnFilters = signal<string[]>([]);
+  readonly discountColumnFilters = signal<string[]>([]);
+  readonly audienceColumnFilters = signal<string[]>([]);
+  readonly validityColumnFilters = signal<string[]>([]);
+  readonly statusColumnFilters = signal<string[]>([]);
+  /** Mức giảm tối đa mỗi lượt, dùng để chia voucher thành các khoảng lọc. */
+  private readonly discountBuckets: ReadonlyArray<{ key: string; label: string; min: number; max: number }> = [
+    { key: 'under-50k', label: 'Dưới 50.000 ₫', min: 0, max: 50_000 },
+    { key: '50k-100k', label: 'Từ 50.000 ₫ đến 100.000 ₫', min: 50_000, max: 100_000 },
+    { key: '100k-200k', label: 'Từ 100.000 ₫ đến 200.000 ₫', min: 100_000, max: 200_000 },
+    { key: 'from-200k', label: 'Từ 200.000 ₫ trở lên', min: 200_000, max: Number.POSITIVE_INFINITY }
+  ];
+  readonly sponsorColumnValues: ColumnFilterValue[] = [
+    { value: 'thinkup', label: 'ThinkUp' },
+    { value: 'instructor', label: 'Giảng viên' }
+  ];
+  readonly discountColumnValues: ColumnFilterValue[] = this.discountBuckets.map(bucket => ({ value: bucket.key, label: bucket.label }));
+  readonly audienceColumnValues: ColumnFilterValue[] = [
+    { value: 'all', label: 'Tất cả học viên' },
+    { value: 'new_learner', label: 'Học viên mới' }
+  ];
+  readonly validityColumnValues = computed<ColumnFilterValue[]>(() =>
+    this.distinctValues(this.vouchers().filter(item => !item.deleted).map(item => this.validityLabel(item))));
+  readonly statusColumnValues: ColumnFilterValue[] = [
+    { value: 'active', label: 'Đang phát hành' },
+    { value: 'scheduled', label: 'Chưa bắt đầu' },
+    { value: 'locked', label: 'Tạm khóa' },
+    { value: 'expired', label: 'Đã hết hạn' }
+  ];
+  readonly textSorts = TEXT_SORT_OPTIONS;
+  readonly numberSorts = NUMBER_SORT_OPTIONS;
+  readonly dateSorts = DATE_SORT_OPTIONS;
+  readonly columnSort = signal<{ column: VoucherColumn; direction: 'asc' | 'desc' } | null>(null);
   /** Số voucher đang được chọn. */
   readonly selectedCount = computed(() => this.selectedCodes().length);
   /** Các voucher đang được chọn. */
@@ -115,6 +154,16 @@ export class VouchersComponent {
   readonly canLockSelected = computed(() => this.selectedItems().some(item => ['active', 'scheduled'].includes(this.statusOf(item))));
   /** Voucher đã chọn có thể mở khóa không. */
   readonly canUnlockSelected = computed(() => this.selectedItems().some(item => item.locked && this.statusOf(item) !== 'expired'));
+  readonly selectionListOpen = signal(false);
+  readonly selectionDialogItems = computed<BulkSelectionItem[]>(() => this.selectedItems()
+    .map(item => ({ id: item.code, label: item.code, detail: `${this.sponsorLabel(item)} · ${this.discount(item)}` })));
+  readonly selectionCandidates = computed<BulkSelectionItem[]>(() => this.filtered()
+    .filter(item => !this.selectedCodes().includes(item.code))
+    .map(item => ({ id: item.code, label: item.code, detail: `${this.sponsorLabel(item)} · ${this.discount(item)}` })));
+  readonly selectionDialogActions = computed<readonly SelectionAction[]>(() => [
+    { key: 'lock', label: 'Tạm khóa voucher' },
+    { key: 'unlock', label: 'Mở khóa voucher' }
+  ]);
   readonly page = signal(1);
 
   /** Số dòng mỗi trang đọc từ tham số hệ thống `orders_per_page` (mặc định 8). */
@@ -138,8 +187,14 @@ export class VouchersComponent {
       return (!query || item.code.toLocaleUpperCase('vi-VN').includes(query))
         && (!this.sponsor() || item.sponsor === this.sponsor())
         && this.matchesStatus(item, this.status())
-        && this.matchesAdvanced(item);
+        && this.matchesAdvanced(item)
+        && this.matchesColumnFilters(item);
     });
+    const columnSort = this.columnSort();
+    if (columnSort) {
+      const factor = columnSort.direction === 'asc' ? 1 : -1;
+      return [...items].sort((a, b) => compareSortValues(this.sortValue(a, columnSort.column), this.sortValue(b, columnSort.column)) * factor);
+    }
     return [...items].sort((left, right) => this.compareVouchers(left, right, this.sort()));
   });
   readonly active = computed(() => this.vouchers().filter(item => !item.deleted && this.statusOf(item) === 'active').length);
@@ -237,8 +292,69 @@ export class VouchersComponent {
     if (!this.inDateRange(item.endsAt, filter.endsFrom, filter.endsTo)) return false;
     return this.matchesStatus(item, filter.status);
   }
-  openAdvancedFilter(): void {
-    this.filterDraft.set({ ...this.advancedFilter() });
+  /** Bộ lọc cột áp dụng song song (AND) với thanh lọc và bộ lọc chi tiết. */
+  private matchesColumnFilters(item: BusinessVoucher): boolean {
+    const sponsor = this.sponsorColumnFilters();
+    if (sponsor.length && !sponsor.includes(item.sponsor)) return false;
+    const discount = this.discountColumnFilters();
+    if (discount.length) {
+      const value = voucherMaxDiscountPerUse(item);
+      const inBucket = this.discountBuckets.some(bucket => discount.includes(bucket.key) && value >= bucket.min && value < bucket.max);
+      if (!inBucket) return false;
+    }
+    const audience = this.audienceColumnFilters();
+    if (audience.length && !audience.includes(item.audience)) return false;
+    const validity = this.validityColumnFilters();
+    if (validity.length && !validity.includes(this.validityLabel(item))) return false;
+    const status = this.statusColumnFilters();
+    if (status.length && !status.includes(this.statusOf(item))) return false;
+    return true;
+  }
+  /** Áp dụng lựa chọn từ bộ lọc tiêu đề cột, bỏ chọn hàng loạt và về trang đầu. */
+  setColumnFilter(kind: 'sponsor' | 'discount' | 'audience' | 'validity' | 'status', values: string[]): void {
+    if (kind === 'sponsor') this.sponsorColumnFilters.set(values);
+    else if (kind === 'discount') this.discountColumnFilters.set(values);
+    else if (kind === 'audience') this.audienceColumnFilters.set(values);
+    else if (kind === 'validity') this.validityColumnFilters.set(values);
+    else this.statusColumnFilters.set(values);
+    this.selectedCodes.set([]);
+    this.page.set(1);
+  }
+  sortFor(key: VoucherColumn): string {
+    const current = this.columnSort();
+    return current?.column === key ? current.direction : '';
+  }
+  updateColumnSort(key: VoucherColumn, direction: string): void {
+    const current = this.columnSort();
+    this.columnSort.set(!direction || (current?.column === key && current.direction === direction)
+      ? null
+      : { column: key, direction: direction as 'asc' | 'desc' });
+    this.page.set(1);
+  }
+  private sortValue(item: BusinessVoucher, column: VoucherColumn): string | number {
+    switch (column) {
+      case 'sponsor': return item.sponsor === 'thinkup' ? 'ThinkUp' : 'Giảng viên';
+      case 'discount': return voucherMaxDiscountPerUse(item);
+      case 'audience': return this.audienceLabel(item.audience);
+      case 'validity': return Date.parse(item.startsAt);
+      case 'status': return this.statusLabel(this.statusOf(item));
+    }
+  }
+  private clearColumnFilters(): void {
+    this.sponsorColumnFilters.set([]);
+    this.discountColumnFilters.set([]);
+    this.audienceColumnFilters.set([]);
+    this.validityColumnFilters.set([]);
+    this.statusColumnFilters.set([]);
+  }
+  private distinctValues(values: string[]): ColumnFilterValue[] {
+    return [...new Set(values)].map(value => ({ value, label: value }));
+  }
+  /** Thời hạn voucher dạng "Từ ngày - Đến ngày" theo đúng hiển thị trong cột. */
+  validityLabel(item: BusinessVoucher): string {
+    return `${this.date(item.startsAt)} - ${this.date(item.endsAt)}`;
+  }
+  openAdvancedFilter(): void {    this.filterDraft.set({ ...this.advancedFilter() });
     this.advancedOpen.set(true);
   }
   closeAdvancedFilter(): void { this.advancedOpen.set(false); }
@@ -253,6 +369,8 @@ export class VouchersComponent {
     this.advancedFilter.set(emptyVoucherFilter());
     this.advancedOpen.set(false);
     this.selectedCodes.set([]);
+    this.clearColumnFilters();
+    this.columnSort.set(null);
     this.page.set(1);
   }
   patchFilter<K extends keyof VoucherAdvancedFilter>(key: K, value: VoucherAdvancedFilter[K]): void {
@@ -305,6 +423,7 @@ export class VouchersComponent {
   setSort(value: string): void {
     if (!this.sortOptions.some(option => option.value === value)) return;
     this.sort.set(value as VoucherSort);
+    this.columnSort.set(null);
     this.page.set(1);
   }
 
@@ -331,6 +450,12 @@ export class VouchersComponent {
     else this.toast.set('Không thể sao chép mã. Vui lòng thử lại.');
   }
   toggle(code: string, checked: boolean): void { this.selectedCodes.update(items => checked ? [...items, code] : items.filter(value => value !== code)); }
+  setSelectionCodes(ids: string[]): void { this.selectedCodes.set(ids); }
+  runSelectionAction(key: string, ids?: readonly string[]): void {
+    this.selectionListOpen.set(false);
+    if (ids) this.selectedCodes.set([...ids]);
+    this.requestBulkLock(key === 'lock');
+  }
   /**
    * Nút −/✓ của thanh thao tác: tick hết toàn bộ voucher, bấm lần nữa thì bỏ tick hết.
    * Ô tick ở tiêu đề bảng dùng chung hàm này nên hai nơi luôn nhất quán.

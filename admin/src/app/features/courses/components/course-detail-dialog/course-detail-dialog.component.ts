@@ -12,7 +12,7 @@ type DetailTab = 'overview' | 'content' | 'learners' | 'finance';
   standalone: true,
   imports: [AdminDialogComponent],
   templateUrl: './course-detail-dialog.component.html',
-  styleUrl: '../../courses-page.css'
+  styleUrls: ['../../courses-page.css', './course-detail-dialog.component.css']
 })
 export class CourseDetailDialogComponent {
   readonly course = input.required<Course>();

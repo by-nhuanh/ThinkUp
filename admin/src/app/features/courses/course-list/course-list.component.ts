@@ -1,8 +1,12 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, WritableSignal, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { ColumnFilterComponent, ColumnFilterValue, TEXT_SORT_OPTIONS, compareSortValues } from '../../../shared/components/column-filter/column-filter.component';
 import { CustomSelectComponent, CustomSelectOption } from '../../../shared/components/custom-select/custom-select.component';
 import { ExportMenuComponent } from '../../../shared/components/export-menu/export-menu.component';
+import { BulkSelectionDialogComponent, BulkSelectionItem } from '../../../shared/components/bulk-selection-dialog/bulk-selection-dialog.component';
 import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
+import { SelectionAction, SelectionBarComponent } from '../../../shared/components/selection-bar/selection-bar.component';
+import { downloadTable } from '../../../shared/utils/export-formats';
 import { formatCurrency, formatDate, formatNumber, formatTime, paginationRange } from '../course-utils';
 import { Course, CourseLevel, CourseStatus } from '../models/course.models';
 import { CourseStore } from '../services/course.store';
@@ -21,6 +25,19 @@ const CATEGORIES = [
 ];
 
 type RangeKey = '' | '7' | '30' | '90';
+type CourseColumn = 'title' | 'category' | 'instructor' | 'status';
+
+const LEVEL_FILTER_VALUES: ColumnFilterValue[] = [
+  { value: 'Cơ bản', label: 'Cơ bản' },
+  { value: 'Trung cấp', label: 'Trung cấp' },
+  { value: 'Nâng cao', label: 'Nâng cao' }
+];
+const STATUS_FILTER_VALUES: ColumnFilterValue[] = [
+  { value: 'published', label: 'Đang xuất bản' },
+  { value: 'pending', label: 'Chờ duyệt' },
+  { value: 'hidden', label: 'Tạm ẩn' },
+  { value: 'archived', label: 'Đã lưu trữ' }
+];
 
 @Component({
   selector: 'app-course-list',
@@ -28,20 +45,26 @@ type RangeKey = '' | '7' | '30' | '90';
   imports: [
     RouterLink,
     SearchFieldComponent,
+    ColumnFilterComponent,
     CustomSelectComponent,
     ExportMenuComponent,
     CourseDetailDialogComponent,
     CourseArchiveDialogComponent,
-    CourseToastComponent
+    CourseToastComponent,
+    SelectionBarComponent,
+    BulkSelectionDialogComponent
   ],
   templateUrl: './course-list.component.html',
-  styleUrl: '../courses-page.css'
+  styleUrls: ['../courses-page.css', './course-list.component.css']
 })
 export class CourseListComponent {
   private readonly store = inject(CourseStore);
   private readonly router = inject(Router);
 
   readonly loadError = this.store.loadError;
+  readonly rowMenu = signal<{ item: Course; top: number; left: number } | null>(null);
+  private rowMenuTrigger: HTMLElement | null = null;
+
   readonly courses = this.store.courses;
 
   readonly search = signal('');
@@ -49,11 +72,19 @@ export class CourseListComponent {
   readonly level = signal('');
   readonly status = signal<'' | CourseStatus>('');
   readonly createdRange = signal<RangeKey>('');
+  private readonly columnFilters: Record<CourseColumn, WritableSignal<string[]>> = {
+    title: signal<string[]>([]),
+    category: signal<string[]>([]),
+    instructor: signal<string[]>([]),
+    status: signal<string[]>([])
+  };
   readonly page = signal(1);
   readonly pageSize = 200;
   readonly detailId = signal<string | null>(null);
   readonly archiveId = signal<string | null>(null);
   readonly toast = signal<{ message: string; tone: ToastTone } | null>(null);
+  readonly selection = signal<ReadonlySet<string>>(new Set());
+  readonly selectionListOpen = signal(false);
 
   readonly totals = { total: PLATFORM_TOTAL, published: 980, pending: 36, archived: 232 };
 
@@ -63,16 +94,11 @@ export class CourseListComponent {
   ];
   readonly levelOptions: CustomSelectOption[] = [
     { value: '', label: 'Tất cả cấp độ' },
-    { value: 'Cơ bản', label: 'Cơ bản' },
-    { value: 'Trung cấp', label: 'Trung cấp' },
-    { value: 'Nâng cao', label: 'Nâng cao' }
+    ...LEVEL_FILTER_VALUES
   ];
   readonly statusOptions: CustomSelectOption[] = [
     { value: '', label: 'Tất cả trạng thái' },
-    { value: 'published', label: 'Đang bán' },
-    { value: 'pending', label: 'Chờ duyệt' },
-    { value: 'hidden', label: 'Tạm ẩn' },
-    { value: 'archived', label: 'Đã lưu trữ' }
+    ...STATUS_FILTER_VALUES
   ];
   readonly rangeOptions: CustomSelectOption[] = [
     { value: '', label: 'Tất cả thời gian' },
@@ -81,6 +107,19 @@ export class CourseListComponent {
     { value: '90', label: '90 ngày gần đây' }
   ];
 
+  readonly titleValues = computed<ColumnFilterValue[]>(() =>
+    [...new Set(this.courses().map(item => item.title))].map(title => ({ value: title, label: title })));
+  readonly categoryValues = computed<ColumnFilterValue[]>(() =>
+    [...new Set(this.courses().map(item => item.category))].sort((a, b) => a.localeCompare(b, 'vi'))
+      .map(category => ({ value: category, label: category })));
+  readonly instructorValues = computed<ColumnFilterValue[]>(() =>
+    [...new Set(this.courses().map(item => item.instructor))].sort((a, b) => a.localeCompare(b, 'vi'))
+      .map(instructor => ({ value: instructor, label: instructor })));
+  readonly levelValues = LEVEL_FILTER_VALUES;
+  readonly statusValues = STATUS_FILTER_VALUES;
+  readonly textSorts = TEXT_SORT_OPTIONS;
+  readonly columnSort = signal<{ column: CourseColumn; direction: 'asc' | 'desc' } | null>(null);
+
   readonly filtered = computed(() => {
     const term = this.search().trim().toLowerCase();
     const category = this.category();
@@ -88,7 +127,11 @@ export class CourseListComponent {
     const status = this.status();
     const days = Number(this.createdRange());
     const cutoff = days ? Date.now() - days * 86_400_000 : 0;
-    return this.courses().filter(item => {
+    const titles = this.columnFilters.title();
+    const categories = this.columnFilters.category();
+    const instructors = this.columnFilters.instructor();
+    const statuses = this.columnFilters.status();
+    const items = this.courses().filter(item => {
       const matches = !term
         || item.id.toLowerCase().includes(term)
         || item.title.toLowerCase().includes(term)
@@ -97,14 +140,26 @@ export class CourseListComponent {
       return matches && recent
         && (!category || item.category === category)
         && (!level || item.level === level)
-        && (!status || item.status === status);
+        && (!status || item.status === status)
+        && (!titles.length || titles.includes(item.title))
+        && (!categories.length || categories.includes(item.category))
+        && (!instructors.length || instructors.includes(item.instructor))
+        && (!statuses.length || statuses.includes(item.status));
     });
+    const columnSort = this.columnSort();
+    if (columnSort) {
+      const factor = columnSort.direction === 'asc' ? 1 : -1;
+      return [...items].sort((a, b) => compareSortValues(this.sortValue(a, columnSort.column), this.sortValue(b, columnSort.column)) * factor);
+    }
+    return items;
   });
   readonly pages = computed(() => Math.max(1, Math.ceil(this.resultTotal() / this.pageSize)));
   readonly visible = computed(() => this.filtered().slice((this.page() - 1) * this.pageSize, this.page() * this.pageSize));
   readonly pagination = computed(() => paginationRange(this.page(), this.pages()));
   readonly hasFilters = computed(() => Boolean(
     this.search() || this.category() || this.level() || this.status() || this.createdRange()
+    || this.columnFilters.title().length || this.columnFilters.category().length
+    || this.columnFilters.instructor().length || this.columnFilters.status().length
   ));
   readonly resultTotal = computed(() => this.hasFilters() ? this.filtered().length : PLATFORM_TOTAL);
   readonly rangeLabel = computed(() => {
@@ -116,6 +171,119 @@ export class CourseListComponent {
   });
   readonly detail = computed(() => this.courses().find(item => item.id === this.detailId()) ?? null);
   readonly archiveTarget = computed(() => this.courses().find(item => item.id === this.archiveId()) ?? null);
+  readonly selectedIds = computed(() => [...this.selection()]);
+  readonly allVisibleSelected = computed(() => {
+    const items = this.visible();
+    const chosen = this.selection();
+    return items.length > 0 && items.every(item => chosen.has(item.id));
+  });
+  readonly someVisibleSelected = computed(() => !this.allVisibleSelected() && this.visible().some(item => this.selection().has(item.id)));
+  readonly selectionItems = computed<BulkSelectionItem[]>(() => this.courses()
+    .filter(item => this.selection().has(item.id))
+    .map(item => ({ id: item.id, label: item.title, detail: `${item.id} · ${item.instructor}` })));
+  readonly selectionCandidates = computed<BulkSelectionItem[]>(() => this.filtered()
+    .filter(item => !this.selection().has(item.id))
+    .map(item => ({ id: item.id, label: item.title, detail: `${item.id} · ${item.instructor}` })));
+  readonly selectionActions = computed<readonly SelectionAction[]>(() => [
+    { key: 'hide', label: 'Ẩn khóa học' },
+    { key: 'show', label: 'Hiện khóa học' },
+    { key: 'export', label: 'Xuất đã chọn' }
+  ]);
+
+  isSelected(id: string): boolean { return this.selection().has(id); }
+
+  toggleSelect(id: string, checked: boolean): void {
+    const next = new Set(this.selection());
+    checked ? next.add(id) : next.delete(id);
+    this.selection.set(next);
+  }
+
+  toggleSelectAll(): void {
+    const next = new Set(this.selection());
+    if (this.allVisibleSelected()) this.visible().forEach(item => next.delete(item.id));
+    else this.visible().forEach(item => next.add(item.id));
+    this.selection.set(next);
+  }
+
+  clearSelection(): void { this.selection.set(new Set()); }
+
+  setSelectionIds(ids: string[]): void { this.selection.set(new Set(ids)); }
+
+  runSelectionAction(key: string, ids?: readonly string[]): void {
+    this.selectionListOpen.set(false);
+    const targetIds = ids ?? this.selectedIds();
+    if (!targetIds.length) return;
+    if (key === 'export') { this.exportSelection(targetIds); return; }
+    const status: CourseStatus = key === 'hide' ? 'hidden' : 'published';
+    targetIds.forEach(id => this.store.setCourseStatus(id, status));
+    this.clearSelection();
+    this.notify(key === 'hide' ? `Đã ẩn ${targetIds.length} khóa học.` : `Đã hiển thị ${targetIds.length} khóa học.`, 'success');
+  }
+
+  private exportSelection(ids: readonly string[]): void {
+    const chosen = new Set(ids);
+    const rows: (string | number)[][] = [
+      ['Mã khóa học', 'Tên khóa học', 'Giảng viên', 'Danh mục', 'Cấp độ', 'Trạng thái', 'Giá bán', 'Học viên'],
+      ...this.courses().filter(item => chosen.has(item.id)).map(item => [
+        item.id, item.title, item.instructor, item.category, item.level,
+        this.statusText(item.status), item.price, item.students ?? 0
+      ])
+    ];
+    this.notify(`Đang tạo tệp XLSX cho ${ids.length} khóa học đã chọn.`, 'info');
+    void downloadTable('xlsx', 'khoa-hoc-da-chon', rows)
+      .then(() => this.notify(`Đã xuất ${ids.length} khóa học đã chọn ra tệp XLSX.`, 'success'))
+      .catch(() => this.notify('Không thể tạo tệp xuất. Vui lòng thử lại.', 'error'));
+  }
+
+  isRowMenuOpen(id: string): boolean { return this.rowMenu()?.item.id === id; }
+
+  openRowMenu(event: MouseEvent | KeyboardEvent, item: Course): void {
+    event.stopPropagation();
+    if (this.rowMenu()?.item.id === item.id) { this.closeRowMenu(); return; }
+    this.rowMenuTrigger = event.currentTarget as HTMLElement;
+    const rect = this.rowMenuTrigger.getBoundingClientRect();
+    const margin = 12;
+    const width = Math.min(260, window.innerWidth - margin * 2);
+    const count = 1 + (this.canArchive(item.status) ? 1 : 0);
+    const height = Math.min(count * 42 + 16, window.innerHeight - margin * 2);
+    const below = window.innerHeight - rect.bottom - 6 - margin;
+    const top = Math.max(margin, below >= height ? rect.bottom + 6 : rect.top - 6 - height);
+    const left = Math.max(margin, Math.min(rect.right - width, window.innerWidth - margin - width));
+    this.rowMenu.set({ item, top, left });
+    setTimeout(() => {
+      if (this.rowMenu()?.item.id === item.id) document.querySelector<HTMLButtonElement>('#course-row-menu button')?.focus();
+    });
+  }
+
+  openRowMenuFromKeyboard(event: Event, item: Course): void {
+    if (!(event instanceof KeyboardEvent)) return;
+    event.preventDefault();
+    if (!this.isRowMenuOpen(item.id)) this.openRowMenu(event, item);
+  }
+
+  closeRowMenu(): void {
+    if (!this.rowMenu()) return;
+    this.rowMenu.set(null);
+    this.rowMenuTrigger?.focus({ preventScroll: true });
+  }
+
+  onRowMenuKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') { event.preventDefault(); this.closeRowMenu(); return; }
+    if (event.key === 'Tab') { this.closeRowMenu(); return; }
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const buttons = Array.from((event.currentTarget as HTMLElement).querySelectorAll<HTMLButtonElement>('button'));
+    const current = buttons.indexOf(document.activeElement as HTMLButtonElement);
+    const index = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1
+      : (current + (event.key === 'ArrowUp' ? -1 : 1) + buttons.length) % buttons.length;
+    buttons[index]?.focus();
+  }
+
+  @HostListener('window:resize')
+  onMenuResize(): void { this.closeRowMenu(); }
+
+  @HostListener('window:scroll')
+  onMenuScroll(): void { this.closeRowMenu(); }
 
   setSearch(value: string): void { this.search.set(value); this.page.set(1); }
   setCategory(value: string): void { this.category.set(value); this.page.set(1); }
@@ -123,12 +291,48 @@ export class CourseListComponent {
   setStatus(value: string): void { this.status.set(value as '' | CourseStatus); this.page.set(1); }
   setRange(value: string): void { this.createdRange.set(value as RangeKey); this.page.set(1); }
 
+  filterFor(key: CourseColumn): readonly string[] {
+    return this.columnFilters[key]();
+  }
+
+  updateColumnFilter(key: CourseColumn, values: string[]): void {
+    this.columnFilters[key].set(values);
+    this.page.set(1);
+  }
+
+  sortFor(key: CourseColumn): string {
+    const current = this.columnSort();
+    return current?.column === key ? current.direction : '';
+  }
+
+  updateColumnSort(key: CourseColumn, direction: string): void {
+    const current = this.columnSort();
+    this.columnSort.set(!direction || (current?.column === key && current.direction === direction)
+      ? null
+      : { column: key, direction: direction as 'asc' | 'desc' });
+    this.page.set(1);
+  }
+
+  private sortValue(item: Course, column: CourseColumn): string | number {
+    switch (column) {
+      case 'title': return item.title;
+      case 'category': return item.category;
+      case 'instructor': return item.instructor;
+      case 'status': return this.statusText(item.status);
+    }
+  }
+
   resetFilters(): void {
     this.search.set('');
     this.category.set('');
     this.level.set('');
     this.status.set('');
     this.createdRange.set('');
+    this.columnFilters.title.set([]);
+    this.columnFilters.category.set([]);
+    this.columnFilters.instructor.set([]);
+    this.columnFilters.status.set([]);
+    this.columnSort.set(null);
     this.page.set(1);
   }
 

@@ -14,8 +14,6 @@ export interface EmailReplyMetadata { to: string; cc: string[]; bcc: string[]; s
 export interface ThreadMessage { id: string; sender: string; role: 'learner' | 'agent' | 'system'; sentAt: string; body: string; attachments: Attachment[]; source?: 'web' | 'email' | 'internal'; internalOnly?: boolean; emailMetadata?: EmailReplyMetadata; }
 export interface SupportTicket {
   id: string; learner: string; requesterRole: RequesterRole; email: string; phone: string; topic: string; summary: string;
-  /** Mã hiển thị cho người dùng (`ticketCode`); `id` vẫn là khóa gọi API. */
-  code?: string;
   priority: Priority; status: TicketStatus; createdAt: string; dueAt: string; assignee?: string;
   assigneeId?: string; lessonCode?: string;
   attachments: Attachment[]; thread: ThreadMessage[]; resolvedAt?: string; linkedComplaintId?: string;
@@ -24,8 +22,6 @@ export interface SupportTicket {
 }
 export interface ComplaintCase {
   id: string; sourceTicketId?: string; claimant: string; respondent: string; type: string; status: ComplaintStatus;
-  /** Mã hiển thị cho người dùng (`complaintCode`); `id` vẫn là khóa gọi API. */
-  code?: string;
   disputeGroup?: string; customDisputeType?: string; customClassificationReason?: string;
   amount: number; createdAt: string; dueAt: string; risk: 'standard' | 'high'; evidence: Attachment[];
   learnerStatement: string; instructorStatement?: string; course: string; orderId: string; purchasedAt: string;
@@ -40,8 +36,6 @@ export interface ComplaintCase {
 }
 export interface FaqItem {
   id: string; question: string; answer: string; category: string; keywords: string[];
-  /** Mã chuyên mục backend (`categoryCode`) giữ lại để gửi đúng khi lưu. */
-  categoryCode?: string;
   views: number; order: number; status: FaqStatus; updatedAt: string;
 }
 export interface FailedSearch { keyword: string; count: number; suggestedCategory: string; }

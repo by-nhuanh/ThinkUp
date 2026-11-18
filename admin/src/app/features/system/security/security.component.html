@@ -61,55 +61,70 @@
 
     <div class="filter-panel">
       <div class="filter-bar security-filters">
+        <div class="filter-field security-search">
+        <label for="security-search">Tìm kiếm</label>
         <app-search-field
           [value]="search()"
           placeholder="Tìm theo tên hoặc email..."
           label="Tìm kiếm"
-          [floatLabel]="true"
+          [floatLabel]="false"
           inputId="security-search"
           (valueChange)="onSearch($event)"
         />
-        <div class="filter-field">
-          <span>Vai trò</span>
-          <app-custom-select controlId="security-role" [value]="roleFilter()" [options]="roleOptions" placeholder="Tất cả vai trò" (valueChange)="setFilter('role', $event)" />
         </div>
         <div class="filter-field">
-          <span>Trạng thái</span>
-          <app-custom-select controlId="security-status" [value]="statusFilter()" [options]="statusOptions" placeholder="Tất cả trạng thái" (valueChange)="setFilter('status', $event)" />
+          <span id="security-role-label">Vai trò</span>
+          <app-custom-select controlId="security-role" labelId="security-role-label" [value]="roleValue()" [options]="roleOptions()" placeholder="Tất cả vai trò" (valueChange)="setFilter('role', $event)" />
         </div>
         <div class="filter-field">
-          <span>Xác thực 2FA</span>
-          <app-custom-select controlId="security-2fa" [value]="twofaFilter()" [options]="twofaOptions" placeholder="Tất cả 2FA" (valueChange)="setFilter('twofa', $event)" />
+          <span id="security-status-label">Trạng thái</span>
+          <app-custom-select controlId="security-status" labelId="security-status-label" [value]="statusValue()" [options]="statusOptions()" placeholder="Tất cả trạng thái" (valueChange)="setFilter('status', $event)" />
+        </div>
+        <div class="filter-field">
+          <span id="security-2fa-label">Xác thực 2FA</span>
+          <app-custom-select controlId="security-2fa" labelId="security-2fa-label" [value]="twofaValue()" [options]="twofaOptions()" placeholder="Tất cả 2FA" (valueChange)="setFilter('twofa', $event)" />
         </div>
         <div class="filter-actions">
           <button class="icon-button filter-reset" type="button" aria-label="Đặt lại bộ lọc" title="Đặt lại bộ lọc" (click)="resetFilters()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
           </button>
-          <app-export-menu label="Xuất Excel" [showText]="true" (formatChange)="export($event)" />
+          <app-export-menu label="Tải xuống danh sách quản trị viên" (formatChange)="export($event)" />
         </div>
       </div>
     </div>
 
+    @if (selectedCount() > 0) {
+      <div class="security-selection-bar" role="toolbar" aria-label="Thao tác với các tài khoản đã chọn">
+        <button class="selection-count" type="button" title="Xem và chỉnh sửa danh sách đã chọn" aria-haspopup="dialog" (click)="selectionListOpen.set(true)">Đã chọn {{ selectedCount() }}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        <button class="selection-action" type="button" [disabled]="!canLockSelected()" [title]="canLockSelected() ? '' : 'Tài khoản đã chọn đều đang bị khóa'" (click)="openBulk('lock')">Khóa tài khoản</button>
+        <button class="selection-action" type="button" [disabled]="!canUnlockSelected()" [title]="canUnlockSelected() ? '' : 'Không có tài khoản nào đang bị khóa trong lựa chọn'" (click)="openBulk('unlock')">Mở khóa tài khoản</button>
+        <button class="selection-action" type="button" [disabled]="!canResetSelected()" [title]="canResetSelected() ? '' : 'Tài khoản đã chọn chưa kích hoạt 2FA'" (click)="openBulk('reset')">Đặt lại 2FA</button>
+      </div>
+    }
+
     <section class="workspace-panel" aria-label="Danh sách quản trị viên">
       @if (paged().length) {
-        <div class="table-scroll" tabindex="0" aria-label="Bảng nhân sự quản trị, cuộn ngang khi cần">
+        <div class="table-scroll" tabindex="0" aria-label="Bảng nhân sự quản trị, cuộn ngang khi cần" (scroll)="closeRowMenu()">
           <table>
             <thead>
               <tr>
-                <th scope="col">Nhân sự quản trị</th>
-                <th scope="col">Vai trò hiện tại</th>
-                <th scope="col">Trạng thái 2FA</th>
-                <th scope="col">Đăng nhập gần nhất</th>
-                <th scope="col">Trạng thái tài khoản</th>
-                <th scope="col">Thao tác</th>
+                <th scope="col" class="select-cell"><input type="checkbox" aria-label="Chọn tất cả quản trị viên" [checked]="allSelected()" [indeterminate]="someSelected()" (change)="toggleSelectAll()"></th>
+                <th scope="col"><app-column-filter label="Nhân sự quản trị" [values]="nameValues()" [selected]="filterFor('name')" (changed)="updateColumnFilter('name', $event)" [sorts]="textSorts" [sort]="sortFor('name')" (sortChange)="updateColumnSort('name', $event)" /></th>
+                <th scope="col"><app-column-filter label="Vai trò hiện tại" [values]="roleValues" [selected]="filterFor('role')" (changed)="updateColumnFilter('role', $event)" [sorts]="textSorts" [sort]="sortFor('role')" (sortChange)="updateColumnSort('role', $event)" /></th>
+                <th scope="col"><app-column-filter label="Trạng thái 2FA" [values]="twofaValues" [selected]="filterFor('twofa')" (changed)="updateColumnFilter('twofa', $event)" [sorts]="textSorts" [sort]="sortFor('twofa')" (sortChange)="updateColumnSort('twofa', $event)" /></th>
+                <th scope="col"><app-column-filter label="Đăng nhập gần nhất" [values]="loginValues()" [selected]="filterFor('login')" (changed)="updateColumnFilter('login', $event)" [sorts]="dateSorts" [sort]="sortFor('login')" (sortChange)="updateColumnSort('login', $event)" /></th>
+                <th scope="col"><app-column-filter label="Trạng thái tài khoản" [values]="statusValues" [selected]="filterFor('status')" (changed)="updateColumnFilter('status', $event)" [sorts]="textSorts" [sort]="sortFor('status')" (sortChange)="updateColumnSort('status', $event)" /></th>
+                <th scope="col" class="security-actions-column">Thao tác</th>
               </tr>
             </thead>
             <tbody>
               @for (person of paged(); track person.id) {
-                <tr>
+                <tr [class.row-selected]="selectedIds().includes(person.id)">
+                  <td class="select-cell">
+                    <input type="checkbox" [attr.aria-label]="'Chọn ' + person.name" [checked]="selectedIds().includes(person.id)" [disabled]="person.isSelf" [attr.title]="person.isSelf ? 'Không thể thao tác hàng loạt trên tài khoản của bạn' : null" (change)="toggleSelect(person.id, $any($event.target).checked)">
+                  </td>
                   <td>
                     <div class="person-cell">
-                      <span class="avatar" [class]="avatarClass(person.role)" aria-hidden="true">{{ initials(person.name) }}</span>
                       <div>
                         <strong>{{ person.name }}</strong>
                         <small>{{ person.email }}</small>
@@ -131,36 +146,15 @@
                       ● {{ statusLabel(person) }}
                     </span>
                   </td>
-                  <td>
-                    <div class="cell-actions">
+                  <td class="security-actions-column">
+                    <div class="cell-actions security-cell-actions">
                       @if (person.isSelf) {
                         <span class="cell-note">Tài khoản của bạn</span>
                       } @else {
-                        @if (person.status === 'locked') {
-                          <button class="link-button" type="button" (click)="openAccount('unlock', person)">Mở khóa</button>
-                        } @else {
-                          <button class="link-danger" type="button" (click)="openAccount('lock', person)">Khóa tài khoản</button>
-                        }
                         <div class="row-menu-anchor">
-                          <button class="icon-button subtle" type="button" [attr.aria-expanded]="rowMenuId() === person.id" aria-haspopup="menu" [attr.aria-label]="'Thao tác với ' + person.name" (click)="toggleRowMenu(person.id)">
+                          <button class="icon-button subtle" type="button" [attr.aria-expanded]="rowMenuId() === person.id" [attr.aria-controls]="rowMenuId() === person.id ? 'security-row-menu' : null" aria-haspopup="menu" [attr.aria-label]="'Thao tác với ' + person.name" (click)="toggleRowMenu(person.id, $event)" (keydown.arrowdown)="openRowMenuFromKeyboard($event, person.id)" (keydown.arrowup)="openRowMenuFromKeyboard($event, person.id)">
                             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>
                           </button>
-                          @if (rowMenuId() === person.id) {
-                            <div class="row-menu" role="menu" [attr.aria-label]="'Thao tác với ' + person.name">
-                              <button class="row-menu-item" role="menuitem" type="button" (click)="openChange(person)">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 3h5v5M8 21H3v-5M21 3l-7.5 7.5M3 21l7.5-7.5"/></svg>
-                                Đổi vai trò
-                              </button>
-                              <button class="row-menu-item" role="menuitem" type="button" (click)="openAccount('reset', person)">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
-                                Reset 2FA
-                              </button>
-                              <button class="row-menu-item" role="menuitem" type="button" (click)="openHistory(person)">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
-                                Xem lịch sử thao tác
-                              </button>
-                            </div>
-                          }
                         </div>
                       }
                     </div>
@@ -196,6 +190,21 @@
   </div>
 }
 
+@if (menuPerson(); as person) {
+  @if (menuPosition(); as position) {
+    <div id="security-row-menu" class="row-menu security-row-menu" role="menu" [attr.aria-label]="'Thao tác với ' + person.name" [style.top.px]="position.top" [style.left.px]="position.left" [style.width.px]="position.width" (keydown)="onRowMenuKeydown($event)">
+      @if (person.status === 'locked') {
+        <button class="row-menu-item" role="menuitem" type="button" (click)="openAccount('unlock', person)">Mở khóa</button>
+      } @else {
+        <button class="row-menu-item danger" role="menuitem" type="button" (click)="openAccount('lock', person)">Khóa tài khoản</button>
+      }
+      <button class="row-menu-item" role="menuitem" type="button" (click)="openChange(person)">Đổi vai trò</button>
+      <button class="row-menu-item" role="menuitem" type="button" (click)="openAccount('reset', person)">Đặt lại 2FA</button>
+      <button class="row-menu-item" role="menuitem" type="button" (click)="openHistory(person)">Xem lịch sử thao tác</button>
+    </div>
+  }
+}
+
 @if (assignOpen()) {
   <app-system-role-dialog mode="assign" (closed)="assignOpen.set(false)" (saved)="onSaved($event)" />
 }
@@ -204,6 +213,21 @@
 }
 @if (accountAction(); as action) {
   <app-system-account-dialog [kind]="action.kind" [person]="action.person" (closed)="accountAction.set(null)" (saved)="onSaved($event)" />
+}
+@if (selectionListOpen()) {
+  <app-bulk-selection-dialog
+    noun="tài khoản"
+    [items]="selectionDialogItems()"
+    [candidates]="selectionCandidates()"
+    [actions]="selectionDialogActions()"
+    note="Thao tác hàng loạt cần lý do và mã OTP Super Admin, được ghi vào nhật ký kiểm toán."
+    (closed)="selectionListOpen.set(false)"
+    (selectionChange)="setSelectedIds($event)"
+    (action)="runSelectionAction($event.key, $event.ids)"
+  />
+}
+@if (bulkAction(); as kind) {
+  <app-system-bulk-account-dialog [kind]="kind" [people]="bulkPeople()" (closed)="bulkAction.set(null)" (saved)="onBulkSaved($event)" />
 }
 @if (historyPerson(); as person) {
   <app-system-history-dialog [person]="person" (closed)="historyPerson.set(null)" (inspect)="historyDetail.set($event)" />

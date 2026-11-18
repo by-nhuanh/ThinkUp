@@ -23,7 +23,7 @@ const REASONS: CustomSelectOption[] = [
   standalone: true,
   imports: [AdminDialogComponent, CustomSelectComponent],
   templateUrl: './course-archive-dialog.component.html',
-  styleUrl: '../../courses-page.css'
+  styleUrls: ['../../courses-page.css', './course-archive-dialog.component.css']
 })
 export class CourseArchiveDialogComponent {
   readonly course = input.required<Course>();

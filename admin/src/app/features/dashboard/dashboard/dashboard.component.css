@@ -281,7 +281,7 @@ h2 { font-size: 23px; line-height: 26px; font-weight: 700; color: #14336b; }
 .progress-body li strong { color: var(--dashboard-text); }
 .courses-panel table, .logs-panel table { color: var(--dashboard-text); font: var(--admin-text-body-default); }
 .courses-panel table { margin-top: 14px; }
-.courses-panel th { color: var(--dashboard-label); font: var(--admin-text-badge); font-weight: var(--admin-font-weight-bold); text-transform: uppercase; letter-spacing: .04em; }
+.courses-panel th { color: var(--dashboard-label); font: var(--admin-text-badge); font-weight: var(--admin-font-weight-bold); text-transform: none; letter-spacing: normal; }
 .courses-panel td, .courses-panel th { padding: 9px 7px; border-color: var(--dashboard-table-border); }
 
 .logs-panel { margin-top: 20px; padding: 20px 0 0; overflow: hidden; }
@@ -295,7 +295,7 @@ h2 { font-size: 23px; line-height: 26px; font-weight: 700; color: #14336b; }
 .logs-view-all:focus-visible { outline: 2px solid #4388e8; outline-offset: 2px; }
 .table-scroll { border-top: 1px solid var(--dashboard-border); }
 .logs-panel table { min-width: 900px; }
-.logs-panel th { height: auto; padding: 13px 17px; background: var(--dashboard-surface-muted); color: var(--dashboard-label); font: var(--admin-text-badge); font-weight: var(--admin-font-weight-bold); text-transform: uppercase; letter-spacing: .04em; }
+.logs-panel th { height: auto; padding: 13px 17px; background: var(--dashboard-surface-muted); color: var(--dashboard-label); font: var(--admin-text-badge); font-weight: var(--admin-font-weight-bold); text-transform: none; letter-spacing: normal; }
 .logs-panel td { height: auto; padding: 14px 17px; border-top: 1px solid var(--dashboard-table-border); }
 .logs-panel tbody tr:nth-child(even) { background: var(--dashboard-surface); }
 .logs-panel tbody tr:hover { background: var(--dashboard-surface-hover); }
@@ -368,3 +368,12 @@ h2 { font-size: 23px; line-height: 26px; font-weight: 700; color: #14336b; }
   .courses-panel td, .courses-panel th { overflow-wrap: anywhere; }
   .courses-panel th:nth-child(n+3) { white-space: normal; }
 }
+
+/* Chọn hàng loạt nhật ký theo mẫu voucher / phân quyền */
+.selection-slot { padding: 12px 16px 0; }
+.logs-panel .select-cell { width: 44px; text-align: center; padding-left: 12px; padding-right: 6px; }
+.select-cell input { width: 16px; height: 16px; margin: 0; accent-color: var(--dashboard-primary); cursor: pointer; }
+.select-cell input:focus-visible { outline: 2px solid #4388e8; outline-offset: 2px; }
+.logs-panel table { min-width: 944px; }
+.logs-panel tbody tr.is-selected { background: var(--dashboard-primary-soft); }
+.logs-empty { height: 96px; text-align: center; color: var(--dashboard-muted); white-space: normal; }

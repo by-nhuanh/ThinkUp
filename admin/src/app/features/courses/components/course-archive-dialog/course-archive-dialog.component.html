@@ -14,10 +14,11 @@
     </div>
   </section>
 
-  <div class="field">
-    <label for="archive-reason">Lý do lưu trữ <b>*</b></label>
+  <div class="field archive-reason-field">
+    <label id="archive-reason-label" for="archive-reason">Lý do lưu trữ <b>*</b></label>
     <app-custom-select
       controlId="archive-reason"
+      labelId="archive-reason-label"
       [value]="reason()"
       [options]="reasons"
       placeholder="Chọn lý do lưu trữ"

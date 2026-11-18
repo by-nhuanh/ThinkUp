@@ -78,9 +78,6 @@ export interface UserManagementDataSource {
   /** Khóa học theo giảng viên đã tải từ `/admin/users/lecturers/:id/courses`. */
   readonly coursesByLecturer: Signal<ReadonlyMap<string, readonly LecturerCourseRow[]>>;
   readonly loading: Signal<boolean>;
-  /** Trạng thái tải riêng từng danh sách: `/students` chậm hơn `/lecturers`, không nên chặn cả hai. */
-  readonly loadingLecturers: Signal<boolean>;
-  readonly loadingStudents: Signal<boolean>;
   /** Thông điệp lỗi tải danh sách (403/500/mạng). `null` khi thành công. */
   readonly error: Signal<string | null>;
 

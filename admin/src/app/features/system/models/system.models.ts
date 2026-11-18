@@ -108,12 +108,18 @@ export interface SettingsGeneral {
 }
 
 export interface SettingsParameters {
+  platformRevenueShare: number;
+  lecturerRevenueShare: number;
   taxThreshold: number;
   taxRate: number;
   superAdminThreshold: number;
   paymentTimeout: number;
   ordersPerPage: number;
   courseReviewHours: number;
+  skillMasteryThreshold: number;
+  knowledgeGapThreshold: number;
+  minWithdrawal: number;
+  maxWithdrawalsPerWeek: number;
   sMatchThreshold: number;
   minCoursesPerMilestone: number;
   testPassScore: number;

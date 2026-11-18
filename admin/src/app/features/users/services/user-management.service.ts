@@ -29,8 +29,6 @@ export class UserManagementService {
   readonly studentDetails = this.source.studentDetails;
   readonly coursesByLecturer = this.source.coursesByLecturer;
   readonly loading = this.source.loading;
-  readonly loadingLecturers = this.source.loadingLecturers;
-  readonly loadingStudents = this.source.loadingStudents;
   readonly error = this.source.error;
 
   readonly lecturerKpis = computed(() => {

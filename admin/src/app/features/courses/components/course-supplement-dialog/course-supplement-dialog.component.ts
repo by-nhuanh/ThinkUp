@@ -33,7 +33,7 @@ const ISSUE_TYPES: CustomSelectOption[] = [
   standalone: true,
   imports: [AdminDialogComponent, CustomSelectComponent],
   templateUrl: './course-supplement-dialog.component.html',
-  styleUrl: '../../courses-page.css'
+  styleUrls: ['../../courses-page.css', './course-supplement-dialog.component.css']
 })
 export class CourseSupplementDialogComponent {
   readonly workspace = input.required<ApprovalWorkspace>();

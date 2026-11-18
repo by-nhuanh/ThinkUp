@@ -1,14 +1,16 @@
 <main class="content-page">
   <header class="page-heading">
     <div>
-      <nav class="breadcrumb" aria-label="Đường dẫn trang"><a routerLink="/content/posts" style="color:inherit">Quản lý nội dung</a><span class="breadcrumb-separator" aria-hidden="true">/</span><a routerLink="/content/posts" style="color:inherit">Bài viết</a><span class="breadcrumb-separator" aria-hidden="true">/</span><span class="breadcrumb-current" aria-current="page">{{ editing() ? 'Chỉnh sửa' : 'Bài viết mới' }}</span></nav>
+      <nav class="breadcrumb" aria-label="Đường dẫn trang"><a routerLink="/content/posts" >Quản lý nội dung</a><span class="breadcrumb-separator" aria-hidden="true">/</span><a routerLink="/content/posts" >Bài viết</a><span class="breadcrumb-separator" aria-hidden="true">/</span><span class="breadcrumb-current" aria-current="page">{{ editing() ? 'Chỉnh sửa' : 'Bài viết mới' }}</span></nav>
       <h1>{{ editing() ? 'Chỉnh sửa bài viết' : 'Viết bài mới' }}</h1>
       <p class="subtitle">{{ editing() ? 'Cập nhật nội dung, phân loại và trạng thái xuất bản.' : 'Soạn nội dung, thêm ảnh bìa và chọn trạng thái trước khi xuất bản.' }}</p>
     </div>
     <div class="heading-actions">
+      @if (!missing()) {
       <a class="button" routerLink="/content/posts">Quay lại danh sách</a>
       <button class="button" type="button" (click)="previewOpen.set(true)">Xem trước</button>
-      <button class="button primary" type="button" (click)="save()">{{ editing() ? 'Lưu thay đổi' : 'Lưu bài viết' }}</button>
+      }
+      @if (missing()) { <a class="button" routerLink="/content/posts">Quay lại danh sách</a> }
     </div>
   </header>
 
@@ -22,20 +24,20 @@
     </section>
   } @else {
     <div class="editor-grid">
-      <div class="panel" style="margin:0">
-        <div class="toolbar" style="justify-content:space-between">
+      <section class="panel editor-main" aria-label="Nội dung bài viết">
+        <div class="editor-toolbar">
           <div>
-            <strong style="color:#17345d">{{ editing() ? editing()!.id : 'Bài viết mới' }}</strong>
+            <strong class="editor-id">{{ editing() ? editing()!.id : 'Bài viết mới' }}</strong>
             <span class="cell-sub">{{ editing() ? 'Cập nhật gần nhất ' + dateTime(editing()!.updatedAt) : 'Chưa lưu lần nào' }}</span>
           </div>
           @if (lastSaved()) { <span class="badge success">Đã lưu {{ dateTime(lastSaved()!) }}</span> }
         </div>
-        <div class="dialog-body" style="overflow:visible">
+        <div class="editor-body">
           <div class="form-grid">
             <div class="field full">
               <label for="post-title">Tiêu đề bài viết <b>*</b></label>
-              <input id="post-title" type="text" [value]="title()" maxlength="140" placeholder="Ví dụ: Lộ trình học Front-end cho người mới" (input)="updateTitle($any($event.target).value)">
-              @if (titleError()) { <span class="error" role="alert">{{ titleError() }}</span> } @else { <span class="hint">{{ title().length }}/140 ký tự</span> }
+              <input id="post-title" required [attr.aria-invalid]="titleError() ? true : null" [attr.aria-describedby]="titleError() ? 'post-title-error' : null" type="text" [value]="title()" maxlength="140" placeholder="Ví dụ: Lộ trình học Front-end cho người mới" (input)="updateTitle($any($event.target).value)">
+              @if (titleError()) { <span id="post-title-error" class="error" role="alert">{{ titleError() }}</span> } @else { <span class="hint">{{ title().length }}/140 ký tự</span> }
             </div>
             <div class="field full">
               <label for="post-slug">Đường dẫn (slug)</label>
@@ -44,8 +46,8 @@
             </div>
             <div class="field full">
               <label for="post-excerpt">Mô tả ngắn <b>*</b></label>
-              <textarea id="post-excerpt" [value]="excerpt()" maxlength="320" placeholder="Tóm tắt nội dung hiển thị ở danh sách bài viết..." (input)="excerpt.set($any($event.target).value)"></textarea>
-              @if (excerptError()) { <span class="error" role="alert">{{ excerptError() }}</span> } @else { <span class="hint">{{ excerpt().length }}/320 ký tự</span> }
+              <textarea id="post-excerpt" required [attr.aria-invalid]="excerptError() ? true : null" [attr.aria-describedby]="excerptError() ? 'post-excerpt-error' : null" [value]="excerpt()" maxlength="320" placeholder="Tóm tắt nội dung hiển thị ở danh sách bài viết..." (input)="excerpt.set($any($event.target).value)"></textarea>
+              @if (excerptError()) { <span id="post-excerpt-error" class="error" role="alert">{{ excerptError() }}</span> } @else { <span class="hint">{{ excerpt().length }}/320 ký tự</span> }
             </div>
             <div class="field full">
               <label for="post-callout">Nội dung nổi bật</label>
@@ -54,8 +56,8 @@
             </div>
             <div class="field full">
               <label for="post-body">Nội dung bài viết <b>*</b></label>
-              <textarea id="post-body" style="min-height:260px" [value]="bodyText()" placeholder="Nhập nội dung. Mỗi dòng là một đoạn văn." (input)="bodyText.set($any($event.target).value)"></textarea>
-              @if (bodyError()) { <span class="error" role="alert">{{ bodyError() }}</span> } @else { <span class="hint">{{ wordCount() }} từ · Mỗi dòng là một đoạn văn</span> }
+              <textarea id="post-body" required [attr.aria-invalid]="bodyError() ? true : null" [attr.aria-describedby]="bodyError() ? 'post-body-error' : null" class="body-input" [value]="bodyText()" placeholder="Nhập nội dung. Mỗi dòng là một đoạn văn." (input)="bodyText.set($any($event.target).value)"></textarea>
+              @if (bodyError()) { <span id="post-body-error" class="error" role="alert">{{ bodyError() }}</span> } @else { <span class="hint">{{ wordCount() }} từ · Mỗi dòng là một đoạn văn</span> }
             </div>
             <div class="field full">
               <label for="post-tags">Thẻ phân loại</label>
@@ -77,41 +79,51 @@
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       <aside class="editor-side">
         <section class="side-card">
           <h3>Xuất bản</h3>
           <div class="field">
-            <label>Trạng thái</label>
-            <app-custom-select controlId="editor-status" [value]="status()" [options]="statusOptions" (valueChange)="updateStatus($event)"></app-custom-select>
+            <label id="editor-status-label">Trạng thái</label>
+            <app-custom-select labelId="editor-status-label" controlId="editor-status" [value]="status()" [options]="statusOptions" (valueChange)="updateStatus($event)"></app-custom-select>
           </div>
-          <div class="field" style="margin-top:12px">
-            <label>Danh mục</label>
-            <app-custom-select controlId="editor-category" [value]="category()" [options]="categoryOptions" [menuWidth]="250" (valueChange)="updateCategory($event)"></app-custom-select>
+          @if (status() === 'scheduled') {
+            <div class="field">
+              <label for="post-scheduled-at">Thời gian xuất bản *</label>
+              <app-date-time-picker controlId="post-scheduled-at" mode="datetime" label="Chọn ngày và giờ" [value]="scheduledAt()" (valueChange)="scheduledAt.set($event)"></app-date-time-picker>
+              <span class="hint">Theo múi giờ của thiết bị. Chọn thời gian trong tương lai.</span>
+            </div>
+          }
+          <div class="field">
+            <label id="editor-category-label">Danh mục</label>
+            <app-custom-select labelId="editor-category-label" controlId="editor-category" [value]="category()" [options]="categoryOptions" [menuWidth]="250" (valueChange)="updateCategory($event)"></app-custom-select>
+          </div>
+          <div class="field">
+            <label id="editor-author-label">Tác giả</label>
+            <app-custom-select labelId="editor-author-label" controlId="editor-author" [value]="author()" [options]="authorOptions()" [menuWidth]="250" (valueChange)="author.set($event)"></app-custom-select>
+            <span class="hint">Giảng viên đứng tên bài viết theo khóa học phụ trách.</span>
           </div>
           <div class="form-section">
-            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#3c5577"><input class="checkbox" type="checkbox" [checked]="featured()" (change)="featured.set($any($event.target).checked)"> Bài viết nổi bật</label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#3c5577;margin-top:9px"><input class="checkbox" type="checkbox" [checked]="pinned()" (change)="pinned.set($any($event.target).checked)"> Ghim lên đầu danh sách</label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#3c5577;margin-top:9px"><input class="checkbox" type="checkbox" [checked]="allowComments()" (change)="allowComments.set($any($event.target).checked)"> Cho phép bình luận</label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#3c5577;margin-top:9px"><input class="checkbox" type="checkbox" [checked]="loginRequired()" (change)="loginRequired.set($any($event.target).checked)"> Yêu cầu đăng nhập để đọc</label>
+            <label class="option-row"><input class="checkbox" type="checkbox" [checked]="featured()" (change)="featured.set($any($event.target).checked)"> Bài viết nổi bật</label>
+            <label class="option-row"><input class="checkbox" type="checkbox" [checked]="pinned()" (change)="pinned.set($any($event.target).checked)"> Ghim lên đầu danh sách</label>
+            <label class="option-row"><input class="checkbox" type="checkbox" [checked]="allowComments()" (change)="allowComments.set($any($event.target).checked)"> Cho phép bình luận</label>
+            <label class="option-row"><input class="checkbox" type="checkbox" [checked]="loginRequired()" (change)="loginRequired.set($any($event.target).checked)"> Yêu cầu đăng nhập để đọc</label>
           </div>
-          <div style="display:grid;gap:8px;margin-top:16px">
+          <div class="side-actions">
             <button class="button primary" type="button" (click)="save()">{{ editing() ? 'Lưu thay đổi' : 'Lưu bài viết' }}</button>
             <button class="button" type="button" (click)="save('draft')">Lưu nháp</button>
             <button class="button" type="button" (click)="save('pending')">Gửi duyệt</button>
-            <button class="button link" type="button" (click)="duplicate()">Nhân bản nội dung</button>
-            <button class="button link" type="button" (click)="reset()">Khôi phục bản đã lưu</button>
           </div>
         </section>
 
         <section class="side-card">
           <h3>Ảnh bìa</h3>
           <img class="preview-cover" [src]="thumbnail()" alt="Ảnh bìa bài viết">
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">
+          <div class="cover-options">
             @for (cover of coverOptions; track cover) {
-              <button type="button" [attr.aria-label]="'Chọn ảnh bìa ' + cover" [attr.aria-pressed]="thumbnail() === cover" (click)="thumbnail.set(cover)" style="padding:0;border:2px solid transparent;border-radius:7px;background:none" [style.border-color]="thumbnail() === cover ? '#0965e4' : 'transparent'">
-                <img [src]="cover" alt="" width="52" height="34" style="border-radius:5px;object-fit:cover;display:block">
+              <button type="button" [attr.aria-label]="'Chọn ảnh bìa ' + cover" [attr.aria-pressed]="thumbnail() === cover" (click)="thumbnail.set(cover)" class="cover-option" [class.selected]="thumbnail() === cover">
+                <img [src]="cover" alt="" width="52" height="34" >
               </button>
             }
           </div>
@@ -133,28 +145,23 @@
 </main>
 
 @if (previewOpen()) {
-  <div class="dialog-backdrop" (click)="previewOpen.set(false)" (window:keydown.escape)="previewOpen.set(false)">
-    <section class="dialog wide" role="dialog" aria-modal="true" aria-labelledby="preview-title" (click)="$event.stopPropagation()">
-      <header class="dialog-head">
-        <div><h2 id="preview-title">Xem trước bài viết</h2><p>Hiển thị gần đúng như trên trang blog công khai.</p></div>
-        <button class="icon-button" type="button" aria-label="Đóng xem trước" (click)="previewOpen.set(false)">×</button>
-      </header>
-      <div class="dialog-body">
+  <app-admin-dialog title="Xem trước bài viết" subtitle="Hiển thị gần đúng như trên trang blog công khai." size="lg" (closed)="previewOpen.set(false)">
+      <article class="editor-preview">
         <img class="preview-cover" [src]="thumbnail()" alt="">
-        <p class="tag" style="margin-top:14px">{{ category() }}</p>
-        <h2 style="margin:10px 0 6px;color:#071b48">{{ title() || 'Tiêu đề bài viết' }}</h2>
-        <p style="color:#64748b;font-size:13px;margin:0 0 14px">{{ excerpt() || 'Mô tả ngắn của bài viết sẽ hiển thị tại đây.' }}</p>
+        <p class="tag" >{{ category() }}</p>
+        <h2 >{{ title() || 'Tiêu đề bài viết' }}</h2>
+        <p class="preview-excerpt">{{ excerpt() || 'Mô tả ngắn của bài viết sẽ hiển thị tại đây.' }}</p>
         <div class="quote">{{ callout() || excerpt() }}</div>
-        @for (paragraph of bodyParagraphs(); track $index) { <p style="margin:10px 0 0;color:#3c5577;font-size:14px;line-height:1.7">{{ paragraph }}</p> }
-        <div class="tag-list" style="margin-top:14px">@for (tag of tags(); track tag) { <span class="tag">#{{ tag }}</span> }</div>
-        @if (!loginRequired()) { <p style="margin-top:12px;color:#64748b;font-size:12px">Bài viết công khai · {{ allowComments() ? 'Cho phép bình luận' : 'Tắt bình luận' }}</p> } @else { <p style="margin-top:12px;color:#64748b;font-size:12px">Yêu cầu đăng nhập để đọc · {{ allowComments() ? 'Cho phép bình luận' : 'Tắt bình luận' }}</p> }
-      </div>
-      <footer class="dialog-footer">
+        @for (paragraph of bodyParagraphs(); track $index) { <p >{{ paragraph }}</p> }
+        <div class="tag-list" >@for (tag of tags(); track tag) { <span class="tag">#{{ tag }}</span> }</div>
+        <p class="hint">Tác giả: {{ author() }} ({{ authorRole() }})</p>
+        @if (!loginRequired()) { <p class="hint">Bài viết công khai · {{ allowComments() ? 'Cho phép bình luận' : 'Tắt bình luận' }}</p> } @else { <p class="hint">Yêu cầu đăng nhập để đọc · {{ allowComments() ? 'Cho phép bình luận' : 'Tắt bình luận' }}</p> }
+      </article>
+      <div dialogFooter class="preview-actions">
         <button class="button" type="button" (click)="previewOpen.set(false)">Đóng xem trước</button>
         <button class="button primary" type="button" (click)="previewOpen.set(false); save()">Lưu bài viết</button>
-      </footer>
-    </section>
-  </div>
+      </div>
+  </app-admin-dialog>
 }
 
 <app-content-toast [message]="toast()?.message ?? ''" [tone]="toast()?.tone ?? 'info'" (closed)="toast.set(null)"></app-content-toast>

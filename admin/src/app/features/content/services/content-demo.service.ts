@@ -6,7 +6,7 @@ import {
   MOCK_CONTENT_REPORTS,
   MOCK_CONTENT_REVIEWS
 } from '../../../core/data/mock/content.mock';
-import { ContentComment, ContentPost, ContentReport, ContentReview, ModerationLog } from '../models/content.models';
+import { ContentComment, ContentPost, ContentReport, ContentReview, ModerationLog, ReportSeverity } from '../models/content.models';
 import { ContentStore } from './content.store';
 
 // TODO(pre-deploy): Nhớ thay ContentDemoService bằng adapter HTTP khi backend cung cấp API quản lý nội dung.
@@ -50,9 +50,9 @@ export class ContentDemoService extends ContentStore {
     this.log(`Bình luận ${id}`, patch.status === 'hidden' ? 'Ẩn' : patch.status === 'visible' ? 'Hiện lại' : 'Cập nhật', note);
   }
 
-  removeComments(ids: string[]): void {
+  removeComments(ids: string[], reason: string): void {
     this.commentState.update(items => items.filter(item => !ids.includes(item.id)));
-    ids.forEach(id => this.log(`Bình luận ${id}`, 'Xóa', 'Xóa bình luận vi phạm tiêu chuẩn cộng đồng.'));
+    ids.forEach(id => this.log(`Bình luận ${id}`, 'Xóa', `Xóa vĩnh viễn: ${reason}`));
   }
 
   replyComment(id: string, content: string, actor: string): void {
@@ -88,6 +88,32 @@ export class ContentDemoService extends ContentStore {
         }
       : item));
     this.log(`Báo cáo ${id}`, patch.status ? statusAction(patch.status) : 'Cập nhật', note);
+  }
+
+  // TODO(pre-deploy): Nhớ thay bàn giao demo bằng API tạo hồ sơ và chuyển hàng đợi nguyên tử.
+  transferComment(id: string, severity: ReportSeverity, note: string): ContentReport | null {
+    const comment = this.commentState().find(item => item.id === id);
+    if (!comment || note.trim().length < 15 || note.trim().length > 500) return null;
+    if (comment.transferredReportId) {
+      return this.reportState().find(item => item.id === comment.transferredReportId) ?? null;
+    }
+    const now = new Date();
+    let sequence = Math.max(0, ...this.reportState().map(item => Number(item.code.split('-').at(-1)) || 0)) + 1;
+    while (this.reportState().some(item => item.id === `VP-${sequence}`)) sequence += 1;
+    const report: ContentReport = {
+      id: `VP-${sequence}`, code: `RP-${now.getFullYear()}-${String(sequence).padStart(4, '0')}`,
+      type: comment.contextType === 'course' ? 'Bình luận khóa học' : 'Bình luận Blog',
+      targetId: comment.id, targetTitle: comment.contextTitle, targetAuthor: comment.author,
+      priorOffenses: 0, reportedBy: 'Quản trị viên', reason: 'Chuyển từ kiểm duyệt bình luận',
+      description: note.trim(), evidenceSnippet: comment.content, severity, status: 'new',
+      createdAt: now.toISOString(), slaDueAt: new Date(now.getTime() + 4 * 60 * 60 * 1000).toISOString(),
+      assignee: 'Chưa phân công', evidence: []
+    };
+    this.reportState.update(items => [report, ...items]);
+    this.commentState.update(items => items.map(item => item.id === id
+      ? { ...item, status: 'flagged', transferredReportId: report.id, moderationNote: note.trim() } : item));
+    this.log(`Báo cáo ${report.id}`, 'Chuyển hồ sơ', `${comment.id} → ${report.code}: ${note.trim()}`);
+    return report;
   }
 
   reset(): void {

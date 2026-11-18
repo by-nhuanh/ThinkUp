@@ -1,8 +1,11 @@
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, WritableSignal, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { BulkSelectionDialogComponent, BulkSelectionItem } from '../../../shared/components/bulk-selection-dialog/bulk-selection-dialog.component';
 import { CustomSelectComponent, CustomSelectOption } from '../../../shared/components/custom-select/custom-select.component';
 import { ExportMenuComponent } from '../../../shared/components/export-menu/export-menu.component';
 import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
+import { SelectionAction, SelectionBarComponent } from '../../../shared/components/selection-bar/selection-bar.component';
+import { ColumnFilterComponent, ColumnFilterValue, DATE_SORT_OPTIONS, TEXT_SORT_OPTIONS, compareSortValues } from '../../../shared/components/column-filter/column-filter.component';
 import { ExportFormat } from '../../../shared/utils/export-formats';
 import { AdminPageSizeService } from '../../../core/services/admin-page-size.service';
 import { AdminNumberPipe } from '../../../shared/pipes/admin-number.pipe';
@@ -18,6 +21,13 @@ import { UserToastService } from '../services/user-toast.service';
 import { formatCount, formatCurrency, formatDate, formatDeadline, formatRevenueShort } from '../user-management.utils';
 
 type LecturerModal = 'profile' | 'courses' | 'discipline' | 'unlock';
+type LecturerColumn = 'name' | 'specialty' | 'legal' | 'tax' | 'joined' | 'status';
+
+/** Tháng tham gia — giá trị lọc của bộ lọc cột "Thời gian tham gia". */
+const JOINED_FILTER_VALUES: readonly ColumnFilterValue[] = [
+  'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
+  'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'
+].map((label, index) => ({ value: String(index + 1).padStart(2, '0'), label }));
 
 /**
  * Danh sách giảng viên — frame Figma "Quản lý giảng viên" (node 5224:18503).
@@ -29,7 +39,10 @@ type LecturerModal = 'profile' | 'courses' | 'discipline' | 'unlock';
   imports: [
     SearchFieldComponent,
     CustomSelectComponent,
+    ColumnFilterComponent,
     ExportMenuComponent,
+    SelectionBarComponent,
+    BulkSelectionDialogComponent,
     UserDateRangeComponent,
     UserModalComponent,
     UserRowMenuComponent,
@@ -69,9 +82,53 @@ export class LecturersComponent {
   readonly from = signal('');
   readonly to = signal('');
   readonly page = signal(1);
+  private readonly columnFilters: Record<LecturerColumn, WritableSignal<string[]>> = {
+    name: signal<string[]>([]),
+    specialty: signal<string[]>([]),
+    legal: signal<string[]>([]),
+    tax: signal<string[]>([]),
+    joined: signal<string[]>([]),
+    status: signal<string[]>([])
+  };
 
   readonly modal = signal<LecturerModal | null>(null);
   readonly selected = signal<Lecturer | null>(null);
+
+  readonly selection = signal<ReadonlySet<string>>(new Set());
+  readonly selectionListOpen = signal(false);
+  readonly bulkConfirm = signal<{ key: 'suspend' | 'lock'; ids: readonly string[] } | null>(null);
+
+  readonly selectedIds = computed(() => [...this.selection()]);
+  readonly allVisibleSelected = computed(() => {
+    const items = this.visible();
+    const chosen = this.selection();
+    return items.length > 0 && items.every((item) => chosen.has(item.id));
+  });
+  readonly someVisibleSelected = computed(() =>
+    !this.allVisibleSelected() && this.visible().some((item) => this.selection().has(item.id)));
+  private readonly selectedLecturers = computed(() =>
+    this.lecturers().filter((item) => this.selection().has(item.id)));
+  readonly selectionItems = computed<BulkSelectionItem[]>(() =>
+    this.selectedLecturers().map((item) => ({ id: item.id, label: item.name, detail: item.email })));
+  readonly selectionCandidates = computed<BulkSelectionItem[]>(() =>
+    this.filtered()
+      .filter((item) => !this.selection().has(item.id))
+      .map((item) => ({ id: item.id, label: item.name, detail: item.email })));
+  readonly selectionActions = computed<readonly SelectionAction[]>(() => {
+    const pending = this.selectedLecturers()
+      .filter((item) => item.status === 'pending-review' || item.status === 'pending-docs').length;
+    return [
+      {
+        key: 'approve',
+        label: 'Duyệt hồ sơ',
+        tone: 'primary',
+        disabled: !pending,
+        title: pending ? `Duyệt ${pending} hồ sơ đang chờ` : 'Chỉ áp dụng cho hồ sơ chờ thẩm định hoặc chờ bổ sung'
+      },
+      { key: 'suspend', label: 'Tạm ngưng', title: 'Kỷ luật Mức 1 — cảnh cáo và hạn chế 7 ngày' },
+      { key: 'lock', label: 'Khóa tài khoản', tone: 'danger', title: 'Kỷ luật Mức 3 — đóng băng dòng tiền và khóa đăng nhập' }
+    ];
+  });
 
   readonly level = signal<DisciplineLevel>(1);
   readonly disciplineCourses = signal<readonly string[]>([]);
@@ -83,8 +140,7 @@ export class LecturersComponent {
   readonly unlockReason = signal('');
   readonly saving = signal(false);
   readonly loadError = this.data.error;
-  // Trang giảng viên chờ riêng nguồn giảng viên để `/students` chậm không treo bảng này.
-  readonly loading = this.data.loadingLecturers;
+  readonly loading = this.data.loading;
 
   readonly statusOptions: ReadonlyArray<CustomSelectOption> = [
     { value: '', label: 'Tất cả trạng thái' },
@@ -98,6 +154,26 @@ export class LecturersComponent {
     { value: 'incomplete', label: 'Chưa hoàn tất hợp đồng' }
   ];
 
+  readonly nameValues = computed<ColumnFilterValue[]>(() =>
+    [...new Set(this.lecturers().map((item) => item.name))].map((name) => ({ value: name, label: name })));
+  readonly specialtyValues = computed<ColumnFilterValue[]>(() =>
+    [...new Set(this.lecturers().map((item) => item.specialty))].map((specialty) => ({ value: specialty, label: specialty })));
+  readonly legalValues: readonly ColumnFilterValue[] = this.legalOptions
+    .filter((option) => option.value)
+    .map((option) => ({ value: option.value, label: option.label }));
+  readonly taxValues: readonly ColumnFilterValue[] = [
+    { value: 'verified', label: 'MST xác minh' },
+    { value: 'pending', label: 'Chờ đối soát ngân hàng' }
+  ];
+  readonly joinedValues = JOINED_FILTER_VALUES;
+  readonly statusValues: readonly ColumnFilterValue[] = this.statusOptions
+    .filter((option) => option.value)
+    .map((option) => ({ value: option.value, label: option.label }));
+  readonly textSorts = TEXT_SORT_OPTIONS;
+  readonly dateSorts = DATE_SORT_OPTIONS;
+  readonly columnSort = signal<{ column: LecturerColumn; direction: 'asc' | 'desc' } | null>(null);
+
+  readonly totalCourses = computed(() => this.lecturers().reduce((sum, item) => sum + item.courses, 0));
   readonly activePercent = computed(() => {
     const kpi = this.kpis();
     return kpi.total ? Math.round((kpi.active / kpi.total) * 100) : 0;
@@ -123,8 +199,14 @@ export class LecturersComponent {
     const legal = this.legal();
     const from = this.from();
     const to = this.to();
+    const names = this.columnFilters.name();
+    const specialties = this.columnFilters.specialty();
+    const legalColumn = this.columnFilters.legal();
+    const taxes = this.columnFilters.tax();
+    const joined = this.columnFilters.joined();
+    const statuses = this.columnFilters.status();
 
-    return this.lecturers().filter((item) => {
+    const items = this.lecturers().filter((item) => {
       const haystack = [item.name, item.email, item.phone, item.id, item.specialty, item.kyc.taxCode]
         .join(' ')
         .toLocaleLowerCase('vi-VN');
@@ -132,8 +214,20 @@ export class LecturersComponent {
         && (!status || item.status === status)
         && (!legal || item.legalStatus === legal)
         && (!from || item.joinedAt >= from)
-        && (!to || item.joinedAt <= to);
+        && (!to || item.joinedAt <= to)
+        && (!names.length || names.includes(item.name))
+        && (!specialties.length || specialties.includes(item.specialty))
+        && (!legalColumn.length || legalColumn.includes(item.legalStatus))
+        && (!taxes.length || taxes.includes(item.taxVerified ? 'verified' : 'pending'))
+        && (!joined.length || joined.includes(item.joinedAt.slice(5, 7)))
+        && (!statuses.length || statuses.includes(item.status));
     });
+    const columnSort = this.columnSort();
+    if (columnSort) {
+      const factor = columnSort.direction === 'asc' ? 1 : -1;
+      return [...items].sort((a, b) => compareSortValues(this.sortValue(a, columnSort.column), this.sortValue(b, columnSort.column)) * factor);
+    }
+    return items;
   });
 
   readonly pages = computed(() => Math.max(1, Math.ceil(this.filtered().length / this.pageSize)));
@@ -236,7 +330,8 @@ export class LecturersComponent {
   }
 
   hasActiveFilters(): boolean {
-    return !!(this.query() || this.status() || this.legal() || this.from() || this.to());
+    return !!(this.query() || this.status() || this.legal() || this.from() || this.to())
+      || (Object.keys(this.columnFilters) as LecturerColumn[]).some((key) => this.columnFilters[key]().length > 0);
   }
 
   resetFilters(): void {
@@ -247,11 +342,114 @@ export class LecturersComponent {
     this.legal.set('');
     this.from.set('');
     this.to.set('');
+    this.columnSort.set(null);
+    this.clearColumnFilters();
     this.page.set(1);
+  }
+
+  filterFor(key: LecturerColumn): readonly string[] {
+    return this.columnFilters[key]();
+  }
+
+  updateColumnFilter(key: LecturerColumn, values: string[]): void {
+    this.columnFilters[key].set(values);
+    this.page.set(1);
+  }
+
+  private clearColumnFilters(): void {
+    (Object.keys(this.columnFilters) as LecturerColumn[]).forEach((key) => this.columnFilters[key].set([]));
+  }
+
+  sortFor(key: LecturerColumn): string {
+    const current = this.columnSort();
+    return current?.column === key ? current.direction : '';
+  }
+
+  updateColumnSort(key: LecturerColumn, direction: string): void {
+    const current = this.columnSort();
+    this.columnSort.set(!direction || (current?.column === key && current.direction === direction)
+      ? null
+      : { column: key, direction: direction as 'asc' | 'desc' });
+    this.page.set(1);
+  }
+
+  private sortValue(item: Lecturer, column: LecturerColumn): string | number {
+    switch (column) {
+      case 'name': return item.name;
+      case 'specialty': return item.specialty;
+      case 'legal': return item.legalStatus === 'signed' ? 'Đã ký hợp đồng điện tử' : 'Chưa hoàn tất hợp đồng';
+      case 'tax': return item.taxVerified ? 'MST xác minh' : 'Chờ đối soát ngân hàng';
+      case 'joined': return Date.parse(item.joinedAt);
+      case 'status': return LECTURER_STATUS_LABELS[item.status];
+    }
   }
 
   pageTo(value: number): void {
     this.page.set(Math.max(1, Math.min(this.pages(), value)));
+  }
+
+  isSelected(id: string): boolean {
+    return this.selection().has(id);
+  }
+
+  toggleSelect(id: string, checked: boolean): void {
+    const next = new Set(this.selection());
+    if (checked) next.add(id);
+    else next.delete(id);
+    this.selection.set(next);
+  }
+
+  toggleSelectAll(): void {
+    const next = new Set(this.selection());
+    if (this.allVisibleSelected()) this.visible().forEach((item) => next.delete(item.id));
+    else this.visible().forEach((item) => next.add(item.id));
+    this.selection.set(next);
+  }
+
+  clearSelection(): void {
+    this.selection.set(new Set());
+  }
+
+  setSelectionIds(ids: string[]): void {
+    this.selection.set(new Set(ids));
+  }
+
+  runSelectionAction(key: string, ids?: readonly string[]): void {
+    this.selectionListOpen.set(false);
+    const targets = ids ?? this.selectedIds();
+    if (!targets.length) return;
+    if (key === 'approve') {
+      const approvable = targets.filter((id) => {
+        const lecturer = this.data.findLecturer(id);
+        return lecturer?.status === 'pending-review' || lecturer?.status === 'pending-docs';
+      });
+      if (!approvable.length) {
+        this.notify('Không có hồ sơ chờ thẩm định hoặc chờ bổ sung trong lựa chọn.');
+        return;
+      }
+      approvable.forEach((id) => this.data.approveLecturer(id));
+      this.clearSelection();
+      this.notify(`Đã duyệt ${approvable.length} hồ sơ giảng viên, chuyển sang chờ ký hợp đồng.`);
+      return;
+    }
+    if (key === 'suspend' || key === 'lock') {
+      this.bulkConfirm.set({ key, ids: targets });
+    }
+  }
+
+  confirmBulkAction(): void {
+    const confirm = this.bulkConfirm();
+    if (!confirm) return;
+    const level = confirm.key === 'lock' ? 3 : 1;
+    const reason = confirm.key === 'lock'
+      ? 'Khóa tài khoản hàng loạt từ danh sách giảng viên.'
+      : 'Tạm ngưng hàng loạt từ danh sách giảng viên.';
+    confirm.ids.forEach((id) => this.data.disciplineLecturer(id, { level, reason }));
+    this.bulkConfirm.set(null);
+    this.clearSelection();
+    this.notify(confirm.key === 'lock'
+      ? `Đã khóa ${confirm.ids.length} tài khoản giảng viên (Mức 3).`
+      : `Đã tạm ngưng ${confirm.ids.length} giảng viên (Mức 1).`);
   }
 
   openVerification(lecturer: Lecturer): void {

@@ -1,0 +1,3 @@
+.field .required-mark { color: #b91c1c; }
+.field-character-count { justify-self: end; color: #64748b; font: var(--admin-text-caption); margin-top: 2px; }
+.field app-custom-select { display: block; align-self: center; width: min(100%, 420px); --custom-select-width: 100%; --custom-select-max-width: 420px; --custom-select-trigger-height: 40px; --custom-select-trigger-padding: 0 12px; }

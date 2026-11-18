@@ -146,6 +146,4 @@ export interface PayoutRequest {
   paidAt?: string;
   bankReference?: string;
   rejectionReason?: string;
-  evidenceId?: string | null;
-  isDemo?: boolean;
 }

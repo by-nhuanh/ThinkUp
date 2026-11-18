@@ -58,9 +58,17 @@
 .date-apply-button:hover { border-color: #075acb; background: #075acb; }
 
 .table-scroll { border-top: 0; }
+.selection-slot { padding: 12px 16px 0; }
+.table-scroll .select-cell { width: 44px; min-width: 44px; max-width: 44px; padding: 12px 8px; text-align: center; }
+.table-scroll .select-cell input[type='checkbox'] { width: 17px; height: 17px; margin: 0; accent-color: #0965e4; cursor: pointer; }
+.table-scroll .select-cell input[type='checkbox']:focus-visible { outline: 2px solid #4388e8; outline-offset: 2px; }
+.table-scroll tbody tr.row-selected td { background: #f0f6ff; }
+.table-scroll tbody tr.row-selected:hover td { background: #e8f1ff; }
+.bulk-confirm-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .ticket-filter-actions { display: flex; align-items: flex-end; justify-content: flex-end; gap: 10px; align-self: end; }
 .ticket-filter-actions .ghost-button { min-height: 40px; white-space: nowrap; }
-.table-scroll table { min-width: 1320px; table-layout: fixed; }
+.table-scroll table { min-width: 1364px; table-layout: fixed; }
+.table-scroll table:not(.has-custom-column-widths) th[data-column="select"] { width: 44px; }
 .table-scroll table:not(.has-custom-column-widths) th[data-column="id"] { width: 9%; }
 .table-scroll table:not(.has-custom-column-widths) th[data-column="sender"] { width: 13%; }
 .table-scroll table:not(.has-custom-column-widths) th[data-column="topic"] { width: 11%; }

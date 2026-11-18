@@ -1,14 +1,12 @@
-<main class="content-page">
-  <div class="page-stack">
+<main class="content-page moderation-reports">
   <header class="page-heading">
     <div>
       <nav class="breadcrumb" aria-label="Đường dẫn trang"><span>Quản lý nội dung</span><span class="breadcrumb-separator" aria-hidden="true">/</span><span class="breadcrumb-current" aria-current="page">Báo cáo vi phạm</span></nav>
       <h1>Báo cáo vi phạm</h1>
-      <p class="subtitle">Tiếp nhận, phân loại và xử lý báo cáo nội dung theo cam kết SLA 4 giờ.</p>
     </div>
   </header>
 
-  <div class="alert info" role="status">
+  <div class="alert danger" role="status">
     <span aria-hidden="true">ⓘ</span>
     <span>{{ counts().overdue }} báo cáo đã vượt hạn SLA cần ưu tiên. Mức độ nghiêm trọng được đánh dấu tự động theo lý do báo cáo.</span>
   </div>
@@ -33,48 +31,31 @@
   </section>
 
   <section class="panel" aria-label="Danh sách báo cáo">
-    <div class="filters">
-      <div class="filters-row">
-        <div class="filter-field filter-search">
-          <label class="floating-label" for="report-search">Tìm kiếm</label>
-          <span class="search-field">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-            <input id="report-search" type="search" autocomplete="off" placeholder="Tìm mã báo cáo, nội dung hoặc người báo cáo..." [value]="search()" (input)="setSearch($any($event.target).value)">
-          </span>
-        </div>
-        <div class="filter-field basis-wide">
-          <span class="floating-label">Loại nội dung</span>
-          <app-custom-select controlId="report-type" [value]="type()" [options]="typeOptions" (valueChange)="setType($event)"></app-custom-select>
-        </div>
-        <div class="filter-field basis-status">
-          <span class="floating-label">Mức độ</span>
-          <app-custom-select controlId="report-severity" [value]="severity()" [options]="severityOptions" (valueChange)="setSeverity($event)"></app-custom-select>
-        </div>
-        <div class="filter-field basis-status">
-          <span class="floating-label">Trạng thái</span>
-          <app-custom-select controlId="report-status" [value]="status()" [options]="statusOptions" (valueChange)="setStatus($event)"></app-custom-select>
-        </div>
-        <div class="filter-field basis-status">
-          <span class="floating-label">Sắp xếp</span>
-          <app-custom-select controlId="report-sort" [value]="sort()" [options]="sortOptions" (valueChange)="setSort($event)"></app-custom-select>
-        </div>
-        <div class="filter-actions">
-          <button class="icon-button" type="button" title="Đặt lại bộ lọc" aria-label="Đặt lại bộ lọc" (click)="clearFilters()">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 6.3"/><path d="M20 5v6h-6"/></svg>
-          </button>
-          <app-export-menu label="Xuất danh sách báo cáo" (formatChange)="exportList($event)"></app-export-menu>
-        </div>
+    <div class="toolbar">
+      <div class="grow"><app-search-field label="Tìm báo cáo" placeholder="Tìm mã báo cáo, nội dung hoặc người báo cáo..." [value]="search()" (valueChange)="setSearch($event)"></app-search-field></div>
+      <div class="filter custom-select-control">
+        <span id="report-type-label">Loại nội dung</span>
+        <app-custom-select controlId="report-type" labelId="report-type-label" [value]="type()" [options]="typeOptions" (valueChange)="setType($event)"></app-custom-select>
       </div>
+      <div class="filter custom-select-control">
+        <span id="report-severity-label">Mức độ</span>
+        <app-custom-select controlId="report-severity" labelId="report-severity-label" [value]="severity()" [options]="severityOptions" (valueChange)="setSeverity($event)"></app-custom-select>
+      </div>
+      <div class="filter custom-select-control">
+        <span id="report-status-label">Trạng thái</span>
+        <app-custom-select controlId="report-status" labelId="report-status-label" [value]="status()" [options]="statusOptions" (valueChange)="setStatus($event)"></app-custom-select>
+      </div>
+      <div class="filter custom-select-control">
+        <span id="report-sort-label">Sắp xếp</span>
+        <app-custom-select controlId="report-sort" labelId="report-sort-label" [value]="sort()" [options]="sortOptions" (valueChange)="setSort($event)"></app-custom-select>
+      </div>
+      <div class="toolbar-end">
+        <button class="icon-button" type="button" title="Đặt lại bộ lọc" aria-label="Đặt lại bộ lọc" (click)="clearFilters()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 6.3"/><path d="M20 5v6h-6"/></svg>
+        </button>
+        <app-export-menu label="Xuất danh sách báo cáo" (formatChange)="exportList($event)"></app-export-menu></div>
     </div>
 
-    <div class="tabs" role="tablist" aria-label="Lọc theo trạng thái">
-      <button class="tab" type="button" role="tab" [class.active]="status() === ''" [attr.aria-selected]="status() === ''" (click)="setStatus('')">Tất cả <span class="chip-count">{{ counts().total }}</span></button>
-      <button class="tab" type="button" role="tab" [class.active]="status() === 'new'" [attr.aria-selected]="status() === 'new'" (click)="setStatus('new')">Chờ xử lý <span class="chip-count">{{ counts().fresh }}</span></button>
-      <button class="tab" type="button" role="tab" [class.active]="status() === 'processing'" [attr.aria-selected]="status() === 'processing'" (click)="setStatus('processing')">Đang điều tra <span class="chip-count">{{ counts().processing }}</span></button>
-      <button class="tab" type="button" role="tab" [class.active]="status() === 'escalated'" [attr.aria-selected]="status() === 'escalated'" (click)="setStatus('escalated')">Đã leo thang</button>
-      <button class="tab" type="button" role="tab" [class.active]="status() === 'resolved'" [attr.aria-selected]="status() === 'resolved'" (click)="setStatus('resolved')">Đã giải quyết <span class="chip-count">{{ counts().resolvedOnly }}</span></button>
-      <button class="tab" type="button" role="tab" [class.active]="status() === 'dismissed'" [attr.aria-selected]="status() === 'dismissed'" (click)="setStatus('dismissed')">Bác bỏ <span class="chip-count">{{ counts().dismissed }}</span></button>
-    </div>
 
     @if (loadError()) {
       <div class="empty" role="alert">
@@ -83,58 +64,60 @@
         <button class="button" type="button" (click)="retryLoad()">Thử lại</button>
       </div>
     } @else {
-    <div class="table-scroll">
+    @if (selectedIds().length) {
+      <div class="selection-slot">
+        <app-selection-bar
+          [count]="selectedIds().length"
+          noun="báo cáo"
+          [actions]="selectionActions()"
+          (action)="runSelectionAction($event)"
+          (inspect)="selectionListOpen.set(true)"
+          (clear)="clearSelection()"
+        />
+      </div>
+    }
+    <div (scroll)="closeRowMenu()" class="table-scroll" tabindex="0" role="region" aria-label="Bảng dữ liệu, cuộn ngang để xem đầy đủ các cột">
       <table>
         <thead>
           <tr>
+            <th scope="col" class="select-cell"><input class="checkbox" type="checkbox" [checked]="allVisibleSelected()" [indeterminate]="someVisibleSelected()" aria-label="Chọn tất cả báo cáo trên trang" (change)="toggleSelectAll()"></th>
             <th scope="col">Mã báo cáo</th>
-            <th scope="col">Đối tượng</th>
-            <th scope="col">Lý do &amp; mức độ</th>
-            <th scope="col">Người báo cáo</th>
-            <th scope="col">Hạn SLA</th>
-            <th scope="col">Trạng thái</th>
-            <th scope="col">Phụ trách</th>
+            <th scope="col"><app-column-filter label="Đối tượng" [values]="reportTypeValues" [selected]="filterFor('type')" (changed)="updateColumnFilter('type', $event)" [sorts]="textSorts" [sort]="sortFor('type')" (sortChange)="updateColumnSort('type', $event)" /></th>
+            <th scope="col"><app-column-filter label="Lý do &amp; mức độ" [values]="reasonValues()" [selected]="filterFor('reason')" (changed)="updateColumnFilter('reason', $event)" [sorts]="textSorts" [sort]="sortFor('reason')" (sortChange)="updateColumnSort('reason', $event)" /></th>
+            <th scope="col"><app-column-filter label="Người báo cáo" [values]="reporterValues()" [selected]="filterFor('reportedBy')" (changed)="updateColumnFilter('reportedBy', $event)" [sorts]="textSorts" [sort]="sortFor('reportedBy')" (sortChange)="updateColumnSort('reportedBy', $event)" /></th>
+            <th scope="col"><app-column-filter label="Hạn SLA" [values]="slaStateValues" [selected]="filterFor('slaState')" (changed)="updateColumnFilter('slaState', $event)" [sorts]="dateSorts" [sort]="sortFor('slaState')" (sortChange)="updateColumnSort('slaState', $event)" /></th>
+            <th scope="col"><app-column-filter label="Trạng thái" [values]="reportStatusValues" [selected]="filterFor('status')" (changed)="updateColumnFilter('status', $event)" [sorts]="textSorts" [sort]="sortFor('status')" (sortChange)="updateColumnSort('status', $event)" /></th>
+            <th scope="col"><app-column-filter label="Phụ trách" [values]="assigneeValues()" [selected]="filterFor('assignee')" (changed)="updateColumnFilter('assignee', $event)" [sorts]="textSorts" [sort]="sortFor('assignee')" (sortChange)="updateColumnSort('assignee', $event)" /></th>
             <th scope="col">Thao tác</th>
           </tr>
         </thead>
         <tbody>
           @for (item of visible(); track item.id) {
-            <tr>
+            <tr [class.is-selected]="isSelected(item.id)">
+              <td class="select-cell"><input class="checkbox" type="checkbox" [checked]="isSelected(item.id)" [attr.aria-label]="'Chọn báo cáo ' + item.code" (change)="toggleSelect(item.id, $any($event.target).checked)"></td>
               <td class="nowrap">
                 <button type="button" style="border:0;background:none;padding:0;text-align:left" (click)="openDetail(item)"><span class="cell-title">{{ item.code }}</span></button>
                 <span class="cell-sub">{{ item.id }} · {{ item.type }}</span>
               </td>
               <td><span class="cell-title" style="max-width:240px">{{ truncate(item.targetTitle) }}</span><span class="cell-sub">{{ item.targetAuthor }} · {{ item.targetId }}</span></td>
-              <td><strong>{{ item.reason }}</strong><span class="cell-sub"><span [class]="'badge ' + severityTone(item.severity)" style="margin-top:4px">{{ severityLabel(item.severity) }}</span></span></td>
+              <td><span class="report-reason">{{ item.reason }}</span><span class="cell-sub"><span [class]="'badge report-severity-badge ' + severityTone(item.severity)" style="margin-top:4px">{{ severityLabel(item.severity) }}</span></span></td>
               <td>{{ item.reportedBy }}<span class="cell-sub">{{ ago(item.createdAt) }}</span></td>
               <td class="nowrap">
                 {{ dateTime(item.slaDueAt) }}
                 @if (isOverdue(item)) { <span class="cell-sub" style="color:#bd4050;font-weight:700">Quá hạn</span> }
                 @else { <span class="cell-sub">Trong hạn</span> }
               </td>
-              <td><span [class]="'badge ' + statusTone(item.status)"><span class="dot" aria-hidden="true"></span>{{ statusLabel(item.status) }}</span></td>
-              <td>{{ item.assignee }}</td>
+              <td class="report-status-cell"><span [class]="'badge report-status-badge ' + statusTone(item.status)"><span class="dot" aria-hidden="true"></span>{{ statusLabel(item.status) }}</span></td>
+              <td class="report-assignee"><span [class.is-unassigned]="item.assignee === 'Chưa phân công'">{{ item.assignee }}</span></td>
               <td>
-                <div class="row-actions">
-                  <button class="icon-button" type="button" title="Xem chi tiết" [attr.aria-label]="'Xem chi tiết ' + item.code" (click)="openDetail(item)">
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
-                  </button>
-                  @if (item.status === 'new') {
-                    <button class="icon-button" type="button" title="Nhận xử lý" [attr.aria-label]="'Nhận xử lý ' + item.code" (click)="startProcessing(item)">
-                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
-                    </button>
-                  }
-                  @if (item.status !== 'resolved' && item.status !== 'dismissed') {
-                    <button class="icon-button" type="button" title="Leo thang" [attr.aria-label]="'Leo thang ' + item.code" (click)="escalate(item)">
-                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 14 6-6 6 6"/><path d="M12 8v9"/></svg>
-                    </button>
-                  }
+                <div class="report-actions">
+                  <button class="icon-button report-menu-trigger" type="button" aria-haspopup="menu" [attr.aria-expanded]="isRowMenuOpen(item.id)" [attr.aria-controls]="isRowMenuOpen(item.id) ? 'report-row-menu' : null" [attr.aria-label]="'Thao tác cho báo cáo ' + item.code" (click)="openRowMenu($event, item)" (keydown.arrowdown)="openRowMenuFromKeyboard($event, item)">···</button>
                 </div>
               </td>
             </tr>
           }
           @if (!visible().length) {
-            <tr><td colspan="8"><div class="empty"><strong>Không có báo cáo phù hợp</strong><p>Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.</p><button class="button" type="button" (click)="clearFilters()">Đặt lại bộ lọc</button></div></td></tr>
+            <tr><td colspan="9"><div class="empty"><strong>Không có báo cáo phù hợp</strong><p>Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.</p><button class="button" type="button" (click)="clearFilters()">Đặt lại bộ lọc</button></div></td></tr>
           }
         </tbody>
       </table>
@@ -153,116 +136,133 @@
     </div>
     }
   </section>
-  </div>
 </main>
 
+@if (rowMenu(); as m) {
+  <div class="menu-layer" (click)="closeRowMenu()"></div>
+  <div id="report-row-menu" class="row-menu report-row-menu" role="menu" [attr.aria-label]="'Thao tác cho báo cáo ' + m.item.code" [style.top.px]="m.top" [style.left.px]="m.left" (keydown)="onRowMenuKeydown($event)">
+    <button type="button" role="menuitem" (click)="closeRowMenu(); openDetail(m.item)">Xem chi tiết</button>
+    @if (m.item.status === 'new') {
+      <button type="button" role="menuitem" (click)="closeRowMenu(); startProcessing(m.item)">Nhận xử lý</button>
+    }
+  </div>
+}
+
 @if (detail(); as item) {
-  <div class="dialog-backdrop" (click)="closeDetail()" (window:keydown.escape)="closeDetail()">
-    <section class="dialog wide" role="dialog" aria-modal="true" aria-labelledby="report-detail-title" (click)="$event.stopPropagation()">
-      <header class="dialog-head">
-        <div><h2 id="report-detail-title">Hồ sơ thụ lý vi phạm – {{ item.code }}</h2><p>{{ item.id }} · {{ item.type }} · Tạo lúc {{ dateTime(item.createdAt) }}</p></div>
-        <button class="icon-button" type="button" aria-label="Đóng chi tiết" (click)="closeDetail()">×</button>
-      </header>
-      <div class="dialog-body">
-        <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px">
-          <div style="display:flex;flex-wrap:wrap;gap:6px">
-            <span [class]="'badge ' + severityTone(item.severity)">{{ severityLabel(item.severity) }}</span>
-            <span [class]="'badge ' + statusTone(item.status)">{{ statusLabel(item.status) }}</span>
-          </div>
-          <div style="text-align:right">
-            <strong [style.color]="isOverdue(item) ? '#bd4050' : '#1f6fd0'">{{ slaRemaining(item) }}</strong>
-            <span class="cell-sub" style="margin-top:2px">SLA cam kết xử lý trong 4 giờ</span>
-          </div>
+  <app-admin-dialog title="Hồ sơ vi phạm · {{ item.code }}" subtitle="{{ item.id }} · {{ item.type }} · {{ dateTime(item.createdAt) }}" size="lg" (closed)="closeDetail()">
+    <div class="report-case">
+      <div class="report-case-summary">
+        <div class="report-case-badges">
+          <span [class]="'badge ' + severityTone(item.severity)">{{ severityLabel(item.severity) }}</span>
+          <span [class]="'badge ' + statusTone(item.status)">{{ statusLabel(item.status) }}</span>
         </div>
-
-        <div class="section-card" style="margin-top:16px">
-          <h3>1. Bằng chứng vi phạm</h3>
-          <p class="quote">{{ item.evidenceSnippet }}</p>
-          <p style="margin-top:10px;color:#3c5577;font-size:13px">{{ item.targetTitle }}</p>
-          <p style="margin-top:4px;color:#64748b;font-size:12px">Đối tượng: {{ item.targetId }} · Tác giả: {{ item.targetAuthor }}</p>
-          <button class="button" type="button" style="margin-top:10px" (click)="openOriginal(item)">Xem nội dung gốc ↗</button>
-        </div>
-
-        <div class="section-card">
-          <h3>2. Bên tố cáo</h3>
-          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px">
-            <strong style="color:#071b48">{{ item.reportedBy }}</strong>
-            <span class="badge pending">Lý do: {{ item.reason }}</span>
-          </div>
-          <p style="margin-top:10px;color:#3c5577">{{ item.description }}</p>
-        </div>
-
-        <div class="section-card">
-          <h3>3. Bên bị tố cáo</h3>
-          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px">
-            <strong style="color:#071b48">{{ item.targetAuthor }}</strong>
-            <span [class]="'badge ' + (item.priorOffenses ? 'danger' : 'success')">{{ item.priorOffenses ? 'Đã từng bị phạt ' + item.priorOffenses + ' lần' : 'Chưa có tiền án' }}</span>
-          </div>
-          <p style="margin-top:10px;color:#3c5577">Trạng thái hiện tại: {{ item.type }} · Đang bị hạn chế theo quyết định gần nhất.</p>
-          <button class="button" type="button" style="margin-top:10px" (click)="toggleHistory()">{{ historyOpen() ? 'Ẩn lịch sử vi phạm' : 'Xem lịch sử vi phạm' }}</button>
-          @if (historyOpen()) {
-            <ul class="timeline" style="margin-top:12px">
-              @for (offense of priorOffenseList(item); track offense) {
-                <li><strong>Vi phạm trước #{{ offense }}</strong><span>{{ item.reason }} · Đã xử lý</span></li>
-              }
-              @if (!item.priorOffenses) { <li><strong>Không có vi phạm trước đây</strong><span>Đây là lần đầu tài khoản bị báo cáo.</span></li> }
-            </ul>
-          }
-        </div>
-
-        <div class="section-card">
-          <h3>Bằng chứng đính kèm</h3>
-          <ul class="side-list">
-            @for (evidence of item.evidence; track evidence) { <li><span>{{ evidence }}</span><strong>Đã tải lên</strong></li> }
-          </ul>
-        </div>
-
-        <div class="section-card">
-          <h3>Kết luận xử lý</h3>
-          <div class="field">
-            <label for="resolution-note">Kết luận <b>*</b></label>
-            <textarea id="resolution-note" [value]="resolutionNote()" maxlength="600" placeholder="Mô tả hành động đã thực hiện và căn cứ..." (input)="resolutionNote.set($any($event.target).value)"></textarea>
-            @if (noteError()) { <span class="error" role="alert">{{ noteError() }}</span> } @else { <span class="hint">Bắt buộc khi áp dụng chế tài hoặc bác bỏ cáo.</span> }
-          </div>
-          <div class="field" style="margin-top:14px">
-            <label for="report-enforcement">Hình thức xử lý khi xác nhận vi phạm <b>*</b></label>
-            <app-custom-select controlId="report-enforcement" [value]="enforcement()" placeholder="Chọn hình thức xử lý" [options]="enforcementOptions" (valueChange)="enforcement.set($event)"></app-custom-select>
-          </div>
-          <div class="field" style="margin-top:14px">
-            <label for="report-dismissal">Lý do bác bỏ báo cáo <b>*</b></label>
-            <app-custom-select controlId="report-dismissal" [value]="dismissalReason()" placeholder="Chọn lý do bác bỏ" [options]="dismissalOptions" (valueChange)="dismissalReason.set($event)"></app-custom-select>
-          </div>
-          @if (actionError()) { <span class="error" role="alert">{{ actionError() }}</span> }
-          @if (item.resolutionNote) { <div class="quote" style="margin-top:10px">{{ item.resolutionNote }}</div> }
-        </div>
-
-        <div class="alert info" style="margin-top:14px">
-          <span aria-hidden="true">ⓘ</span>
-          <span>Hồ sơ đã được thụ lý — Trạng thái <strong>Đang điều tra</strong> được ghi nhận khi mở Drawer. Chế tài hoặc bác bỏ chỉ có hiệu lực sau khi bạn xác nhận.</span>
-        </div>
-
-        <div class="section-card">
-          <h3>Lịch sử xử lý</h3>
-          <ul class="timeline">
-            <li><strong>Tiếp nhận báo cáo</strong><span>{{ dateTime(item.createdAt) }}</span></li>
-            @for (log of detailLogs(); track log.id) {
-              <li><strong>{{ log.action }}</strong><span>{{ dateTime(log.at) }} · {{ log.actor }}</span>@if (log.note) { <p>{{ log.note }}</p> }</li>
-            }
-            @if (!detailLogs().length) { <li><strong>Chưa có ghi nhận xử lý</strong><span>Hồ sơ vừa được mở để điều tra.</span></li> }
-            @if (item.resolvedAt) { <li><strong>Hoàn tất xử lý</strong><span>{{ dateTime(item.resolvedAt) }}</span></li> }
-          </ul>
+        <div class="report-case-sla" [class.is-overdue]="isOverdue(item)">
+          <strong>{{ slaRemaining(item) }}</strong>
+          <span>Hạn xử lý: {{ dateTime(item.slaDueAt) }}</span>
         </div>
       </div>
-      <footer class="dialog-footer" style="justify-content:space-between">
-        <span class="left">Quyết định được lưu vào lịch sử hồ sơ.</span>
-        <div style="display:flex;flex-wrap:wrap;gap:8px">
-          @if (item.status !== 'escalated') { <button class="button" type="button" (click)="escalate(item)">Leo thang</button> }
-          <button class="button" type="button" (click)="resolve(item, 'dismissed')">Bác bỏ cáo</button>
-          <button class="button primary" type="button" (click)="resolve(item, 'resolved')">Áp dụng chế tài</button>
+
+      <div class="report-case-layout">
+        <div class="report-case-main">
+          <section class="report-case-card">
+            <div class="report-case-heading"><h3>Nội dung bị báo cáo</h3><span class="report-case-caption">{{ item.targetId }}</span></div>
+            <blockquote class="report-case-evidence">{{ item.evidenceSnippet }}</blockquote>
+            @if (item.targetTitle !== item.evidenceSnippet) { <p class="report-case-context">{{ item.targetTitle }}</p> }
+            <div class="report-case-context-row">
+              <span class="report-case-caption">Tác giả: {{ item.targetAuthor }}</span>
+              <button class="button" type="button" (click)="openOriginal(item)">Xem nội dung gốc ↗</button>
+            </div>
+            <details class="report-attachments">
+              <summary>Bằng chứng đính kèm ({{ item.evidence.length }})</summary>
+              <ul>
+                @for (evidence of item.evidence; track evidence) { <li>{{ evidence }}</li> }
+              </ul>
+              @if (!item.evidence.length) { <p class="report-case-caption">Không có tệp đính kèm.</p> }
+            </details>
+          </section>
+
+          <section class="report-case-card report-resolution" aria-labelledby="report-resolution-heading">
+            <h3 id="report-resolution-heading">Kết luận xử lý</h3>
+            <div class="report-decision" role="group" aria-label="Hướng xử lý báo cáo">
+              <button type="button" [class.is-active]="resolutionDecision() === 'resolved'" [attr.aria-pressed]="resolutionDecision() === 'resolved'" (click)="resolutionDecision.set('resolved')">Xác nhận vi phạm</button>
+              <button type="button" [class.is-active]="resolutionDecision() === 'dismissed'" [attr.aria-pressed]="resolutionDecision() === 'dismissed'" (click)="resolutionDecision.set('dismissed')">Bác bỏ báo cáo</button>
+            </div>
+            @if (resolutionDecision() === 'resolved') {
+              <div class="field">
+                <label id="report-enforcement-label">Hình thức xử lý <b>*</b></label>
+                <app-custom-select controlId="report-enforcement" labelId="report-enforcement-label" [value]="enforcement()" placeholder="Chọn hình thức xử lý" [options]="enforcementOptions" (valueChange)="enforcement.set($event)"></app-custom-select>
+                @if (actionTouched() && !enforcement()) { <span class="error" role="alert">Vui lòng chọn hình thức xử lý.</span> }
+              </div>
+            } @else {
+              <div class="field">
+                <label id="report-dismissal-label">Lý do bác bỏ <b>*</b></label>
+                <app-custom-select controlId="report-dismissal" labelId="report-dismissal-label" [value]="dismissalReason()" placeholder="Chọn lý do bác bỏ" [options]="dismissalOptions" (valueChange)="dismissalReason.set($event)"></app-custom-select>
+                @if (actionTouched() && !dismissalReason()) { <span class="error" role="alert">Vui lòng chọn lý do bác bỏ.</span> }
+              </div>
+            }
+            <div class="field">
+              <label for="resolution-note">Nội dung kết luận <b>*</b></label>
+              <textarea id="resolution-note" required [attr.aria-invalid]="noteError() ? true : null" aria-describedby="resolution-note-help" [value]="resolutionNote()" maxlength="600" placeholder="Nêu căn cứ và quyết định xử lý..." (input)="resolutionNote.set($any($event.target).value)"></textarea>
+              <span id="resolution-note-help" class="hint">{{ resolutionNote().length }}/600 ký tự · Tối thiểu 20 ký tự.</span>
+              @if (noteError()) { <span class="error" role="alert">{{ noteError() }}</span> }
+            </div>
+            @if (item.resolutionNote) { <div class="report-saved-resolution"><span class="report-case-caption">Kết luận đã lưu</span><p>{{ item.resolutionNote }}</p></div> }
+            <p class="report-case-caption">Quyết định chỉ được ghi nhận khi bạn xác nhận ở cuối hộp thoại.</p>
+          </section>
         </div>
-      </footer>
-    </section>
-  </div>
+
+        <aside class="report-case-side">
+          <section class="report-case-card">
+            <h3>Thông tin báo cáo</h3>
+            <dl class="report-case-meta">
+              <div><dt>Người báo cáo</dt><dd>{{ item.reportedBy }}</dd></div>
+              <div><dt>Lý do</dt><dd>{{ item.reason }}</dd></div>
+              <div><dt>Mô tả</dt><dd>{{ item.description }}</dd></div>
+              <div><dt>Phụ trách</dt><dd>{{ item.assignee }}</dd></div>
+            </dl>
+          </section>
+          <section class="report-case-card">
+            <h3>Tài khoản bị báo cáo</h3>
+            <p class="report-case-person">{{ item.targetAuthor }}</p>
+            <span [class]="'badge ' + (item.priorOffenses ? 'danger' : 'success')">{{ item.priorOffenses ? item.priorOffenses + ' vi phạm trước đây' : 'Chưa ghi nhận vi phạm trước đây' }}</span>
+            <button class="report-history-toggle" type="button" [attr.aria-expanded]="historyOpen()" aria-controls="report-prior-history" (click)="toggleHistory()">{{ historyOpen() ? 'Ẩn lịch sử vi phạm' : 'Xem lịch sử vi phạm' }}</button>
+            @if (historyOpen()) {
+              <ul id="report-prior-history" class="timeline report-case-timeline">
+                @for (offense of priorOffenseList(item); track offense) { <li><strong>Vi phạm trước #{{ offense }}</strong><span>{{ item.reason }} · Đã xử lý</span></li> }
+                @if (!item.priorOffenses) { <li><strong>Chưa ghi nhận vi phạm trước đây</strong></li> }
+              </ul>
+            }
+          </section>
+          <section class="report-case-card">
+            <h3>Lịch sử xử lý</h3>
+            <ul class="timeline report-case-timeline">
+              <li><strong>Tiếp nhận báo cáo</strong><span>{{ dateTime(item.createdAt) }}</span></li>
+              @for (log of detailLogs(); track log.id) { <li><strong>{{ log.action }}</strong><span>{{ dateTime(log.at) }} · {{ log.actor }}</span>@if (log.note) { <p>{{ log.note }}</p> }</li> }
+              @if (item.resolvedAt) { <li><strong>Hoàn tất xử lý</strong><span>{{ dateTime(item.resolvedAt) }}</span></li> }
+            </ul>
+          </section>
+        </aside>
+      </div>
+    </div>
+    <div dialogFooter class="report-case-footer">
+      <div class="report-case-footer-actions">
+        <button class="button primary" [class.report-sanction-button]="resolutionDecision() === 'resolved'" type="button" (click)="resolve(item, resolutionDecision())">{{ resolutionDecision() === 'resolved' ? 'Áp dụng chế tài' : 'Bác bỏ báo cáo' }}</button>
+      </div>
+    </div>
+  </app-admin-dialog>
+}
+
+@if (selectionListOpen()) {
+  <app-bulk-selection-dialog
+    noun="báo cáo"
+    [items]="selectionItems()"
+    [candidates]="selectionCandidates()"
+    [actions]="selectionActions()"
+    note="Giải quyết hoặc bác bỏ sẽ ghi nhận kết luận và thời gian hoàn tất; leo thang chuyển hồ sơ lên cấp xử lý cao hơn."
+    (closed)="selectionListOpen.set(false)"
+    (selectionChange)="setSelectionIds($event)"
+    (action)="runSelectionAction($event.key, $event.ids)"
+  />
 }
 
 <app-content-toast [message]="toast()?.message ?? ''" [tone]="toast()?.tone ?? 'info'" (closed)="toast.set(null)"></app-content-toast>

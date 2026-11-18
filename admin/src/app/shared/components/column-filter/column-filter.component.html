@@ -1,0 +1,97 @@
+@if (label()) {
+  <span class="column-filter-label">{{ label() }}</span>
+}
+<button
+  class="column-filter-trigger"
+  type="button"
+  [class.is-active]="selectedCount() > 0"
+  [class.is-sorted]="sortDirection() !== null"
+  [attr.aria-expanded]="open()"
+  aria-haspopup="dialog"
+  [attr.aria-label]="'Lọc cột ' + heading()"
+  [title]="sortDirection() ? 'Lọc cột · đang sắp xếp' : 'Lọc cột'"
+  (click)="toggle($event)"
+>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16l-6 7.4V19l-4-2v-4.6z"/></svg>
+  @if (sortDirection(); as direction) {
+    <svg class="column-filter-sort-indicator" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      @if (direction === 'asc') { <path d="M12 19V5"/><path d="m5 12 7-7 7 7"/> } @else { <path d="M12 5v14"/><path d="m19 12-7 7-7-7"/> }
+    </svg>
+  }
+  @if (selectedCount()) {
+    <span class="column-filter-count">{{ selectedCount() }}</span>
+  }
+</button>
+
+@if (open() && position(); as pos) {
+  <div class="column-filter-backdrop" (click)="close()"></div>
+  <div class="column-filter-menu" [class.is-grouped]="grouped()" role="dialog" [attr.aria-label]="'Bộ lọc cột ' + heading()" [style.top.px]="pos.top" [style.left.px]="pos.left">
+    <header>
+      <strong>{{ heading() }}</strong>
+      <button class="column-filter-close" type="button" aria-label="Đóng bộ lọc" (click)="close()">×</button>
+    </header>
+    @if (sorts().length) {
+      <div class="column-filter-sort" role="group" [attr.aria-label]="'Sắp xếp cột ' + heading()">
+        <span class="column-filter-sort-title">Sắp xếp</span>
+        @for (option of sorts(); track option.key) {
+          <button
+            type="button"
+            class="column-filter-sort-option"
+            [class.is-active]="sort() === option.key"
+            [attr.aria-pressed]="sort() === option.key"
+            [title]="sort() === option.key ? 'Bấm lại để bỏ sắp xếp' : option.label"
+            (click)="toggleSort(option.key)"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              @if (option.direction === 'asc') { <path d="M12 19V5"/><path d="m5 12 7-7 7 7"/> } @else { <path d="M12 5v14"/><path d="m19 12-7 7-7-7"/> }
+            </svg>
+            <span>{{ option.label }}</span>
+            @if (sort() === option.key) {
+              <svg class="column-filter-sort-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+            }
+          </button>
+        }
+      </div>
+    }
+    @if (grouped()) {
+      <div class="column-filter-values is-grouped">
+        @for (section of sections(); track section.key) {
+          <section class="column-filter-group">
+            <h4>{{ section.title }}</h4>
+            <label class="column-filter-all">
+              <input type="checkbox" [checked]="sectionAllSelected(section)" [indeterminate]="sectionSomeSelected(section)" (change)="toggleSectionAll(section, $any($event.target).checked)" />
+              <span>Chọn tất cả</span>
+            </label>
+            @for (item of section.values; track item.value) {
+              <label class="column-filter-value">
+                <input type="checkbox" [checked]="section.selected.includes(item.value)" (change)="toggleSectionValue(section, item.value, $any($event.target).checked)" />
+                <span>{{ item.label }}</span>
+              </label>
+            } @empty {
+              <p class="column-filter-empty">Không có giá trị để lọc.</p>
+            }
+          </section>
+        }
+      </div>
+    } @else {
+      <label class="column-filter-all">
+        <input type="checkbox" [checked]="allSelected()" [indeterminate]="someSelected()" (change)="toggleAll($any($event.target).checked)" />
+        <span>Chọn tất cả</span>
+      </label>
+      <div class="column-filter-values">
+        @for (item of values(); track item.value) {
+          <label class="column-filter-value">
+            <input type="checkbox" [checked]="selected().includes(item.value)" (change)="toggleValue(item.value, $any($event.target).checked)" />
+            <span>{{ item.label }}</span>
+          </label>
+        } @empty {
+          <p class="column-filter-empty">Không có giá trị để lọc.</p>
+        }
+      </div>
+    }
+    <footer>
+      <button class="column-filter-clear" type="button" [disabled]="!selectedCount()" (click)="clear()">Xóa lọc</button>
+      <button class="column-filter-done" type="button" (click)="close()">Xong</button>
+    </footer>
+  </div>
+}

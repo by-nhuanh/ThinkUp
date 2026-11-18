@@ -168,10 +168,24 @@
       </div>
     </div>
 
+    @if (selectedIds().length) {
+      <div class="selection-slot">
+        <app-selection-bar
+          [count]="selectedIds().length"
+          noun="giảng viên"
+          [actions]="selectionActions()"
+          (action)="runSelectionAction($event)"
+          (inspect)="selectionListOpen.set(true)"
+          (clear)="clearSelection()"
+        />
+      </div>
+    }
+
     <div class="table-wrap">
       <table class="user-table">
         <caption class="sr-only">Danh sách giảng viên, mỗi dòng gồm thông tin liên hệ, số khóa học và học viên, doanh thu, tình trạng pháp lý, ngày tham gia, trạng thái và thao tác.</caption>
         <colgroup>
+          <col class="col-select" />
           <col class="col-identity" />
           <col class="col-contact" />
           <col class="col-courses" />
@@ -183,19 +197,25 @@
         </colgroup>
         <thead>
           <tr>
-            <th scope="col">Giảng viên</th>
-            <th scope="col">Liên hệ &amp; chuyên môn</th>
+            <th scope="col" class="select-cell">
+              <input type="checkbox" [checked]="allVisibleSelected()" [indeterminate]="someVisibleSelected()" aria-label="Chọn tất cả giảng viên trên trang" (change)="toggleSelectAll()" />
+            </th>
+            <th scope="col"><app-column-filter label="Giảng viên" [values]="nameValues()" [selected]="filterFor('name')" (changed)="updateColumnFilter('name', $event)" [sorts]="textSorts" [sort]="sortFor('name')" (sortChange)="updateColumnSort('name', $event)" /></th>
+            <th scope="col"><app-column-filter label="Liên hệ &amp; chuyên môn" [values]="specialtyValues()" [selected]="filterFor('specialty')" (changed)="updateColumnFilter('specialty', $event)" [sorts]="textSorts" [sort]="sortFor('specialty')" (sortChange)="updateColumnSort('specialty', $event)" /></th>
             <th scope="col">Khóa học &amp; HV</th>
             <th scope="col">Doanh thu</th>
-            <th scope="col">Pháp lý &amp; thuế</th>
-            <th scope="col">Thời gian tham gia</th>
-            <th scope="col">Trạng thái</th>
+            <th scope="col"><app-column-filter label="Pháp lý &amp; thuế" [values]="legalValues" [selected]="filterFor('legal')" (changed)="updateColumnFilter('legal', $event)" [sorts]="textSorts" [sort]="sortFor('legal')" (sortChange)="updateColumnSort('legal', $event)" /></th>
+            <th scope="col"><app-column-filter label="Thời gian tham gia" [values]="joinedValues" [selected]="filterFor('joined')" (changed)="updateColumnFilter('joined', $event)" [sorts]="dateSorts" [sort]="sortFor('joined')" (sortChange)="updateColumnSort('joined', $event)" /></th>
+            <th scope="col"><app-column-filter label="Trạng thái" [values]="statusValues" [selected]="filterFor('status')" (changed)="updateColumnFilter('status', $event)" [sorts]="textSorts" [sort]="sortFor('status')" (sortChange)="updateColumnSort('status', $event)" /></th>
             <th scope="col" class="col-actions">Thao tác</th>
           </tr>
         </thead>
         <tbody>
           @for (item of visible(); track item.id) {
-            <tr>
+            <tr [class.is-selected]="isSelected(item.id)">
+              <td class="select-cell">
+                <input type="checkbox" [checked]="isSelected(item.id)" [attr.aria-label]="'Chọn giảng viên ' + item.name" (change)="toggleSelect(item.id, $any($event.target).checked)" />
+              </td>
               <td>
                 <div class="identity">
                   <span class="avatar avatar--{{ $index % 5 }}" aria-hidden="true">{{ item.initials }}</span>
@@ -254,7 +274,7 @@
             </tr>
           } @empty {
             <tr>
-              <td colspan="8">
+              <td colspan="9">
                 <div class="state-block">
                   <strong>Không có giảng viên nào khớp bộ lọc</strong>
                   <p>Thử xoá từ khoá tìm kiếm hoặc chọn lại trạng thái, khoảng thời gian.</p>
@@ -603,6 +623,44 @@
         </div>
       </app-user-modal>
     }
+  }
+
+  @if (selectionListOpen()) {
+    <app-bulk-selection-dialog
+      noun="giảng viên"
+      [items]="selectionItems()"
+      [candidates]="selectionCandidates()"
+      [actions]="selectionActions()"
+      note="Tạm ngưng và khóa tài khoản sẽ cần xác nhận trước khi áp dụng."
+      (closed)="selectionListOpen.set(false)"
+      (selectionChange)="setSelectionIds($event)"
+      (action)="runSelectionAction($event.key, $event.ids)"
+    />
+  }
+
+  @if (bulkConfirm(); as confirm) {
+    <app-user-modal
+      [title]="confirm.key === 'lock' ? 'Khóa tài khoản hàng loạt' : 'Tạm ngưng hàng loạt'"
+      [subtitle]="confirm.ids.length + ' giảng viên đã chọn'"
+      size="sm"
+      (closed)="bulkConfirm.set(null)"
+    >
+      <div class="info-strip info-strip--amber modal-section">
+        @if (confirm.key === 'lock') {
+          <strong>Đóng băng dòng tiền và khóa đăng nhập (Mức 3)</strong>
+          <span>{{ confirm.ids.length }} giảng viên sẽ bị đóng băng số dư, chặn rút tiền, ẩn toàn bộ khóa học và khóa đăng nhập. Thao tác được ghi vào lịch sử vi phạm.</span>
+        } @else {
+          <strong>Cảnh cáo và hạn chế 7 ngày (Mức 1)</strong>
+          <span>{{ confirm.ids.length }} giảng viên sẽ nhận cảnh cáo Mức 1 và hạn chế 7 ngày. Khóa học và rút tiền không bị ảnh hưởng.</span>
+        }
+      </div>
+      <div modalFooter class="modal-footer-actions">
+        <button class="btn btn--outline" type="button" (click)="bulkConfirm.set(null)">Hủy bỏ</button>
+        <button class="btn btn--danger" type="button" (click)="confirmBulkAction()">
+          {{ confirm.key === 'lock' ? 'Xác nhận khóa tài khoản' : 'Xác nhận tạm ngưng' }}
+        </button>
+      </div>
+    </app-user-modal>
   }
 
   <app-user-toast />
