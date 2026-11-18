@@ -1,10 +1,8 @@
-<main class="content-page">
-  <div class="page-stack">
+<main class="content-page moderation-comments">
   <header class="page-heading">
     <div>
       <nav class="breadcrumb" aria-label="Đường dẫn trang"><span>Quản lý nội dung</span><span class="breadcrumb-separator" aria-hidden="true">/</span><span class="breadcrumb-current" aria-current="page">Bình luận</span></nav>
       <h1>Kiểm duyệt bình luận</h1>
-      <p class="subtitle">Kiểm duyệt thảo luận dưới bài viết và phản hồi học viên kịp thời.</p>
     </div>
   </header>
 
@@ -28,42 +26,30 @@
   </section>
 
   <section class="panel" aria-label="Danh sách bình luận">
-    <div class="filters">
-      <div class="filters-row">
-        <div class="filter-field filter-search">
-          <label class="floating-label" for="comment-search">Tìm kiếm</label>
-          <span class="search-field">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-            <input id="comment-search" type="search" autocomplete="off" placeholder="Tìm nội dung, tên người dùng, bài học..." [value]="search()" (input)="setSearch($any($event.target).value)">
-          </span>
-        </div>
-        <div class="filter-field basis-status">
-          <span class="floating-label">Trạng thái</span>
-          <app-custom-select controlId="comment-status" [value]="status()" [options]="statusOptions" (valueChange)="setStatus($event)"></app-custom-select>
-        </div>
-        <div class="filter-field basis-status">
-          <span class="floating-label">Vai trò</span>
-          <app-custom-select controlId="comment-role" [value]="role()" [options]="roleOptions" (valueChange)="setRole($event)"></app-custom-select>
-        </div>
-        <div class="filter-field basis-status">
-          <span class="floating-label">Thời gian</span>
-          <app-custom-select controlId="comment-time" [value]="timeRange()" [options]="timeOptions" (valueChange)="setTime($event)"></app-custom-select>
-        </div>
-        <div class="filter-actions">
-          <button class="icon-button" type="button" title="Làm mới bộ lọc" aria-label="Làm mới bộ lọc" (click)="clearFilters()">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 6.3"/><path d="M20 5v6h-6"/></svg>
-          </button>
-          <app-export-menu label="Xuất danh sách bình luận" (formatChange)="exportList($event)"></app-export-menu>
-        </div>
+    <div class="toolbar">
+      <div class="grow">
+        <app-search-field label="Tìm bình luận" placeholder="Tìm nội dung, tên người dùng, bài học..." [value]="search()" (valueChange)="setSearch($event)"></app-search-field>
+      </div>
+      <div class="filter custom-select-control">
+        <span id="comment-status-label">Trạng thái</span>
+        <app-custom-select controlId="comment-status" labelId="comment-status-label" [value]="status()" [options]="statusOptions" (valueChange)="setStatus($event)"></app-custom-select>
+      </div>
+      <div class="filter custom-select-control">
+        <span id="comment-role-label">Vai trò</span>
+        <app-custom-select controlId="comment-role" labelId="comment-role-label" [value]="role()" [options]="roleOptions" (valueChange)="setRole($event)"></app-custom-select>
+      </div>
+      <div class="filter custom-select-control">
+        <span id="comment-time-label">Thời gian</span>
+        <app-custom-select controlId="comment-time" labelId="comment-time-label" [value]="timeRange()" [options]="timeOptions" (valueChange)="setTime($event)"></app-custom-select>
+      </div>
+      <div class="toolbar-end">
+        <button class="icon-button" type="button" title="Đặt lại bộ lọc" aria-label="Đặt lại bộ lọc" (click)="clearFilters()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 6.3"/><path d="M20 5v6h-6"/></svg>
+        </button>
+        <app-export-menu label="Tải xuống danh sách bình luận" (formatChange)="exportList($event)"></app-export-menu>
       </div>
     </div>
 
-    <div class="tabs" role="tablist" aria-label="Lọc theo nguồn bình luận">
-      <button class="tab" type="button" role="tab" [class.active]="source() === 'all'" [attr.aria-selected]="source() === 'all'" (click)="setSource('all')">Tất cả</button>
-      <button class="tab" type="button" role="tab" [class.active]="source() === 'course'" [attr.aria-selected]="source() === 'course'" (click)="setSource('course')">Khóa học và Bài giảng</button>
-      <button class="tab" type="button" role="tab" [class.active]="source() === 'blog'" [attr.aria-selected]="source() === 'blog'" (click)="setSource('blog')">Bài viết Blog</button>
-      <span class="tabs-note">Lọc kết hợp theo nguồn và điều kiện</span>
-    </div>
 
     @if (loadError()) {
       <div class="empty" role="alert">
@@ -73,27 +59,29 @@
       </div>
     } @else {
     @if (selectedList().length) {
-      <div class="bulk-bar" role="status">
-        <strong>Đã chọn {{ selectedList().length }} bình luận</strong>
-        <div class="spacer"></div>
-        <button class="button small" type="button" (click)="bulkStatus('visible')">Hiện</button>
-        <button class="button small" type="button" (click)="bulkStatus('hidden')">Ẩn</button>
-        <button class="button small danger" type="button" (click)="bulkDelete()">Xóa</button>
-        <button class="button small link" type="button" (click)="clearSelection()">Bỏ chọn</button>
+      <div class="selection-slot">
+        <app-selection-bar
+          [count]="selectedList().length"
+          noun="bình luận"
+          [actions]="selectionActions()"
+          (action)="runSelectionAction($event)"
+          (inspect)="selectionListOpen.set(true)"
+          (clear)="clearSelection()"
+        />
       </div>
     }
 
-    <div class="table-scroll">
+    <div (scroll)="closeRowMenu()" class="table-scroll" tabindex="0" role="region" aria-label="Bảng dữ liệu, cuộn ngang để xem đầy đủ các cột">
       <table>
         <thead>
           <tr>
-            <th scope="col" style="width:44px"><input class="checkbox" type="checkbox" [checked]="allVisibleSelected()" aria-label="Chọn tất cả bình luận trên trang" (change)="toggleAll()"></th>
-            <th scope="col">Người bình luận</th>
+            <th scope="col" style="width:44px"><input class="checkbox" type="checkbox" [checked]="allVisibleSelected()" [indeterminate]="someVisibleSelected()" aria-label="Chọn tất cả bình luận trên trang" (change)="toggleAll()"></th>
+            <th scope="col"><app-column-filter label="Người bình luận" [values]="authorValues()" [selected]="filterFor('author')" (changed)="updateColumnFilter('author', $event)" [sorts]="textSorts" [sort]="sortFor('author')" (sortChange)="updateColumnSort('author', $event)" /></th>
             <th scope="col">Nội dung bình luận</th>
-            <th scope="col">Ngữ cảnh xuất hiện</th>
-            <th scope="col">Thời gian và tương tác</th>
-            <th scope="col">Cờ cảnh báo</th>
-            <th scope="col">Trạng thái</th>
+            <th scope="col"><app-column-filter label="Ngữ cảnh xuất hiện" [values]="contextValues()" [selected]="filterFor('context')" (changed)="updateColumnFilter('context', $event)" [sorts]="textSorts" [sort]="sortFor('context')" (sortChange)="updateColumnSort('context', $event)" /></th>
+            <th scope="col"><app-column-filter label="Thời gian và tương tác" [values]="timeValues()" [selected]="filterFor('time')" (changed)="updateColumnFilter('time', $event)" [sorts]="dateSorts" [sort]="sortFor('time')" (sortChange)="updateColumnSort('time', $event)" /></th>
+            <th scope="col"><app-column-filter label="Cờ cảnh báo" [values]="safetyValues" [selected]="filterFor('safety')" (changed)="updateColumnFilter('safety', $event)" [sorts]="numberSorts" [sort]="sortFor('safety')" (sortChange)="updateColumnSort('safety', $event)" /></th>
+            <th scope="col"><app-column-filter label="Trạng thái" [values]="commentStatusValues" [selected]="filterFor('status')" (changed)="updateColumnFilter('status', $event)" [sorts]="textSorts" [sort]="sortFor('status')" (sortChange)="updateColumnSort('status', $event)" /></th>
             <th scope="col">Thao tác</th>
           </tr>
         </thead>
@@ -103,7 +91,6 @@
               <td><input class="checkbox" type="checkbox" [checked]="isSelected(item.id)" [attr.aria-label]="'Chọn bình luận của ' + item.author" (change)="toggle(item)"></td>
               <td>
                 <div class="actor">
-                  <span class="avatar" aria-hidden="true">{{ initials(item.author) }}</span>
                   <span class="identity">
                     <strong>{{ item.author }}</strong>
                     <span [class]="'badge ' + roleTone(item.authorRole)" style="width:max-content">{{ item.authorRole }}</span>
@@ -112,39 +99,25 @@
               </td>
               <td>
                 <button type="button" style="border:0;background:none;padding:0;text-align:left" (click)="openDetail(item)">
-                  <span class="cell-title" style="font-size:15px;font-weight:400;max-width:330px">{{ truncate(item.content) }}</span>
+                  <span class="cell-title" style="font-weight:400;max-width:330px">{{ truncate(item.content) }}</span>
                 </button>
               </td>
               <td>
-                <button type="button" class="link" style="border:0;background:none;padding:0;text-align:left;max-width:240px" (click)="openDetail(item)">{{ item.contextTitle }}</button>
+                <button type="button" class="link comment-context-link" (click)="openDetail(item)">{{ item.contextTitle }}</button>
                 <span class="cell-sub">{{ sourceLabel(item.contextType) }}</span>
               </td>
               <td class="nowrap">{{ dateTime(item.createdAt) }}<span class="cell-sub">{{ item.likeCount }} thích · {{ item.replyCount }} phản hồi</span></td>
-              <td><span [class]="'badge ' + safetyTone(item)">{{ safetyLabel(item) }}</span></td>
-              <td><span [class]="'badge ' + statusTone(item.status)"><span class="dot" aria-hidden="true"></span>{{ statusLabel(item.status) }}</span></td>
+              <td class="comment-safety-cell"><span [class]="'badge comment-safety-badge ' + safetyTone(item)">{{ safetyLabel(item) }}</span></td>
+              <td class="comment-status-cell"><span [class]="'badge comment-status-badge ' + statusTone(item.status)">{{ statusLabel(item.status) }}</span></td>
               <td>
-                <div class="row-actions">
-                  @if (item.status === 'visible') {
-                    <button class="button small" type="button" (click)="changeStatus(item, 'hidden')">Ẩn</button>
-                  }
-                  @if (item.status === 'pending' || item.status === 'flagged' || item.status === 'spam') {
-                    <button class="button small primary" type="button" (click)="changeStatus(item, 'visible')">Duyệt</button>
-                  }
-                  @if (item.status === 'pending' || item.status === 'flagged') {
-                    <button class="button small" type="button" (click)="changeStatus(item, 'hidden')">Ẩn</button>
-                  }
-                  @if (item.status === 'hidden' || item.status === 'spam') {
-                    <button class="button small" type="button" (click)="changeStatus(item, 'visible')">Khôi phục</button>
-                  }
-                  <button class="icon-button" type="button" title="Thao tác khác" aria-haspopup="menu" [attr.aria-expanded]="isMenuOpen(item.id)" [attr.aria-label]="'Thao tác khác cho bình luận của ' + item.author" (click)="openMenu($event, item)">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="12" r="2"/></svg>
-                  </button>
+                <div class="comment-actions">
+                  <button class="icon-button comment-menu-trigger" type="button" aria-haspopup="menu" [attr.aria-expanded]="isRowMenuOpen(item.id)" [attr.aria-controls]="isRowMenuOpen(item.id) ? 'comment-row-menu' : null" [attr.aria-label]="'Thao tác cho bình luận của ' + item.author" (click)="openRowMenu($event, item)" (keydown.arrowdown)="openRowMenuFromKeyboard($event, item)">···</button>
                 </div>
               </td>
             </tr>
           }
           @if (!visible().length) {
-            <tr><td colspan="8"><div class="empty"><strong>Không có bình luận phù hợp</strong><p>Thử thay đổi từ khóa hoặc bộ lọc nguồn, vai trò, thời gian.</p><button class="button" type="button" (click)="clearFilters()">Đặt lại bộ lọc</button></div></td></tr>
+            <tr><td colspan="8"><div class="empty"><strong>Không có bình luận phù hợp</strong><p>Thử thay đổi từ khóa hoặc bộ lọc trạng thái, vai trò, thời gian.</p><button class="button" type="button" (click)="clearFilters()">Đặt lại bộ lọc</button></div></td></tr>
           }
         </tbody>
       </table>
@@ -163,264 +136,205 @@
     </div>
     }
   </section>
-  </div>
 </main>
 
-@if (detail(); as item) {
-  <div class="dialog-backdrop" (click)="closeDetail()" (window:keydown.escape)="closeDetail()">
-    <section class="dialog wide" role="dialog" aria-modal="true" aria-labelledby="comment-detail-title" (click)="$event.stopPropagation()">
-      <header class="dialog-head">
-        <div><h2 id="comment-detail-title">Chi tiết bình luận {{ item.id }}</h2><p>{{ item.author }} · {{ dateTime(item.createdAt) }}</p></div>
-        <button class="icon-button" type="button" aria-label="Đóng chi tiết" (click)="closeDetail()">×</button>
-      </header>
-      <div class="dialog-body">
-        <div class="detail-columns">
-          <div class="detail-main">
-            <div class="section-card">
-              <h3>Nội dung bình luận</h3>
-              <p class="quote">{{ item.content }}</p>
-              @if (item.moderationNote) { <p style="margin-top:10px;color:#a43a49;font-size:12px">Ghi chú kiểm duyệt: {{ item.moderationNote }}</p> }
-            </div>
-            <div class="section-card">
-              <h3>Ngữ cảnh xuất hiện</h3>
-              <p><strong>{{ item.contextTitle }}</strong></p>
-              <p style="margin-top:5px;color:#64748b;font-size:12px">{{ sourceLabel(item.contextType) }} · {{ item.replyCount }} phản hồi · {{ item.likeCount }} lượt thích</p>
-            </div>
-            <div class="section-card">
-              <h3>Lịch sử kiểm duyệt</h3>
-              <ul class="timeline">
-                <li><strong>Bình luận được tạo</strong><span>{{ dateTime(item.createdAt) }}</span></li>
-                <li><strong>Trạng thái hiện tại</strong><span>{{ statusLabel(item.status) }}</span></li>
-                @if (item.reportCount) { <li><strong>Bị báo cáo {{ item.reportCount }} lần</strong><span>Cần xem xét tiêu chuẩn cộng đồng</span></li> }
-                @if (item.moderationNote) { <li><strong>Ghi chú kiểm duyệt</strong><span>{{ item.moderationNote }}</span></li> }
-              </ul>
-            </div>
-          </div>
-          <aside class="detail-side">
-            <div class="section-card">
-              <h3>Trạng thái</h3>
-              <span [class]="'badge ' + statusTone(item.status)">{{ statusLabel(item.status) }}</span>
-              <dl class="meta-grid" style="grid-template-columns:1fr;margin-top:14px">
-                <div class="meta"><dt>Người bình luận</dt><dd>{{ item.author }}</dd></div>
-                <div class="meta"><dt>Email</dt><dd>{{ item.email }}</dd></div>
-                <div class="meta"><dt>Báo cáo</dt><dd>{{ item.reportCount }}</dd></div>
-              </dl>
-            </div>
-            <div class="section-card">
-              <h3>Thao tác</h3>
-              <div style="display:grid;gap:8px">
-                @if (item.status !== 'visible') { <button class="button primary" type="button" (click)="changeStatus(item, 'visible')">Duyệt hiển thị</button> }
-                @if (item.status !== 'hidden') { <button class="button" type="button" (click)="changeStatus(item, 'hidden')">Ẩn bình luận</button> }
-                <button class="button" type="button" (click)="openReply(item)">Phản hồi học viên</button>
-                <button class="button" type="button" (click)="openSpam(item)">Đánh dấu spam</button>
-                <button class="button" type="button" (click)="openTransfer(item)">Chuyển hồ sơ vi phạm</button>
-                <button class="button danger" type="button" (click)="deleteTarget.set(item)">Xóa bình luận</button>
-              </div>
-            </div>
-          </aside>
-        </div>
-      </div>
-      <footer class="dialog-footer"><button class="button" type="button" (click)="closeDetail()">Đóng</button></footer>
-    </section>
+@if (rowMenu(); as m) {
+  <div class="menu-layer" (click)="closeRowMenu()"></div>
+  <div id="comment-row-menu" class="row-menu comment-row-menu" role="menu" [attr.aria-label]="'Thao tác cho bình luận của ' + m.item.author" [style.top.px]="m.top" [style.left.px]="m.left" (keydown)="onRowMenuKeydown($event)">
+    <button type="button" role="menuitem" (click)="closeRowMenu(); openDetail(m.item)">Xem chi tiết</button>
+    @if (m.item.status === 'hidden' || m.item.status === 'spam') {
+      <button type="button" role="menuitem" (click)="closeRowMenu(); changeStatus(m.item, 'visible')">Khôi phục hiển thị</button>
+    } @else if (m.item.status === 'pending' || m.item.status === 'flagged') {
+      <button type="button" role="menuitem" (click)="closeRowMenu(); changeStatus(m.item, 'visible')">Duyệt hiển thị</button>
+    }
+    @if (m.item.status === 'visible' || m.item.status === 'pending' || m.item.status === 'flagged') {
+      <button type="button" role="menuitem" (click)="closeRowMenu(); changeStatus(m.item, 'hidden')">Ẩn bình luận</button>
+    }
+    <button type="button" role="menuitem" (click)="closeRowMenu(); openReply(m.item)">Phản hồi</button>
+    <button class="danger" type="button" role="menuitem" (click)="closeRowMenu(); askDelete(m.item)">Xóa bình luận</button>
   </div>
+}
+
+@if (detail(); as item) {
+  <app-admin-dialog title="Chi tiết bình luận {{ item.id }}" subtitle="{{ item.author }} · {{ dateTime(item.createdAt) }}" size="lg" (closed)="closeDetail()">
+    <div class="comment-detail-layout">
+      <div class="comment-detail-main">
+        <section class="comment-detail-card">
+          <div class="comment-section-heading">
+            <h3>Nội dung bình luận</h3>
+            <span [class]="'badge ' + statusTone(item.status)">{{ statusLabel(item.status) }}</span>
+          </div>
+          <blockquote class="comment-content">{{ item.content }}</blockquote>
+          @if (item.moderationNote) { <p class="comment-moderation-note">Ghi chú kiểm duyệt: {{ item.moderationNote }}</p> }
+        </section>
+        <section class="comment-detail-card">
+          <h3>Ngữ cảnh xuất hiện</h3>
+          <p class="comment-context-title">{{ item.contextTitle }}</p>
+          <p class="comment-detail-caption">{{ sourceLabel(item.contextType) }} · {{ item.replyCount }} phản hồi · {{ item.likeCount }} lượt thích</p>
+        </section>
+        <section class="comment-detail-card">
+          <h3>Lịch sử kiểm duyệt</h3>
+          <ul class="timeline comment-timeline">
+            <li><strong>Bình luận được tạo</strong><span>{{ dateTime(item.createdAt) }}</span></li>
+            <li><strong>Trạng thái hiện tại</strong><span>{{ statusLabel(item.status) }}</span></li>
+            @if (item.reportCount) { <li><strong>Bị báo cáo {{ item.reportCount }} lần</strong><span>Cần xem xét tiêu chuẩn cộng đồng</span></li> }
+            @if (item.moderationNote) { <li><strong>Ghi chú kiểm duyệt</strong><span>{{ item.moderationNote }}</span></li> }
+          </ul>
+        </section>
+      </div>
+      <aside class="comment-detail-side">
+        <section class="comment-detail-card">
+          <h3>Thông tin bình luận</h3>
+          <dl class="comment-metadata">
+            <div><dt>Người bình luận</dt><dd>{{ item.author }}</dd></div>
+            <div><dt>Vai trò</dt><dd>{{ item.authorRole }}</dd></div>
+            <div><dt>Email</dt><dd>{{ item.email }}</dd></div>
+            <div><dt>Cảnh báo</dt><dd><span [class]="'badge ' + safetyTone(item)">{{ safetyLabel(item) }}</span></dd></div>
+          </dl>
+        </section>
+        <section class="comment-detail-card">
+          <h3>Thao tác kiểm duyệt</h3>
+          <div class="comment-moderation-actions">
+            @if (item.status !== 'visible') { <button class="button" type="button" (click)="changeStatus(item, 'visible')">Duyệt hiển thị</button> }
+            @if (item.status !== 'hidden') { <button class="button" type="button" (click)="changeStatus(item, 'hidden')">Ẩn bình luận</button> }
+            <button class="button" type="button" (click)="openSpam(item)">Đánh dấu spam</button>
+            <button class="button" type="button" (click)="openTransfer(item)">Chuyển hồ sơ vi phạm</button>
+            <button class="button danger" type="button" (click)="askDelete(item)">Xóa bình luận</button>
+          </div>
+        </section>
+      </aside>
+    </div>
+    <div dialogFooter class="comment-dialog-actions">
+      <button class="button" type="button" (click)="closeDetail()">Đóng</button>
+      <button class="button primary" type="button" (click)="openReply(item)">Phản hồi học viên</button>
+    </div>
+  </app-admin-dialog>
 }
 
 @if (replyTarget(); as item) {
-  <div class="dialog-backdrop" (click)="replyId.set(null)" (window:keydown.escape)="replyId.set(null)">
-    <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="reply-title" (click)="$event.stopPropagation()">
-      <header class="dialog-head">
-        <div>
-          <h2 id="reply-title">Phản hồi bình luận hệ thống</h2>
-          <p>Câu trả lời được đăng công khai dưới danh nghĩa Ban Quản Trị ThinkUp.</p>
-        </div>
-        <button class="icon-button" type="button" aria-label="Đóng" (click)="replyId.set(null)">×</button>
-      </header>
-      <div class="dialog-body">
-        <div class="section-card" style="margin-bottom:16px">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-            <strong>{{ item.author }}</strong>
-            <span [class]="'badge ' + roleTone(item.authorRole)">{{ item.authorRole }}</span>
-          </div>
-          <div style="color:var(--c-muted);font-size:13px;margin-bottom:8px">{{ item.contextTitle }}</div>
-          <p class="quote">“{{ item.content }}”</p>
-        </div>
+  <app-admin-dialog title="Phản hồi bình luận" subtitle="Trả lời {{ item.author }} · {{ item.id }}" size="md" (closed)="replyId.set(null)">
+
+        <div class="quote" style="margin-bottom:14px">{{ item.content }}</div>
         <div class="field">
-          <label for="reply-content">Nội dung phản hồi chính thức <b>*</b></label>
-          <textarea id="reply-content" rows="4" [value]="replyText()" maxlength="300" placeholder="Nhập nội dung phản hồi chính thức dưới danh nghĩa Ban Quản Trị ThinkUp..." (input)="replyText.set($any($event.target).value)"></textarea>
-          @if (replyError()) { <span class="error" role="alert">{{ replyError() }}</span> } @else { <span class="hint">{{ replyText().length }}/300 ký tự · Tối thiểu 10 ký tự.</span> }
+          <label for="reply-content">Nội dung phản hồi <b>*</b></label>
+          <textarea id="reply-content" [value]="replyText()" maxlength="500" placeholder="Nhập phản hồi công khai tới học viên..." (input)="replyText.set($any($event.target).value)"></textarea>
+          @if (replyError()) { <span class="error" role="alert">{{ replyError() }}</span> } @else { <span class="hint">{{ replyText().length }}/500 ký tự · tối thiểu 10 ký tự</span> }
         </div>
-        <div class="alert info" style="margin-top:14px">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex:none;margin-top:2px" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
-          <div>
-            <strong>Ban Quản Trị ThinkUp đã xác minh</strong>
-            <div style="color:inherit;opacity:.9;margin-top:2px">Phản hồi sẽ hiển thị bên dưới bình luận gốc, kèm nhãn Ban Quản Trị và dấu tích xanh.</div>
+      
+    <div dialogFooter class="comment-dialog-actions">
+        <button class="button" type="button" (click)="replyId.set(null)">Hủy</button>
+        <button class="button primary" type="button" (click)="sendReply()">Gửi phản hồi</button>
           </div>
-        </div>
-      </div>
-      <footer class="dialog-footer">
-        <button class="button" type="button" (click)="replyId.set(null)">Hủy bỏ</button>
-        <button class="button primary" type="button" (click)="sendReply()">Đăng phản hồi công khai</button>
-      </footer>
-    </section>
-  </div>
+  </app-admin-dialog>
 }
 
 @if (deleteTarget(); as item) {
-  <div class="dialog-backdrop" (click)="deleteTarget.set(null)" (window:keydown.escape)="deleteTarget.set(null)">
-    <section class="dialog narrow" role="alertdialog" aria-modal="true" aria-labelledby="comment-delete-title" (click)="$event.stopPropagation()">
-      <header class="dialog-head"><div><h2 id="comment-delete-title">Xóa bình luận?</h2><p>Hành động này không thể hoàn tác.</p></div></header>
-      <div class="dialog-body"><div class="alert danger">Bình luận của {{ item.author }} sẽ bị xóa vĩnh viễn khỏi hệ thống.</div></div>
-      <footer class="dialog-footer">
+  <app-admin-dialog title="Xóa bình luận?" subtitle="Hành động này không thể hoàn tác." size="sm" (closed)="deleteTarget.set(null)">
+<div class="alert danger">Bình luận của {{ item.author }} sẽ bị xóa vĩnh viễn khỏi hệ thống.</div>
+    <div class="field">
+      <label for="comment-delete-reason">Lý do xóa <b>*</b></label>
+      <textarea id="comment-delete-reason" rows="3" maxlength="500" [attr.aria-invalid]="deleteReasonError() ? true : null" aria-describedby="comment-delete-reason-help" [value]="deleteReason()" (input)="deleteReason.set($any($event.target).value)" (blur)="deleteReasonTouched.set(true)" placeholder="Nhập lý do xóa bình luận (tối thiểu 10 ký tự)..."></textarea>
+      <span id="comment-delete-reason-help" class="hint">{{ deleteReason().trim().length }}/10 ký tự tối thiểu · Lý do được lưu vào nhật ký kiểm duyệt</span>
+      @if (deleteReasonError()) { <span class="error" role="alert">{{ deleteReasonError() }}</span> }
+    </div>
+    <div dialogFooter class="comment-dialog-actions">
         <button class="button" type="button" (click)="deleteTarget.set(null)">Hủy</button>
-        <button class="button danger" type="button" (click)="confirmDelete()">Xóa vĩnh viễn</button>
-      </footer>
-    </section>
-  </div>
+        <button class="button danger" type="button" [disabled]="!canConfirmDelete()" (click)="confirmDelete()">Xóa vĩnh viễn</button>
+          </div>
+  </app-admin-dialog>
 }
 
 @if (spamTarget(); as item) {
-  <div class="dialog-backdrop" (click)="spamTarget.set(null)" (window:keydown.escape)="spamTarget.set(null)">
-    <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="comment-spam-title" (click)="$event.stopPropagation()">
-      <header class="dialog-head">
-        <div>
-          <h2 id="comment-spam-title">Đánh dấu spam và Hạn chế tài khoản</h2>
-          <p>Chọn thời hạn hạn chế quyền gửi bình luận của người dùng.</p>
-        </div>
-        <button class="icon-button" type="button" aria-label="Đóng" (click)="spamTarget.set(null)">×</button>
-      </header>
-      <div class="dialog-body">
-        <div class="alert warning" style="margin-bottom:14px">
-          <div>
-            <strong>Bình luận sẽ được chuyển sang Spam</strong>
-            <div style="margin-top:2px">Hệ thống ẩn bình luận khỏi giao diện công khai và áp dụng hạn chế gửi bình luận cho tài khoản này.</div>
-          </div>
-        </div>
-        <div class="section-card" style="margin-bottom:16px">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
-            <strong>{{ item.author }}</strong>
-            <span [class]="'badge ' + roleTone(item.authorRole)">{{ item.authorRole }}</span>
-          </div>
-          <div style="color:var(--c-muted);font-size:13px">Lịch sử: {{ item.reportCount ? item.reportCount + ' lần bị báo cáo trước đây' : '2 lần vi phạm trước đây' }}</div>
-        </div>
-        <div class="field full">
-          <label style="font-weight:600;margin-bottom:8px;display:block">Thời gian cấm bình luận <b>*</b></label>
-          <div role="radiogroup" aria-label="Thời gian cấm bình luận" style="display:grid;gap:10px">
-            <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--c-border);border-radius:8px;background:#fbfcfe;cursor:pointer">
-              <input class="checkbox" type="radio" name="spam-duration" [checked]="spamDuration() === '24h'" (change)="spamDuration.set('24h')">
-              <span>Khóa tính năng bình luận trong 24 giờ</span>
-            </label>
-            <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--c-border);border-radius:8px;background:#fbfcfe;cursor:pointer">
-              <input class="checkbox" type="radio" name="spam-duration" [checked]="spamDuration() === '7d'" (change)="spamDuration.set('7d')">
-              <span>Khóa tính năng bình luận trong 7 ngày</span>
-            </label>
-            <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--c-border);border-radius:8px;background:#fbfcfe;cursor:pointer">
-              <input class="checkbox" type="radio" name="spam-duration" [checked]="spamDuration() === 'forever'" (change)="spamDuration.set('forever')">
-              <span>Khóa tính năng bình luận vĩnh viễn</span>
-            </label>
-          </div>
-        </div>
-        <div class="alert info" style="margin-top:14px">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="flex:none;margin-top:1px" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          <div>Hệ thống sẽ tự động gửi email cảnh báo và thông báo chuông đến tài khoản học viên, nêu rõ lý do và thời gian bị hạn chế.</div>
-        </div>
-      </div>
-      <footer class="dialog-footer">
-        <button class="button" type="button" (click)="spamTarget.set(null)">Giữ lại bình luận</button>
-        <button class="button danger" type="button" (click)="sendSpam()">Xác nhận phạt</button>
-      </footer>
+  <app-admin-dialog title="Đánh dấu spam và Hạn chế tài khoản" subtitle="Chọn thời hạn hạn chế quyền bình luận của người dùng." size="md" (closed)="spamTarget.set(null)">
+    <div class="comment-spam-warning"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 21h20L12 3Z M12 9v5 M12 17v1"/></svg><div><strong>Bình luận sẽ được chuyển sang Spam</strong><p>Bình luận sẽ bị ẩn khỏi giao diện công khai và ghi nhận thời hạn hạn chế bình luận cho tài khoản này.</p></div></div>
+    <section class="comment-spam-account" aria-label="Tài khoản bị hạn chế">
+      <div><strong>{{ item.author }}</strong><span [class]="'badge ' + roleTone(item.authorRole)">{{ item.authorRole }}</span></div>
+      <span>Số lượt báo cáo bình luận: {{ item.reportCount }}</span>
     </section>
-  </div>
+    <div class="comment-spam-summary">
+      <span class="comment-detail-caption">Bình luận {{ item.id }}</span>
+      <blockquote class="comment-content">{{ item.content }}</blockquote>
+    </div>
+    <fieldset class="spam-duration-group">
+      <legend>Thời gian cấm bình luận <span aria-hidden="true">*</span></legend>
+      <label class="spam-duration-option" [class.is-selected]="spamDuration() === '24h'">
+        <input type="radio" name="spam-duration" value="24h" [checked]="spamDuration() === '24h'" (change)="spamDuration.set('24h')">
+        <span>Khóa tính năng bình luận trong 24 giờ</span>
+      </label>
+      <label class="spam-duration-option" [class.is-selected]="spamDuration() === '7d'">
+        <input type="radio" name="spam-duration" value="7d" [checked]="spamDuration() === '7d'" (change)="spamDuration.set('7d')">
+        <span>Khóa tính năng bình luận trong 7 ngày</span>
+      </label>
+      <label class="spam-duration-option" [class.is-selected]="spamDuration() === 'forever'">
+        <input type="radio" name="spam-duration" value="forever" [checked]="spamDuration() === 'forever'" (change)="spamDuration.set('forever')">
+        <span>Khóa tính năng bình luận vĩnh viễn</span>
+      </label>
+    </fieldset>
+    <div class="comment-spam-info"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><p>Lý do đánh dấu spam và thời hạn hạn chế được lưu vào lịch sử kiểm duyệt. Việc hạn chế chỉ áp dụng với tính năng bình luận.</p></div>
+    <div dialogFooter class="comment-dialog-actions">
+      <button class="button" type="button" (click)="spamTarget.set(null)">Giữ lại bình luận</button>
+      <button class="button comment-spam-confirm" type="button" (click)="sendSpam()">Xác nhận phạt</button>
+    </div>
+  </app-admin-dialog>
 }
 
 @if (transferTarget(); as item) {
-  <div class="dialog-backdrop" (click)="transferTarget.set(null)" (window:keydown.escape)="transferTarget.set(null)">
-    <section class="dialog wide" role="dialog" aria-modal="true" aria-labelledby="comment-transfer-title" (click)="$event.stopPropagation()">
-      <header class="dialog-head">
-        <div>
-          <h2 id="comment-transfer-title">Chuyển hồ sơ sang hàng đợi xử lý vi phạm</h2>
-          <p>Đóng gói chứng cứ và chuyển bình luận sang phân hệ Báo cáo vi phạm.</p>
-        </div>
-        <button class="icon-button" type="button" aria-label="Đóng" (click)="transferTarget.set(null)">×</button>
-      </header>
-      <div class="dialog-body">
-        <div class="section-card" style="margin-bottom:16px">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
-            <strong>Đối tượng bị tố cáo: {{ item.author }}</strong>
-            <span [class]="'badge ' + roleTone(item.authorRole)">{{ item.authorRole }}</span>
-          </div>
-          <div style="color:var(--c-muted);font-size:13px;margin-bottom:6px">{{ item.contextTitle }}</div>
-          <p class="quote" style="margin-bottom:8px">“{{ item.content }}”</p>
-          <div style="color:var(--c-muted);font-size:12px">Mã bình luận: {{ item.id }} · Mã bài học: LES-REACT-005 · IP: 118.69.182.45</div>
-        </div>
-
-        <div class="field full" style="margin-bottom:16px">
-          <label style="font-weight:600;margin-bottom:8px;display:block">Mức độ nghiêm trọng <b>*</b></label>
-          <div role="radiogroup" aria-label="Mức độ nghiêm trọng" style="display:grid;gap:10px">
-            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border:1px solid var(--c-border);border-radius:8px;background:#fbfcfe;cursor:pointer">
-              <input class="checkbox" type="radio" name="transfer-severity" [checked]="transferSeverity() === 'medium'" (change)="transferSeverity.set('medium')" style="margin-top:3px">
-              <div>
-                <strong>Mức độ trung bình</strong>
-                <div style="color:var(--c-muted);font-size:13px">Vi phạm quy chuẩn ngôn từ, gây gổ</div>
-              </div>
-            </label>
-            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border:1px solid var(--c-border);border-radius:8px;background:#fbfcfe;cursor:pointer">
-              <input class="checkbox" type="radio" name="transfer-severity" [checked]="transferSeverity() === 'high'" (change)="transferSeverity.set('high')" style="margin-top:3px">
-              <div>
-                <strong>Mức độ cao</strong>
-                <div style="color:var(--c-muted);font-size:13px">Lừa đảo, quảng cáo độc hại, thông tin sai sự thật</div>
-              </div>
-            </label>
-            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border:1px solid var(--c-border);border-radius:8px;background:#fbfcfe;cursor:pointer">
-              <input class="checkbox" type="radio" name="transfer-severity" [checked]="transferSeverity() === 'severe'" (change)="transferSeverity.set('severe')" style="margin-top:3px">
-              <div>
-                <strong>Mức độ nghiêm trọng</strong>
-                <div style="color:var(--c-muted);font-size:13px">Phá hoại hệ thống, ngôn từ cực đoan</div>
-              </div>
-            </label>
-          </div>
-        </div>
-
-        <div class="field full">
-          <label for="transfer-reason">Ghi chú bàn giao công việc <b>*</b></label>
-          <textarea id="transfer-reason" rows="3" [value]="transferReason()" (input)="transferReason.set($any($event.target).value)" placeholder="Nhập lý do chuyển giao hồ sơ (tối thiểu 15 ký tự)..."></textarea>
-          @if (transferError()) { <span class="error" role="alert">{{ transferError() }}</span> } @else { <span class="hint">{{ transferReason().length }}/15 ký tự tối thiểu</span> }
-        </div>
-
-        <div class="alert warning" style="margin-top:14px">
-          <div>
-            <strong>Chuyển giao dứt điểm</strong>
-            <div style="margin-top:2px">Bình luận sẽ được gỡ khỏi hàng đợi này. Điều tra, xử phạt và khôi phục chỉ tiếp tục ở Báo cáo vi phạm.</div>
-          </div>
-        </div>
+  <app-admin-dialog title="Chuyển hồ sơ sang hàng đợi xử lý vi phạm" subtitle="Đóng gói chứng cứ và chuyển bình luận sang phân hệ Báo cáo vi phạm." size="md" icon="M12 3 4 6v5c0 5 8 10 8 10s8-5 8-10V6l-8-3Z M9 12l2 2 4-4" (closed)="transferTarget.set(null)">
+    <div class="comment-transfer-content">
+      <section class="comment-transfer-summary" aria-label="Chứng cứ bàn giao">
+        <div class="comment-transfer-identity"><strong>Đối tượng bị tố cáo: {{ item.author }}</strong><span [class]="'badge ' + roleTone(item.authorRole)">{{ item.authorRole }}</span></div>
+        <p>{{ item.contextTitle }} · {{ sourceLabel(item.contextType) }}</p>
+        <blockquote>“{{ item.content }}”</blockquote>
+        <span>Mã bình luận: {{ item.id }} · {{ item.email }}</span>
+      </section>
+      <fieldset class="comment-transfer-severity">
+        <legend>Mức độ nghiêm trọng <span aria-hidden="true">*</span></legend>
+        <label><input type="radio" name="transfer-severity" value="medium" required [checked]="transferSeverity() === 'medium'" (change)="transferSeverity.set('medium')"><span><strong>Mức độ trung bình</strong><small>Vi phạm quy chuẩn ngôn từ, gây gổ</small></span></label>
+        <label><input type="radio" name="transfer-severity" value="high" required [checked]="transferSeverity() === 'high'" (change)="transferSeverity.set('high')"><span><strong>Mức độ cao</strong><small>Lừa đảo, quảng cáo độc hại, thông tin sai sự thật</small></span></label>
+        <label><input type="radio" name="transfer-severity" value="critical" required [checked]="transferSeverity() === 'critical'" (change)="transferSeverity.set('critical')"><span><strong>Mức độ nghiêm trọng</strong><small>Phá hoại hệ thống, ngôn từ cực đoan</small></span></label>
+      </fieldset>
+      <div class="field">
+        <label for="comment-transfer-note">Ghi chú bàn giao công việc <b>*</b></label>
+        <textarea id="comment-transfer-note" rows="3" required maxlength="500" [attr.aria-invalid]="transferError() ? true : null" aria-describedby="comment-transfer-help" [value]="transferReason()" (input)="transferReason.set($any($event.target).value)" placeholder="Nhập lý do chuyển giao hồ sơ (tối thiểu 15 ký tự)..."></textarea>
+        <span id="comment-transfer-help" class="hint">{{ transferReason().trim().length }}/15 ký tự tối thiểu · Tối đa 500 ký tự</span>
+        @if (transferError()) { <span class="error" role="alert">{{ transferError() }}</span> }
       </div>
-      <footer class="dialog-footer">
-        <button class="button" type="button" (click)="transferTarget.set(null)">Hủy bỏ</button>
-        <button class="button primary" type="button" (click)="sendTransfer()">Xác nhận chuyển giao hồ sơ</button>
-      </footer>
-    </section>
-  </div>
+      <div class="comment-transfer-warning"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 21h20L12 3Z M12 9v5 M12 17v1"/></svg><div><strong>Chuyển giao dứt điểm</strong><p>Bình luận sẽ được gỡ khỏi hàng đợi này. Điều tra, xử phạt và khôi phục chỉ tiếp tục ở Báo cáo vi phạm.</p></div></div>
+    </div>
+    <div dialogFooter class="comment-dialog-actions">
+      <button class="button" type="button" (click)="transferTarget.set(null)">Hủy bỏ</button>
+      <button class="button primary" type="button" [disabled]="!canTransfer()" (click)="sendTransfer()">Xác nhận chuyển giao hồ sơ</button>
+    </div>
+  </app-admin-dialog>
 }
 
-@if (menu(); as m) {
-  <div class="menu-layer" (click)="closeMenu()"></div>
-  <div class="row-menu" role="menu" [style.top.px]="m.top" [style.left.px]="m.left" [attr.aria-label]="'Thao tác cho bình luận của ' + m.comment.author" (click)="$event.stopPropagation()">
-    <button type="button" role="menuitem" (click)="openReply(m.comment); closeMenu()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="margin-right:10px" aria-hidden="true"><path d="M9 17 4 12l5-5"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
-      Phản hồi đại diện Admin
-    </button>
-    <button type="button" role="menuitem" (click)="openSpam(m.comment); closeMenu()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="margin-right:10px" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
-      Đánh dấu Spam
-    </button>
-    <button type="button" role="menuitem" (click)="openTransfer(m.comment); closeMenu()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="margin-right:10px" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-      Chuyển thành Án vi phạm
-    </button>
-    <button class="danger" type="button" role="menuitem" (click)="deleteTarget.set(m.comment); closeMenu()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="margin-right:10px" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
-      Xóa bình luận
-    </button>
-  </div>
+@if (selectionListOpen()) {
+  <app-bulk-selection-dialog
+    noun="bình luận"
+    [items]="selectionItems()"
+    [candidates]="selectionCandidates()"
+    [actions]="selectionActions()"
+    note="Xóa bình luận là vĩnh viễn và không thể hoàn tác."
+    (closed)="selectionListOpen.set(false)"
+    (selectionChange)="setSelectionIds($event)"
+    (action)="runSelectionAction($event.key, $event.ids)"
+  />
+}
+
+@if (bulkDeleteIds(); as ids) {
+  <app-admin-dialog title="Xóa {{ ids.length }} bình luận?" subtitle="Hành động này không thể hoàn tác." size="sm" (closed)="bulkDeleteIds.set(null)">
+    <div class="alert danger">{{ ids.length }} bình luận đã chọn sẽ bị xóa vĩnh viễn khỏi hệ thống.</div>
+    <div class="field">
+      <label for="bulk-comment-delete-reason">Lý do xóa <b>*</b></label>
+      <textarea id="bulk-comment-delete-reason" rows="3" maxlength="500" [attr.aria-invalid]="deleteReasonError() ? true : null" aria-describedby="bulk-comment-delete-reason-help" [value]="deleteReason()" (input)="deleteReason.set($any($event.target).value)" (blur)="deleteReasonTouched.set(true)" placeholder="Nhập lý do xóa các bình luận đã chọn (tối thiểu 10 ký tự)..."></textarea>
+      <span id="bulk-comment-delete-reason-help" class="hint">{{ deleteReason().trim().length }}/10 ký tự tối thiểu · Lý do được lưu vào nhật ký kiểm duyệt</span>
+      @if (deleteReasonError()) { <span class="error" role="alert">{{ deleteReasonError() }}</span> }
+    </div>
+    <div dialogFooter class="comment-dialog-actions">
+      <button class="button" type="button" (click)="bulkDeleteIds.set(null)">Hủy</button>
+      <button class="button danger" type="button" [disabled]="!canConfirmDelete()" (click)="confirmBulkDelete()">Xóa vĩnh viễn</button>
+    </div>
+  </app-admin-dialog>
 }
 
 <app-content-toast [message]="toast()?.message ?? ''" [tone]="toast()?.tone ?? 'info'" (closed)="toast.set(null)"></app-content-toast>

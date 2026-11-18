@@ -53,10 +53,22 @@ export interface ContentComment {
   replyCount: number;
   createdAt: string;
   parentId?: string;
+  transferredReportId?: string;
   moderationNote?: string;
 }
 
 export type ReviewStatus = 'pending' | 'approved' | 'rejected' | 'hidden';
+
+export interface ReviewLearningProgress {
+  studiedHours: number;
+  totalHours: number;
+  quizAverage: number | null;
+  chapters: {
+    id: string;
+    title: string;
+    activities: { id: string; title: string; kind: 'lesson' | 'quiz' | 'lab'; progress: number; score?: number }[];
+  }[];
+}
 
 export interface ContentReview {
   id: string;
@@ -66,6 +78,7 @@ export interface ContentReview {
   learner: string;
   learnerEmail: string;
   completion: number;
+  learningProgress?: ReviewLearningProgress;
   rating: number;
   nps: number;
   feedbackTags: string[];
@@ -140,11 +153,12 @@ export interface ContentDataSource {
   createPost(post: ContentPost): void;
   removePosts(ids: string[]): void;
   updateComment(id: string, patch: Partial<ContentComment>, note: string): void;
-  removeComments(ids: string[]): void;
+  removeComments(ids: string[], reason: string): void;
   replyComment(id: string, content: string, actor: string): void;
   updateReview(id: string, patch: Partial<ContentReview>, note: string): void;
   replyReview(id: string, content: string, actor: string): void;
   removeReviews(ids: string[]): void;
   updateReport(id: string, patch: Partial<ContentReport>, note: string): void;
+  transferComment(id: string, severity: ReportSeverity, note: string): ContentReport | null;
   reset(): void;
 }

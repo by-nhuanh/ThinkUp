@@ -1,17 +1,9 @@
 <section class="system-page">
   <header class="page-heading">
     <div class="heading-copy">
-      <h1>Nhật ký Kiểm toán Hệ thống</h1>
+      <h1>Lịch sử thao tác</h1>
     </div>
-    <div class="heading-actions">
-      <app-export-menu
-        label="Xuất Excel/CSV"
-        [showText]="true"
-        variant="secondary"
-        [disabled]="broken()"
-        (formatChange)="openExport($event)"
-      />
-    </div>
+
   </header>
 
   <!-- TODO(pre-deploy): Nhớ xóa nhánh demo ?integrity=broken / ?exportError=1 và đấu nối API nhật ký kiểm toán thật. -->
@@ -57,39 +49,31 @@
 
   <div class="filter-panel">
     <div class="filter-bar audit-filters">
-      <div class="audit-filter-row row-primary">
-        <app-search-field
-          inputId="audit-search"
-          label="Tìm kiếm"
-          placeholder="Tìm mã đơn (THKUP-...), mã rút tiền (PO-...), mã GV (GV-...), vai trò Admin (SA, CA, FA, CS)"
-          [floatLabel]="true"
-          [value]="search()"
-          (valueChange)="onSearch($event)"
-        />
-        <div class="filter-field">
-          <span id="audit-time-label">Thời gian</span>
-          <app-custom-select controlId="audit-time" labelId="audit-time-label" [value]="timeFilter()" [options]="timeOptions" [menuWidth]="210" (valueChange)="setFilter('time', $event)" />
-        </div>
-        <div class="filter-actions">
-          <button class="ghost-button reset-filters" type="button" (click)="resetFilters()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v5h5" /></svg>
-            Đặt lại
-          </button>
-        </div>
+      <div class="filter-field audit-search">
+        <label for="audit-search">Tìm kiếm</label>
+        <app-search-field inputId="audit-search" label="Tìm kiếm" placeholder="Mã nhật ký, tài khoản, đối tượng..." [floatLabel]="false" [value]="search()" (valueChange)="onSearch($event)" />
       </div>
-      <div class="audit-filter-row row-secondary">
-        <div class="filter-field">
-          <span id="audit-module-label">Phân hệ</span>
-          <app-custom-select controlId="audit-module" labelId="audit-module-label" [value]="moduleFilter()" [options]="moduleOptions" [menuWidth]="240" (valueChange)="setFilter('module', $event)" />
-        </div>
-        <div class="filter-field">
-          <span id="audit-risk-label">Mức độ rủi ro</span>
-          <app-custom-select controlId="audit-risk" labelId="audit-risk-label" [value]="riskFilter()" [options]="riskOptions" [menuWidth]="200" (valueChange)="setFilter('risk', $event)" />
-        </div>
-        <div class="filter-field">
-          <span id="audit-action-label">Loại hành động</span>
-          <app-custom-select controlId="audit-action" labelId="audit-action-label" [value]="actionFilter()" [options]="actionOptions" [menuWidth]="220" (valueChange)="setFilter('action', $event)" />
-        </div>
+      <div class="filter-field">
+        <span id="audit-time-label">Thời gian</span>
+        <app-custom-select controlId="audit-time" labelId="audit-time-label" [value]="timeFilter()" [options]="timeOptions" [menuWidth]="210" (valueChange)="setFilter('time', $event)" />
+      </div>
+      <div class="filter-field">
+        <span id="audit-module-label">Phân hệ</span>
+        <app-custom-select controlId="audit-module" labelId="audit-module-label" [value]="moduleFilter()" [options]="moduleOptions" [menuWidth]="240" (valueChange)="setFilter('module', $event)" />
+      </div>
+      <div class="filter-field">
+        <span id="audit-risk-label">Mức độ rủi ro</span>
+        <app-custom-select controlId="audit-risk" labelId="audit-risk-label" [value]="riskFilter()" [options]="riskOptions" [menuWidth]="200" (valueChange)="setFilter('risk', $event)" />
+      </div>
+      <div class="filter-field">
+        <span id="audit-action-label">Loại hành động</span>
+        <app-custom-select controlId="audit-action" labelId="audit-action-label" [value]="actionFilter()" [options]="actionOptions" [menuWidth]="220" (valueChange)="setFilter('action', $event)" />
+      </div>
+      <div class="filter-actions">
+        <button class="icon-button filter-reset" type="button" title="Đặt lại bộ lọc" aria-label="Đặt lại bộ lọc" (click)="resetFilters()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+        </button>
+        <app-export-menu label="Tải xuống lịch sử thao tác" [disabled]="broken()" (formatChange)="openExport($event)" />
       </div>
     </div>
   </div>
@@ -104,31 +88,53 @@
     </div>
   }
 
-  <section class="workspace-panel audit-panel" [class.is-locked]="broken()" aria-label="Bảng nhật ký kiểm toán">
+  <section class="workspace-panel audit-panel" [class.is-locked]="broken()" aria-label="Bảng lịch sử thao tác">
+    @if (selectedIds().length) {
+      <div class="selection-slot">
+        <app-selection-bar
+          [count]="selectedIds().length"
+          noun="bản ghi"
+          [actions]="selectionActions()"
+          (action)="runSelectionAction($event)"
+          (inspect)="selectionListOpen.set(true)"
+          (clear)="clearSelection()"
+        />
+      </div>
+    }
     @if (paged().length) {
-      <div class="table-scroll" tabindex="0" aria-label="Bảng nhật ký kiểm toán, cuộn ngang khi cần">
+      <div class="table-scroll" tabindex="0" aria-label="Bảng lịch sử thao tác, cuộn ngang khi cần">
         <table class="audit-table">
           <thead>
             <tr>
-              <th scope="col">Mã Log và Thời gian</th>
-              <th scope="col">Quản trị viên</th>
-              <th scope="col">Phân hệ và Hành động</th>
+              <th scope="col" class="select-cell">
+                <input type="checkbox" [checked]="allVisibleSelected()" [indeterminate]="someVisibleSelected()" aria-label="Chọn tất cả bản ghi trên trang" (change)="toggleSelectAll()" />
+              </th>
+              <th scope="col">Mã log và thời gian</th>
+              <th scope="col"><app-column-filter label="Quản trị viên" [values]="actorValues()" [selected]="filterFor('actor')" (changed)="updateColumnFilter('actor', $event)" [sorts]="textSorts" [sort]="sortFor('actor')" (sortChange)="updateColumnSort('actor', $event)" /></th>
+              <th scope="col">
+                <div class="audit-header-group">
+                  <span class="audit-header-title">Phân hệ · Hành động · Kết quả</span>
+                  <app-column-filter title="Sự kiện" [sections]="eventFilterSections()" (sectionChanged)="updateEventSectionFilter($event)" [sorts]="dateSorts" [sort]="sortFor('event')" (sortChange)="updateColumnSort('event', $event)" />
+                </div>
+              </th>
               <th scope="col">Đối tượng tác động</th>
-              <th scope="col">IP và Trình duyệt</th>
-              <th scope="col">Mức độ rủi ro</th>
+              <th scope="col">IP và trình duyệt</th>
+              <th scope="col"><app-column-filter label="Mức độ rủi ro" [values]="riskValues" [selected]="filterFor('risk')" (changed)="updateColumnFilter('risk', $event)" [sorts]="textSorts" [sort]="sortFor('risk')" (sortChange)="updateColumnSort('risk', $event)" /></th>
               <th scope="col">Thao tác</th>
             </tr>
           </thead>
           <tbody>
             @for (log of paged(); track log.id) {
-              <tr>
+              <tr [class.is-selected]="isSelected(log.id)">
+                <td class="select-cell">
+                  <input type="checkbox" [checked]="isSelected(log.id)" [attr.aria-label]="'Chọn bản ghi ' + log.id" (change)="toggleSelect(log.id, $any($event.target).checked)" />
+                </td>
                 <td>
                   <strong>{{ log.id }}</strong>
                   <small>{{ log.at }}</small>
                 </td>
                 <td>
                   <div class="person-cell">
-                    <span class="avatar" aria-hidden="true">{{ log.actorInitials }}</span>
                     <div class="audit-actor">
                       <strong>{{ log.actorName }}</strong>
                       <small>{{ log.actorEmail }}</small>
@@ -137,11 +143,13 @@
                   </div>
                 </td>
                 <td>
+                  <div class="audit-event">
                   <span [class]="moduleChipClass(log.module)">{{ log.module }}</span>
                   <span class="audit-action">{{ log.action }}</span>
                   <span class="audit-outcome" [class.is-failed]="log.outcome === 'failed'">
                     <i aria-hidden="true"></i>{{ log.outcome === 'success' ? 'Thành công' : 'Thất bại' }}
                   </span>
+                  </div>
                 </td>
                 <td>
                   @if (log.targetId.startsWith('PO-')) {
@@ -157,7 +165,7 @@
                   <small>{{ log.location }}</small>
                   <small>{{ log.device }}</small>
                 </td>
-                <td><span [class]="riskClass(log.risk)">{{ riskLabel(log.risk) }}</span></td>
+                <td class="risk-cell"><span [class]="riskClass(log.risk)">{{ riskLabel(log.risk) }}</span></td>
                 <td>
                   <button class="link-button" type="button" (click)="openDetail(log)">Chi tiết biến động</button>
                 </td>
@@ -218,6 +226,18 @@
       [rows]="filtered()"
       (closed)="exportOpen.set(false)"
       (exported)="onExported($event)"
+    />
+  }
+  @if (selectionListOpen()) {
+    <app-bulk-selection-dialog
+      noun="bản ghi"
+      [items]="selectionItems()"
+      [candidates]="selectionCandidates()"
+      [actions]="selectionActions()"
+      note="Tệp xuất giữ nguyên các cột của báo cáo kiểm toán hiện tại."
+      (closed)="selectionListOpen.set(false)"
+      (selectionChange)="setSelectionIds($event)"
+      (action)="runSelectionAction($event.key, $event.ids)"
     />
   }
   <app-system-toast />

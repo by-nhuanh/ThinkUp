@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { MOCK_COMPLAINTS, MOCK_FAILED_SEARCHES, MOCK_FAQS, MOCK_REPLY_TEMPLATES, MOCK_STAFF, MOCK_TICKETS } from '../../../core/data/mock/support.mock';
-import { INSTRUCTOR_REFUND_PERCENT, Attachment, ComplaintCase, EmailReplyMetadata, FaqItem, FaqStatus, PendingOperation, ReplyTemplate, ResolutionCategory, SupportTicket, ThreadMessage, TicketStatus } from '../models/support.models';
+import { INSTRUCTOR_REFUND_PERCENT, Attachment, ComplaintCase, ComplaintStatus, EmailReplyMetadata, FaqItem, FaqStatus, PendingOperation, ReplyTemplate, ResolutionCategory, SupportTicket, ThreadMessage, TicketStatus } from '../models/support.models';
 
 // TODO(pre-deploy): Nhớ xóa adapter demo và thay bằng HttpClient adapter sau khi có endpoint, schema, quyền và error contract chính thức.
 @Injectable({ providedIn: 'root' })
@@ -61,6 +61,13 @@ export class SupportDemoService {
     this.tickets.update(items => items.map(item => item.id === id ? { ...item, assignee, assigneeId: staff?.id, status: 'processing', thread: [...item.thread, { ...systemNote, source: 'internal', internalOnly: true }] } : item));
     this.queue('ticket_assignment', id, { assignee, assigneeId: staff?.id, note, preserveOriginalSla: true, notifyByBellAndEmail: true });
   }
+  reopenTicket(id: string): void {
+    const ticket = this.tickets().find(item => item.id === id);
+    if (!ticket || ticket.status !== 'closed') return;
+    const reopenedAt = new Date().toISOString();
+    this.tickets.update(items => items.map(item => item.id === id ? { ...item, status: 'reopened', reopenedAt, resolvedAt: undefined } : item));
+    this.queue('ticket_reopen', id, { reopenedAt });
+  }
   escalateTicket(id: string, grounds: string, disputeGroup: string, customDisputeType = '', customClassificationReason = ''): string {
     const ticket = this.tickets().find(item => item.id === id); if (!ticket) return '';
     const complaintId = `CP-${new Date().getFullYear()}-${String(this.complaints().length + 319).padStart(4, '0')}`;
@@ -104,6 +111,12 @@ export class SupportDemoService {
     };
     this.complaints.update(items => items.map(item => item.id === id ? { ...item, status: 'resolved', conclusion: decisionText, resolution: { type: 'discipline', decidedAt: new Date().toISOString(), decidedBy: 'Quản trị viên', summary: decisionText, sanctions: sanctions.map(value => sanctionLabels[value] ?? value) } } : item));
     this.queue('complaint_discipline', id, { sanctions, decisionText, requiresInstructorAndWalletServices: true, persistAuditLog: true });
+  }
+  setComplaintStatus(id: string, status: ComplaintStatus): void {
+    const current = this.complaints().find(item => item.id === id);
+    if (!current || current.status === status) return;
+    this.complaints.update(items => items.map(item => item.id === id ? { ...item, status } : item));
+    this.queue('complaint_status', id, { status });
   }
   saveFaq(value: FaqItem): void {
     const previous = this.faqs().find(item => item.id === value.id);

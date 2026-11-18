@@ -1,0 +1,19 @@
+<div class="selection-bar" role="toolbar" [attr.aria-label]="'Thao tác với ' + count() + ' ' + noun() + ' đã chọn'">
+  <button class="selection-count" type="button" title="Xem và chỉnh sửa danh sách đã chọn" [attr.aria-label]="'Đã chọn ' + count() + ' ' + noun() + '. Mở danh sách đã chọn'" (click)="inspect.emit()">
+    <span>Đã chọn {{ count() }} {{ noun() }}</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+  </button>
+  <span class="selection-divider" aria-hidden="true"></span>
+  @for (item of actions(); track item.key) {
+    <button
+      class="selection-action"
+      [class.is-danger]="item.tone === 'danger'"
+      [class.is-primary]="item.tone === 'primary'"
+      type="button"
+      [disabled]="item.disabled"
+      [attr.title]="item.title || null"
+      (click)="action.emit(item.key)"
+    >{{ item.label }}</button>
+  }
+  <button class="selection-clear" type="button" (click)="clear.emit()">Bỏ chọn</button>
+</div>

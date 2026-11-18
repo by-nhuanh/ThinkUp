@@ -129,23 +129,24 @@
   font: var(--admin-text-body-compact);
 }
 .scope-panel {
-  padding: 16px 18px;
-  border: 1px solid #f2d183;
+  padding: 12px 14px;
+  border: 1px dashed #f2d183;
   border-radius: 10px;
   background: #fff8e6;
 }
 .scope-panel h4 { margin: 0 0 6px; color: #5c430c; font: var(--admin-text-control-label); }
-.scope-panel p { margin: 0; color: #5c430c; }
+.scope-panel p { margin: 0; color: #64748b; font: var(--admin-text-body-compact); }
 .scope-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .scope-chip {
-  padding: 6px 10px;
-  border-radius: 6px;
-  background: #dfeaff;
+  padding: 4px 8px;
+  border: 1px solid #dce6f1;
+  border-radius: 4px;
+  background: #fff;
   color: #0b4fae;
   font: var(--admin-text-badge);
   font-weight: var(--admin-font-weight-semibold);
 }
-.scope-warning { margin-top: 12px !important; color: #9a4a12; font: var(--admin-text-body-compact); }
+.scope-panel p.scope-warning { margin-top: 12px; color: #9a4a12; font: var(--admin-text-body-compact); }
 
 /* Ghi chú an ninh */
 .security-note {

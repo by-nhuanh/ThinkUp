@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { ContentComment, ContentPost, ContentReport, ContentReview, ModerationLog } from '../models/content.models';
+import { ContentComment, ContentPost, ContentReport, ContentReview, ModerationLog, ReportSeverity } from '../models/content.models';
 import { ContentStore } from './content.store';
 
 type ApiPage = { items?: Array<Record<string, unknown>>; pagination?: { total?: number; pages?: number } };
@@ -58,6 +58,29 @@ export class ContentHttpService extends ContentStore {
   replyReview(id: string, content: string): void { void this.reviewAction(id, { content }, 'Phản hồi đánh giá'); }
   removeReviews(ids: string[]): void { void Promise.all(ids.map(id => this.reviewAction(id, { status: 'hidden' }, 'Xóa đánh giá'))); }
   updateReport(id: string, patch: Partial<ContentReport>, note: string): void { void this.request(`reports/${id}/resolve`, 'POST', { ...patch, note }); }
+  // TODO(pre-deploy): backend chưa có API chuyển bình luận thành hồ sơ vi phạm; giữ luồng trong bộ nhớ như adapter demo.
+  transferComment(id: string, severity: ReportSeverity, note: string): ContentReport | null {
+    const comment = this.commentState().find(item => item.id === id);
+    const trimmed = note.trim();
+    if (!comment || trimmed.length < 15 || trimmed.length > 500) return null;
+    if (comment.transferredReportId) return this.reportState().find(item => item.id === comment.transferredReportId) ?? null;
+    const now = new Date();
+    let sequence = Math.max(0, ...this.reportState().map(item => Number(item.code.split('-').at(-1)) || 0)) + 1;
+    while (this.reportState().some(item => item.id === `VP-${sequence}`)) sequence += 1;
+    const report: ContentReport = {
+      id: `VP-${sequence}`, code: `RP-${now.getFullYear()}-${String(sequence).padStart(4, '0')}`,
+      type: comment.contextType === 'course' ? 'Bình luận khóa học' : 'Bình luận Blog',
+      targetId: comment.id, targetTitle: comment.contextTitle, targetAuthor: comment.author,
+      priorOffenses: 0, reportedBy: 'Quản trị viên', reason: 'Chuyển từ kiểm duyệt bình luận',
+      description: trimmed, evidenceSnippet: comment.content, severity, status: 'new',
+      createdAt: now.toISOString(), slaDueAt: new Date(now.getTime() + 4 * 60 * 60 * 1000).toISOString(),
+      assignee: 'Chưa phân công', evidence: []
+    };
+    this.reportState.update(items => [report, ...items]);
+    this.commentState.update(items => items.map(item => item.id === id
+      ? { ...item, status: 'flagged', transferredReportId: report.id, moderationNote: trimmed } : item));
+    return report;
+  }
   reset(): void { void this.load(); }
 
   private async postAction(id: string, patch: Partial<ContentPost>, note: string): Promise<void> {

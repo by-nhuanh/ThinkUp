@@ -79,11 +79,11 @@
 .diff-row + .diff-row { margin-top: 8px; }
 .diff-row span { color: #8a3a46; }
 .diff-row strong { color: #7a1f2c; text-align: left; overflow-wrap: anywhere; }
-.diff-panel.after { background: #157a3d; }
-.diff-panel.after h4 { color: #fff; }
-.diff-panel.after .diff-row { background: #ffffff1f; }
-.diff-panel.after .diff-row span { color: #d7f0e1; }
-.diff-panel.after .diff-row strong { color: #fff; }
+.diff-panel.after { background: #f1faf4; }
+.diff-panel.after h4 { color: #13743b; }
+.diff-panel.after .diff-row { background: #dff2e6; }
+.diff-panel.after .diff-row span { color: #346b4b; }
+.diff-panel.after .diff-row strong { color: #14532d; }
 
 /* Checksum */
 .checksum { display: block; padding: 14px 16px; border-radius: 9px; font: var(--admin-text-body-compact); }

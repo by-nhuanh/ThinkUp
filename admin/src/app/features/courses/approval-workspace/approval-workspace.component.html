@@ -12,27 +12,14 @@
         <ul class="checklist">
           @for (item of checklist(); track item.id) {
             <li [class.done]="item.done">
-              <button
-                class="mark"
-                type="button"
-                style="padding: 0; background: transparent"
-                [attr.aria-pressed]="item.done"
-                [attr.aria-label]="'Đánh dấu tiêu chí ' + item.label"
-                (click)="toggleCheck(item.id, item.done)"
-              >{{ item.done ? '✓' : '' }}</button>
-              <button
-                type="button"
-                class="link"
-                style="min-height: 0; padding: 0; border: 0; background: transparent; color: inherit; font-weight: inherit; text-align: left"
-                (click)="toggleCheck(item.id, item.done)"
-              >{{ item.label }}</button>
+              <label class="approval-check"><input type="checkbox" [checked]="item.done" (change)="toggleCheck(item.id, item.done)"><span>{{ item.label }}</span></label>
             </li>
           }
         </ul>
         <p class="gate-note" [class.ready]="allDone()">
           {{ allDone()
-            ? 'Đủ 5 tiêu chí. Bạn có thể phê duyệt và phát hành khóa học.'
-            : 'Hoàn tất đủ 5 tiêu chí để kích hoạt nút Phê duyệt & Phát hành.' }}
+            ? 'Đủ ' + checklist().length + ' tiêu chí. Bạn có thể phê duyệt và phát hành khóa học.'
+            : 'Hoàn tất đủ ' + checklist().length + ' tiêu chí để kích hoạt nút Phê duyệt & Phát hành.' }}
         </p>
       </section>
     </ng-template>
@@ -87,7 +74,7 @@
           class="button primary"
           type="button"
           [disabled]="!allDone()"
-          [title]="allDone() ? '' : 'Hoàn tất đủ 5 tiêu chí để phê duyệt'"
+          [title]="allDone() ? '' : 'Hoàn tất đủ ' + checklist().length + ' tiêu chí để phê duyệt'"
           (click)="approve()"
         >✓ Phê duyệt &amp; Phát hành</button>
         <button class="button link" type="button" (click)="historyOpen.set(true)">◷ Lịch sử duyệt</button>
@@ -100,6 +87,10 @@
           class="tab"
           type="button"
           role="tab"
+          [id]="'approval-tab-' + item.id"
+          aria-controls="approval-resource-panel"
+          [attr.tabindex]="tab() === item.id ? 0 : -1"
+          (keydown)="onTabKeydown($event, item.id)"
           [class.active]="tab() === item.id"
           [attr.aria-selected]="tab() === item.id"
           (click)="setTab(item.id)"
@@ -107,10 +98,11 @@
       }
     </nav>
 
+    <section id="approval-resource-panel" role="tabpanel" [attr.aria-labelledby]="'approval-tab-' + tab()">
     @switch (tab()) {
       @case ('overview') {
-        <div class="workspace-grid is-wide">
-          <section class="section-card">
+        <div class="workspace-grid overview-grid">
+          <section class="section-card overview-preview">
             <div class="preview-head">
               <h3>Landing page xem trước</h3>
               <span class="badge neutral">CHẾ ĐỘ HỌC VIÊN</span>
@@ -280,18 +272,32 @@
                 <pre>{{ ws.ide.code }}</pre>
               </div>
             </div>
+            @if (selectedIds().length) {
+              <div class="selection-slot">
+                <app-selection-bar
+                  [count]="selectedIds().length"
+                  noun="test case"
+                  [actions]="selectionActions()"
+                  (action)="runSelectionAction($event)"
+                  (inspect)="selectionListOpen.set(true)"
+                  (clear)="clearSelection()"
+                />
+              </div>
+            }
             <div class="table-scroll" style="margin-top: 12px; border: 1px solid #e6edf6; border-radius: 9px">
               <table class="testcase-table" style="min-width: 520px">
                 <thead>
                   <tr>
-                    <th scope="col">TEST CASES</th>
-                    <th scope="col">KẾT QUẢ CHẠY MẪU</th>
+                    <th scope="col" class="select-cell"><input class="checkbox" type="checkbox" [checked]="allVisibleSelected()" [indeterminate]="someVisibleSelected()" aria-label="Chọn tất cả test case" (change)="toggleSelectAll()"></th>
+                    <th scope="col">Test cases</th>
+                    <th scope="col">Kết quả chạy mẫu</th>
                     <th scope="col"><span class="sr-only">Trạng thái</span></th>
                   </tr>
                 </thead>
                 <tbody>
                   @for (testcase of ws.ide.testcases; track testcase.id) {
-                    <tr>
+                    <tr [class.is-selected]="isSelected(testcase.id)">
+                      <td class="select-cell"><input class="checkbox" type="checkbox" [checked]="isSelected(testcase.id)" [attr.aria-label]="'Chọn test case ' + testcase.input" (change)="toggleSelect(testcase.id, $any($event.target).checked)"></td>
                       <td>{{ testcase.visibility }} · {{ testcase.input }}</td>
                       <td>{{ testcase.expected }}</td>
                       <td><span class="badge" [class]="'badge ' + testTone(testcase.state)">{{ testLabel(testcase.state) }}</span></td>
@@ -366,6 +372,8 @@
       }
     }
 
+    </section>
+
     @if (historyOpen()) {
       <app-course-history-dialog
         [title]="ws.title + ' · ' + ws.courseId"
@@ -391,6 +399,19 @@
       <p>Yêu cầu có thể đã được xử lý hoặc đường dẫn không còn hiệu lực.</p>
       <button class="button" type="button" (click)="back()">Quay lại hàng đợi</button>
     </section>
+  }
+
+  @if (selectionListOpen()) {
+    <app-bulk-selection-dialog
+      noun="test case"
+      [items]="selectionItems()"
+      [candidates]="selectionCandidates()"
+      [actions]="selectionActions()"
+      note="Tệp xuất gồm các test case đã chọn kèm thông tin khóa học và giảng viên của hồ sơ duyệt."
+      (closed)="selectionListOpen.set(false)"
+      (selectionChange)="setSelectionIds($event)"
+      (action)="runSelectionAction($event.key, $event.ids)"
+    />
   }
 
   @if (toast(); as t) {

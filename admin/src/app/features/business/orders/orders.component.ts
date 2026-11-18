@@ -7,17 +7,23 @@ import { BusinessOrder, OrderStatus } from '../models/business.models';
 import { BUSINESS_STORE } from '../services/business.store';
 import { InvoicePdfService } from '../services/invoice-pdf.service';
 import { copyText, dateTime, matchesDates, money, paginationItems } from '../business-utils';
-import { ExportFormat } from '../../../shared/utils/export-formats';
+import { ExportFormat, downloadTable } from '../../../shared/utils/export-formats';
 import { apiErrorMessage } from '../../../shared/utils/api-error';
+import { AdminDialogComponent } from '../../../shared/components/admin-dialog/admin-dialog.component';
+import { BulkSelectionDialogComponent, BulkSelectionItem } from '../../../shared/components/bulk-selection-dialog/bulk-selection-dialog.component';
+import { SelectionAction, SelectionBarComponent } from '../../../shared/components/selection-bar/selection-bar.component';
 import { DateTimePickerComponent } from '../../../shared/components/date-time-picker/date-time-picker.component';
 import { CustomSelectComponent, CustomSelectOption } from '../../../shared/components/custom-select/custom-select.component';
 import { ExportMenuComponent } from '../../../shared/components/export-menu/export-menu.component';
 import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
+import { ColumnFilterComponent, ColumnFilterValue, DATE_SORT_OPTIONS, TEXT_SORT_OPTIONS, compareSortValues } from '../../../shared/components/column-filter/column-filter.component';
+
+type OrderColumn = 'learner' | 'method' | 'status' | 'date';
 
 @Component({
   selector: 'app-orders',
   standalone: true,
-  imports: [DateTimePickerComponent, CustomSelectComponent, ExportMenuComponent, SearchFieldComponent, LucideRotateCcw],
+  imports: [AdminDialogComponent, BulkSelectionDialogComponent, SelectionBarComponent, DateTimePickerComponent, CustomSelectComponent, ExportMenuComponent, SearchFieldComponent, ColumnFilterComponent, LucideRotateCcw],
   templateUrl: './orders.component.html',
   styleUrl: './orders.component.css'
 })
@@ -44,6 +50,25 @@ export class OrdersComponent {
   readonly dateOpen = signal(false);
   readonly datePopoverPosition = signal<{ left: number; top: number; maxHeight: number } | null>(null);
   readonly sort = signal<'newest' | 'oldest'>('newest');
+  /** Bộ lọc nhiều lựa chọn trên tiêu đề cột; rỗng nghĩa là không lọc cột đó. */
+  readonly learnerColumnFilters = signal<string[]>([]);
+  readonly methodColumnFilters = signal<string[]>([]);
+  readonly statusColumnFilters = signal<string[]>([]);
+  readonly dateColumnFilters = signal<string[]>([]);
+  readonly learnerValues = computed<ColumnFilterValue[]>(() =>
+    this.distinctValues(this.orders().map(order => order.learner)));
+  readonly methodValues = computed<ColumnFilterValue[]>(() =>
+    this.distinctValues(this.orders().map(order => this.methodLabel(order.method))));
+  readonly statusValues: ColumnFilterValue[] = [
+    { value: 'success', label: 'Thành công' },
+    { value: 'pending', label: 'Chờ thanh toán' },
+    { value: 'cancelled', label: 'Thất bại' }
+  ];
+  readonly dateValues = computed<ColumnFilterValue[]>(() =>
+    this.distinctValues(this.orders().map(order => this.dayOf(order.createdAt))));
+  readonly textSorts = TEXT_SORT_OPTIONS;
+  readonly dateSorts = DATE_SORT_OPTIONS;
+  readonly columnSort = signal<{ column: OrderColumn; direction: 'asc' | 'desc' } | null>(null);
   readonly page = signal(1);
   readonly selected = signal<BusinessOrder | null>(null);
   readonly downloadingInvoiceId = signal<string | null>(null);
@@ -74,15 +99,27 @@ export class OrdersComponent {
       cancelledRate: rate(totals.cancelled)
     };
   });
-  readonly filtered = computed(() => this.orders().filter(order => {
-    const query = this.search().trim().toLocaleLowerCase('vi-VN');
-    return (!query || [order.id, order.transactionId ?? '', order.learner, order.email].some(value => value.toLocaleLowerCase('vi-VN').includes(query)))
-      && (!this.status() || order.status === this.status())
-      && (!this.method() || this.methodMatches(order.method, this.method()))
-      && matchesDates(order.createdAt, this.from(), this.to());
-  }).sort((a, b) => this.sort() === 'newest'
-    ? b.createdAt.localeCompare(a.createdAt)
-    : a.createdAt.localeCompare(b.createdAt)));
+  readonly filtered = computed(() => {
+    const items = this.orders().filter(order => {
+      const query = this.search().trim().toLocaleLowerCase('vi-VN');
+      return (!query || [order.id, order.transactionId ?? '', order.learner, order.email].some(value => value.toLocaleLowerCase('vi-VN').includes(query)))
+        && (!this.status() || order.status === this.status())
+        && (!this.method() || this.methodMatches(order.method, this.method()))
+        && this.matchesColumn(this.learnerColumnFilters(), order.learner)
+        && this.matchesColumn(this.methodColumnFilters(), this.methodLabel(order.method))
+        && (!this.statusColumnFilters().length || this.statusColumnFilters().includes(order.status))
+        && (!this.dateColumnFilters().length || this.dateColumnFilters().includes(this.dayOf(order.createdAt)))
+        && matchesDates(order.createdAt, this.from(), this.to());
+    });
+    const columnSort = this.columnSort();
+    if (columnSort) {
+      const factor = columnSort.direction === 'asc' ? 1 : -1;
+      return [...items].sort((a, b) => compareSortValues(this.sortValue(a, columnSort.column), this.sortValue(b, columnSort.column)) * factor);
+    }
+    return [...items].sort((a, b) => this.sort() === 'newest'
+      ? b.createdAt.localeCompare(a.createdAt)
+      : a.createdAt.localeCompare(b.createdAt));
+  });
   /** Số dòng mỗi trang đọc từ tham số hệ thống `orders_per_page` (mặc định 8). */
   private readonly pageSizeService = inject(AdminPageSizeService);
   get pageSize(): number { return this.pageSizeService.pageSize(); }
@@ -96,6 +133,37 @@ export class OrdersComponent {
   readonly success = computed(() => this.orders().filter(order => order.status === 'success').length);
   readonly pending = computed(() => this.orders().filter(order => order.status === 'pending').length);
   readonly cancelled = computed(() => this.orders().filter(order => order.status === 'cancelled').length);
+  readonly selection = signal<ReadonlySet<string>>(new Set());
+  readonly selectionListOpen = signal(false);
+  readonly bulkCancelIds = signal<readonly string[] | null>(null);
+  readonly toast = signal('');
+  private toastTimer: ReturnType<typeof setTimeout> | null = null;
+  readonly selectedIds = computed(() => [...this.selection()]);
+  readonly allVisibleSelected = computed(() => {
+    const items = this.visible();
+    const chosen = this.selection();
+    return items.length > 0 && items.every(order => chosen.has(order.id));
+  });
+  readonly someVisibleSelected = computed(() => !this.allVisibleSelected() && this.visible().some(order => this.selection().has(order.id)));
+  readonly selectionItems = computed<BulkSelectionItem[]>(() => this.orders()
+    .filter(order => this.selection().has(order.id))
+    .map(order => this.selectionItem(order)));
+  readonly selectionCandidates = computed<BulkSelectionItem[]>(() => this.filtered()
+    .filter(order => !this.selection().has(order.id))
+    .map(order => this.selectionItem(order)));
+  readonly selectionActions = computed<readonly SelectionAction[]>(() => {
+    const pendingCount = this.orders().filter(order => this.selection().has(order.id) && order.status === 'pending').length;
+    const pendingTitle = pendingCount ? `${pendingCount} đơn chờ thanh toán trong lựa chọn` : 'Chỉ áp dụng cho đơn chờ thanh toán';
+    return [
+      { key: 'confirm-payment', label: 'Xác nhận thanh toán', tone: 'primary', disabled: !pendingCount, title: pendingTitle },
+      { key: 'cancel', label: 'Hủy đơn', tone: 'danger', disabled: !pendingCount, title: pendingTitle },
+      { key: 'export', label: 'Xuất đã chọn' }
+    ];
+  });
+  readonly bulkCancelTargets = computed(() => {
+    const ids = this.bulkCancelIds();
+    return ids ? this.orders().filter(order => ids.includes(order.id) && order.status === 'pending') : [];
+  });
 
   constructor() {
     // Deep link từ module người dùng: /business/orders?q=<email>
@@ -104,6 +172,7 @@ export class OrdersComponent {
     void this.reload();
     this.destroyRef.onDestroy(() => this.removeDatePopoverListeners());
     this.destroyRef.onDestroy(() => { if (this.copiedTimeout) clearTimeout(this.copiedTimeout); });
+    this.destroyRef.onDestroy(() => { if (this.toastTimer) clearTimeout(this.toastTimer); });
   }
 
   /** Tải lại danh sách và KPI theo bộ lọc hiện tại (dùng cho lần đầu và nút thử lại). */
@@ -172,7 +241,7 @@ export class OrdersComponent {
   selectFrom(value: string): void { this.fromDraft.set(value); if (this.toDraft() && value > this.toDraft()) this.toDraft.set(value); this.periodDraft.set(''); }
   /** Chỉnh ngày kết thúc trong popover, chưa áp dụng cho bộ lọc. */
   selectTo(value: string): void { this.toDraft.set(value); if (this.fromDraft() && value < this.fromDraft()) this.fromDraft.set(value); this.periodDraft.set(''); }
-  toggleSort(): void { this.sort.update(value => value === 'newest' ? 'oldest' : 'newest'); this.page.set(1); }
+  toggleSort(): void { this.sort.update(value => value === 'newest' ? 'oldest' : 'newest'); this.columnSort.set(null); this.page.set(1); }
   private today(): string {
     const date = new Date();
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -220,7 +289,123 @@ export class OrdersComponent {
     this.periodDraft.set('all');
     this.page.set(1);
   }
-  clear(): void { this.search.set(''); this.status.set(''); this.method.set(''); this.clearDateRange(); this.sort.set('newest'); this.page.set(1); this.closeDatePopover(); void this.reload(); }
+  clear(): void {
+    this.search.set('');
+    this.status.set('');
+    this.method.set('');
+    this.learnerColumnFilters.set([]);
+    this.methodColumnFilters.set([]);
+    this.statusColumnFilters.set([]);
+    this.dateColumnFilters.set([]);
+    this.clearDateRange();
+    this.sort.set('newest');
+    this.columnSort.set(null);
+    this.page.set(1);
+    this.closeDatePopover(); void this.reload();
+  }
+  /** Áp dụng lựa chọn từ bộ lọc tiêu đề cột và đưa danh sách về trang đầu. */
+  setColumnFilter(kind: 'learner' | 'method' | 'status' | 'date', values: string[]): void {
+    if (kind === 'learner') this.learnerColumnFilters.set(values);
+    else if (kind === 'method') this.methodColumnFilters.set(values);
+    else if (kind === 'status') this.statusColumnFilters.set(values);
+    else this.dateColumnFilters.set(values);
+    this.page.set(1);
+  }
+  sortFor(key: OrderColumn): string {
+    const current = this.columnSort();
+    return current?.column === key ? current.direction : '';
+  }
+  updateColumnSort(key: OrderColumn, direction: string): void {
+    const current = this.columnSort();
+    this.columnSort.set(!direction || (current?.column === key && current.direction === direction)
+      ? null
+      : { column: key, direction: direction as 'asc' | 'desc' });
+    this.page.set(1);
+  }
+  private sortValue(item: BusinessOrder, column: OrderColumn): string | number {
+    switch (column) {
+      case 'learner': return item.learner;
+      case 'method': return this.methodLabel(item.method);
+      case 'status': return this.statusLabel(item.status);
+      case 'date': return Date.parse(item.createdAt);
+    }
+  }
+  private matchesColumn(selected: string[], value: string): boolean {
+    return !selected.length || selected.includes(value);
+  }
+  /** Danh sách giá trị khác nhau, giữ thứ tự xuất hiện, dùng cho bộ lọc cột. */
+  private distinctValues(values: string[]): ColumnFilterValue[] {
+    return [...new Set(values)].map(value => ({ value, label: value }));
+  }
+  /** Ngày tạo dạng YYYY-MM-DD theo giờ Việt Nam, dùng cho bộ lọc cột Ngày tạo. */
+  dayOf(value: string): string {
+    return new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(value));
+  }
+  private selectionItem(order: BusinessOrder): BulkSelectionItem {
+    return { id: order.id, label: `${order.id} · ${order.learner}`, detail: `${money(order.originalAmount - order.discount)} · ${this.statusLabel(order.status)}` };
+  }
+  toggleSelect(id: string, checked: boolean): void {
+    const next = new Set(this.selection());
+    if (checked) next.add(id); else next.delete(id);
+    this.selection.set(next);
+  }
+  toggleSelectAll(): void {
+    const next = new Set(this.selection());
+    if (this.allVisibleSelected()) this.visible().forEach(order => next.delete(order.id));
+    else this.visible().forEach(order => next.add(order.id));
+    this.selection.set(next);
+  }
+  clearSelection(): void { this.selection.set(new Set()); }
+  setSelectionIds(ids: string[]): void { this.selection.set(new Set(ids)); }
+  runSelectionAction(key: string, ids?: readonly string[]): void {
+    this.selectionListOpen.set(false);
+    const targets = ids ?? this.selectedIds();
+    if (!targets.length) return;
+    if (key === 'export') { this.exportSelected(targets); return; }
+    if (key === 'cancel') { this.bulkCancelIds.set(targets); return; }
+    if (key === 'confirm-payment') this.confirmSelectedPayments(targets);
+  }
+  private confirmSelectedPayments(ids: readonly string[]): void {
+    const targets = this.orders().filter(order => ids.includes(order.id) && order.status === 'pending');
+    if (!targets.length) { this.notify('Không có đơn chờ thanh toán nào trong lựa chọn.'); return; }
+    const paidAt = new Date().toISOString();
+    targets.forEach(order => this.data.updateOrder(order.id, { status: 'success', paidAt }));
+    this.clearSelection();
+    this.page.set(Math.min(this.page(), this.pages()));
+    const skipped = ids.length - targets.length;
+    this.notify(`Đã xác nhận thanh toán ${targets.length} đơn hàng.${skipped ? ` Bỏ qua ${skipped} đơn không ở trạng thái chờ thanh toán.` : ''}`);
+  }
+  confirmBulkCancel(): void {
+    const ids = this.bulkCancelIds();
+    if (!ids?.length) return;
+    const targets = this.bulkCancelTargets();
+    this.bulkCancelIds.set(null);
+    if (!targets.length) { this.notify('Các đơn đã chọn không còn ở trạng thái chờ thanh toán nên không thể hủy.'); return; }
+    const cancelledAt = new Date().toISOString();
+    targets.forEach(order => this.data.updateOrder(order.id, {
+      status: 'cancelled',
+      cancellation: { reason: 'Quản trị viên hủy đơn hàng loạt.', cancelledAt, cancelledBy: 'admin', paymentState: 'unpaid' }
+    }));
+    this.clearSelection();
+    this.page.set(Math.min(this.page(), this.pages()));
+    const skipped = ids.length - targets.length;
+    this.notify(`Đã hủy ${targets.length} đơn hàng.${skipped ? ` Bỏ qua ${skipped} đơn không ở trạng thái chờ thanh toán.` : ''}`);
+  }
+  private exportSelected(ids: readonly string[]): void {
+    const rows = this.orders().filter(order => ids.includes(order.id));
+    downloadTable('xlsx', 'thinkup-don-hang-da-chon', [
+      ['Mã đơn', 'Mã giao dịch', 'Học viên', 'Email', 'Khóa học', 'Thực thu', 'Phương thức', 'Trạng thái', 'Ngày tạo'],
+      ...rows.map(order => [order.id, order.transactionId ?? '', order.learner, order.email, order.courses.join('; '), order.originalAmount - order.discount, this.methodLabel(order.method), this.statusLabel(order.status), dateTime(order.createdAt)])
+    ]).then(
+      () => this.notify(`Đã xuất ${rows.length} đơn hàng đã chọn ra tệp XLSX.`),
+      () => this.notify('Không thể tạo tệp xuất. Vui lòng thử lại.')
+    );
+  }
+  private notify(message: string): void {
+    if (this.toastTimer) clearTimeout(this.toastTimer);
+    this.toast.set(message);
+    this.toastTimer = setTimeout(() => this.toast.set(''), 4200);
+  }
   async export(format: ExportFormat): Promise<void> {
     try {
       await this.data.exportOrders(format, {

@@ -9,7 +9,7 @@
   </div>
 
   <div class="field" style="margin-bottom: 14px">
-    <span class="field-label-row"><span>Hạng mục cần bổ sung *</span></span>
+    <span class="field-label">Hạng mục cần bổ sung <span class="required-mark" aria-hidden="true">*</span></span>
     <div class="choice-grid" role="group" aria-label="Hạng mục cần bổ sung">
       @for (item of items; track item.id) {
         <label class="choice">
@@ -21,7 +21,7 @@
   </div>
 
   <div class="field" style="margin-bottom: 14px">
-    <label for="supplement-issue">Loại vấn đề *</label>
+    <label for="supplement-issue">Loại vấn đề <span class="required-mark" aria-hidden="true">*</span></label>
     <app-custom-select
       [value]="issueType()"
       [options]="issueTypes"
@@ -33,18 +33,17 @@
   </div>
 
   <div class="field" style="margin-bottom: 14px">
-    <div class="field-label-row">
-      <label for="supplement-detail">Nội dung cần bổ sung *</label>
-      <span>{{ charCount() }} / tối thiểu 20</span>
-    </div>
+    <label for="supplement-detail">Nội dung cần bổ sung <span class="required-mark" aria-hidden="true">*</span></label>
     <textarea
       id="supplement-detail"
+      aria-describedby="supplement-detail-count"
       [value]="detail()"
       placeholder="Nêu vị trí có lỗi, nội dung cần sửa và tiêu chí cần đáp ứng…"
       (input)="setDetail($any($event.target).value)"
       (blur)="touched.set(true)"
       [attr.aria-invalid]="detailError() ? 'true' : null"
     ></textarea>
+    <span id="supplement-detail-count" class="field-character-count">{{ charCount() }} / tối thiểu 20</span>
     @if (detailError()) {
       <span class="error" role="alert">{{ detailError() }}</span>
     }

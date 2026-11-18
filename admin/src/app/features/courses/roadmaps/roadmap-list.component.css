@@ -1,0 +1,4 @@
+.selection-slot { padding: 12px 16px 0; }
+.select-cell { width: 44px; text-align: center; }
+.roadmap-test-status, .table-scroll th:nth-child(8) { text-align: center; }
+.roadmap-test-badge { width: 120px; min-height: 26px; justify-content: center; text-align: center; white-space: normal; }

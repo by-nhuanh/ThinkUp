@@ -1,0 +1,9 @@
+.archive-reason-field app-custom-select {
+  display: block;
+  justify-self: center;
+  width: min(100%, 420px);
+  --custom-select-width: 100%;
+  --custom-select-max-width: 420px;
+  --custom-select-trigger-height: 40px;
+  --custom-select-trigger-padding: 0 12px;
+}

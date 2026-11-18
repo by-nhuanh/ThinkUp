@@ -1,14 +1,18 @@
-import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, WritableSignal, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { FAQ_CATEGORIES } from '../../../core/data/mock/support.mock';
 import { AdminPageSizeService } from '../../../core/services/admin-page-size.service';
 import { LucideBold, LucideBookOpenText, LucideChartNoAxesColumnIncreasing, LucideCircleAlert, LucideCircleHelp, LucideEyeOff, LucideFileText, LucideFolder, LucideItalic, LucideLink, LucideList, LucideListOrdered, LucidePencil, LucidePencilLine, LucidePlus, LucideSave, LucideSearch, LucideSearchX, LucideSend, LucideTag, LucideTrash2, LucideTrendingDown, LucideTriangleAlert, LucideUnderline, LucideX } from '@lucide/angular';
+import { ColumnFilterComponent, ColumnFilterValue, TEXT_SORT_OPTIONS, compareSortValues } from '../../../shared/components/column-filter/column-filter.component';
+import { AdminDialogComponent } from '../../../shared/components/admin-dialog/admin-dialog.component';
+import { BulkSelectionDialogComponent, BulkSelectionItem } from '../../../shared/components/bulk-selection-dialog/bulk-selection-dialog.component';
+import { SelectionAction, SelectionBarComponent } from '../../../shared/components/selection-bar/selection-bar.component';
 import { CustomSelectComponent, CustomSelectOption } from '../../../shared/components/custom-select/custom-select.component';
 import { FaqItem, FaqStatus, FailedSearch } from '../models/support.models';
 import { SupportDemoService } from '../services/support-demo.service';
 import { SupportPaginationComponent } from '../components/support-pagination/support-pagination.component';
 
-@Component({ selector:'app-support-faq',standalone:true,imports:[FormsModule, SupportPaginationComponent, CustomSelectComponent, LucideBold, LucideBookOpenText, LucideChartNoAxesColumnIncreasing, LucideCircleAlert, LucideCircleHelp, LucideEyeOff, LucideFileText, LucideFolder, LucideItalic, LucideLink, LucideList, LucideListOrdered, LucidePencil, LucidePencilLine, LucidePlus, LucideSave, LucideSearch, LucideSearchX, LucideSend, LucideTag, LucideTrash2, LucideTrendingDown, LucideTriangleAlert, LucideUnderline, LucideX],templateUrl:'./faq.component.html',styleUrls:['../support-page.css','./faq.component.css'] })
+@Component({ selector:'app-support-faq',standalone:true,imports:[FormsModule, SupportPaginationComponent, ColumnFilterComponent, CustomSelectComponent, SelectionBarComponent, BulkSelectionDialogComponent, AdminDialogComponent, LucideBold, LucideBookOpenText, LucideChartNoAxesColumnIncreasing, LucideCircleAlert, LucideCircleHelp, LucideEyeOff, LucideFileText, LucideFolder, LucideItalic, LucideLink, LucideList, LucideListOrdered, LucidePencil, LucidePencilLine, LucidePlus, LucideSave, LucideSearch, LucideSearchX, LucideSend, LucideTag, LucideTrash2, LucideTrendingDown, LucideTriangleAlert, LucideUnderline, LucideX],templateUrl:'./faq.component.html',styleUrls:['../support-page.css','./faq.component.css'] })
 export class FaqComponent {
   private readonly data=inject(SupportDemoService);readonly faqs=this.data.faqs;readonly failed=this.data.failedSearches;readonly categories=FAQ_CATEGORIES;
   readonly categoryOptions = computed<ReadonlyArray<CustomSelectOption>>(() => [
@@ -25,6 +29,17 @@ export class FaqComponent {
   ]);
 
   setStatusFilter(v: string): void { this.status.set(v as FaqStatus | ''); this.page.set(1); }
+  filterFor(key: 'question' | 'category' | 'status'): readonly string[] { return this.faqColumnFilters[key](); }
+  updateColumnFilter(key: 'question' | 'category' | 'status', values: string[]): void { this.faqColumnFilters[key].set(values); this.page.set(1); }
+  sortFor(key: 'question' | 'category' | 'status'): string { const current = this.columnSort(); return current?.column === key ? current.direction : ''; }
+  updateColumnSort(key: 'question' | 'category' | 'status', direction: string): void { const current = this.columnSort(); this.columnSort.set(!direction || (current?.column === key && current.direction === direction) ? null : { column: key, direction: direction as 'asc' | 'desc' }); this.page.set(1); }
+  private sortValue(item: FaqItem, column: 'question' | 'category' | 'status'): string | number {
+    switch (column) {
+      case 'question': return item.question;
+      case 'category': return item.category;
+      case 'status': return item.status === 'published' ? 'Đã xuất bản' : 'Tạm ẩn';
+    }
+  }
   setFormStatus(v: string): void { this.patch('status', v as FaqStatus); }
   readonly editorStatusOptions: ReadonlyArray<CustomSelectOption> = [
     { value: 'published', label: 'Đang hiển thị' },
@@ -36,11 +51,47 @@ export class FaqComponent {
     { value: 'quote', label: 'Trích dẫn' }
   ];
   private readonly pageSizeService = inject(AdminPageSizeService);
-  readonly queryInput=signal('');readonly query=signal('');readonly category=signal('');readonly status=signal<FaqStatus|''>('');readonly page=signal(1);
+  readonly queryInput=signal('');readonly query=signal('');readonly columnQuestion=signal<string[]>([]);readonly columnCategory=signal<string[]>([]);readonly columnStatus=signal<string[]>([]);private readonly faqColumnFilters:Record<'question'|'category'|'status',WritableSignal<string[]>>={question:this.columnQuestion,category:this.columnCategory,status:this.columnStatus};readonly category=signal('');readonly status=signal<FaqStatus|''>('');readonly page=signal(1);readonly modal=signal<'editor'|'failed'|'delete'|'status'|null>(null);readonly editing=signal<FaqItem|null>(null);readonly deleting=signal<FaqItem|null>(null);readonly pendingStatusChange=signal<{item:FaqItem;target:FaqStatus}|null>(null);readonly form=signal<FaqItem>(this.blank());readonly keywordDraft=signal('');readonly answerFormat=signal('paragraph');readonly orderDrafts=signal<Record<string,number>>({});readonly attempted=signal(false);readonly toast=signal('');private searchTimer?:ReturnType<typeof setTimeout>;private modalOrigin:HTMLElement|null=null;
   /** Số dòng mỗi trang đọc từ cấu hình hệ thống (`parameters.orders_per_page`). */
   get pageSize():number{return this.pageSizeService.pageSize()}
-  readonly modal=signal<'editor'|'failed'|'delete'|'status'|null>(null);readonly editing=signal<FaqItem|null>(null);readonly deleting=signal<FaqItem|null>(null);readonly pendingStatusChange=signal<{item:FaqItem;target:FaqStatus}|null>(null);readonly form=signal<FaqItem>(this.blank());readonly keywordDraft=signal('');readonly answerFormat=signal('paragraph');readonly orderDrafts=signal<Record<string,number>>({});readonly attempted=signal(false);readonly toast=signal('');private searchTimer?:ReturnType<typeof setTimeout>;private modalOrigin:HTMLElement|null=null;
-  readonly filtered=computed(()=>this.faqs().filter(item=>{const q=this.query().trim().toLocaleLowerCase('vi-VN');return(!q||[item.question,item.answer,...item.keywords].some(v=>v.toLocaleLowerCase('vi-VN').includes(q)))&&(!this.category()||item.category===this.category())&&(!this.status()||item.status===this.status())}).sort((a,b)=>a.category.localeCompare(b.category,'vi')||a.order-b.order));readonly pages=computed(()=>Math.max(1,Math.ceil(this.filtered().length/this.pageSize)));readonly visible=computed(()=>this.filtered().slice((this.page()-1)*this.pageSize,this.page()*this.pageSize));readonly published=computed(()=>this.faqs().filter(i=>i.status==='published').length);readonly totalViews=computed(()=>this.faqs().reduce((s,i)=>s+i.views,0));readonly failedSorted=computed(()=>[...this.failed()].sort((a,b)=>b.count-a.count||a.keyword.localeCompare(b.keyword,'vi')));readonly failedCount=computed(()=>this.failed().reduce((s,i)=>s+i.count,0));
+  readonly questionFilterValues=computed<ColumnFilterValue[]>(()=>[...new Set(this.faqs().map(item=>item.question))].map(question=>({value:question,label:question})));
+  readonly categoryFilterValues:ColumnFilterValue[]=this.categories.map(c=>({value:c,label:c}));
+  readonly statusFilterValues:readonly ColumnFilterValue[]=this.statusOptions.filter(option=>!!option.value).map(option=>({value:option.value,label:option.label}));
+  readonly textSorts=TEXT_SORT_OPTIONS;readonly columnSort=signal<{column:'question'|'category'|'status';direction:'asc'|'desc'}|null>(null);
+  readonly selection=signal<ReadonlySet<string>>(new Set());readonly selectionListOpen=signal(false);readonly bulkDeleteIds=signal<readonly string[]|null>(null);
+  readonly selectedIds=computed(()=>[...this.selection()]);
+  readonly allVisibleSelected=computed(()=>{const items=this.visible();const chosen=this.selection();return items.length>0&&items.every(item=>chosen.has(item.id))});
+  readonly someVisibleSelected=computed(()=>!this.allVisibleSelected()&&this.visible().some(item=>this.selection().has(item.id)));
+  readonly selectionItems=computed<BulkSelectionItem[]>(()=>this.faqs().filter(item=>this.selection().has(item.id)).map(item=>({id:item.id,label:item.question,detail:`${item.id} · ${item.category}`})));
+  readonly selectionCandidates=computed<BulkSelectionItem[]>(()=>this.filtered().filter(item=>!this.selection().has(item.id)).map(item=>({id:item.id,label:item.question,detail:`${item.id} · ${item.category}`})));
+  readonly selectionActions=computed<readonly SelectionAction[]>(()=>{const chosen=this.faqs().filter(item=>this.selection().has(item.id));return[{key:'publish',label:'Xuất bản',tone:'primary',disabled:!chosen.some(item=>item.status==='hidden'),title:chosen.some(item=>item.status==='hidden')?'':'Các FAQ đã chọn đều đã xuất bản'},{key:'hide',label:'Tạm ẩn',disabled:!chosen.some(item=>item.status==='published'),title:chosen.some(item=>item.status==='published')?'':'Các FAQ đã chọn đều đang tạm ẩn'},{key:'delete',label:'Xóa',tone:'danger'}]});
+  isSelected(id:string):boolean{return this.selection().has(id)}
+  toggleSelect(id:string,checked:boolean):void{const next=new Set(this.selection());if(checked)next.add(id);else next.delete(id);this.selection.set(next)}
+  toggleSelectAll():void{const next=new Set(this.selection());if(this.allVisibleSelected())this.visible().forEach(item=>next.delete(item.id));else this.visible().forEach(item=>next.add(item.id));this.selection.set(next)}
+  clearSelection():void{this.selection.set(new Set())}
+  setSelectionIds(ids:string[]):void{this.selection.set(new Set(ids))}
+  runSelectionAction(key:string,ids?:readonly string[]):void{
+    this.selectionListOpen.set(false);
+    const targets=ids??this.selectedIds();if(!targets.length)return;
+    if(key==='delete'){this.bulkDeleteIds.set(targets);return}
+    const status:FaqStatus=key==='publish'?'published':'hidden';
+    const changed=this.faqs().filter(item=>targets.includes(item.id)&&item.status!==status);
+    if(!changed.length){this.toast.set('Các FAQ đã chọn đều ở trạng thái này.');setTimeout(()=>this.toast.set(''),2500);return}
+    changed.forEach(item=>this.data.setFaqStatus(item.id,status));
+    this.clearSelection();
+    this.toast.set(status==='published'?`Đã xuất bản ${changed.length} FAQ.`:`Đã tạm ẩn ${changed.length} FAQ.`);
+    setTimeout(()=>this.toast.set(''),3000);
+  }
+  confirmBulkDelete():void{
+    const ids=this.bulkDeleteIds();if(!ids?.length)return;
+    ids.forEach(id=>this.data.deleteFaq(id));
+    this.bulkDeleteIds.set(null);
+    this.clearSelection();
+    this.page.set(Math.min(this.page(),this.pages()));
+    this.toast.set(`Đã xóa ${ids.length} FAQ và cập nhật lại thứ tự.`);
+    setTimeout(()=>this.toast.set(''),3000);
+  }
+  readonly filtered=computed<FaqItem[]>(()=>{const columnQuestions=this.columnQuestion(),columnCategories=this.columnCategory(),columnStatuses=this.columnStatus();const items=this.faqs().filter(item=>{const q=this.query().trim().toLocaleLowerCase('vi-VN');return(!q||[item.question,item.answer,...item.keywords].some(v=>v.toLocaleLowerCase('vi-VN').includes(q)))&&(!this.category()||item.category===this.category())&&(!this.status()||item.status===this.status())&&(!columnQuestions.length||columnQuestions.includes(item.question))&&(!columnCategories.length||columnCategories.includes(item.category))&&(!columnStatuses.length||columnStatuses.includes(item.status))});const columnSort=this.columnSort();if(columnSort){const factor=columnSort.direction==='asc'?1:-1;return[...items].sort((a,b)=>compareSortValues(this.sortValue(a,columnSort.column),this.sortValue(b,columnSort.column))*factor)}return items.sort((a,b)=>a.category.localeCompare(b.category,'vi')||a.order-b.order)});readonly pages=computed(()=>Math.max(1,Math.ceil(this.filtered().length/this.pageSize)));readonly visible=computed(()=>this.filtered().slice((this.page()-1)*this.pageSize,this.page()*this.pageSize));readonly published=computed(()=>this.faqs().filter(i=>i.status==='published').length);readonly totalViews=computed(()=>this.faqs().reduce((s,i)=>s+i.views,0));readonly failedSorted=computed(()=>[...this.failed()].sort((a,b)=>b.count-a.count||a.keyword.localeCompare(b.keyword,'vi')));readonly failedCount=computed(()=>this.failed().reduce((s,i)=>s+i.count,0));
   blank(prefillQuestion='',suggested=''):FaqItem{return{id:`FAQ-${Date.now()}`,question:prefillQuestion,answer:'',category:suggested,keywords:prefillQuestion?[prefillQuestion]:[],views:0,order:1,status:'published',updatedAt:new Date().toISOString()}}
   setSearch(v:string):void{this.queryInput.set(v);clearTimeout(this.searchTimer);this.searchTimer=setTimeout(()=>{this.query.set(v);this.page.set(1)},300)}
   openEditor(item?:FaqItem):void{this.attempted.set(false);this.keywordDraft.set('');this.answerFormat.set('paragraph');this.editing.set(item??null);this.form.set(item?structuredClone(item):this.blank());this.openModal('editor')}

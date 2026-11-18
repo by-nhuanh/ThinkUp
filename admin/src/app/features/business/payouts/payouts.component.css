@@ -127,11 +127,17 @@
 
 .payouts-page .requests-panel { margin: 0; overflow: hidden; border-radius: 10px; box-shadow: none; }
 /* The request table fills the panel and shares the width between the columns on every desktop size. */
-.payouts-page table { min-width: 1080px; width: 100%; max-width: none; border-collapse: collapse; table-layout: auto; }
+.payouts-page table { min-width: 1124px; width: 100%; max-width: none; border-collapse: collapse; table-layout: auto; }
+.selection-slot { padding: 12px 16px 0; }
+.payouts-page .requests-panel th.select-cell, .payouts-page .requests-panel td.select-cell { width: 44px; min-width: 44px; padding-left: 8px; padding-right: 8px; text-align: center; }
+.payouts-page .select-cell input[type='checkbox'] { width: 17px; height: 17px; margin: 0; accent-color: #3168d9; cursor: pointer; }
+.payouts-page .select-cell input[type='checkbox']:focus-visible { outline: 2px solid #4388e8; outline-offset: 2px; }
+.payouts-page tbody tr.row-selected td { background: #f0f7ff; }
+.payouts-page tbody tr.row-selected:hover td { background: #e9f2ff; }
 .payouts-page td { overflow: hidden; }
 .payouts-page td .stack > * { display: block; overflow: hidden; text-overflow: ellipsis; }
-.payouts-page th:nth-child(2), .payouts-page td:nth-child(2) { white-space: nowrap; }
-.payouts-page td:nth-child(2) .stack { width: max-content; }
+.payouts-page th:nth-child(3), .payouts-page td:nth-child(3) { white-space: nowrap; }
+.payouts-page td:nth-child(3) .stack { width: max-content; }
 .payouts-page th { padding: 11px 12px; background: #f3f8fe; color: #536783; font: var(--admin-text-control-label); text-transform: none; letter-spacing: 0; white-space: nowrap; }
 .payouts-page td { padding: 9px 12px; min-height: 50px; border-color: #e9eff7; color: #182c51; font: var(--admin-text-body-default); white-space: nowrap; }
 .payouts-page tbody tr:hover { background: #f8fbff; }
@@ -264,7 +270,8 @@
 .reject-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 11px 20px 15px; border-top: 1px solid #e7edf5; }
 .reject-footer .button { min-height: 38px; font: var(--admin-text-control-label); }
 .reject-footer .button.danger { border-color: #e21e37; background: #e8243e; color: #fff; }
-.reject-footer .button.danger:hover { background: #c91b33; }
+.reject-footer .button.danger:hover:not(:disabled) { background: #c91b33; }
+.reject-footer .button.danger:disabled { border-color: #e5b9bf; background: #f3d2d7; color: #fff; cursor: not-allowed; }
 .reject-dialog button:focus-visible { outline: 2px solid #0965e4; outline-offset: 2px; }
 
 @media (max-width: 1440px) {

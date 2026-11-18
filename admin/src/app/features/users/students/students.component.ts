@@ -1,8 +1,11 @@
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, WritableSignal, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { CustomSelectComponent, CustomSelectOption } from '../../../shared/components/custom-select/custom-select.component';
 import { ExportMenuComponent } from '../../../shared/components/export-menu/export-menu.component';
 import { SearchFieldComponent } from '../../../shared/components/search-field/search-field.component';
+import { ColumnFilterComponent, ColumnFilterValue, DATE_SORT_OPTIONS, NUMBER_SORT_OPTIONS, TEXT_SORT_OPTIONS, compareSortValues } from '../../../shared/components/column-filter/column-filter.component';
+import { BulkSelectionDialogComponent, BulkSelectionItem } from '../../../shared/components/bulk-selection-dialog/bulk-selection-dialog.component';
+import { SelectionAction, SelectionBarComponent } from '../../../shared/components/selection-bar/selection-bar.component';
 import { ExportFormat } from '../../../shared/utils/export-formats';
 import { AdminPageSizeService } from '../../../core/services/admin-page-size.service';
 import { AdminNumberPipe } from '../../../shared/pipes/admin-number.pipe';
@@ -26,6 +29,28 @@ import {
 } from '../user-management.utils';
 
 type StudentModal = 'profile' | 'lock' | 'unlock';
+type StudentColumn = 'name' | 'status' | 'courses' | 'registered';
+
+/** Giá trị lọc của cột "Số lượng khóa học" — khớp nhóm đang dùng ở thanh lọc. */
+const COURSE_COUNT_FILTER_VALUES: ReadonlyArray<{ filter: string; label: string }> = [
+  { filter: 'none', label: 'Chưa mua khóa học nào' },
+  { filter: '1-3', label: 'Đã mua 1 đến 3 khóa' },
+  { filter: 'more', label: 'Đã mua trên 3 khóa' }
+];
+
+/** Nhóm số khóa học của một học viên — dùng chung cho thanh lọc và bộ lọc cột. */
+function courseCountBucket(count: number): string {
+  if (count === 0) return 'none';
+  return count <= 3 ? '1-3' : 'more';
+}
+
+/** Các mốc thời gian đăng ký — giá trị lọc của cột "Ngày đăng ký". */
+const REGISTERED_FILTER_VALUES: readonly ColumnFilterValue[] = [
+  { value: '30', label: 'Trong 30 ngày gần nhất' },
+  { value: '90', label: 'Trong 90 ngày gần nhất' },
+  { value: '365', label: 'Trong 12 tháng gần nhất' },
+  { value: 'older', label: 'Trên 12 tháng trước' }
+];
 
 /** Nhãn + thời hạn của từng mức kỷ luật trong hộp thoại khoá tài khoản học viên. */
 const LEVELS: ReadonlyArray<{ level: DisciplineLevel; title: string; tag: string; description: string; days: number | null }> = [
@@ -62,6 +87,9 @@ const LEVELS: ReadonlyArray<{ level: DisciplineLevel; title: string; tag: string
   imports: [
     SearchFieldComponent,
     CustomSelectComponent,
+    ColumnFilterComponent,
+    BulkSelectionDialogComponent,
+    SelectionBarComponent,
     ExportMenuComponent,
     UserDateRangeComponent,
     UserModalComponent,
@@ -102,10 +130,18 @@ export class StudentsComponent {
   readonly from = signal('');
   readonly to = signal('');
   readonly page = signal(1);
+  private readonly columnFilters: Record<StudentColumn, WritableSignal<string[]>> = {
+    name: signal<string[]>([]),
+    status: signal<string[]>([]),
+    courses: signal<string[]>([]),
+    registered: signal<string[]>([])
+  };
 
   readonly modal = signal<StudentModal | null>(null);
   readonly selected = signal<Student | null>(null);
   readonly selection = signal<ReadonlyArray<string>>([]);
+  readonly selectionListOpen = signal(false);
+  readonly bulkLockIds = signal<readonly string[] | null>(null);
 
   readonly level = signal<DisciplineLevel>(1);
   readonly reason = signal('');
@@ -136,6 +172,19 @@ export class StudentsComponent {
     { value: 'more', label: 'Đã mua trên 3 khóa' }
   ];
 
+  readonly nameValues = computed<ColumnFilterValue[]>(() =>
+    [...new Set(this.students().map((student) => student.name))].map((name) => ({ value: name, label: name })));
+  readonly statusValues: readonly ColumnFilterValue[] = this.statusOptions
+    .filter((option) => option.value)
+    .map((option) => ({ value: option.value, label: option.label }));
+  readonly coursesValues: readonly ColumnFilterValue[] = COURSE_COUNT_FILTER_VALUES
+    .map((option) => ({ value: option.filter, label: option.label }));
+  readonly registeredValues = REGISTERED_FILTER_VALUES;
+  readonly textSorts = TEXT_SORT_OPTIONS;
+  readonly dateSorts = DATE_SORT_OPTIONS;
+  readonly numberSorts = NUMBER_SORT_OPTIONS;
+  readonly columnSort = signal<{ column: StudentColumn; direction: 'asc' | 'desc' } | null>(null);
+
   readonly activePercent = computed(() => {
     const kpi = this.kpis();
     return kpi.total ? Math.round((kpi.active / kpi.total) * 100) : 0;
@@ -147,19 +196,39 @@ export class StudentsComponent {
     const courseCount = this.courseCount();
     const from = this.from();
     const to = this.to();
+    const names = this.columnFilters.name();
+    const statuses = this.columnFilters.status();
+    const courseBuckets = this.columnFilters.courses();
+    const registered = this.columnFilters.registered();
+    // Mốc thời gian của bộ lọc cột "Ngày đăng ký", tính lùi từ ngày hiện tại.
+    const daysAgo = (days: number): string =>
+      new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
 
-    return this.students().filter((item) => {
+    const items = this.students().filter((item) => {
       const haystack = [item.id, item.name, item.email, item.phone].join(' ').toLocaleLowerCase('vi-VN');
       const courseOk = !courseCount
         || (courseCount === 'none' && item.courseCount === 0)
         || (courseCount === '1-3' && item.courseCount >= 1 && item.courseCount <= 3)
         || (courseCount === 'more' && item.courseCount > 3);
+      const registeredOk = !registered.length || registered.some((bucket) => bucket === 'older'
+        ? item.registeredAt < daysAgo(365)
+        : item.registeredAt >= daysAgo(Number(bucket)));
       return (!query || haystack.includes(query))
+        && (!names.length || names.includes(item.name))
         && (!status || item.status === status)
         && courseOk
         && (!from || item.registeredAt >= from)
-        && (!to || item.registeredAt <= to);
+        && (!to || item.registeredAt <= to)
+        && (!statuses.length || statuses.includes(item.status))
+        && (!courseBuckets.length || courseBuckets.includes(courseCountBucket(item.courseCount)))
+        && registeredOk;
     });
+    const columnSort = this.columnSort();
+    if (columnSort) {
+      const factor = columnSort.direction === 'asc' ? 1 : -1;
+      return [...items].sort((a, b) => compareSortValues(this.sortValue(a, columnSort.column), this.sortValue(b, columnSort.column)) * factor);
+    }
+    return items;
   });
 
   readonly pages = computed(() => Math.max(1, Math.ceil(this.filtered().length / this.pageSize)));
@@ -192,15 +261,27 @@ export class StudentsComponent {
     return !this.allVisibleSelected() && visible.some((item) => this.selection().includes(item.id));
   });
 
+  readonly selectionItems = computed<BulkSelectionItem[]>(() => this.students()
+    .filter((item) => this.selection().includes(item.id))
+    .map((item) => ({ id: item.id, label: item.name, detail: item.email })));
+
+  readonly selectionCandidates = computed<BulkSelectionItem[]>(() => this.filtered()
+    .filter((item) => !this.selection().includes(item.id))
+    .map((item) => ({ id: item.id, label: item.name, detail: item.email })));
+
+  readonly selectionActions = computed<readonly SelectionAction[]>(() => [
+    { key: 'lock', label: 'Khóa tài khoản', tone: 'danger' }
+  ]);
+
   readonly lockTargets = computed(() => {
     const selected = this.selected();
-    return selected ? [selected.id] : this.selection();
+    return selected ? [selected.id] : (this.bulkLockIds() ?? this.selection());
   });
 
   readonly lockSubjectLabel = computed(() => {
     const selected = this.selected();
     if (selected) return selected.name;
-    const count = this.selection().length;
+    const count = this.lockTargets().length;
     return count > 1 ? `${count} học viên đã chọn` : '1 học viên đã chọn';
   });
 
@@ -287,7 +368,8 @@ export class StudentsComponent {
   }
 
   hasActiveFilters(): boolean {
-    return !!(this.query() || this.status() || this.courseCount() || this.from() || this.to());
+    return !!(this.query() || this.status() || this.courseCount() || this.from() || this.to())
+      || (Object.keys(this.columnFilters) as StudentColumn[]).some((key) => this.columnFilters[key]().length > 0);
   }
 
   resetFilters(): void {
@@ -298,7 +380,46 @@ export class StudentsComponent {
     this.courseCount.set('');
     this.from.set('');
     this.to.set('');
+    this.columnSort.set(null);
+    this.clearColumnFilters();
     this.page.set(1);
+  }
+
+  filterFor(key: StudentColumn): readonly string[] {
+    return this.columnFilters[key]();
+  }
+
+  updateColumnFilter(key: StudentColumn, values: string[]): void {
+    this.columnFilters[key].set(values);
+    // Dòng đã chọn có thể không còn hiển thị sau khi lọc — bỏ chọn để tránh khoá nhầm.
+    this.selection.set([]);
+    this.page.set(1);
+  }
+
+  private clearColumnFilters(): void {
+    (Object.keys(this.columnFilters) as StudentColumn[]).forEach((key) => this.columnFilters[key].set([]));
+  }
+
+  sortFor(key: StudentColumn): string {
+    const current = this.columnSort();
+    return current?.column === key ? current.direction : '';
+  }
+
+  updateColumnSort(key: StudentColumn, direction: string): void {
+    const current = this.columnSort();
+    this.columnSort.set(!direction || (current?.column === key && current.direction === direction)
+      ? null
+      : { column: key, direction: direction as 'asc' | 'desc' });
+    this.page.set(1);
+  }
+
+  private sortValue(item: Student, column: StudentColumn): string | number {
+    switch (column) {
+      case 'name': return item.name;
+      case 'status': return STUDENT_STATUS_LABELS[item.status];
+      case 'courses': return item.courseCount;
+      case 'registered': return Date.parse(item.registeredAt);
+    }
   }
 
   pageTo(value: number): void {
@@ -324,6 +445,17 @@ export class StudentsComponent {
 
   clearSelection(): void {
     this.selection.set([]);
+  }
+
+  setSelectionIds(ids: string[]): void {
+    this.selection.set(ids);
+  }
+
+  runSelectionAction(key: string, ids?: readonly string[]): void {
+    this.selectionListOpen.set(false);
+    if (key !== 'lock') return;
+    this.bulkLockIds.set(ids ?? this.selection());
+    this.openBulkLock();
   }
 
   openProfile(student: Student): void {
@@ -377,6 +509,7 @@ export class StudentsComponent {
   closeModal(): void {
     this.modal.set(null);
     this.selected.set(null);
+    this.bulkLockIds.set(null);
   }
 
   setLevel(level: DisciplineLevel): void {
@@ -426,6 +559,7 @@ export class StudentsComponent {
         files: this.evidenceFiles()
       });
       this.selection.set([]);
+      this.bulkLockIds.set(null);
       this.modal.set(null);
       this.selected.set(null);
       this.notify(`Đã khóa ${affected} tài khoản học viên.`);

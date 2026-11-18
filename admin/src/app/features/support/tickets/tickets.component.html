@@ -55,28 +55,38 @@
   </section>
   <section class="workspace-panel">
     <div class="filter-bar advanced-filter-toolbar">
-      <label class="search-control"
-        ><svg lucideSearch class="search-icon" aria-hidden="true"></svg
-        ><input
-          type="search"
-          [ngModel]="queryInput()"
-          (ngModelChange)="setSearch($event)"
-          placeholder="Tìm mã ticket, người gửi, email hoặc nội dung..."
-      /></label>
+      <div class="grow">
+        <app-search-field label="Tìm ticket" placeholder="Tìm mã ticket, người gửi, email hoặc nội dung..." [value]="queryInput()" (valueChange)="setSearch($event)"></app-search-field>
+      </div>
+      <div class="filter"><span>Trạng thái</span><app-custom-select controlId="ticket-status-filter" [value]="appliedFilters().status" [options]="statusToolbarOptions" placeholder="Tất cả trạng thái" [menuWidth]="240" (valueChange)="setAppliedStatus($event)" /></div>
+      <div class="filter"><span>Thời gian tạo</span><app-custom-select controlId="ticket-period-filter" [value]="appliedFilters().period" [options]="periodToolbarOptions" placeholder="Tất cả thời gian" [menuWidth]="200" (valueChange)="setAppliedPeriod($event)" /></div>
       <button class="filter-trigger" type="button" [attr.aria-expanded]="filterOpen()" (click)="openFilters()"><svg lucideFilter aria-hidden="true"></svg><span>Lọc</span>@if (activeFilterCount()) { <span class="filter-count">{{ activeFilterCount() }}</span> }</button>
-      <app-column-visibility tableId="support-ticket-table" storageKey="thinkup-admin-ticket-columns" [columns]="tableColumns"></app-column-visibility>
+      <app-column-visibility tableId="support-ticket-table" storageKey="thinkup-admin-ticket-columns-v2" [columns]="tableColumns"></app-column-visibility>
+      <div class="toolbar-end">
+        <button class="icon-button filter-reset" type="button" aria-label="Đặt lại bộ lọc" title="Đặt lại bộ lọc" (click)="reset()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+        </button>
+        <app-export-menu label="Tải xuống danh sách ticket" (formatChange)="export($event)" />
+      </div>
     </div>
     @if (filterChips().length) { <div class="applied-filter-chips" aria-label="Bộ lọc đang áp dụng">@for (chip of filterChips(); track chip.key) { <span class="filter-chip">{{ chip.label }}<button type="button" [attr.aria-label]="'Xóa ' + chip.label" (click)="removeFilterChip(chip.key)"><svg lucideX aria-hidden="true"></svg></button></span> }</div> }
+    @if (selectedIds().length) {
+      <div class="selection-slot">
+        <app-selection-bar [count]="selectedIds().length" noun="ticket" [actions]="selectionActions()" (action)="runSelectionAction($event)" (inspect)="selectionListOpen.set(true)" (clear)="clearSelection()" />
+      </div>
+    }
     <div class="table-scroll">
       <table id="support-ticket-table" class="support-centered-table" appResizableColumns="support-ticket-queue">
         <thead>
           <tr>
-            <th data-column="id">Mã ticket</th><th data-column="sender">Người gửi</th><th data-column="topic">Chủ đề</th><th data-column="content">Nội dung</th><th data-column="evidence">Minh chứng</th><th data-column="priority">Ưu tiên</th><th data-column="time">Thời gian</th><th data-column="status">Trạng thái</th><th data-column="sla">SLA</th><th data-column="assignee">Phụ trách</th><th data-column="action" data-fixed-column>Xử lý</th>
+            <th class="select-cell" data-column="select"><input type="checkbox" [checked]="allVisibleSelected()" [indeterminate]="someVisibleSelected()" aria-label="Chọn tất cả ticket trên trang" (change)="toggleSelectAll()"></th>
+            <th data-column="id"><span class="header-filter-label">Mã ticket</span><app-column-filter title="Mã ticket" [values]="ticketIdValues()" [selected]="filterFor('id')" (changed)="updateColumnFilter('id', $event)" [sorts]="textSorts" [sort]="sortFor('id')" (sortChange)="updateColumnSort('id', $event)" /></th><th data-column="sender"><span class="header-filter-label">Người gửi</span><app-column-filter title="Người gửi" [values]="senderValues()" [selected]="filterFor('sender')" (changed)="updateColumnFilter('sender', $event)" [sorts]="textSorts" [sort]="sortFor('sender')" (sortChange)="updateColumnSort('sender', $event)" /></th><th data-column="topic"><span class="header-filter-label">Chủ đề</span><app-column-filter title="Chủ đề" [values]="topicValues" [selected]="filterFor('topic')" (changed)="updateColumnFilter('topic', $event)" [sorts]="textSorts" [sort]="sortFor('topic')" (sortChange)="updateColumnSort('topic', $event)" /></th><th data-column="content">Nội dung</th><th data-column="evidence">Minh chứng</th><th data-column="priority"><span class="header-filter-label">Ưu tiên</span><app-column-filter title="Ưu tiên" [values]="priorityFilterValues" [selected]="filterFor('priority')" (changed)="updateColumnFilter('priority', $event)" [sorts]="numberSorts" [sort]="sortFor('priority')" (sortChange)="updateColumnSort('priority', $event)" /></th><th data-column="time">Thời gian</th><th data-column="status"><span class="header-filter-label">Trạng thái</span><app-column-filter title="Trạng thái" [values]="statusFilterValues" [selected]="filterFor('status')" (changed)="updateColumnFilter('status', $event)" [sorts]="textSorts" [sort]="sortFor('status')" (sortChange)="updateColumnSort('status', $event)" /></th><th data-column="sla">SLA</th><th data-column="assignee"><span class="header-filter-label">Phụ trách</span><app-column-filter title="Phụ trách" [values]="assigneeFilterValues()" [selected]="filterFor('assignee')" (changed)="updateColumnFilter('assignee', $event)" [sorts]="textSorts" [sort]="sortFor('assignee')" (sortChange)="updateColumnSort('assignee', $event)" /></th><th data-column="action" data-fixed-column>Xử lý</th>
           </tr>
         </thead>
         <tbody>
           @for (ticket of visible(); track ticket.id) {
-            <tr [class.urgent-row]="slaMs(ticket) < 0">
+            <tr [class.urgent-row]="slaMs(ticket) < 0" [class.row-selected]="isSelected(ticket.id)">
+              <td class="select-cell" data-column="select"><input type="checkbox" [checked]="isSelected(ticket.id)" [attr.aria-label]="'Chọn ticket ' + ticket.id" (change)="toggleSelect(ticket.id, $any($event.target).checked)"></td>
               <td data-column="id">
                 <div class="ticket-code-cell"><button class="ticket-code-link" type="button" (click)="open(ticket)">{{ ticket.id }}</button>@if (ticket.status === 'reopened') { <span class="reopened-badge">Cần xử lý tiếp</span> }</div>
               </td>
@@ -140,7 +150,7 @@
             </tr>
           } @empty {
             <tr>
-              <td colspan="11">
+              <td colspan="12">
                 <div class="empty-state">
                   <strong>Không có ticket phù hợp</strong
                   ><span>Thử thay đổi từ khóa hoặc bộ lọc.</span>
@@ -172,4 +182,28 @@
     <dl><div><dt>Vai trò</dt><dd>{{ learner.requesterRole === 'instructor' ? 'Giảng viên' : 'Học viên' }}</dd></div><div><dt>Email</dt><dd>{{ learner.email }}</dd></div><div><dt>Số điện thoại</dt><dd>{{ learner.phone }}</dd></div><div><dt>Ticket đang xem</dt><dd>{{ learner.id }}</dd></div><div><dt>Chủ đề</dt><dd>{{ learner.topic }}</dd></div></dl>
     <footer><button class="primary-button" type="button" (click)="learnerPreview.set(null); open(learner)">Xem chi tiết ticket</button></footer>
   </section>
+}
+@if (selectionListOpen()) {
+  <app-bulk-selection-dialog
+    noun="ticket"
+    [items]="selectionItems()"
+    [candidates]="selectionCandidates()"
+    [actions]="selectionActions()"
+    note="Chọn chức năng để áp dụng cho các ticket đã tick."
+    (closed)="selectionListOpen.set(false)"
+    (selectionChange)="setSelectionIds($event)"
+    (action)="runSelectionAction($event.key, $event.ids)"
+  />
+}
+@if (bulkCloseIds(); as ids) {
+  <app-admin-dialog title="Đóng {{ ids.length }} ticket?" subtitle="SLA sẽ dừng đếm và ticket chuyển sang Đã đóng." size="sm" (closed)="bulkCloseIds.set(null)">
+    <div class="notice warning">{{ ids.length }} ticket đã chọn sẽ được đóng kèm phản hồi gửi người gửi. Bạn vẫn có thể mở lại từng ticket sau đó.</div>
+    <div dialogFooter class="bulk-confirm-actions">
+      <button class="ghost-button" type="button" (click)="bulkCloseIds.set(null)">Hủy</button>
+      <button class="danger-button" type="button" (click)="confirmBulkClose()">Đóng ticket</button>
+    </div>
+  </app-admin-dialog>
+}
+@if (toast()) {
+  <div class="toast" role="status">{{ toast() }}</div>
 }

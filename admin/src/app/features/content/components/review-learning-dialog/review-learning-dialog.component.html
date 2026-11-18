@@ -1,0 +1,24 @@
+<app-admin-dialog [title]="'Tiến độ học tập của học viên ' + review().learner" size="xl" (closed)="closed.emit()">
+  <div class="learning-course"><h3>{{ review().courseTitle }}</h3><p>Học viên: {{ review().learner }} · Giảng viên: {{ review().instructor }} · Dữ liệu tiến độ hiện tại</p></div>
+  <div class="learning-metrics">
+    <section class="learning-metric"><h4>Tiến độ tổng thể</h4><strong>{{ review().completion }}%</strong><span>Tiến độ hiện tại của khóa học</span><progress max="100" [value]="review().completion" aria-label="Tiến độ tổng thể"></progress></section>
+    <section class="learning-metric"><h4>Thời lượng đã học</h4><strong>{{ review().learningProgress?.studiedHours ?? '—' }} / {{ review().learningProgress?.totalHours ?? '—' }} giờ</strong><span>{{ review().learningProgress ? 'Thời lượng học đã ghi nhận' : 'Chưa có dữ liệu giờ học' }}</span><progress max="100" [value]="review().learningProgress ? review().learningProgress!.studiedHours / review().learningProgress!.totalHours * 100 : 0" aria-label="Thời lượng đã học"></progress></section>
+    <section class="learning-metric"><h4>Bài kiểm tra Quiz</h4><strong>{{ review().learningProgress ? metrics().quizzesDone + ' / ' + metrics().quizzes : '—' }} bài</strong><span>{{ review().learningProgress?.quizAverage != null ? 'Điểm trung bình: ' + review().learningProgress!.quizAverage + '%' : 'Chưa có kết quả kiểm tra' }}</span><progress max="100" [value]="metrics().quizzes ? metrics().quizzesDone / metrics().quizzes * 100 : 0" aria-label="Bài kiểm tra đã hoàn thành"></progress></section>
+    <section class="learning-metric"><h4>Bài thực hành Lab</h4><strong>{{ review().learningProgress ? metrics().labsDone + ' / ' + metrics().labs : '—' }} bài</strong><span>{{ review().learningProgress ? 'Số bài thực hành đã nộp' : 'Chưa có dữ liệu thực hành' }}</span><progress max="100" [value]="metrics().labs ? metrics().labsDone / metrics().labs * 100 : 0" aria-label="Bài thực hành đã hoàn thành"></progress></section>
+  </div>
+  <div class="learning-review-note"><strong>Thời điểm đánh giá</strong><span>Học viên gửi đánh giá khóa học vào {{ dateTime(review().createdAt) }}. Các chỉ số phía trên phản ánh tiến độ hiện tại.</span></div>
+  <section aria-labelledby="learning-chapters-title" class="learning-chapters">
+    <h3 id="learning-chapters-title">Chi tiết chương và kết quả học tập</h3>
+    @for (chapter of review().learningProgress?.chapters ?? []; track chapter.id; let index = $index) {
+      <details [open]="index === 0">
+        <summary><span><strong>Chương {{ index + 1 }}: {{ chapter.title }}</strong><small>{{ chapter.activities.length }} hoạt động học tập</small></span><span class="learning-status" [class.complete]="chapterProgress(chapter) === 100" [class.started]="chapterProgress(chapter) > 0 && chapterProgress(chapter) < 100">{{ chapterProgress(chapter) === 100 ? 'Đã hoàn thành 100%' : chapterProgress(chapter) > 0 ? 'Đang học (' + chapterProgress(chapter) + '%)' : 'Chưa bắt đầu (0%)' }}</span></summary>
+        <ul>
+          @for (activity of chapter.activities; track activity.id) {
+            <li><span class="learning-activity-icon" aria-hidden="true">{{ activity.progress === 100 ? '✓' : '○' }}</span><span>{{ activity.title }}</span><span class="learning-result" [class.complete]="activity.progress === 100">{{ activity.score !== undefined ? 'Đạt · ' + activity.score + '%' : activity.progress === 100 ? activity.kind === 'lab' ? 'Đã nộp thành công' : 'Đã xem 100%' : activity.progress > 0 ? 'Đang học · ' + activity.progress + '%' : 'Chưa bắt đầu' }}</span></li>
+          }
+        </ul>
+      </details>
+    } @empty { <p class="learning-empty">Chưa có dữ liệu chi tiết theo chương cho học viên này.</p> }
+  </section>
+  <div dialogFooter class="learning-footer"><span>Chỉ xem · Dữ liệu chỉ hiển thị, không chỉnh sửa tại đây.</span><div><button type="button" class="learning-button" (click)="closed.emit()">Đóng</button><button type="button" class="learning-button primary" (click)="viewReview.emit()">Mở chi tiết đánh giá ↗</button></div></div>
+</app-admin-dialog>

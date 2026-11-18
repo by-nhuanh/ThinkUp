@@ -11,12 +11,55 @@
 
 /* Bảng giảng viên hiển thị 2 dòng mỗi ô nên hàng cao hơn bảng học viên. */
 .user-table {
-  min-width: 1120px;
+  min-width: 1164px;
 }
 
 .user-table tbody td {
   height: clamp(72px, 6vw, 112px);
 }
+
+.selection-slot {
+  padding: 12px 16px 0;
+}
+
+.col-select {
+  width: 44px;
+}
+
+.select-cell {
+  width: 44px;
+  text-align: center;
+}
+
+.select-cell input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--user-primary);
+  cursor: pointer;
+}
+
+.select-cell input:focus-visible {
+  outline: 2px solid var(--user-primary);
+  outline-offset: 2px;
+}
+
+.user-table tbody tr.is-selected td {
+  background: #eef6ff;
+}
+
+.user-table tbody tr.is-selected .col-actions {
+  background: #eef6ff;
+}
+
+/* Giữ tổng tỉ lệ cột đúng 100% sau khi thêm cột chọn 44px. */
+.col-identity { width: calc((100% - 116px) * 0.22); }
+.col-contact { width: calc((100% - 116px) * 0.17); }
+.col-courses { width: calc((100% - 116px) * 0.12); }
+.col-revenue { width: calc((100% - 116px) * 0.12); }
+.col-legal { width: calc((100% - 116px) * 0.14); }
+.col-joined { width: calc((100% - 116px) * 0.11); }
+.col-identity ~ .col-status { width: calc((100% - 116px) * 0.12); }
 
 /* Bảng trong hộp thoại hẹp: bỏ min-width để không phải cuộn ngang trong dialog. */
 .user-table--fluid {

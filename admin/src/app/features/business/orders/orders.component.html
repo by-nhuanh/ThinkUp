@@ -44,9 +44,21 @@
   </section>
 
   <section class="orders-list" aria-label="Danh sách đơn hàng">
-    <div class="orders-table-scroll"><table><thead><tr><th scope="col">Mã đơn hàng / Mã giao dịch</th><th scope="col">Học viên</th><th scope="col" class="amount-column">Thực thu</th><th scope="col">Phương thức</th><th scope="col">Trạng thái</th><th scope="col" [attr.aria-sort]="sort() === 'newest' ? 'descending' : 'ascending'"><img class="sort-icon" src="/assets/business/orders/arrow-down.svg" alt="" [class.oldest-first]="sort() === 'oldest'"> Ngày tạo</th></tr></thead><tbody>
-      @for (order of visible(); track order.id) { <tr><td class="order-code-cell"><div class="order-code-main"><strong>{{ order.id }}</strong><button class="eye-button order-view-button" type="button" [attr.aria-label]="'Xem chi tiết đơn hàng ' + order.id" [attr.title]="'Xem chi tiết đơn hàng ' + order.id" (click)="openDetail(order, $event)"><img src="/assets/dashboard/4-icon-eye-outlined.svg" alt=""></button></div><span class="secondary">{{ order.transactionId || 'Chưa có mã giao dịch' }}</span></td><td><strong>{{ order.learner }}</strong><span class="secondary">{{ order.email }}</span></td><td class="amount-column"><strong>{{ money(order.originalAmount - order.discount) }}</strong></td><td>{{ methodLabel(order.method) }}</td><td><span [class]="'order-status status-' + order.status">{{ statusLabel(order.status) }}</span></td><td><strong>{{ dateOf(order.createdAt) }}</strong><span class="secondary">{{ timeOf(order.createdAt) }}</span></td></tr> }
-      @if (!visible().length) { <tr><td colspan="6" class="empty-state">Không có đơn hàng phù hợp. Hãy thử điều chỉnh bộ lọc.</td></tr> }
+    @if (selectedIds().length) {
+      <div class="selection-slot">
+        <app-selection-bar
+          [count]="selectedIds().length"
+          noun="đơn hàng"
+          [actions]="selectionActions()"
+          (action)="runSelectionAction($event)"
+          (inspect)="selectionListOpen.set(true)"
+          (clear)="clearSelection()"
+        />
+      </div>
+    }
+    <div class="orders-table-scroll"><table><thead><tr><th scope="col" class="select-cell"><input type="checkbox" [checked]="allVisibleSelected()" [indeterminate]="someVisibleSelected()" aria-label="Chọn tất cả đơn hàng trên trang" (change)="toggleSelectAll()"></th><th scope="col">Mã đơn hàng / mã giao dịch</th><th scope="col"><app-column-filter label="Học viên" [values]="learnerValues()" [selected]="learnerColumnFilters()" (changed)="setColumnFilter('learner', $event)" [sorts]="textSorts" [sort]="sortFor('learner')" (sortChange)="updateColumnSort('learner', $event)" /></th><th scope="col" class="amount-column">Thực thu</th><th scope="col"><app-column-filter label="Phương thức" [values]="methodValues()" [selected]="methodColumnFilters()" (changed)="setColumnFilter('method', $event)" [sorts]="textSorts" [sort]="sortFor('method')" (sortChange)="updateColumnSort('method', $event)" /></th><th scope="col"><app-column-filter label="Trạng thái" [values]="statusValues" [selected]="statusColumnFilters()" (changed)="setColumnFilter('status', $event)" [sorts]="textSorts" [sort]="sortFor('status')" (sortChange)="updateColumnSort('status', $event)" /></th><th scope="col" [attr.aria-sort]="sort() === 'newest' ? 'descending' : 'ascending'"><img class="sort-icon" src="/assets/business/orders/arrow-down.svg" alt="" [class.oldest-first]="sort() === 'oldest'"> <app-column-filter label="Ngày tạo" [values]="dateValues()" [selected]="dateColumnFilters()" (changed)="setColumnFilter('date', $event)" [sorts]="dateSorts" [sort]="sortFor('date')" (sortChange)="updateColumnSort('date', $event)" /></th></tr></thead><tbody>
+      @for (order of visible(); track order.id) { <tr [class.row-selected]="selection().has(order.id)"><td class="select-cell"><input type="checkbox" [checked]="selection().has(order.id)" [attr.aria-label]="'Chọn đơn hàng ' + order.id" (change)="toggleSelect(order.id, $any($event.target).checked)"></td><td class="order-code-cell"><div class="order-code-main"><strong>{{ order.id }}</strong><button class="eye-button order-view-button" type="button" [attr.aria-label]="'Xem chi tiết đơn hàng ' + order.id" [attr.title]="'Xem chi tiết đơn hàng ' + order.id" (click)="openDetail(order, $event)"><img src="/assets/dashboard/4-icon-eye-outlined.svg" alt=""></button></div><span class="secondary">{{ order.transactionId || 'Chưa có mã giao dịch' }}</span></td><td><strong>{{ order.learner }}</strong><span class="secondary">{{ order.email }}</span></td><td class="amount-column"><strong>{{ money(order.originalAmount - order.discount) }}</strong></td><td>{{ methodLabel(order.method) }}</td><td><span [class]="'order-status status-' + order.status">{{ statusLabel(order.status) }}</span></td><td><strong>{{ dateOf(order.createdAt) }}</strong><span class="secondary">{{ timeOf(order.createdAt) }}</span></td></tr> }
+      @if (!visible().length) { <tr><td colspan="7" class="empty-state">Không có đơn hàng phù hợp. Hãy thử điều chỉnh bộ lọc.</td></tr> }
     </tbody></table></div>
     <div class="orders-footer"><span>Hiển thị {{ filtered().length ? (page() - 1) * pageSize + 1 : 0 }} - {{ (page() - 1) * pageSize + visible().length }} của {{ filtered().length }} đơn hàng</span><div class="pagination" aria-label="Phân trang"><button type="button" [disabled]="page() === 1" aria-label="Trang trước" (click)="page.update(value => value - 1)"><img src="/assets/business/orders/chevron-left.svg" alt=""></button>@for (item of pagination(); track $index) { @if (item.kind === 'page') { <button type="button" [class.current]="item.value === page()" [attr.aria-current]="item.value === page() ? 'page' : null" [attr.aria-label]="'Trang ' + item.value" (click)="page.set(item.value)">{{ item.value }}</button> } @else { <span class="pagination-ellipsis" aria-hidden="true">…</span> } }<button type="button" [disabled]="page() >= pages()" aria-label="Trang sau" (click)="page.update(value => value + 1)"><img src="/assets/business/orders/chevron-right.svg" alt=""></button></div></div>
   </section>
@@ -176,3 +188,34 @@
     </section>
   </div>
 }
+
+@if (selectionListOpen()) {
+  <app-bulk-selection-dialog
+    noun="đơn hàng"
+    [items]="selectionItems()"
+    [candidates]="selectionCandidates()"
+    [actions]="selectionActions()"
+    note="Xác nhận thanh toán và hủy đơn chỉ áp dụng cho đơn đang chờ thanh toán."
+    (closed)="selectionListOpen.set(false)"
+    (selectionChange)="setSelectionIds($event)"
+    (action)="runSelectionAction($event.key, $event.ids)"
+  />
+}
+
+@if (bulkCancelIds(); as ids) {
+  <app-admin-dialog title="Hủy {{ ids.length }} đơn hàng đã chọn?" subtitle="Chỉ các đơn đang chờ thanh toán mới bị hủy." size="sm" (closed)="bulkCancelIds.set(null)">
+    <div class="status-notice cancelled-notice bulk-cancel-notice">
+      <span class="notice-mark" aria-hidden="true"><img src="/assets/business/orders/circle-x.svg" alt=""></span>
+      <div>
+        <h3>{{ bulkCancelTargets().length }} đơn chờ thanh toán sẽ bị hủy</h3>
+        <p>Đơn đã hủy không ghi nhận doanh thu; voucher đã dùng (nếu có) được hoàn lại ví học viên. Hành động này không thể hoàn tác.</p>
+      </div>
+    </div>
+    <div dialogFooter class="bulk-cancel-actions">
+      <button class="button" type="button" (click)="bulkCancelIds.set(null)">Giữ lại đơn</button>
+      <button class="button bulk-cancel-confirm" type="button" [disabled]="!bulkCancelTargets().length" (click)="confirmBulkCancel()">Xác nhận hủy đơn</button>
+    </div>
+  </app-admin-dialog>
+}
+
+@if (toast()) { <div class="toast" role="status" (click)="toast.set('')">{{ toast() }}</div> }

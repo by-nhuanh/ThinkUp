@@ -64,7 +64,7 @@
 .toolbar-button img { width: 16px; height: 16px; }.toolbar-button:hover { background: #eaf4ff; }.export-button { background: #1063e3; border-color: #1063e3; color: #fff; padding: 0 16px; }.export-button:hover { background: #0954c7; }
 
 .orders-list { overflow: hidden; border: 1px solid #e1eaf4; border-radius: 8px; background: #fff; }
-.orders-table-scroll { width: 100%; overflow-x: auto; }.orders-list table { width: 100%; min-width: 940px; table-layout: auto; border-collapse: collapse; }
+.orders-table-scroll { width: 100%; overflow-x: auto; }.orders-list table { width: 100%; min-width: 984px; table-layout: auto; border-collapse: collapse; }
 .orders-list thead { background: #f3f8fe; }.orders-list th { padding: 12px 14px; border: 0; color: #536783; font: var(--admin-text-badge); text-transform: none; letter-spacing: 0; white-space: nowrap; }
 .orders-list td { padding: 10px 14px; border-top: 1px solid #e6edf6; color: #182c51; font: var(--admin-text-body-default); font-variant-numeric: tabular-nums; vertical-align: middle; white-space: nowrap; }
 .orders-list td strong { display: block; font-weight: var(--admin-font-weight-semibold); }.orders-list .secondary { display: block; color: #64748b; font: var(--admin-text-caption); margin-top: 3px; }
@@ -80,6 +80,18 @@
 .status-success { background: #e9f9ed; border-color: #56c46d; color: #13743b; }.status-pending { background: #fff7dd; border-color: #f1b535; color: #9c6907; }.status-cancelled { background: #fff0f1; border-color: #ee6d77; color: #cf2734; }
 .eye-button { width: 36px; height: 36px; display: inline-grid; place-items: center; border: 0; background: transparent; border-radius: 6px; }.eye-button img { width: 21px; height: 21px; }.eye-button:hover { background: #eaf4ff; }
 .empty-state { padding: 35px; text-align: center; color: #6f819a; }
+.selection-slot { padding: 12px 16px 0; }
+.orders-list .select-cell { width: 44px; min-width: 44px; padding-left: 8px; padding-right: 8px; text-align: center; }
+.orders-list .select-cell input[type='checkbox'] { width: 17px; height: 17px; margin: 0; accent-color: #3168d9; cursor: pointer; }
+.orders-list .select-cell input[type='checkbox']:focus-visible { outline: 2px solid #4388e8; outline-offset: 2px; }
+.orders-list tbody tr.row-selected td { background: #f0f7ff; }
+.orders-list tbody tr.row-selected:hover td { background: #e9f2ff; }
+.bulk-cancel-notice { margin: 0; }
+.bulk-cancel-actions { display: flex; justify-content: flex-end; gap: 9px; }
+.bulk-cancel-actions .button { min-height: 40px; }
+.bulk-cancel-confirm { border-color: #e21e37 !important; background: #e8243e; color: #fff !important; }
+.bulk-cancel-confirm:hover:not(:disabled) { background: #c91b33 !important; }
+.bulk-cancel-confirm:disabled { border-color: #e5b9bf !important; background: #f3d2d7; color: #fff !important; cursor: not-allowed; }
 /* Footer danh sách và bộ phân trang dùng chung nằm trong ../business-page.css. */
 
 @media (max-width: 1500px) {

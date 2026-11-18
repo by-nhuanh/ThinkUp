@@ -95,6 +95,10 @@ export class BusinessDemoService implements BusinessStore {
       : item));
   }
 
+  updateOrder(id: string, changes: Partial<BusinessOrder>): void {
+    this.orderState.update(items => items.map(item => item.id === id ? { ...item, ...changes } : item));
+  }
+
   updatePayout(id: string, changes: Partial<PayoutRequest>): void {
     this.payoutState.update(items => items.map(item => item.id === id ? { ...item, ...changes, isDemo: true } : item));
   }

@@ -1,0 +1,2 @@
+.field .required-mark { color: #b91c1c; }
+.field-character-count { justify-self: end; color: #64748b; font: var(--admin-text-caption); margin-top: 2px; }

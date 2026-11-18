@@ -130,11 +130,15 @@
 
   <div class="panel">
     @if (selection().length) {
-      <div class="selection-bar">
-        <strong>Đã chọn {{ selection().length }} học viên</strong>
-        <span class="spacer"></span>
-        <button class="btn btn--outline btn--sm" type="button" (click)="clearSelection()">Bỏ chọn</button>
-        <button class="btn btn--danger btn--sm" type="button" (click)="openBulkLock()">Khóa tài khoản</button>
+      <div class="selection-slot">
+        <app-selection-bar
+          [count]="selection().length"
+          noun="học viên"
+          [actions]="selectionActions()"
+          (action)="runSelectionAction($event)"
+          (inspect)="selectionListOpen.set(true)"
+          (clear)="clearSelection()"
+        />
       </div>
     }
 
@@ -171,12 +175,12 @@
               />
             </th>
             <th scope="col">Mã học viên</th>
-            <th scope="col">Họ tên</th>
+            <th scope="col"><app-column-filter label="Họ tên" [values]="nameValues()" [selected]="filterFor('name')" (changed)="updateColumnFilter('name', $event)" [sorts]="textSorts" [sort]="sortFor('name')" (sortChange)="updateColumnSort('name', $event)" /></th>
             <th scope="col">Email</th>
             <th scope="col">SĐT</th>
-            <th scope="col">Số lượng khóa học</th>
-            <th scope="col">Ngày đăng ký</th>
-            <th scope="col">Trạng thái</th>
+            <th scope="col"><app-column-filter label="Số lượng khóa học" [values]="coursesValues" [selected]="filterFor('courses')" (changed)="updateColumnFilter('courses', $event)" [sorts]="numberSorts" [sort]="sortFor('courses')" (sortChange)="updateColumnSort('courses', $event)" /></th>
+            <th scope="col"><app-column-filter label="Ngày đăng ký" [values]="registeredValues" [selected]="filterFor('registered')" (changed)="updateColumnFilter('registered', $event)" [sorts]="dateSorts" [sort]="sortFor('registered')" (sortChange)="updateColumnSort('registered', $event)" /></th>
+            <th scope="col"><app-column-filter label="Trạng thái" [values]="statusValues" [selected]="filterFor('status')" (changed)="updateColumnFilter('status', $event)" [sorts]="textSorts" [sort]="sortFor('status')" (sortChange)="updateColumnSort('status', $event)" /></th>
             <th scope="col" class="col-actions">Thao tác</th>
           </tr>
         </thead>
@@ -502,6 +506,19 @@
         </div>
       </app-user-modal>
     }
+  }
+
+  @if (selectionListOpen()) {
+    <app-bulk-selection-dialog
+      noun="học viên"
+      [items]="selectionItems()"
+      [candidates]="selectionCandidates()"
+      [actions]="selectionActions()"
+      note="Khóa tài khoản sẽ áp dụng cho các dòng đang tick và được ghi vào nhật ký kiểm toán."
+      (closed)="selectionListOpen.set(false)"
+      (selectionChange)="setSelectionIds($event)"
+      (action)="runSelectionAction($event.key, $event.ids)"
+    />
   }
 
   <app-user-toast />

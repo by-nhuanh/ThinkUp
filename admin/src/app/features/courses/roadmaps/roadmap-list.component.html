@@ -7,7 +7,6 @@
         <span class="breadcrumb-current" aria-current="page">Lộ trình học tập</span>
       </nav>
       <h1>Quản lý lộ trình học tập</h1>
-      <p class="subtitle">Xâu chuỗi khóa học thành lộ trình nghề nghiệp và gán bài kiểm tra cho từng node.</p>
     </div>
     <div class="heading-actions">
       <button class="button primary" type="button" (click)="createRoadmap()">+ Tạo lộ trình mới</button>
@@ -21,7 +20,7 @@
       </span>
       <span>
         <span class="kpi-label">Tổng lộ trình</span>
-        <strong class="kpi-value">{{ number(totals.total) }}</strong>
+        <strong class="kpi-value">{{ number(totals().total) }}</strong>
         <span class="kpi-foot">+2 trong tháng</span>
       </span>
     </div>
@@ -31,8 +30,8 @@
       </span>
       <span>
         <span class="kpi-label">Đang hoạt động</span>
-        <strong class="kpi-value">{{ number(totals.active) }}</strong>
-        <span class="kpi-foot">75% tổng lộ trình</span>
+        <strong class="kpi-value">{{ number(totals().active) }}</strong>
+        <span class="kpi-foot">{{ totals().activeShare }}% tổng lộ trình</span>
       </span>
     </div>
     <div class="kpi">
@@ -41,7 +40,7 @@
       </span>
       <span>
         <span class="kpi-label">Học viên tham gia</span>
-        <strong class="kpi-value">{{ number(totals.learners) }}</strong>
+        <strong class="kpi-value">{{ number(totals().learners) }}</strong>
         <span class="kpi-foot">+12,5% tháng này</span>
       </span>
     </div>
@@ -51,8 +50,8 @@
       </span>
       <span>
         <span class="kpi-label">Độ phủ khóa học</span>
-        <strong class="kpi-value">{{ totals.coverage }}</strong>
-        <span class="kpi-foot">6 node cần bổ sung</span>
+        <strong class="kpi-value">{{ totals().coverage }}</strong>
+        <span class="kpi-foot">{{ totals().missingNodes }} node cần bổ sung</span>
       </span>
     </div>
   </section>
@@ -98,6 +97,19 @@
       </div>
     }
 
+    @if (selectedIds().length) {
+      <div class="selection-slot">
+        <app-selection-bar
+          [count]="selectedIds().length"
+          noun="lộ trình"
+          [actions]="selectionActions()"
+          (action)="runSelectionAction($event)"
+          (inspect)="selectionListOpen.set(true)"
+          (clear)="clearSelection()"
+        />
+      </div>
+    }
+
     @if (!loadError() && filtered().length === 0) {
       <div class="empty">
         <strong>Không tìm thấy lộ trình phù hợp</strong>
@@ -109,19 +121,21 @@
         <table>
           <thead>
             <tr>
-              <th scope="col">Lộ trình / Mã</th>
-              <th scope="col">Giai đoạn / Node</th>
+              <th scope="col" class="select-cell"><input class="checkbox" type="checkbox" [checked]="allVisibleSelected()" [indeterminate]="someVisibleSelected()" aria-label="Chọn tất cả lộ trình trên trang" (change)="toggleSelectAll()"></th>
+              <th scope="col"><app-column-filter label="Lộ trình / mã" [values]="nameValues()" [selected]="filterFor('name')" (changed)="updateColumnFilter('name', $event)" [sorts]="textSorts" [sort]="sortFor('name')" (sortChange)="updateColumnSort('name', $event)" /></th>
+              <th scope="col"><app-column-filter label="Giai đoạn / node" [values]="visibilityValues" [selected]="filterFor('visibility')" (changed)="updateColumnFilter('visibility', $event)" [sorts]="numberSorts" [sort]="sortFor('visibility')" (sortChange)="updateColumnSort('visibility', $event)" /></th>
               <th scope="col">Học viên</th>
               <th scope="col">Hoàn thành</th>
-              <th scope="col">Khóa học / Node</th>
+              <th scope="col"><app-column-filter label="Khóa học / node" [values]="coverageValues" [selected]="filterFor('coverage')" (changed)="updateColumnFilter('coverage', $event)" [sorts]="numberSorts" [sort]="sortFor('coverage')" (sortChange)="updateColumnSort('coverage', $event)" /></th>
               <th scope="col">Bài test</th>
-              <th scope="col">Tình trạng bài test</th>
+              <th scope="col"><app-column-filter label="Tình trạng bài test" [values]="testValues" [selected]="filterFor('test')" (changed)="updateColumnFilter('test', $event)" [sorts]="textSorts" [sort]="sortFor('test')" (sortChange)="updateColumnSort('test', $event)" /></th>
               <th scope="col">Thao tác</th>
             </tr>
           </thead>
           <tbody>
             @for (item of visible(); track item.id) {
-              <tr [class.is-selected]="menuId() === item.id">
+              <tr [class.is-selected]="menuId() === item.id || isSelected(item.id)">
+                <td class="select-cell"><input class="checkbox" type="checkbox" [checked]="isSelected(item.id)" [attr.aria-label]="'Chọn lộ trình ' + item.name" (change)="toggleSelect(item.id, $any($event.target).checked)"></td>
                 <td>
                   <span class="cell-title">{{ item.name }}</span>
                   <span class="cell-sub">{{ item.code }} · {{ item.industry }}</span>
@@ -134,8 +148,8 @@
                 <td class="nowrap">{{ item.completion }}%</td>
                 <td class="nowrap">{{ item.coverage }}% · TB {{ decimal(item.coverageAvg) }}</td>
                 <td class="nowrap">{{ item.testPassed }}/{{ item.testTotal }}</td>
-                <td>
-                  <span [class]="'badge ' + (item.missingTests === 0 ? 'success' : 'warning')">{{ testLabel(item) }}</span>
+                <td class="roadmap-test-status">
+                  <span [class]="'badge roadmap-test-badge ' + (item.missingTests === 0 ? 'success' : 'warning')">{{ testLabel(item) }}</span>
                 </td>
                 <td>
                   <div class="row-menu">
@@ -171,6 +185,19 @@
     }
   </section>
 </main>
+
+@if (selectionListOpen()) {
+  <app-bulk-selection-dialog
+    noun="lộ trình"
+    [items]="selectionItems()"
+    [candidates]="selectionCandidates()"
+    [actions]="selectionActions()"
+    note="Ẩn lộ trình sẽ gỡ lộ trình khỏi giao diện học viên; có thể xuất bản lại bất cứ lúc nào."
+    (closed)="selectionListOpen.set(false)"
+    (selectionChange)="setSelectionIds($event)"
+    (action)="runSelectionAction($event.key, $event.ids)"
+  />
+}
 
 @if (toast(); as notice) {
   <app-course-toast [message]="notice.message" [tone]="notice.tone" (closed)="toast.set(null)" />

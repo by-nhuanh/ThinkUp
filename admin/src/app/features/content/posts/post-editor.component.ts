@@ -1,3 +1,5 @@
+import { AdminDialogComponent } from '../../../shared/components/admin-dialog/admin-dialog.component';
+import { DateTimePickerComponent } from '../../../shared/components/date-time-picker/date-time-picker.component';
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CustomSelectComponent, CustomSelectOption } from '../../../shared/components/custom-select/custom-select.component';
@@ -5,17 +7,20 @@ import { ContentToastComponent, ToastTone } from '../components/content-toast.co
 import { formatDateTime, POST_STATUS_LABELS } from '../content-utils';
 import { ContentCategory, ContentPost, PostStatus } from '../models/content.models';
 import { ContentStore } from '../services/content.store';
+import { MOCK_COURSES } from '../../../core/data/mock/course.mock';
 
 const CATEGORIES: ContentCategory[] = [
   'Lập trình cơ bản', 'Web Development', 'Backend', 'DevOps', 'Thuật toán', 'Kinh nghiệm', 'Tài nguyên'
 ];
 
+const LECTURER_NAMES: readonly string[] = [...new Set(MOCK_COURSES.map(course => course.instructor))];
+
 @Component({
   selector: 'app-content-post-editor',
   standalone: true,
-  imports: [RouterLink, CustomSelectComponent, ContentToastComponent],
+  imports: [AdminDialogComponent, DateTimePickerComponent, RouterLink, CustomSelectComponent, ContentToastComponent],
   templateUrl: './post-editor.component.html',
-  styleUrl: '../content-page.css'
+  styleUrls: ['../content-page.css', './post-editor.component.css']
 })
 export class ContentPostEditorComponent {
   private readonly store = inject(ContentStore);
@@ -23,11 +28,14 @@ export class ContentPostEditorComponent {
   private readonly router = inject(Router);
 
   readonly editing = signal<ContentPost | null>(null);
+  readonly missing = signal(false);
+  readonly scheduledAt = signal('');
   readonly title = signal('');
   readonly slug = signal('');
   readonly excerpt = signal('');
   readonly bodyText = signal('');
   readonly category = signal<ContentCategory>('Lập trình cơ bản');
+  readonly author = signal(LECTURER_NAMES[0]);
   readonly tagsInput = signal('');
   readonly status = signal<PostStatus>('draft');
   readonly thumbnail = signal('/assets/content/posts/thumb-frontend.svg');
@@ -44,18 +52,26 @@ export class ContentPostEditorComponent {
   readonly lastSaved = signal<string | null>(null);
 
   readonly categoryOptions: CustomSelectOption[] = CATEGORIES.map(item => ({ value: item, label: item }));
+  readonly authorOptions = computed<CustomSelectOption[]>(() => {
+    const current = this.author();
+    const names = LECTURER_NAMES.includes(current) ? LECTURER_NAMES : [...LECTURER_NAMES, current];
+    return names.map(name => ({ value: name, label: name }));
+  });
+  readonly authorRole = computed<ContentPost['authorRole']>(() =>
+    LECTURER_NAMES.includes(this.author()) ? 'Giảng viên' : (this.editing()?.authorRole ?? 'Giảng viên'));
   readonly statusOptions: CustomSelectOption[] = [
     { value: 'draft', label: 'Bản nháp' },
     { value: 'pending', label: 'Gửi duyệt' },
     { value: 'published', label: 'Xuất bản ngay' },
-    { value: 'scheduled', label: 'Lên lịch' }
+    { value: 'scheduled', label: 'Lên lịch' },
+    ...(['hidden', 'archived', 'revision', 'rejected'] as PostStatus[]).map(value => ({ value, label: POST_STATUS_LABELS[value] }))
   ];
   readonly coverOptions = [
     '/assets/content/posts/thumb-frontend.svg', '/assets/content/posts/thumb-code.svg',
     '/assets/content/posts/thumb-study.svg', '/assets/content/posts/thumb-career.svg',
     '/assets/content/posts/thumb-ux.svg', '/assets/content/posts/thumb-news.svg'
   ];
-  readonly tags = computed(() => this.tagsInput().split(',').map(tag => tag.trim()).filter(Boolean));
+  readonly tags = computed(() => [...new Set(this.tagsInput().split(',').map(tag => tag.trim()).filter(Boolean))]);
   readonly bodyParagraphs = computed(() => this.bodyText().split('\n').map(line => line.trim()).filter(Boolean));
   readonly wordCount = computed(() => this.bodyText().trim().split(/\s+/).filter(Boolean).length);
   readonly titleError = computed(() => this.submitted() && this.title().trim().length < 10 ? 'Tiêu đề cần tối thiểu 10 ký tự.' : '');
@@ -68,12 +84,17 @@ export class ContentPostEditorComponent {
     if (!id || id === 'new') return;
     const post = this.store.posts().find(item => item.id === id) ?? null;
     this.editing.set(post);
-    if (!post) return;
+    if (!post) { this.missing.set(true); return; }
+    this.loadPost(post);
+  }
+
+  private loadPost(post: ContentPost): void {
     this.title.set(post.title);
     this.slug.set(post.slug);
     this.excerpt.set(post.excerpt);
     this.bodyText.set(post.body.join('\n'));
     this.category.set(post.category);
+    this.author.set(post.author);
     this.tagsInput.set(post.tags.join(', '));
     this.status.set(post.status);
     this.thumbnail.set(post.thumbnail);
@@ -84,6 +105,7 @@ export class ContentPostEditorComponent {
     this.loginRequired.set(post.loginRequired ?? false);
     this.featured.set(post.featured);
     this.pinned.set(post.pinned);
+    this.scheduledAt.set(post.scheduledAt ? localDateTime(post.scheduledAt) : '');
   }
 
   updateTitle(value: string): void {
@@ -100,12 +122,17 @@ export class ContentPostEditorComponent {
   }
 
   save(overrideStatus?: PostStatus): void {
+    if (this.missing()) return;
     this.submitted.set(true);
     if (!this.valid()) {
       this.notify('Vui lòng hoàn thiện các trường bắt buộc trước khi lưu.', 'error');
       return;
     }
     const status = overrideStatus ?? this.status();
+    if (status === 'scheduled' && (!this.scheduledAt() || !Number.isFinite(new Date(this.scheduledAt()).getTime()) || new Date(this.scheduledAt()).getTime() <= Date.now())) {
+      this.notify('Vui lòng chọn thời gian xuất bản trong tương lai.', 'error');
+      return;
+    }
     if (this.pinned()) {
       const editingId = this.editing()?.id;
       const pinnedCount = this.store.posts().filter(post => post.pinned && post.id !== editingId).length;
@@ -123,6 +150,8 @@ export class ContentPostEditorComponent {
         excerpt: this.excerpt().trim(),
         body: this.bodyParagraphs(),
         category: this.category(),
+        author: this.author(),
+        authorRole: this.authorRole(),
         tags: this.tags(),
         status,
         thumbnail: this.thumbnail(),
@@ -133,20 +162,22 @@ export class ContentPostEditorComponent {
         loginRequired: this.loginRequired(),
         featured: this.featured(),
         pinned: this.pinned(),
-        scheduledAt: status === 'scheduled' ? now : undefined,
+        scheduledAt: status === 'scheduled' ? new Date(this.scheduledAt()).toISOString() : undefined,
         rejectionReason: undefined
       }, `Lưu bài viết ở trạng thái ${POST_STATUS_LABELS[status]}.`);
+      this.editing.set(this.store.posts().find(post => post.id === existing.id) ?? existing);
       this.lastSaved.set(now);
       this.notify(`Đã lưu “${this.title().trim()}”.`, 'success');
     } else {
-      const id = `BV-${String(this.store.posts().length + 1).padStart(3, '0')}`;
+      const nextId = Math.max(0, ...this.store.posts().map(post => Number(post.id.replace('BV-', '')) || 0)) + 1;
+      const id = `BV-${String(nextId).padStart(3, '0')}`;
       this.store.createPost({
         id,
         title: this.title().trim(),
         slug: this.slug() || slugify(this.title()),
         category: this.category(),
-        author: 'Quản trị viên',
-        authorRole: 'Biên tập viên',
+        author: this.author(),
+        authorRole: this.authorRole(),
         tags: this.tags(),
         status,
         excerpt: this.excerpt().trim(),
@@ -161,53 +192,13 @@ export class ContentPostEditorComponent {
         commentCount: 0,
         createdAt: now,
         updatedAt: now,
-        scheduledAt: status === 'scheduled' ? now : undefined,
+        scheduledAt: status === 'scheduled' ? new Date(this.scheduledAt()).toISOString() : undefined,
         featured: this.featured(),
         pinned: this.pinned()
       });
       this.notify('Đã tạo bài viết mới.', 'success');
       setTimeout(() => void this.router.navigate(['/content/posts']), 500);
     }
-  }
-
-  readonly missing = computed(() => {
-    const id = this.route.snapshot.paramMap.get('id');
-    return !!id && id !== 'new' && !this.editing();
-  });
-
-  duplicate(): void {
-    this.editing.set(null);
-    this.submitted.set(false);
-    this.notify('Đã tạo bản sao nội dung. Lưu để hoàn tất bài viết mới.', 'info');
-  }
-
-  reset(): void {
-    const post = this.editing();
-    if (!post) {
-      this.updateTitle('');
-      this.excerpt.set('');
-      this.bodyText.set('');
-      this.tagsInput.set('');
-      this.callout.set('');
-      this.seoTitle.set('');
-      this.seoDescription.set('');
-      this.allowComments.set(true);
-      this.loginRequired.set(false);
-      this.submitted.set(false);
-      return;
-    }
-    this.title.set(post.title);
-    this.excerpt.set(post.excerpt);
-    this.bodyText.set(post.body.join('\n'));
-    this.tagsInput.set(post.tags.join(', '));
-    this.callout.set(post.callout ?? '');
-    this.seoTitle.set(post.seoTitle ?? '');
-    this.seoDescription.set(post.seoDescription ?? '');
-    this.allowComments.set(post.allowComments ?? true);
-    this.loginRequired.set(post.loginRequired ?? false);
-    this.status.set(post.status);
-    this.submitted.set(false);
-    this.notify('Đã khôi phục nội dung đã lưu gần nhất.', 'info');
   }
 
   notify(message: string, tone: ToastTone): void {
@@ -227,4 +218,10 @@ function slugify(value: string): string {
     .replace(/đ/g, 'd')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
+}
+
+function localDateTime(value: string): string {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return '';
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 19);
 }

@@ -1,10 +1,9 @@
 import { ContentComment, ContentPost, ContentReport, ContentReview, ModerationLog } from '../../../features/content/models/content.models';
+import { mockReviewLearningProgress } from './review-learning-progress.mock';
 
 // TODO(pre-deploy): Nhớ xóa dữ liệu mẫu này khi backend cung cấp API quản lý nội dung đã xác minh.
 
 const at = (date: string, time: string): string => new Date(`${date}T${time}:00+07:00`).toISOString();
-
-const EDITORIAL = { name: 'ThinkUp Team', role: 'Admin' as const };
 
 interface PostSeed {
   title: string;
@@ -23,7 +22,7 @@ interface PostSeed {
 const POST_SEEDS: PostSeed[] = [
   {
     title: 'HTML, CSS, JavaScript là gì? Lộ trình cho người mới', slug: 'html-css-javascript-la-gi',
-    category: 'Lập trình cơ bản', author: EDITORIAL.name, role: EDITORIAL.role, status: 'published', pinned: true,
+    category: 'Lập trình cơ bản', author: 'Lê Thu Hà', role: 'Giảng viên', status: 'published', pinned: true,
     createdAt: at('2026-10-28', '08:00'), updatedAt: at('2026-11-04', '09:15'),
     excerpt: 'Giải thích ba nền tảng của lập trình web và lộ trình học 12 tuần dành cho người mới bắt đầu.',
     tags: ['html', 'css', 'javascript']
@@ -37,7 +36,7 @@ const POST_SEEDS: PostSeed[] = [
   },
   {
     title: 'Git và GitHub: làm việc nhóm hiệu quả', slug: 'git-github-lam-viec-nhom',
-    category: 'Tài nguyên', author: EDITORIAL.name, role: EDITORIAL.role, status: 'hidden', pinned: false,
+    category: 'Tài nguyên', author: 'Trần Quốc Bảo', role: 'Giảng viên', status: 'hidden', pinned: false,
     createdAt: at('2026-10-30', '09:00'), updatedAt: at('2026-11-03', '14:28'),
     excerpt: 'Quy trình branch, review và xử lý xung đột giúp nhóm nhiều người làm việc không lẫn code.',
     tags: ['git', 'github', 'teamwork']
@@ -51,7 +50,7 @@ const POST_SEEDS: PostSeed[] = [
   },
   {
     title: 'CI/CD là gì? Tự động hóa quy trình triển khai', slug: 'ci-cd-la-gi',
-    category: 'DevOps', author: EDITORIAL.name, role: EDITORIAL.role, status: 'published', pinned: false,
+    category: 'DevOps', author: 'Nguyễn Gia Phúc', role: 'Giảng viên', status: 'published', pinned: false,
     createdAt: at('2026-10-25', '08:00'), updatedAt: at('2026-11-01', '08:45'),
     excerpt: 'Pipeline tự động giúp giảm lỗi phát hành và rút ngắn thời gian đưa tính năng tới người dùng.',
     tags: ['ci/cd', 'devops']
@@ -79,28 +78,28 @@ const POST_SEEDS: PostSeed[] = [
   },
   {
     title: 'Kiểm thử phần mềm từ A–Z: lộ trình thực chiến', slug: 'kiem-thu-phan-mem-tu-a-z',
-    category: 'Web Development', author: 'Lê Thị Thu Hà', role: 'Giảng viên', status: 'published', pinned: false,
+    category: 'Web Development', author: 'Lê Thu Hà', role: 'Giảng viên', status: 'published', pinned: false,
     createdAt: at('2026-10-20', '09:00'), updatedAt: at('2026-10-27', '16:00'),
     excerpt: 'Test case, automation và quy trình kiểm thử trong dự án Agile.',
     tags: ['testing', 'qa']
   },
   {
     title: 'Tối ưu hiệu năng Angular: OnPush và Signals', slug: 'toi-uu-hieu-nang-angular',
-    category: 'Web Development', author: EDITORIAL.name, role: EDITORIAL.role, status: 'scheduled', pinned: false,
+    category: 'Web Development', author: 'Phạm Tuấn Anh', role: 'Giảng viên', status: 'scheduled', pinned: false,
     createdAt: at('2026-11-01', '09:00'), updatedAt: at('2026-11-05', '11:00'),
     excerpt: 'Các kỹ thuật giảm change detection và quản lý state bằng Signals.',
     tags: ['angular', 'performance']
   },
   {
     title: 'Docker căn bản cho lập trình viên', slug: 'docker-can-ban',
-    category: 'DevOps', author: 'Hoàng Việt', role: 'Giảng viên', status: 'published', pinned: false,
+    category: 'DevOps', author: 'Nguyễn Gia Phúc', role: 'Giảng viên', status: 'published', pinned: false,
     createdAt: at('2026-10-18', '08:00'), updatedAt: at('2026-10-26', '13:40'),
     excerpt: 'Image, container và cách đóng gói ứng dụng Node.js bằng Dockerfile.',
     tags: ['docker', 'devops']
   },
   {
     title: 'React & TypeScript thực chiến: ghi chú học tập', slug: 'react-typescript-ghi-chu',
-    category: 'Kinh nghiệm', author: 'Trần Quốc Bảo', role: 'Giảng viên', status: 'archived', pinned: false,
+    category: 'Kinh nghiệm', author: 'Nguyễn Minh Anh', role: 'Giảng viên', status: 'archived', pinned: false,
     createdAt: at('2026-09-12', '09:00'), updatedAt: at('2026-09-20', '09:00'),
     excerpt: 'Tổng hợp ghi chú của lớp React & TypeScript kỳ trước.',
     tags: ['react', 'typescript']
@@ -287,8 +286,9 @@ export const MOCK_CONTENT_REVIEWS: ContentReview[] = REVIEW_SEEDS.map((seed, ind
   courseTitle: seed.course,
   instructor: seed.instructor || INSTRUCTORS[index % INSTRUCTORS.length],
   learner: seed.learner,
-  learnerEmail: `${seed.learner.trim().split(/\s+/).slice(-2).join('').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]/g, '')}@thinkup.vn`,
+  learnerEmail: `${seed.learner.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]+/g, '.')}@thinkup.vn`,
   completion: seed.completion,
+  learningProgress: mockReviewLearningProgress(seed.completion, seed.course),
   rating: seed.rating,
   nps: seed.nps,
   feedbackTags: seed.tags,

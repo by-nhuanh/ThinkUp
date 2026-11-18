@@ -30,7 +30,7 @@
     <div class="voucher-toolbar">
       @if (selectedCount() > 0) {
         <div class="voucher-selection-bar" role="toolbar" aria-label="Thao tác với các voucher đã chọn">
-          <span class="selection-count">Đã chọn {{ selectedCount() }}</span>
+          <button class="selection-count" type="button" title="Xem và chỉnh sửa danh sách đã chọn" aria-haspopup="dialog" (click)="selectionListOpen.set(true)">Đã chọn {{ selectedCount() }}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
           <button class="selection-action" type="button" [disabled]="!canLockSelected()" [title]="canLockSelected() ? '' : 'Voucher đã chọn không thể tạm khóa'" (click)="requestBulkLock(true)">Tạm khóa voucher</button>
           <button class="selection-action" type="button" [disabled]="!canUnlockSelected()" [title]="canUnlockSelected() ? '' : 'Voucher đã chọn không thể mở khóa'" (click)="requestBulkLock(false)">Mở khóa voucher</button>
         </div>
@@ -42,7 +42,7 @@
       <button class="voucher-advanced-filter" type="button" aria-label="Lọc chi tiết voucher" title="Lọc chi tiết voucher" [class.is-active]="advancedFilterCount() > 0" (click)="openAdvancedFilter()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18l-7 8v6l-4 2v-8z"/></svg>@if (advancedFilterCount() > 0) { <span class="voucher-advanced-filter-count">{{ advancedFilterCount() }}</span> }</button>
       <div class="voucher-toolbar-actions"><app-export-menu label="Xuất danh sách voucher" (formatChange)="export($event)"></app-export-menu><button class="button primary create-button" type="button" (click)="openNew()">+ Tạo voucher mới</button></div>
     </div>
-    <div class="voucher-table-wrap"><table><thead><tr><th class="select-cell"><input type="checkbox" aria-label="Chọn tất cả voucher" [checked]="allSelected()" [indeterminate]="someSelected()" (change)="toggleSelectAll()"></th><th>Mã voucher</th><th>Nguồn tài trợ</th><th>Giá trị giảm</th><th>Điều kiện đơn</th><th>Đối tượng</th><th>Lượt sử dụng</th><th>Ngân sách</th><th>Thời hạn</th><th>Trạng thái</th></tr></thead><tbody>
+    <div class="voucher-table-wrap"><table><thead><tr><th class="select-cell"><input type="checkbox" aria-label="Chọn tất cả voucher" [checked]="allSelected()" [indeterminate]="someSelected()" (change)="toggleSelectAll()"></th><th>Mã voucher</th><th><app-column-filter label="Nguồn tài trợ" [values]="sponsorColumnValues" [selected]="sponsorColumnFilters()" (changed)="setColumnFilter('sponsor', $event)" [sorts]="textSorts" [sort]="sortFor('sponsor')" (sortChange)="updateColumnSort('sponsor', $event)" /></th><th><app-column-filter label="Giá trị giảm" [values]="discountColumnValues" [selected]="discountColumnFilters()" (changed)="setColumnFilter('discount', $event)" [sorts]="numberSorts" [sort]="sortFor('discount')" (sortChange)="updateColumnSort('discount', $event)" /></th><th>Điều kiện đơn</th><th><app-column-filter label="Đối tượng" [values]="audienceColumnValues" [selected]="audienceColumnFilters()" (changed)="setColumnFilter('audience', $event)" [sorts]="textSorts" [sort]="sortFor('audience')" (sortChange)="updateColumnSort('audience', $event)" /></th><th>Lượt sử dụng</th><th>Ngân sách</th><th><app-column-filter label="Thời hạn" [values]="validityColumnValues()" [selected]="validityColumnFilters()" (changed)="setColumnFilter('validity', $event)" [sorts]="dateSorts" [sort]="sortFor('validity')" (sortChange)="updateColumnSort('validity', $event)" /></th><th><app-column-filter label="Trạng thái" [values]="statusColumnValues" [selected]="statusColumnFilters()" (changed)="setColumnFilter('status', $event)" [sorts]="textSorts" [sort]="sortFor('status')" (sortChange)="updateColumnSort('status', $event)" /></th></tr></thead><tbody>
       @for (item of visible(); track item.code) {
         <tr [class.row-selected]="selectedCodes().includes(item.code)">
           <td class="select-cell"><input type="checkbox" [attr.aria-label]="'Chọn ' + item.code" [checked]="selectedCodes().includes(item.code)" (change)="toggle(item.code, $any($event.target).checked)"></td>
@@ -241,6 +241,18 @@
       <div class="dialog-footer"><button class="button" type="button" (click)="closeDelete()">Huỷ</button><button class="button danger" type="button" (click)="confirmDelete()">Xoá voucher</button></div>
     </section>
   </div>
+}
+@if (selectionListOpen()) {
+  <app-bulk-selection-dialog
+    noun="voucher"
+    [items]="selectionDialogItems()"
+    [candidates]="selectionCandidates()"
+    [actions]="selectionDialogActions()"
+    note="Chỉ các voucher đang tick mới được tạm khóa hoặc mở khóa."
+    (closed)="selectionListOpen.set(false)"
+    (selectionChange)="setSelectionCodes($event)"
+    (action)="runSelectionAction($event.key, $event.ids)"
+  />
 }
 @if (toast()) { <div class="toast" role="status" (click)="toast.set('')">{{ toast() }}</div> }
 

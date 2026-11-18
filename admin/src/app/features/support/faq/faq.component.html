@@ -51,21 +51,28 @@
           placeholder="Tìm câu hỏi, từ khóa hoặc nội dung..." /></label
       ><div class="faq-filter"><span id="faq-category-label">Nhóm FAQ</span><app-custom-select controlId="faq-category" labelId="faq-category-label" [value]="category()" (valueChange)="category.set($event); page.set(1)" [placeholder]="'Tất cả 7 nhóm'" [options]="categoryOptions()" [menuWidth]="240" [menuMaxHeight]="280"></app-custom-select></div><div class="faq-filter"><span id="faq-status-label">Trạng thái</span><app-custom-select controlId="faq-status" labelId="faq-status-label" [value]="status()" (valueChange)="setStatusFilter($event)" [placeholder]="'Tất cả'" [options]="statusOptions" [menuWidth]="180"></app-custom-select></div><button class="primary-button add-button" type="button" (click)="openEditor()"><svg lucidePlus aria-hidden="true"></svg><span>Thêm câu hỏi</span></button>
     </div>
+    @if (selectedIds().length) {
+      <div class="selection-slot">
+        <app-selection-bar [count]="selectedIds().length" noun="FAQ" [actions]="selectionActions()" (action)="runSelectionAction($event)" (inspect)="selectionListOpen.set(true)" (clear)="clearSelection()" />
+      </div>
+    }
     <div class="table-scroll">
       <table class="faq-table support-centered-table">
         <thead>
           <tr>
-            <th>Câu hỏi</th>
-            <th>Nhóm</th>
+            <th class="select-cell"><input type="checkbox" [checked]="allVisibleSelected()" [indeterminate]="someVisibleSelected()" aria-label="Chọn tất cả FAQ trên trang" (change)="toggleSelectAll()"></th>
+            <th><span class="header-filter-label">Câu hỏi</span><app-column-filter title="Câu hỏi" [values]="questionFilterValues()" [selected]="filterFor('question')" (changed)="updateColumnFilter('question', $event)" [sorts]="textSorts" [sort]="sortFor('question')" (sortChange)="updateColumnSort('question', $event)" /></th>
+            <th><span class="header-filter-label">Nhóm</span><app-column-filter title="Nhóm" [values]="categoryFilterValues" [selected]="filterFor('category')" (changed)="updateColumnFilter('category', $event)" [sorts]="textSorts" [sort]="sortFor('category')" (sortChange)="updateColumnSort('category', $event)" /></th>
             <th>Lượt xem</th>
             <th>Thứ tự</th>
-            <th>Trạng thái</th>
+            <th><span class="header-filter-label">Trạng thái</span><app-column-filter title="Trạng thái" [values]="statusFilterValues" [selected]="filterFor('status')" (changed)="updateColumnFilter('status', $event)" [sorts]="textSorts" [sort]="sortFor('status')" (sortChange)="updateColumnSort('status', $event)" /></th>
             <th>Quản lý</th>
           </tr>
         </thead>
         <tbody>
           @for (item of visible(); track item.id) {
-            <tr>
+            <tr [class.row-selected]="isSelected(item.id)">
+              <td class="select-cell"><input type="checkbox" [checked]="isSelected(item.id)" [attr.aria-label]="'Chọn FAQ ' + item.question" (change)="toggleSelect(item.id, $any($event.target).checked)"></td>
               <td>
                 <strong class="faq-question">{{ item.question }}</strong
                 ><small>{{ item.keywords.join(" · ") }}</small>
@@ -108,7 +115,7 @@
             </tr>
           } @empty {
             <tr>
-              <td colspan="6">
+              <td colspan="7">
                 <div class="empty-state">
                   <strong>Chưa có FAQ phù hợp</strong
                   ><span>Thử thay đổi điều kiện tìm kiếm.</span>
@@ -325,6 +332,27 @@
       }
     </footer>
   </section>
+}
+@if (selectionListOpen()) {
+  <app-bulk-selection-dialog
+    noun="FAQ"
+    [items]="selectionItems()"
+    [candidates]="selectionCandidates()"
+    [actions]="selectionActions()"
+    note="Xóa hàng loạt sẽ đánh lại thứ tự trong từng nhóm FAQ."
+    (closed)="selectionListOpen.set(false)"
+    (selectionChange)="setSelectionIds($event)"
+    (action)="runSelectionAction($event.key, $event.ids)"
+  />
+}
+@if (bulkDeleteIds(); as ids) {
+  <app-admin-dialog title="Xóa {{ ids.length }} FAQ?" subtitle="Hành động này không thể hoàn tác." size="sm" (closed)="bulkDeleteIds.set(null)">
+    <div class="notice danger">{{ ids.length }} FAQ đã chọn sẽ bị xóa vĩnh viễn khỏi thư viện. Nếu chỉ muốn ngừng hiển thị, hãy dùng Tạm ẩn.</div>
+    <div dialogFooter class="bulk-confirm-actions">
+      <button class="ghost-button" type="button" (click)="bulkDeleteIds.set(null)">Hủy</button>
+      <button class="danger-button" type="button" (click)="confirmBulkDelete()">Xóa vĩnh viễn</button>
+    </div>
+  </app-admin-dialog>
 }
 @if (toast()) {
   <div class="toast" role="status">{{ toast() }}</div>

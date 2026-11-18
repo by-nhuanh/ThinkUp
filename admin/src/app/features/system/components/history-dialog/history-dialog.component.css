@@ -6,6 +6,11 @@
   align-items: end;
 }
 .history-reset { white-space: nowrap; }
+.history-filters app-custom-select {
+  --custom-select-trigger-height: 40px;
+  --custom-select-trigger-padding: 0 12px;
+  --custom-select-font: var(--admin-text-control-input);
+}
 .history-chip-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: #425b7d; font: var(--admin-text-body-compact); }
 .history-chip {
   display: inline-flex;

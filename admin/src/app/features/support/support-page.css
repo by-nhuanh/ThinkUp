@@ -252,6 +252,22 @@
 .table-scroll .support-centered-table td {
   text-align: center;
 }
+/* Excel-style header filters: keep the existing label centred and park the funnel at the right edge. */
+.table-scroll th:has(> app-column-filter) {
+  position: relative;
+  padding-right: 30px;
+}
+.header-filter-label {
+  display: inline-block;
+  vertical-align: middle;
+}
+.table-scroll th > app-column-filter {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  vertical-align: middle;
+}
 .table-scroll .support-centered-table td > * {
   margin-inline: auto;
 }
@@ -912,6 +928,17 @@
 }
 .filter-bar select { padding-right: 34px; cursor: pointer; }
 .filter-bar .search-control input { padding-top: 0; padding-left: 38px; }
+/* Thanh lọc gốc của Ticket / Khiếu nại dùng đúng kích thước và phong cách toolbar trang Quản lý khóa học. */
+.filter-bar.advanced-filter-toolbar { align-items: flex-end; gap: 12px; padding: 16px 18px; }
+.filter-bar .grow { flex: 1 1 240px; min-width: 0; }
+.filter-bar .filter { position: relative; display: block; flex: 0 1 auto; min-width: 146px; padding-top: 3px; }
+.filter-bar .filter > span { position: absolute; z-index: 2; top: -3px; left: 9px; padding: 0 5px; background: #fff; color: #64748b; font-size: 11px; font-weight: 650; }
+.filter-bar .filter app-custom-select { display: block; width: 100%; --custom-select-width: 100%; --custom-select-trigger-height: 42px; --custom-select-trigger-padding: 5px 11px 0; }
+.filter-bar.advanced-filter-toolbar .filter-trigger { height: 42px; min-height: 42px; padding: 0 14px; border-color: #cfddea; border-radius: 8px; color: #245077; font-size: 13px; font-weight: 650; }
+.filter-bar .toolbar-end { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.filter-bar .filter-reset { width: 36px; height: 36px; border: 0; border-radius: 8px; background: transparent; color: #5c7594; }
+.filter-bar .filter-reset:hover { background: #eaf3ff; color: #0965e4; }
+.filter-bar .filter-reset svg { width: 18px; height: 18px; }
 .filter-bar input:hover,
 .filter-bar select:hover { border-color: #8fa8c5; }
 .table-heading { padding: 18px 21px 14px; }

@@ -133,7 +133,7 @@
                       <span class="cell-sub">Hoàn thành bài học</span>
                     </td>
                     <td>
-                      <span class="badge" [class.success]="learner.status === 'Hoàn thành'"
+                      <span class="badge learner-status-badge" [class.success]="learner.status === 'Hoàn thành'"
                         [class.pending]="learner.status === 'Tạm dừng'" [class.info]="learner.status === 'Đang học'">
                         {{ learner.status }}
                       </span>
