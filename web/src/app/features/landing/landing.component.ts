@@ -101,7 +101,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly openFaq = signal<number | null>(null);
 
   readonly popularCards = computed<CourseCardView[]>(() =>
-    this.popularCourses().slice(0, 4).map((course, index) => toCourseCardView(course, index))
+    this.popularCourses().slice(0, 12).map((course, index) => toCourseCardView(course, index))
   );
 
   private readonly courseTrack = viewChild<ElementRef<HTMLElement>>('courseTrack');
@@ -109,7 +109,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnInit(): void {
     this.courseService.getCourses({ sort: 'popular' }).subscribe({
       next: (res) => {
-        this.popularCourses.set(res.data.slice(0, 4));
+        this.popularCourses.set(res.data.slice(0, 12));
       },
       error: () => this.toast.showToast({ type: 'error', message: 'Không tải được khóa học. Vui lòng thử lại.' }),
     });
@@ -160,7 +160,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   scrollCourses(direction: 1 | -1): void {
     const track = this.courseTrack()?.nativeElement;
     if (!track) return;
-    track.scrollBy({ left: direction * Math.round(track.clientWidth * 0.8), behavior: 'smooth' });
+    track.scrollBy({ left: direction * track.clientWidth, behavior: 'smooth' });
   }
 
   /** Trang chủ khách chỉ dành cho khách nên các thao tác cần tài khoản sẽ mở trang đăng nhập. */
