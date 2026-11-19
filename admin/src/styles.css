@@ -286,3 +286,51 @@ body { margin: 0; font-family: Inter, Arial, sans-serif; }
 .business-column-resizer:focus-visible::before,
 .business-column-resizer.is-resizing::before { background: #0965e4; }
 .business-resizable-table.is-column-resizing { cursor: col-resize; user-select: none; }
+
+/* Auth density: keep login, 2FA and password-policy screens compact on laptops
+   and at browser zoom without changing their authentication flow. */
+app-auth-shell .auth-shell-body {
+  padding: 24px;
+}
+
+app-auth-shell :is(.login-panel, .auth-card, .two-factor-card, .backup-code-card, .password-expiry-card, .change-password-card) {
+  max-width: min(560px, calc(100vw - 48px));
+  min-height: 0;
+  padding: 28px 32px 32px;
+}
+
+app-auth-shell :is(h1, h2, .form-title, .auth-title, .page-title) {
+  font: var(--admin-text-dialog-title);
+  line-height: 1.35;
+}
+
+app-auth-shell :is(p, label, .field-label, .form-subtitle, .helper-text, .auth-description) {
+  font-size: var(--admin-font-size-compact);
+  line-height: var(--admin-line-height-compact);
+}
+
+app-auth-shell :is(input, textarea, select, button) {
+  font-size: var(--admin-font-size-body);
+}
+
+app-auth-shell :is(.control, .form-control, .auth-control, input, select) {
+  min-height: 42px;
+}
+
+app-auth-shell .otp-input,
+app-auth-shell .otp-input input {
+  width: 48px;
+  height: 48px;
+}
+
+app-auth-shell :is(.auth-actions, .form-actions, .button-row) {
+  gap: 10px;
+}
+
+@media (max-width: 700px) {
+  app-auth-shell .auth-shell-body { padding: 16px; }
+  app-auth-shell :is(.login-panel, .auth-card, .two-factor-card, .backup-code-card, .password-expiry-card, .change-password-card) {
+    max-width: 100%;
+    padding: 24px 20px;
+  }
+}
