@@ -3,10 +3,10 @@
 }
 
 .otp {
-  --otp-width: 56px;
-  --otp-height: 64px;
-  --otp-gap: 14px;
-  --otp-font-size: 20px;
+  --otp-width: 44px;
+  --otp-height: 48px;
+  --otp-gap: 8px;
+  --otp-font-size: 17px;
   --otp-radius: 8px;
 
   display: flex;
@@ -20,8 +20,8 @@
 }
 
 .otp[data-size='xl'] {
-  --otp-width: 104px;
-  --otp-height: 53px;
+  --otp-width: 64px;
+  --otp-height: 48px;
   --otp-gap: 8px;
   --otp-font-size: 17px;
 }
@@ -72,11 +72,11 @@
 
 @media (max-width: 1439px) {
   .otp {
-    --otp-gap: 12px;
+    --otp-gap: 8px;
   }
 
   .otp[data-size='xl'] {
-    --otp-width: 96px;
+    --otp-width: 60px;
     --otp-gap: 7px;
   }
 }
